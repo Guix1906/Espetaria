@@ -192,3 +192,51 @@ export interface AuditLog {
   ip_address: string | null;
   created_at: string;
 }
+
+export type DeliveryStatus = 
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'PREPARING'
+  | 'OUT_FOR_DELIVERY'
+  | 'DELIVERED'
+  | 'CANCELLED';
+
+export type DeliveryPaymentMethod = 'PIX' | 'DINHEIRO' | 'CARTAO_ENTREGA';
+
+export interface DeliveryOrderItem {
+  id: string;
+  delivery_order_id: string;
+  product_id: string;
+  product_name: string;
+  unit_price: number;
+  quantity: number;
+  doneness: MeatDoneness | null;
+  notes: string | null;
+  sector: ProductionSector;
+}
+
+export interface DeliveryOrder {
+  id: string;
+  order_number: number;
+  shift_id: string;
+  customer_name: string;
+  phone: string;
+  address_street: string;
+  address_number: string;
+  address_neighborhood: string;
+  address_complement: string | null;
+  address_reference: string | null;
+  delivery_fee: number;
+  subtotal: number;
+  total: number;
+  payment_method: DeliveryPaymentMethod;
+  cash_change_for: number | null;
+  status: DeliveryStatus;
+  notes: string | null;
+  driver_name: string | null;
+  created_at: string;
+  confirmed_at: string | null;
+  dispatched_at: string | null;
+  delivered_at: string | null;
+  items: DeliveryOrderItem[];
+}

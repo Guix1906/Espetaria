@@ -1,7 +1,7 @@
 import React from 'react';
-import { Smartphone, LayoutGrid, Flame, Receipt, PackageCheck, FileText } from 'lucide-react';
+import { Smartphone, LayoutGrid, Flame, Receipt, PackageCheck, FileText, Bike, Sparkles } from 'lucide-react';
 
-export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'stock' | 'audit';
+export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'stock' | 'audit';
 
 interface NavigationTabsProps {
   activeTab: ActiveTab;
@@ -10,6 +10,7 @@ interface NavigationTabsProps {
   exhaustedCount: number;
   pendingProductionCount?: number;
   waitingBillCount?: number;
+  activeDeliveriesCount?: number;
 }
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({
@@ -19,6 +20,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   exhaustedCount,
   pendingProductionCount = 0,
   waitingBillCount = 0,
+  activeDeliveriesCount = 0,
 }) => {
   const tabs = [
     {
@@ -48,6 +50,20 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       icon: Receipt,
       badge: waitingBillCount > 0 ? `${waitingBillCount} pedindo conta` : undefined,
       badgeColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse font-bold',
+    },
+    {
+      id: 'delivery' as ActiveTab,
+      label: 'Delivery & Motoboys',
+      icon: Bike,
+      badge: activeDeliveriesCount > 0 ? `${activeDeliveriesCount} ativos` : undefined,
+      badgeColor: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse font-bold',
+    },
+    {
+      id: 'menu' as ActiveTab,
+      label: 'Cardápio Digital (Cliente)',
+      icon: Sparkles,
+      badge: 'Online',
+      badgeColor: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40',
     },
     {
       id: 'stock' as ActiveTab,

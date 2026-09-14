@@ -7,9 +7,12 @@ import { AuditLogView } from './features/audit/AuditLogView';
 import { WaiterModule } from './features/waiter/WaiterModule';
 import { KDSModule } from './features/kds/KDSModule';
 import { CashierModule } from './features/cashier/CashierModule';
+import { DeliveryManagementView } from './features/delivery/DeliveryManagementView';
+import { DeliveryCatalogView } from './features/delivery/DeliveryCatalogView';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { useTableStore } from './stores/useTableStore';
 import { useStockStore } from './stores/useStockStore';
+import { useDeliveryStore } from './stores/useDeliveryStore';
 import { useAuthStore } from './stores/useAuthStore';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 
@@ -33,12 +36,16 @@ export const App: React.FC = () => {
 
   const { tables, orderItems } = useTableStore();
   const { dailyPrepStock } = useStockStore();
+  const { deliveryOrders } = useDeliveryStore();
 
   const openTablesCount = tables.filter((t) => t.status === 'OCUPADA' || t.status === 'AGUARDANDO_CONTA').length;
   const waitingBillCount = tables.filter((t) => t.status === 'AGUARDANDO_CONTA').length;
   const exhaustedCount = dailyPrepStock.filter((s) => s.is_exhausted || s.current_quantity <= 0).length;
   const pendingProductionCount = orderItems.filter(
     (i) => i.status === 'RECEIVED' || i.status === 'IN_PREPARATION'
+  ).length;
+  const activeDeliveriesCount = deliveryOrders.filter(
+    (o) => o.status === 'CONFIRMED' || o.status === 'PREPARING' || o.status === 'OUT_FOR_DELIVERY'
   ).length;
 
   return (
@@ -55,6 +62,7 @@ export const App: React.FC = () => {
         exhaustedCount={exhaustedCount}
         pendingProductionCount={pendingProductionCount}
         waitingBillCount={waitingBillCount}
+        activeDeliveriesCount={activeDeliveriesCount}
       />
 
       {/* Conteúdo do Módulo Ativo */}
@@ -63,6 +71,8 @@ export const App: React.FC = () => {
         {activeTab === 'tables' && <TableGridView />}
         {activeTab === 'kds' && <KDSModule />}
         {activeTab === 'cashier' && <CashierModule />}
+        {activeTab === 'delivery' && <DeliveryManagementView />}
+        {activeTab === 'menu' && <DeliveryCatalogView />}
         {activeTab === 'stock' && (
           <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />
         )}
