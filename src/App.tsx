@@ -1,20 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/layout/Header';
 import { NavigationTabs, ActiveTab } from './components/layout/NavigationTabs';
 import { TableGridView } from './features/tables/TableGridView';
 import { DailyStockView } from './features/stock/DailyStockView';
 import { AuditLogView } from './features/audit/AuditLogView';
+import { WaiterModule } from './features/waiter/WaiterModule';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { useTableStore } from './stores/useTableStore';
 import { useStockStore } from './stores/useStockStore';
+import { useAuthStore } from './stores/useAuthStore';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 
 export const App: React.FC = () => {
   // Sincroniza canais de WebSockets, disponibilidade e bipes de KDS
   useRealtimeSync();
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>('tables');
+  const { currentProfile } = useAuthStore();
+  const [activeTab, setActiveTab] = useState<ActiveTab>('waiter');
   const [isShiftModalOpen, setIsShiftModalOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (currentProfile.role === 'GARCOM') {
+      setActiveTab('waiter');
+    }
+  }, [currentProfile.role]);
 
   const { tables } = useTableStore();
   const { dailyPrepStock } = useStockStore();
@@ -38,6 +47,7 @@ export const App: React.FC = () => {
 
       {/* Conteúdo do Módulo Ativo */}
       <main className="flex-1 pb-16">
+        {activeTab === 'waiter' && <WaiterModule />}
         {activeTab === 'tables' && <TableGridView />}
         {activeTab === 'stock' && (
           <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />

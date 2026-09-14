@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutGrid, PackageCheck, FileText } from 'lucide-react';
+import { Smartphone, LayoutGrid, PackageCheck, FileText } from 'lucide-react';
 
-export type ActiveTab = 'tables' | 'stock' | 'audit';
+export type ActiveTab = 'waiter' | 'tables' | 'stock' | 'audit';
 
 interface NavigationTabsProps {
   activeTab: ActiveTab;
@@ -18,8 +18,15 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
 }) => {
   const tabs = [
     {
+      id: 'waiter' as ActiveTab,
+      label: 'App do Garçom (PWA)',
+      icon: Smartphone,
+      badge: 'Mobile',
+      badgeColor: 'bg-rose-500/20 text-rose-400 border border-rose-500/40',
+    },
+    {
       id: 'tables' as ActiveTab,
-      label: 'Mesas & Salão',
+      label: 'Visão Geral do Salão',
       icon: LayoutGrid,
       badge: openTablesCount > 0 ? `${openTablesCount} ocupadas` : undefined,
       badgeColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/40',
