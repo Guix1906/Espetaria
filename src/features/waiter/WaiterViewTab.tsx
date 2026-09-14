@@ -23,7 +23,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
   onClose,
   onRequestBill,
 }) => {
-  const { tabs, getTabOrderItems } = useTableStore();
+  const { tabs, getTabOrderItems, markDelivered } = useTableStore();
 
   if (!isOpen) return null;
 
@@ -31,12 +31,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
   const items = currentTab ? getTabOrderItems(currentTab.id) : [];
 
   const handleMarkDelivered = (item: OrderItem) => {
-    // Atualiza status do item para DELIVERED
-    useTableStore.setState((state) => ({
-      orderItems: state.orderItems.map((i) =>
-        i.id === item.id ? { ...i, status: 'DELIVERED' as const, delivered_at: new Date().toISOString() } : i
-      ),
-    }));
+    markDelivered(item.id);
   };
 
   const readyToDeliverCount = items.filter((i) => i.status === 'READY').length;

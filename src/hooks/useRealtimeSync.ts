@@ -48,10 +48,34 @@ export function useRealtimeSync() {
       }
     });
 
+    // 4. Escuta novos pedidos para o Bar com sinal sonoro
+    const unsubscribeBar = realtimeService.onBarOrder((payload) => {
+      if (['BAR', 'GERENTE', 'MASTER'].includes(currentProfile.role)) {
+        logger.info({
+          context: 'useRealtimeSync',
+          message: `Novo pedido de bebidas para Mesa ${payload.table_number}! Tocando alerta acústico.`,
+        });
+        audioService.playNewOrderSound();
+      }
+    });
+
+    // 5. Escuta pedidos prontos para entrega pelo garçom com sinal sonoro
+    const unsubscribeReady = realtimeService.onOrderReady((payload) => {
+      if (['GARCOM', 'GERENTE', 'MASTER'].includes(currentProfile.role)) {
+        logger.info({
+          context: 'useRealtimeSync',
+          message: `Item pronto para servir na Mesa ${payload.table_number} (${payload.product_name})! Tocando alerta acústico.`,
+        });
+        audioService.playOrderReadySound();
+      }
+    });
+
     return () => {
       unsubscribeStock();
       unsubscribeGrill();
       unsubscribeKitchen();
+      unsubscribeBar();
+      unsubscribeReady();
     };
   }, [toggleExhaustProduct, currentProfile.role]);
 }

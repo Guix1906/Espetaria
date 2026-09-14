@@ -1,13 +1,14 @@
 import React from 'react';
-import { Smartphone, LayoutGrid, PackageCheck, FileText } from 'lucide-react';
+import { Smartphone, LayoutGrid, Flame, PackageCheck, FileText } from 'lucide-react';
 
-export type ActiveTab = 'waiter' | 'tables' | 'stock' | 'audit';
+export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'stock' | 'audit';
 
 interface NavigationTabsProps {
   activeTab: ActiveTab;
   onChangeTab: (tab: ActiveTab) => void;
   openTablesCount: number;
   exhaustedCount: number;
+  pendingProductionCount?: number;
 }
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({
@@ -15,6 +16,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   onChangeTab,
   openTablesCount,
   exhaustedCount,
+  pendingProductionCount = 0,
 }) => {
   const tabs = [
     {
@@ -30,6 +32,13 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       icon: LayoutGrid,
       badge: openTablesCount > 0 ? `${openTablesCount} ocupadas` : undefined,
       badgeColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/40',
+    },
+    {
+      id: 'kds' as ActiveTab,
+      label: 'KDS Produção',
+      icon: Flame,
+      badge: pendingProductionCount > 0 ? `${pendingProductionCount} na fila` : undefined,
+      badgeColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse',
     },
     {
       id: 'stock' as ActiveTab,

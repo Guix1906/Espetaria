@@ -1,5 +1,6 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from './supabase';
+import { ProductionSector } from '../types/enums';
 import { logger } from './logger';
 
 export interface StockBroadcastPayload {
@@ -23,11 +24,23 @@ export interface OrderBroadcastPayload {
   }[];
 }
 
+export interface OrderItemReadyPayload {
+  order_id: string;
+  order_item_id: string;
+  table_number: number;
+  product_name: string;
+  quantity: number;
+  sector: ProductionSector;
+  timestamp: string;
+}
+
 class RealtimeService {
   private activeChannels: Map<string, RealtimeChannel> = new Map();
   private stockListeners: Set<(payload: StockBroadcastPayload) => void> = new Set();
   private grillListeners: Set<(payload: OrderBroadcastPayload) => void> = new Set();
   private kitchenListeners: Set<(payload: OrderBroadcastPayload) => void> = new Set();
+  private barListeners: Set<(payload: OrderBroadcastPayload) => void> = new Set();
+  private orderReadyListeners: Set<(payload: OrderItemReadyPayload) => void> = new Set();
 
   constructor() {
     this.initStockChannel();
@@ -64,7 +77,7 @@ class RealtimeService {
   }
 
   /**
-   * Canal de Pedidos por Setor (Churrasqueira & Cozinha)
+   * Canal de Pedidos por Setor (Churrasqueira, Cozinha & Bar) e Alertas de Pronto
    */
   private initOrdersChannel(): void {
     if (!isSupabaseConfigured) return;
@@ -86,7 +99,17 @@ class RealtimeService {
             this.grillListeners.forEach((l) => l(order));
           } else if (order.sector === 'KITCHEN') {
             this.kitchenListeners.forEach((l) => l(order));
+          } else if (order.sector === 'BAR') {
+            this.barListeners.forEach((l) => l(order));
           }
+        })
+        .on('broadcast', { event: 'ORDER_ITEM_READY' }, ({ payload }) => {
+          const itemReady = payload as OrderItemReadyPayload;
+          logger.info({
+            context: 'RealtimeService',
+            message: `Item pronto para servir: Mesa ${itemReady.table_number} (${itemReady.product_name})`,
+          });
+          this.orderReadyListeners.forEach((l) => l(itemReady));
         })
         .subscribe((status) => {
           logger.debug({ context: 'RealtimeService', message: `Canal production-orders status: ${status}` });
@@ -133,13 +156,15 @@ class RealtimeService {
   }
 
   /**
-   * Dispara broadcast de novo pedido para a tela da churrasqueira / cozinha
+   * Dispara broadcast de novo pedido para a tela da churrasqueira, cozinha ou bar
    */
   public async broadcastNewOrder(order: OrderBroadcastPayload): Promise<void> {
     if (order.sector === 'GRILL') {
       this.grillListeners.forEach((l) => l(order));
     } else if (order.sector === 'KITCHEN') {
       this.kitchenListeners.forEach((l) => l(order));
+    } else if (order.sector === 'BAR') {
+      this.barListeners.forEach((l) => l(order));
     }
 
     const channel = this.activeChannels.get('production-orders');
@@ -148,6 +173,23 @@ class RealtimeService {
         type: 'broadcast',
         event: 'NEW_PRODUCTION_ORDER',
         payload: order,
+      });
+    }
+  }
+
+  /**
+   * Dispara broadcast de item pronto para servir na mesa
+   */
+  public async broadcastOrderReady(payload: OrderItemReadyPayload): Promise<void> {
+    // Notifica listeners locais
+    this.orderReadyListeners.forEach((l) => l(payload));
+
+    const channel = this.activeChannels.get('production-orders');
+    if (channel && isSupabaseConfigured) {
+      await channel.send({
+        type: 'broadcast',
+        event: 'ORDER_ITEM_READY',
+        payload,
       });
     }
   }
@@ -183,6 +225,26 @@ class RealtimeService {
   }
 
   /**
+   * Registra listener de pedidos para o Bar
+   */
+  public onBarOrder(callback: (payload: OrderBroadcastPayload) => void): () => void {
+    this.barListeners.add(callback);
+    return () => {
+      this.barListeners.delete(callback);
+    };
+  }
+
+  /**
+   * Registra listener de pedidos prontos para servir
+   */
+  public onOrderReady(callback: (payload: OrderItemReadyPayload) => void): () => void {
+    this.orderReadyListeners.add(callback);
+    return () => {
+      this.orderReadyListeners.delete(callback);
+    };
+  }
+
+  /**
    * Desconecta e limpa canais de forma segura (evita memory leaks)
    */
   public cleanup(): void {
@@ -193,6 +255,8 @@ class RealtimeService {
     this.stockListeners.clear();
     this.grillListeners.clear();
     this.kitchenListeners.clear();
+    this.barListeners.clear();
+    this.orderReadyListeners.clear();
   }
 }
 

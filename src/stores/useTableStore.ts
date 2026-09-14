@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { RestaurantTable, Tab, Order, OrderItem } from '../types/domain';
-import { MeatDoneness } from '../types/enums';
+import { MeatDoneness, OrderItemStatus, ProductionSector } from '../types/enums';
 import { INITIAL_TABLES } from '../lib/mockData';
 import { generateId } from '../lib/utils';
 import { useStockStore } from './useStockStore';
 import { realtimeService } from '../lib/realtime';
+import { audioService } from '../lib/audio';
 import { logger } from '../lib/logger';
 
 interface OrderItemInput {
@@ -42,6 +43,9 @@ interface TableState {
     userId: string,
     shiftId: string
   ) => void;
+  updateOrderItemStatus: (orderItemId: string, status: OrderItemStatus) => void;
+  updateOrderSectorItemsStatus: (orderId: string, sector: ProductionSector, status: OrderItemStatus) => void;
+  markDelivered: (orderItemId: string) => void;
   getTabByTableId: (tableId: string) => Tab | undefined;
   getTabOrderItems: (tabId: string) => OrderItem[];
 }
@@ -200,6 +204,22 @@ export const useTableStore = create<TableState>((set, get) => ({
       });
     }
 
+    const barItems = newItems.filter((i) => i.sector === 'BAR');
+    if (barItems.length > 0) {
+      realtimeService.broadcastNewOrder({
+        order_id: newOrder.id,
+        tab_id: tabId,
+        table_number: table.number,
+        sector: 'BAR',
+        items: barItems.map((i) => ({
+          product_name: i.product_name,
+          quantity: i.quantity,
+          doneness: null,
+          notes: i.notes,
+        })),
+      });
+    }
+
     logger.info({
       context: 'TableStore',
       message: `Pedido #${newOrder.order_number} lançado na Mesa ${table.number} com ${newItems.length} itens.`
@@ -251,6 +271,81 @@ export const useTableStore = create<TableState>((set, get) => ({
     }
 
     set({ orderItems: updatedItems });
+  },
+
+  updateOrderItemStatus: (orderItemId, status) => {
+    const item = get().orderItems.find((i) => i.id === orderItemId);
+    if (!item) return;
+
+    const now = new Date().toISOString();
+    const updatedItem: OrderItem = {
+      ...item,
+      status,
+      prepared_at: status === 'READY' ? now : item.prepared_at,
+      delivered_at: status === 'DELIVERED' ? now : item.delivered_at,
+    };
+
+    const newOrderItems = get().orderItems.map((i) => (i.id === orderItemId ? updatedItem : i));
+
+    // Recalcula status do pedido pai
+    const order = get().orders.find((o) => o.id === item.order_id);
+    let newOrders = get().orders;
+    if (order) {
+      const siblings = newOrderItems.filter((i) => i.order_id === order.id && i.status !== 'CANCELLED');
+      let newOrderStatus = order.status;
+      if (siblings.length > 0) {
+        const allDelivered = siblings.every((i) => i.status === 'DELIVERED');
+        const allReadyOrDelivered = siblings.every((i) => i.status === 'READY' || i.status === 'DELIVERED');
+        const anyInPrep = siblings.some((i) => i.status === 'IN_PREPARATION' || i.status === 'READY');
+
+        if (allDelivered) {
+          newOrderStatus = 'DELIVERED';
+        } else if (allReadyOrDelivered) {
+          newOrderStatus = 'READY';
+        } else if (anyInPrep) {
+          newOrderStatus = 'IN_PREPARATION';
+        }
+      }
+      newOrders = get().orders.map((o) => (o.id === order.id ? { ...o, status: newOrderStatus } : o));
+    }
+
+    set({
+      orderItems: newOrderItems,
+      orders: newOrders,
+    });
+
+    if (status === 'READY') {
+      const table = get().tables.find((t) => t.id === order?.table_id);
+      const tableNum = table ? table.number : 0;
+      realtimeService.broadcastOrderReady({
+        order_id: item.order_id,
+        order_item_id: item.id,
+        table_number: tableNum,
+        product_name: item.product_name,
+        quantity: item.quantity,
+        sector: item.sector,
+        timestamp: now,
+      });
+      audioService.playOrderReadySound();
+
+      logger.info({
+        context: 'TableStore',
+        message: `Item #${item.id} (${item.product_name}) marcado como PRONTO para Mesa ${tableNum}.`,
+      });
+    }
+  },
+
+  updateOrderSectorItemsStatus: (orderId, sector, status) => {
+    const targetItems = get().orderItems.filter(
+      (i) => i.order_id === orderId && i.sector === sector && i.status !== 'CANCELLED' && i.status !== 'DELIVERED'
+    );
+    targetItems.forEach((item) => {
+      get().updateOrderItemStatus(item.id, status);
+    });
+  },
+
+  markDelivered: (orderItemId) => {
+    get().updateOrderItemStatus(orderItemId, 'DELIVERED');
   },
 
   getTabByTableId: (tableId) => {
