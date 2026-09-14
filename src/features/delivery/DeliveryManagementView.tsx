@@ -13,6 +13,11 @@ import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { DeliveryOrder } from '../../types/domain';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
+import { 
+  buildWhatsAppLink, 
+  buildDeliveryConfirmedWhatsAppMessage, 
+  buildDeliveryDispatchedWhatsAppMessage 
+} from '../../lib/whatsapp';
 
 type DeliveryFilter = 'ALL_ACTIVE' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
 
@@ -33,9 +38,10 @@ export const DeliveryManagementView: React.FC = () => {
     if (order.status === 'CONFIRMED') {
       updateDeliveryStatus(order.id, 'PREPARING');
     } else if (order.status === 'PREPARING') {
-      const driver = prompt('Nome do Motoboy responsável:', 'Carlos Motoboy');
-      if (!driver) return;
-      updateDeliveryStatus(order.id, 'OUT_FOR_DELIVERY', driver);
+      const driverName = prompt('Nome do Motoboy responsável pela entrega:', 'Carlos Motoboy');
+      if (driverName) {
+        updateDeliveryStatus(order.id, 'OUT_FOR_DELIVERY', driverName);
+      }
     } else if (order.status === 'OUT_FOR_DELIVERY') {
       updateDeliveryStatus(order.id, 'DELIVERED');
     }
@@ -50,13 +56,32 @@ export const DeliveryManagementView: React.FC = () => {
   const sendWhatsAppUpdate = (order: DeliveryOrder) => {
     let msg = '';
     if (order.status === 'OUT_FOR_DELIVERY') {
-      msg = `Olá, ${order.customer_name}! 🛵 Seu pedido #${order.order_number} da Espetaria Sabor da Carne acabou de sair para entrega com nosso motoboy ${order.driver_name || ''}! Total: ${formatBRL(order.total)}. Em breve chega aí!`;
+      msg = buildDeliveryDispatchedWhatsAppMessage({
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        driverName: order.driver_name,
+        total: order.total,
+        paymentMethod: order.payment_method,
+        cashChangeFor: order.cash_change_for,
+      });
     } else {
-      msg = `Olá, ${order.customer_name}! 🔥 Seu pedido #${order.order_number} está sendo preparado com todo carinho na nossa brasa! Previsão: 30-45 min.`;
+      const itemsSummary = order.items
+        .map((i) => `• ${i.quantity}x ${i.product_name}${i.doneness ? ` (${formatDoneness(i.doneness)})` : ''}`)
+        .join('\n');
+
+      msg = buildDeliveryConfirmedWhatsAppMessage({
+        orderNumber: order.order_number,
+        customerName: order.customer_name,
+        address: `${order.address_street}, ${order.address_number} - ${order.address_neighborhood}`,
+        subtotal: order.subtotal,
+        deliveryFee: order.delivery_fee,
+        total: order.total,
+        itemsSummary,
+      });
     }
 
-    const cleanPhone = order.phone.replace(/\D/g, '');
-    window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    const link = buildWhatsAppLink(order.phone, msg);
+    window.open(link, '_blank');
   };
 
   const countActive = deliveryOrders.filter((o) => o.status === 'CONFIRMED' || o.status === 'PREPARING').length;

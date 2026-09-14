@@ -144,6 +144,38 @@ class AudioService {
       logger.error({ context: 'AudioService', message: 'Erro ao reproduzir som de alerta urgente', error: err });
     }
   }
+
+  /**
+   * Som de PAGAMENTO CONFIRMADO (Chime suave e gratificante de caixa: C5 -> G5 -> C6)
+   */
+  public playPaymentSuccessSound(): void {
+    if (!this.isEnabled) return;
+    const ctx = this.initContext();
+    if (!ctx) return;
+
+    try {
+      const now = ctx.currentTime;
+      const notes = [523.25, 783.99, 1046.5]; // C5 -> G5 -> C6
+
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const noteStart = now + idx * 0.1;
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, noteStart);
+        gain.gain.setValueAtTime(0.2, noteStart);
+        gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.3);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(noteStart);
+        osc.stop(noteStart + 0.3);
+      });
+    } catch (err) {
+      logger.error({ context: 'AudioService', message: 'Erro ao reproduzir som de pagamento', error: err });
+    }
+  }
 }
 
 export const audioService = new AudioService();

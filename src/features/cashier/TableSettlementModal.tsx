@@ -20,6 +20,7 @@ import { useShiftStore } from '../../stores/useShiftStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { formatBRL, formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
 import { ReceiptModal } from './ReceiptModal';
+import { PixPaymentModal } from '../pix/PixPaymentModal';
 
 interface TableSettlementModalProps {
   table: RestaurantTable;
@@ -58,6 +59,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [cashTendered, setCashTendered] = useState<string>('');
   const [paymentNotes, setPaymentNotes] = useState<string>('');
+  const [isPixModalOpen, setIsPixModalOpen] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Estado do cupom emitido
@@ -449,6 +451,18 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     })}
                   </div>
 
+                  {/* Atalho Especial para PIX Dinâmico */}
+                  {paymentMethod === 'PIX' && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPixModalOpen(true)}
+                      className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-950/50 transition active:scale-98 animate-pulse"
+                    >
+                      <QrCode className="w-4 h-4" />
+                      <span>Gerar QR Code PIX Dinâmico & WhatsApp Zap</span>
+                    </button>
+                  )}
+
                   {/* Campo de Valor do Pagamento e Botões de Divisão Rápida */}
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-1.5">
@@ -569,6 +583,33 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
           items={receiptData.items}
           payments={receiptData.payments}
           cashChange={receiptData.cashChange}
+        />
+      )}
+
+      {/* Modal de PIX Dinâmico Instantâneo com QR Code & Zap */}
+      {currentTab && (
+        <PixPaymentModal
+          isOpen={isPixModalOpen}
+          onClose={() => setIsPixModalOpen(false)}
+          amount={parseFloat(paymentAmount.replace(',', '.')) || remainingDue}
+          tableNumber={table.number}
+          customerName={currentTab.customer_name}
+          subtotal={currentTab.subtotal}
+          serviceFee={includeServiceFee ? currentTab.service_fee : 0}
+          onPaymentConfirmed={(confirmedAmount, txId) => {
+            if (!currentShift) return;
+            addPaymentAtomic(
+              currentShift.id,
+              currentTab.id,
+              confirmedAmount,
+              'PIX',
+              currentProfile.id,
+              `PIX Dinâmico BACEN TxID: ${txId}`
+            );
+            // Atualiza o valor restante no form
+            const nextRemaining = Math.max(0, remainingDue - confirmedAmount);
+            setPaymentAmount(nextRemaining > 0 ? nextRemaining.toFixed(2) : '');
+          }}
         />
       )}
     </>
