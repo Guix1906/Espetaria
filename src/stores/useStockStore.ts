@@ -5,6 +5,8 @@ import { INITIAL_PRODUCTS } from '../lib/mockData';
 import { generateId } from '../lib/utils';
 import { logger } from '../lib/logger';
 
+import { realtimeService } from '../lib/realtime';
+
 export interface PrepItemInput {
   productId: string;
   cubasCount?: number;
@@ -252,6 +254,9 @@ export const useStockStore = create<StockState>((set, get) => ({
       dailyPrepStock: dailyPrepList,
       products: updatedProducts,
     });
+
+    // Transmite via WebSocket em tempo real (< 100ms)
+    realtimeService.broadcastExhaustion(shiftId, productId, isExhausted, reason);
 
     logger.info({
       context: 'StockStore',

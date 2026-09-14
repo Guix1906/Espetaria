@@ -7,8 +7,12 @@ import { AuditLogView } from './features/audit/AuditLogView';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { useTableStore } from './stores/useTableStore';
 import { useStockStore } from './stores/useStockStore';
+import { useRealtimeSync } from './hooks/useRealtimeSync';
 
 export const App: React.FC = () => {
+  // Sincroniza canais de WebSockets, disponibilidade e bipes de KDS
+  useRealtimeSync();
+
   const [activeTab, setActiveTab] = useState<ActiveTab>('tables');
   const [isShiftModalOpen, setIsShiftModalOpen] = useState<boolean>(false);
 

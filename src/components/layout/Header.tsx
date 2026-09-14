@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, Wifi, WifiOff, User, Clock, ChevronDown, CheckCircle2 } from 'lucide-react';
+import { Flame, Wifi, WifiOff, User, Clock, ChevronDown, CheckCircle2, Volume2, VolumeX } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
+import { audioService } from '../../lib/audio';
 import { formatRole } from '../../lib/formatters';
 import { AppRole } from '../../types/enums';
 
@@ -14,6 +15,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShiftClick }) => {
   const { currentShift } = useShiftStore();
   const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState<boolean>(false);
+  const [isAudioEnabled, setIsAudioEnabled] = useState<boolean>(() => audioService.getAudioEnabled());
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -67,8 +69,38 @@ export const Header: React.FC<HeaderProps> = ({ onOpenShiftClick }) => {
             </button>
           )}
 
+          {/* Botão de Ativar/Desativar Som */}
+          <button
+            onClick={() => {
+              const next = !isAudioEnabled;
+              audioService.setAudioEnabled(next);
+              setIsAudioEnabled(next);
+              if (next) {
+                audioService.playNewOrderSound();
+              }
+            }}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition active:scale-95 ${
+              isAudioEnabled
+                ? 'bg-emerald-950/70 border-emerald-700 text-emerald-300'
+                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+            }`}
+            title={isAudioEnabled ? 'Som ativado para a cozinha e grelha' : 'Clique para ativar som de novos pedidos'}
+          >
+            {isAudioEnabled ? (
+              <>
+                <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden sm:inline">Som Ativo</span>
+              </>
+            ) : (
+              <>
+                <VolumeX className="w-3.5 h-3.5 text-slate-400" />
+                <span className="hidden sm:inline">Ativar Som</span>
+              </>
+            )}
+          </button>
+
           {/* Status de Conexão */}
-          <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs ${
+          <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs ${
             isOnline 
               ? 'bg-slate-800/80 border-slate-700 text-slate-300' 
               : 'bg-rose-950/80 border-rose-700 text-rose-300 animate-bounce'

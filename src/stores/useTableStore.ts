@@ -4,6 +4,7 @@ import { MeatDoneness } from '../types/enums';
 import { INITIAL_TABLES } from '../lib/mockData';
 import { generateId } from '../lib/utils';
 import { useStockStore } from './useStockStore';
+import { realtimeService } from '../lib/realtime';
 import { logger } from '../lib/logger';
 
 interface OrderItemInput {
@@ -165,6 +166,39 @@ export const useTableStore = create<TableState>((set, get) => ({
       orderItems: [...newItems, ...get().orderItems],
       tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
     });
+
+    // Transmite via WebSocket para o KDS da Churrasqueira e Cozinha
+    const grillItems = newItems.filter((i) => i.sector === 'GRILL');
+    if (grillItems.length > 0) {
+      realtimeService.broadcastNewOrder({
+        order_id: newOrder.id,
+        tab_id: tabId,
+        table_number: table.number,
+        sector: 'GRILL',
+        items: grillItems.map((i) => ({
+          product_name: i.product_name,
+          quantity: i.quantity,
+          doneness: i.doneness,
+          notes: i.notes,
+        })),
+      });
+    }
+
+    const kitchenItems = newItems.filter((i) => i.sector === 'KITCHEN');
+    if (kitchenItems.length > 0) {
+      realtimeService.broadcastNewOrder({
+        order_id: newOrder.id,
+        tab_id: tabId,
+        table_number: table.number,
+        sector: 'KITCHEN',
+        items: kitchenItems.map((i) => ({
+          product_name: i.product_name,
+          quantity: i.quantity,
+          doneness: null,
+          notes: i.notes,
+        })),
+      });
+    }
 
     logger.info({
       context: 'TableStore',
