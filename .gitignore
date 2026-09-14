@@ -38,3 +38,7 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Local interface artifacts & temp browser profile
+.interface-work/
+

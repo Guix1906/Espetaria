@@ -8,40 +8,30 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Espetaria Sabor da Carne — Gestão & Comandas',
-        short_name: 'Espetaria Sabor da Carne',
+        short_name: 'Sabor da Carne',
         description: 'Sistema Integrado de Gestão Operacional para Espetaria',
-        theme_color: '#dc2626',
-        background_color: '#0f172a',
+        theme_color: '#116558',
+        background_color: '#f5f7f8',
         display: 'standalone',
-        orientation: 'portrait-primary',
+        orientation: 'any',
         icons: [
-          {
-            src: '/pwa-192x192.png',
-            sizes: '192x192',
-            type: 'image/png'
-          },
-          {
-            src: '/pwa-512x512.png',
-            sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
+          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
       },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
-      }
-    })
+      workbox: { globPatterns: ['**/*.{js,css,html,ico,png,svg}'] },
+    }),
   ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src')
+  resolve: { alias: { '@': path.resolve(__dirname, './src') } },
+  server: { 
+    port: 3000, 
+    host: true,
+    watch: {
+      ignored: ['**/.interface-work/**', '**/browser-profile/**']
     }
   },
-  server: {
-    port: 3000,
-    host: true
-  }
 });
