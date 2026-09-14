@@ -33,25 +33,25 @@ export const KDSElapsedTimer: React.FC<KDSElapsedTimerProps> = ({
   const isUrgent = minutes >= urgentMinutes;
   const isWarning = minutes >= warningMinutes && !isUrgent;
 
-  let colorClasses = 'bg-slate-800/80 text-slate-300 border-slate-700';
+  let colorClasses = 'bg-white/5 text-stone-300 border-white/10';
   if (isUrgent) {
-    colorClasses = 'bg-rose-950/90 text-rose-300 border-rose-600 animate-pulse font-bold shadow-lg shadow-rose-950/50';
+    colorClasses = 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse font-bold shadow-md shadow-rose-950/40';
   } else if (isWarning) {
-    colorClasses = 'bg-amber-950/80 text-amber-300 border-amber-600 font-semibold';
+    colorClasses = 'bg-amber-500/20 text-amber-300 border-amber-500/50 font-semibold';
   }
 
   return (
     <div
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-mono text-xs ${colorClasses}`}
+      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border font-mono text-xs ${colorClasses}`}
       title={`Pedido feito às ${new Date(createdAt).toLocaleTimeString()}`}
     >
       {isUrgent ? (
         <AlertTriangle className="w-3.5 h-3.5 text-rose-400 animate-bounce" />
       ) : (
-        <Clock className="w-3.5 h-3.5 opacity-70" />
+        <Clock className="w-3.5 h-3.5 opacity-80 text-stone-400" />
       )}
-      <span>{timeFormatted}</span>
-      {isUrgent && <span className="text-[10px] uppercase tracking-wider font-extrabold ml-0.5">SLA!</span>}
+      <span className="font-bold">{timeFormatted}</span>
+      {isUrgent && <span className="text-[10px] uppercase tracking-wider font-black ml-0.5 text-rose-300">SLA!</span>}
     </div>
   );
 };

@@ -76,30 +76,30 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
   });
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-100 pb-24">
+    <div className="flex flex-col min-h-screen bg-[#090a0f] text-stone-100 pb-28">
       
       {/* Barra de Topo do Bloco de Pedidos */}
-      <div className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-3 py-2.5">
-        <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+      <div className="sticky top-0 z-30 bg-[#090a0f]/95 backdrop-blur-xl border-b border-white/10 px-3 sm:px-6 py-2.5 shadow-lg">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={onBackToTables}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 transition active:scale-95"
+              className="p-2.5 rounded-2xl bg-[#14151f] hover:bg-[#1e202f] border border-white/10 text-stone-300 hover:text-white transition active:scale-95 shadow-sm"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-black text-lg text-white font-mono leading-none">
+                <span className="font-mono font-black text-xl text-white leading-none">
                   Mesa {String(table.number).padStart(2, '0')}
                 </span>
-                <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 font-semibold truncate max-w-[120px]">
-                  {activeTab?.customer_name || 'Comanda'}
+                <span className="text-[10px] uppercase font-black tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 truncate max-w-[140px]">
+                  {activeTab?.customer_name || 'Comanda Aberta'}
                 </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Total mesa: <strong className="text-amber-400 font-mono">{formatBRL(activeTab?.total)}</strong>
+              <p className="text-[11px] text-stone-400 mt-1">
+                Total acumulado: <strong className="text-amber-400 font-mono font-bold text-xs">{formatBRL(activeTab?.total)}</strong>
               </p>
             </div>
           </div>
@@ -107,7 +107,7 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
           {/* Botão de Ver Conta Atual da Mesa */}
           <button
             onClick={() => setIsViewTabOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold transition active:scale-95 shadow"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#14151f] hover:bg-[#1e202f] border border-white/15 text-stone-200 text-xs font-bold transition active:scale-95 shadow-sm"
           >
             <Receipt className="w-4 h-4 text-amber-400" />
             <span className="hidden xs:inline">Ver Consumo</span>
@@ -116,30 +116,30 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto w-full p-3 sm:p-4 space-y-3 flex-1">
+      <div className="max-w-5xl mx-auto w-full p-3 sm:p-5 space-y-4 flex-1">
         
         {/* Barra de Busca Rápida */}
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Buscar espeto, porção ou bebida..."
+            placeholder="Buscar espeto nobre, porção, bebida gelada..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+            className="w-full bg-[#14151f] border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 transition shadow-inner"
           />
         </div>
 
         {/* Categorias Deslizantes em Pílulas */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 ${
+              className={`px-4 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap active:scale-95 ${
                 selectedCategory === cat.id
-                  ? 'bg-rose-600 text-white shadow-md shadow-rose-950/50'
-                  : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                  ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md shadow-orange-500/25 font-black'
+                  : 'bg-[#14151f] border border-white/10 text-stone-400 hover:text-white hover:bg-[#181a26]'
               }`}
             >
               {cat.name}
@@ -147,8 +147,8 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
           ))}
         </div>
 
-        {/* Grade de Produtos (Alvos de Toque Grandes) */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
+        {/* Grade de Produtos */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
           {filteredProducts.map((prod) => {
             const daily = dailyPrepStock.find((s) => s.product_id === prod.id);
             const isExhausted = !prod.available || (daily && (daily.is_exhausted || daily.current_quantity <= 0));
@@ -158,46 +158,46 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
                 key={prod.id}
                 disabled={Boolean(isExhausted)}
                 onClick={() => handleProductTap(prod)}
-                className={`relative p-3 sm:p-3.5 rounded-2xl border text-left transition flex flex-col justify-between min-h-[96px] active:scale-[0.97] ${
+                className={`relative p-3.5 sm:p-4 rounded-3xl border text-left transition flex flex-col justify-between min-h-[110px] active:scale-[0.97] shadow-lg ${
                   isExhausted
-                    ? 'bg-slate-900/40 border-slate-800/40 opacity-50 cursor-not-allowed'
-                    : 'bg-slate-900 border-slate-800 hover:border-slate-700 shadow-md shadow-black/20'
+                    ? 'bg-[#14151f]/40 border-white/5 opacity-50 cursor-not-allowed'
+                    : 'bg-[#14151f] border-white/10 hover:border-orange-500/40 hover:bg-[#181a26]'
                 }`}
               >
                 {/* Topo do Card de Produto */}
                 <div>
-                  <div className="flex items-start justify-between gap-1">
-                    <span className="font-bold text-white text-xs sm:text-sm leading-tight line-clamp-2">
+                  <div className="flex items-start justify-between gap-1.5">
+                    <span className="font-bold text-white text-xs sm:text-sm leading-snug line-clamp-2">
                       {prod.name}
                     </span>
                     {isExhausted && (
-                      <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded bg-rose-950 border border-rose-800 text-rose-400 shrink-0">
+                      <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-400 shrink-0">
                         ESGOTADO
                       </span>
                     )}
                   </div>
                   {prod.allows_doneness && !isExhausted && (
-                    <span className="text-[10px] text-rose-400 flex items-center gap-0.5 mt-0.5 font-medium">
-                      <Flame className="w-3 h-3" /> Ponto da carne
+                    <span className="text-[10px] text-orange-400 flex items-center gap-1 mt-1 font-semibold">
+                      <Flame className="w-3 h-3 text-orange-500" /> Ponto da carne
                     </span>
                   )}
                 </div>
 
                 {/* Preço e Saldo Restante */}
-                <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-800/60">
-                  <span className="text-amber-400 font-mono font-bold text-xs sm:text-sm">
+                <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
+                  <span className="text-amber-400 font-mono font-black text-sm sm:text-base">
                     {formatBRL(prod.price)}
                   </span>
 
                   {daily && !isExhausted && (
-                    <span className="text-[10px] font-mono text-slate-400">
-                      Resta: <strong className="text-slate-200">{daily.current_quantity}</strong>
+                    <span className="text-[10px] font-mono text-stone-400">
+                      Resta: <strong className="text-stone-200 font-bold">{daily.current_quantity}</strong>
                     </span>
                   )}
 
                   {!isExhausted && (
-                    <div className="w-6 h-6 rounded-lg bg-slate-800 text-slate-300 flex items-center justify-center">
-                      <Plus className="w-3.5 h-3.5" />
+                    <div className="w-7 h-7 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center hover:bg-orange-500 hover:text-white transition">
+                      <Plus className="w-4 h-4" />
                     </div>
                   )}
                 </div>
@@ -210,23 +210,23 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
 
       {/* BARRA FLUTUANTE DE CARRINHO (STICKY BOTTOM) */}
       {cartCount > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-40 p-3 bg-gradient-to-t from-slate-950 via-slate-950/95 to-transparent">
-          <div className="max-w-lg mx-auto">
+        <div className="fixed bottom-0 inset-x-0 z-40 p-3 bg-gradient-to-t from-[#090a0f] via-[#090a0f]/95 to-transparent">
+          <div className="max-w-xl mx-auto">
             <button
               onClick={() => setIsCartDrawerOpen(true)}
-              className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-600 via-rose-600 to-red-600 hover:from-amber-500 hover:to-red-500 text-white font-bold text-sm shadow-2xl shadow-rose-950/80 active:scale-[0.98] transition flex items-center justify-between"
+              className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-600 to-orange-600 hover:brightness-110 text-white font-bold text-sm shadow-2xl shadow-orange-500/30 active:scale-[0.98] transition flex items-center justify-between border border-white/20"
             >
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-black/30 flex items-center justify-center font-mono font-black text-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-black/30 flex items-center justify-center font-mono font-black text-sm text-white">
                   {cartCount}
                 </div>
-                <span>Itens Selecionados</span>
+                <span className="font-extrabold tracking-wide">Itens no Rascunho</span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span className="font-mono font-black text-base">{formatBRL(cartTotal)}</span>
-                <span className="text-xs px-2.5 py-1 rounded-xl bg-white/20 uppercase font-extrabold tracking-wide">
-                  Revisar Pedido ➔
+              <div className="flex items-center gap-3">
+                <span className="font-mono font-black text-lg text-white">{formatBRL(cartTotal)}</span>
+                <span className="text-xs px-3 py-1 rounded-xl bg-black/30 uppercase font-black tracking-wider text-amber-200">
+                  Revisar ➔
                 </span>
               </div>
             </button>

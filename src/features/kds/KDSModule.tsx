@@ -39,25 +39,25 @@ export const KDSModule: React.FC = () => {
   ).length;
 
   return (
-    <div className="flex flex-col min-h-screen bg-slate-950">
+    <div className="flex flex-col min-h-screen bg-obsidian-950">
       
       {/* Seletor de Setores de Produção KDS */}
-      <div className="bg-slate-900 border-b border-slate-800 px-3 sm:px-6 py-2">
+      <div className="bg-[#0c0d14] border-b border-white/10 px-3 sm:px-6 py-2.5 shadow-md">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
             {/* Aba Churrasqueira */}
             <button
               onClick={() => setActiveSector('grill')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition active:scale-95 ${
                 activeSector === 'grill'
-                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-950/60'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-lg shadow-orange-500/25 font-black'
+                  : 'text-stone-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              <Flame className="w-4 h-4" />
+              <Flame className="w-4 h-4 text-orange-400" />
               <span>Churrasqueira</span>
               {pendingGrillCount > 0 && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-700 font-mono">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-300 border border-orange-500/40 font-mono font-black">
                   {pendingGrillCount}
                 </span>
               )}
@@ -66,16 +66,16 @@ export const KDSModule: React.FC = () => {
             {/* Aba Cozinha & Cubas */}
             <button
               onClick={() => setActiveSector('kitchen')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition active:scale-95 ${
                 activeSector === 'kitchen'
-                  ? 'bg-teal-600 text-white shadow-lg shadow-teal-950/60'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-lg shadow-teal-500/25 font-black'
+                  : 'text-stone-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              <UtensilsCrossed className="w-4 h-4" />
+              <UtensilsCrossed className="w-4 h-4 text-teal-400" />
               <span>Cozinha & Cubas</span>
               {pendingKitchenCount > 0 && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-950 text-teal-300 border border-teal-700 font-mono">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-300 border border-teal-500/40 font-mono font-black">
                   {pendingKitchenCount}
                 </span>
               )}
@@ -84,24 +84,25 @@ export const KDSModule: React.FC = () => {
             {/* Aba Bar */}
             <button
               onClick={() => setActiveSector('bar')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold transition active:scale-95 ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold transition active:scale-95 ${
                 activeSector === 'bar'
-                  ? 'bg-sky-600 text-white shadow-lg shadow-sky-950/60'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-gradient-to-r from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-500/25 font-black'
+                  : 'text-stone-400 hover:text-white hover:bg-white/5 border border-transparent'
               }`}
             >
-              <Beer className="w-4 h-4" />
+              <Beer className="w-4 h-4 text-sky-400" />
               <span>Bar & Bebidas</span>
               {pendingBarCount > 0 && (
-                <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-950 text-sky-300 border border-sky-700 font-mono">
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-300 border border-sky-500/40 font-mono font-black">
                   {pendingBarCount}
                 </span>
               )}
             </button>
           </div>
 
-          <div className="hidden sm:flex items-center text-xs text-slate-500 font-mono">
-            <span>Operação KDS Ativa</span>
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-stone-400 font-mono">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>KDS em Tempo Real</span>
           </div>
         </div>
       </div>

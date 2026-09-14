@@ -77,24 +77,24 @@ export const KitchenKDSView: React.FC = () => {
   const countActive = countReceived + countInPrep;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-5 space-y-4">
+    <div className="min-h-screen bg-[#090a0f] text-stone-100 p-3 sm:p-5 space-y-4">
       
       {/* Topo do KDS: Cabeçalho com Ações de Alta Prioridade */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#14151f] border border-white/10 p-4 sm:p-5 rounded-3xl shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-teal-600 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-teal-950/60">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-teal-600 to-emerald-500 text-white flex items-center justify-center font-black shadow-lg shadow-teal-500/25">
             <UtensilsCrossed className="w-7 h-7" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase">
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase font-brand">
                 KDS Cozinha & Guarnições
               </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/40 font-mono font-bold">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/30 font-mono font-bold">
                 Acompanhamentos & Cubas
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-stone-400 mt-0.5">
               Fila de porções, arrozes, feijão tropeiro e monitoramento de cubas gastronômicas
             </p>
           </div>
@@ -103,22 +103,22 @@ export const KitchenKDSView: React.FC = () => {
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <button
             onClick={() => setShowCubasMonitor(!showCubasMonitor)}
-            className={`px-3.5 py-2.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition active:scale-95 ${
+            className={`px-4 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition active:scale-95 ${
               showCubasMonitor
-                ? 'bg-teal-950 text-teal-300 border-teal-600'
-                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                ? 'bg-teal-500/20 text-teal-300 border-teal-500/40 shadow-sm'
+                : 'bg-white/5 text-stone-400 border-white/10 hover:text-white'
             }`}
           >
-            <Soup className="w-4 h-4" />
+            <Soup className="w-4 h-4 text-teal-400" />
             <span>{showCubasMonitor ? 'Ocultar Cubas' : 'Monitor de Cubas'}</span>
           </button>
 
           <button
             onClick={handleToggleAudio}
-            className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 ${
+            className={`p-2.5 rounded-2xl border text-xs font-semibold flex items-center gap-2 transition active:scale-95 ${
               audioEnabled
-                ? 'bg-emerald-950 text-emerald-300 border-emerald-700 hover:bg-emerald-900'
-                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
+                : 'bg-white/5 text-stone-400 border-white/10 hover:bg-white/10'
             }`}
             title="Sons de Alerta"
           >
@@ -130,15 +130,15 @@ export const KitchenKDSView: React.FC = () => {
 
       {/* MONITOR DE CUBAS GASTRONÔMICAS (GN) */}
       {showCubasMonitor && (
-        <div className="bg-slate-900/95 border-2 border-teal-600/40 rounded-2xl shadow-xl overflow-hidden p-4 space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-            <div className="flex items-center gap-2">
+        <div className="bg-[#14151f] border-2 border-teal-500/30 rounded-3xl shadow-xl overflow-hidden p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center gap-2.5">
               <Soup className="w-5 h-5 text-teal-400" />
-              <h3 className="font-extrabold text-white text-sm uppercase tracking-wide">
+              <h3 className="font-black text-white text-sm uppercase tracking-wider font-brand">
                 Monitor em Tempo Real das Cubas Gastronômicas
               </h3>
             </div>
-            <span className="text-xs text-slate-400 font-mono">
+            <span className="text-xs text-stone-400 font-mono">
               Baixa atômica automática por porção
             </span>
           </div>
@@ -157,12 +157,12 @@ export const KitchenKDSView: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  className={`p-3 rounded-2xl border transition flex flex-col justify-between ${
+                  className={`p-3.5 rounded-2xl border transition flex flex-col justify-between shadow-md ${
                     isExhausted
-                      ? 'bg-rose-950/30 border-rose-800/70 text-slate-400'
+                      ? 'bg-rose-500/10 border-rose-500/30 text-stone-400'
                       : isLow
-                      ? 'bg-amber-950/30 border-amber-600/70'
-                      : 'bg-slate-800/70 border-slate-700/80'
+                      ? 'bg-amber-500/10 border-amber-500/40'
+                      : 'bg-[#090a0f] border-white/10'
                   }`}
                 >
                   <div>
@@ -171,52 +171,44 @@ export const KitchenKDSView: React.FC = () => {
                         {prod.name}
                       </h4>
                       {isExhausted ? (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-900/80 text-rose-300 font-bold uppercase">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-black uppercase">
                           Zero
                         </span>
                       ) : isLow ? (
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-900/80 text-amber-300 font-bold uppercase">
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-black uppercase">
                           Baixo
                         </span>
                       ) : null}
                     </div>
 
-                    <div className="mt-2 flex items-baseline justify-between">
-                      <span className="text-xl font-black font-mono text-white">
-                        {item.current_quantity}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        de {item.initial_quantity} porções
-                      </span>
-                    </div>
-
-                    {/* Barra de Progresso */}
-                    <div className="w-full bg-slate-950 rounded-full h-1.5 mt-1.5 overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          isExhausted
-                            ? 'bg-rose-600'
-                            : isLow
-                            ? 'bg-amber-500'
-                            : 'bg-teal-500'
-                        }`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
-
-                    <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-mono">
-                      <span>{item.cubas_count} cubas</span>
-                      <span>{percent}% rest</span>
+                    {/* Barra de Progresso da Cuba */}
+                    <div className="mt-2.5 space-y-1">
+                      <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-300 ${
+                            isExhausted
+                              ? 'bg-rose-500'
+                              : isLow
+                              ? 'bg-amber-400'
+                              : 'bg-teal-400'
+                          }`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-[11px] font-mono text-stone-400">
+                        <span>Resta: <strong className="text-white font-bold">{item.current_quantity}</strong></span>
+                        <span>{percent}%</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Botão de Esgotamento Instantâneo da Cuba */}
+                  {/* Botão de Bloqueio Rápido de Cuba */}
                   <button
-                    onClick={() => handleToggleExhaustCuba(prod.id, isExhausted)}
-                    className={`mt-2.5 w-full py-1.5 rounded-xl font-bold text-[10px] uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1 ${
+                    onClick={() => handleToggleExhaustCuba(item.product_id, item.is_exhausted)}
+                    className={`mt-3 w-full py-1.5 px-2 rounded-xl text-[10px] font-bold uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-1 ${
                       isExhausted
-                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                        : 'bg-rose-600 hover:bg-rose-500 text-white shadow-sm shadow-rose-950/40'
+                        ? 'bg-teal-600 hover:bg-teal-500 text-white'
+                        : 'bg-white/5 hover:bg-rose-500/20 border border-white/10 hover:border-rose-500/40 text-stone-300 hover:text-rose-300'
                     }`}
                   >
                     {isExhausted ? (
@@ -226,7 +218,7 @@ export const KitchenKDSView: React.FC = () => {
                       </>
                     ) : (
                       <>
-                        <AlertOctagon className="w-3 h-3" />
+                        <AlertOctagon className="w-3 h-3 text-rose-400" />
                         <span>Esgotar Cuba</span>
                       </>
                     )}
@@ -242,10 +234,10 @@ export const KitchenKDSView: React.FC = () => {
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
-          className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+          className={`px-4 py-2 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
             filter === 'ALL_ACTIVE'
-              ? 'bg-teal-600 text-white shadow-md shadow-teal-950/50'
-              : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+              ? 'bg-gradient-to-r from-teal-500 to-emerald-600 text-white shadow-md shadow-teal-500/25 font-black'
+              : 'bg-[#14151f] text-stone-400 border border-white/10 hover:text-white'
           }`}
         >
           <Filter className="w-3.5 h-3.5" />
@@ -254,10 +246,10 @@ export const KitchenKDSView: React.FC = () => {
 
         <button
           onClick={() => setFilter('RECEIVED')}
-          className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+          className={`px-4 py-2 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
             filter === 'RECEIVED'
-              ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-950/50'
-              : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+              ? 'bg-amber-500 text-stone-950 font-black shadow-md shadow-amber-500/25'
+              : 'bg-[#14151f] text-stone-400 border border-white/10 hover:text-white'
           }`}
         >
           <span>⏳ Aguardando Preparo ({countReceived})</span>
@@ -265,10 +257,10 @@ export const KitchenKDSView: React.FC = () => {
 
         <button
           onClick={() => setFilter('IN_PREPARATION')}
-          className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+          className={`px-4 py-2 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
             filter === 'IN_PREPARATION'
-              ? 'bg-teal-500 text-slate-950 font-black shadow-md shadow-teal-950/50'
-              : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+              ? 'bg-teal-500 text-stone-950 font-black shadow-md shadow-teal-500/25'
+              : 'bg-[#14151f] text-stone-400 border border-white/10 hover:text-white'
           }`}
         >
           <span>🍳 Em Preparo ({countInPrep})</span>
@@ -276,10 +268,10 @@ export const KitchenKDSView: React.FC = () => {
 
         <button
           onClick={() => setFilter('READY')}
-          className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+          className={`px-4 py-2 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
             filter === 'READY'
               ? 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-950/50'
-              : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+              : 'bg-[#14151f] text-stone-400 border border-white/10 hover:text-white'
           }`}
         >
           <span>✅ Prontos ({countReady})</span>
@@ -288,12 +280,12 @@ export const KitchenKDSView: React.FC = () => {
 
       {/* Grade de Pedidos da Cozinha */}
       {sortedOrders.length === 0 ? (
-        <div className="py-20 text-center rounded-3xl bg-slate-900/60 border border-slate-800/80 p-8 space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-teal-400 flex items-center justify-center mx-auto">
+        <div className="py-20 text-center rounded-3xl bg-[#14151f] border border-white/10 p-8 space-y-3 shadow-xl">
+          <div className="w-14 h-14 rounded-2xl bg-white/5 text-teal-400 flex items-center justify-center mx-auto border border-white/10">
             <Sparkles className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-white">Nenhuma porção ou acompanhamento pendente</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+          <h3 className="text-lg font-black text-white">Nenhuma porção ou acompanhamento pendente</h3>
+          <p className="text-xs text-stone-400 max-w-sm mx-auto">
             Quando os garçons solicitarem mandioca, arroz, vinagrete ou feijão tropeiro, aparecerão imediatamente nesta tela.
           </p>
         </div>
@@ -312,21 +304,21 @@ export const KitchenKDSView: React.FC = () => {
             return (
               <div
                 key={order.id}
-                className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between space-y-4 hover:border-teal-500/60 transition"
+                className="bg-[#14151f] border-2 border-white/10 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between space-y-4 hover:border-teal-500/50 transition"
               >
                 <div>
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3.5">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2.5">
                         <span className="text-3xl font-black text-white font-mono tracking-tight">
                           MESA {tableNum}
                         </span>
-                        <span className="text-xs px-2 py-0.5 rounded-lg bg-slate-800 text-slate-300 font-mono font-bold">
+                        <span className="text-xs px-2.5 py-0.5 rounded-xl bg-white/10 text-stone-300 font-mono font-bold">
                           #{order.order_number}
                         </span>
                       </div>
                       {order.notes && (
-                        <p className="text-xs text-amber-400/90 italic mt-1 font-semibold">
+                        <p className="text-xs text-amber-300/90 italic mt-1 font-semibold">
                           Obs Mesa: {order.notes}
                         </p>
                       )}
@@ -346,12 +338,12 @@ export const KitchenKDSView: React.FC = () => {
                       return (
                         <div
                           key={item.id}
-                          className={`p-3 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+                          className={`p-3.5 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md ${
                             isInPrep
-                              ? 'bg-teal-950/30 border-teal-500/70 shadow-md shadow-teal-950/40'
+                              ? 'bg-teal-500/10 border-teal-500/40 shadow-teal-950/30'
                               : isReady
-                              ? 'bg-emerald-950/40 border-emerald-600/70'
-                              : 'bg-slate-800/70 border-slate-700/80'
+                              ? 'bg-emerald-500/10 border-emerald-500/40'
+                              : 'bg-[#090a0f] border-white/10'
                           }`}
                         >
                           <div className="flex-1 min-w-0">
@@ -370,14 +362,14 @@ export const KitchenKDSView: React.FC = () => {
                               </p>
                             )}
 
-                            <div className="mt-1 flex items-center gap-2">
+                            <div className="mt-1.5 flex items-center gap-2">
                               <span
-                                className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${statusConf.bg} ${statusConf.color}`}
+                                className={`text-[10px] px-2.5 py-0.5 rounded-full border font-bold ${statusConf.bg} ${statusConf.color}`}
                               >
                                 {statusConf.label}
                               </span>
                               {item.prepared_at && (
-                                <span className="text-[10px] text-slate-500 font-mono">
+                                <span className="text-[10px] text-stone-500 font-mono">
                                   Pronto às {new Date(item.prepared_at).toLocaleTimeString()}
                                 </span>
                               )}
@@ -389,7 +381,7 @@ export const KitchenKDSView: React.FC = () => {
                             {isReceived && (
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'IN_PREPARATION')}
-                                className="w-full sm:w-auto px-4 py-3 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-teal-950/50 flex items-center justify-center gap-1.5"
+                                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-stone-950 font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-teal-500/20 flex items-center justify-center gap-1.5"
                               >
                                 <UtensilsCrossed className="w-4 h-4" />
                                 <span>Preparar</span>
@@ -399,7 +391,7 @@ export const KitchenKDSView: React.FC = () => {
                             {isInPrep && (
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'READY')}
-                                className="w-full sm:w-auto px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1.5"
+                                className="w-full sm:w-auto px-4 py-2.5 rounded-xl btn-emerald text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5"
                               >
                                 <CheckCheck className="w-4 h-4" />
                                 <span>Pronto!</span>
@@ -407,8 +399,8 @@ export const KitchenKDSView: React.FC = () => {
                             )}
 
                             {isReady && (
-                              <div className="px-3 py-2 rounded-xl bg-emerald-950 text-emerald-400 border border-emerald-700 text-xs font-bold flex items-center gap-1.5">
-                                <CheckCheck className="w-4 h-4" />
+                              <div className="px-3 py-2 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
+                                <CheckCheck className="w-4 h-4 text-emerald-400" />
                                 <span>Aguardando Garçom</span>
                               </div>
                             )}
@@ -420,11 +412,11 @@ export const KitchenKDSView: React.FC = () => {
                 </div>
 
                 {/* Ações em Lote */}
-                <div className="border-t border-slate-800 pt-3 flex items-center gap-2">
+                <div className="border-t border-white/10 pt-3.5 flex items-center gap-2">
                   {hasReceived && (
                     <button
                       onClick={() => updateOrderSectorItemsStatus(order.id, 'KITCHEN', 'IN_PREPARATION')}
-                      className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-teal-300 font-bold text-xs uppercase tracking-wider transition active:scale-95 border border-slate-700 flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-teal-300 font-bold text-xs uppercase tracking-wider transition active:scale-95 border border-white/10 flex items-center justify-center gap-1.5"
                     >
                       <Layers className="w-4 h-4" />
                       <span>Preparar Todos</span>
@@ -434,7 +426,7 @@ export const KitchenKDSView: React.FC = () => {
                   {hasInPrep && (
                     <button
                       onClick={() => updateOrderSectorItemsStatus(order.id, 'KITCHEN', 'READY')}
-                      className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl btn-emerald text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-emerald-950/40 flex items-center justify-center gap-1.5"
                     >
                       <CheckCheck className="w-4 h-4" />
                       <span>Tudo Pronto!</span>

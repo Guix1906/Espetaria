@@ -53,34 +53,34 @@ export const DeliveryTrackingModal: React.FC<DeliveryTrackingModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
-      <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg p-5 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+      <div className="card-carbon border border-carbon-700 rounded-3xl w-full max-w-lg p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
         
         {/* Topo do Acompanhamento */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="flex items-center justify-between border-b border-carbon-800 pb-3">
           <div>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-mono font-bold uppercase">
+            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono font-bold uppercase tracking-wider">
               Acompanhamento ao Vivo
             </span>
-            <h3 className="font-extrabold text-white text-lg mt-1 leading-none">
+            <h3 className="font-extrabold text-white text-lg mt-1 leading-none font-serif">
               Pedido #{order.order_number}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            className="p-1.5 rounded-lg text-obsidian-400 hover:text-white hover:bg-carbon-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Linha do Tempo Visual do Pedido */}
-        <div className="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-4">
+        <div className="bg-obsidian-900/80 p-4 rounded-2xl border border-carbon-800 space-y-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-amber-400 font-semibold">
+            <div className="flex items-center gap-2 text-xs text-gold-400 font-semibold">
               <Clock className="w-4 h-4 animate-spin" />
               <span>Previsão de Entrega: 35 a 50 min</span>
             </div>
-            <span className="text-xs text-slate-400 font-mono">
+            <span className="text-xs text-obsidian-400 font-mono">
               {new Date(order.created_at).toLocaleTimeString('pt-BR')}
             </span>
           </div>
@@ -96,22 +96,22 @@ export const DeliveryTrackingModal: React.FC<DeliveryTrackingModalProps> = ({
                   <div
                     className={`w-10 h-10 rounded-2xl flex items-center justify-center transition shadow-md ${
                       isCurrent
-                        ? 'bg-amber-600 text-slate-950 font-black animate-bounce ring-4 ring-amber-500/30'
+                        ? 'btn-ember text-obsidian-950 font-black animate-bounce ring-4 ring-ember-500/30'
                         : isPast
-                        ? 'bg-emerald-600 text-white font-bold'
-                        : 'bg-slate-800 text-slate-500'
+                        ? 'btn-emerald text-white font-bold'
+                        : 'bg-carbon-800 text-obsidian-500'
                     }`}
                   >
                     <Icon className="w-5 h-5" />
                   </div>
                   <span
                     className={`text-[10px] font-bold leading-tight ${
-                      isCurrent ? 'text-amber-400 font-extrabold' : isPast ? 'text-emerald-400' : 'text-slate-500'
+                      isCurrent ? 'text-gold-400 font-extrabold' : isPast ? 'text-emerald-400' : 'text-obsidian-500'
                     }`}
                   >
                     {step.label}
                   </span>
-                  <span className="text-[9px] text-slate-500 leading-none hidden sm:block">
+                  <span className="text-[9px] text-obsidian-400 leading-none hidden sm:block">
                     {step.desc}
                   </span>
                 </div>
@@ -121,48 +121,48 @@ export const DeliveryTrackingModal: React.FC<DeliveryTrackingModalProps> = ({
         </div>
 
         {/* Detalhes do Pedido & Endereço */}
-        <div className="overflow-y-auto flex-1 space-y-3 pr-1 text-xs">
-          <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/70 space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-white text-xs">
-              <MapPin className="w-3.5 h-3.5 text-rose-400" />
+        <div className="overflow-y-auto flex-1 space-y-3 pr-1 text-xs custom-scrollbar">
+          <div className="p-3.5 rounded-2xl bg-carbon-800/80 border border-carbon-700 space-y-1">
+            <div className="flex items-center gap-2 font-bold text-white text-xs font-serif">
+              <MapPin className="w-3.5 h-3.5 text-ruby-400" />
               <span>Entregar em:</span>
             </div>
-            <p className="text-slate-300">
+            <p className="text-obsidian-200">
               {order.address_street}, {order.address_number} — {order.address_neighborhood}
             </p>
             {order.address_complement && (
-              <p className="text-slate-400 text-[11px]">Comp: {order.address_complement}</p>
+              <p className="text-obsidian-400 text-[11px]">Comp: {order.address_complement}</p>
             )}
             {order.address_reference && (
-              <p className="text-amber-400/90 text-[11px] italic">Ref: {order.address_reference}</p>
+              <p className="text-gold-400/90 text-[11px] italic">Ref: {order.address_reference}</p>
             )}
           </div>
 
           {/* Itens */}
-          <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/70 space-y-2">
-            <div className="flex items-center gap-1.5 font-bold text-white text-xs">
-              <Receipt className="w-3.5 h-3.5 text-amber-400" />
+          <div className="p-3.5 rounded-2xl bg-carbon-800/80 border border-carbon-700 space-y-2">
+            <div className="flex items-center gap-2 font-bold text-white text-xs font-serif">
+              <Receipt className="w-3.5 h-3.5 text-gold-400" />
               <span>Itens Solicitados:</span>
             </div>
             {order.items.map((item) => (
               <div key={item.id} className="flex justify-between items-center text-[11px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-white">{item.quantity}x</span>
-                  <span className="text-slate-300">{item.product_name}</span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-white font-mono">{item.quantity}x</span>
+                  <span className="text-obsidian-200">{item.product_name}</span>
                   {item.doneness && (
-                    <span className="text-[9px] px-1 py-0.2 rounded bg-rose-950 text-rose-300 font-mono">
+                    <span className="text-[9px] px-1.5 py-0.2 rounded bg-ember-950 text-ember-300 font-mono">
                       {formatDoneness(item.doneness)}
                     </span>
                   )}
                 </div>
-                <span className="font-mono text-slate-400">
+                <span className="font-mono text-obsidian-400">
                   {formatBRL(item.unit_price * item.quantity)}
                 </span>
               </div>
             ))}
-            <div className="pt-2 border-t border-slate-700/80 flex justify-between font-bold text-white text-xs">
-              <span>Total com entrega:</span>
-              <span className="text-amber-400 font-mono text-sm">{formatBRL(order.total)}</span>
+            <div className="pt-2 border-t border-carbon-700 flex justify-between font-bold text-white text-xs">
+              <span className="font-serif">Total com entrega:</span>
+              <span className="text-gold-400 font-mono text-base font-black">{formatBRL(order.total)}</span>
             </div>
           </div>
         </div>
@@ -171,7 +171,7 @@ export const DeliveryTrackingModal: React.FC<DeliveryTrackingModalProps> = ({
         <div className="pt-1">
           <button
             onClick={openWhatsApp}
-            className="w-full py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/60"
+            className="btn-emerald w-full py-3.5 rounded-2xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/60"
           >
             <MessageCircle className="w-4 h-4" />
             <span>Tirar Dúvidas via WhatsApp</span>

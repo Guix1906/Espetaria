@@ -1,176 +1,159 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, Wifi, WifiOff, User, Clock, ChevronDown, CheckCircle2, Volume2, VolumeX } from 'lucide-react';
+import { Flame, Wifi, WifiOff, User, Clock3, ChevronDown, Check, Volume2, VolumeX } from 'lucide-react';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { audioService } from '../../lib/audio';
 import { formatRole } from '../../lib/formatters';
 import { AppRole } from '../../types/enums';
 
-interface HeaderProps {
-  onOpenShiftClick: () => void;
-}
+interface HeaderProps { onOpenShiftClick: () => void; }
 
 export const Header: React.FC<HeaderProps> = ({ onOpenShiftClick }) => {
   const { currentProfile, availableProfiles, switchProfile } = useAuthStore();
   const { currentShift } = useShiftStore();
-  const [isOnline, setIsOnline] = useState<boolean>(navigator.onLine);
-  const [roleDropdownOpen, setRoleDropdownOpen] = useState<boolean>(false);
-  const [isAudioEnabled, setIsAudioEnabled] = useState<boolean>(() => audioService.getAudioEnabled());
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
+  const [isAudioEnabled, setIsAudioEnabled] = useState(() => audioService.getAudioEnabled());
 
   useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
+    const online = () => setIsOnline(true);
+    const offline = () => setIsOnline(false);
+    window.addEventListener('online', online); window.addEventListener('offline', offline);
+    return () => { window.removeEventListener('online', online); window.removeEventListener('offline', offline); };
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-3 py-2.5 sm:px-6">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+    <header className="sticky top-0 z-40 border-b border-white/[0.08] bg-[#090a0f]/90 backdrop-blur-2xl px-3 sm:px-6 py-2.5">
+      <div className="mx-auto flex max-w-[1520px] items-center justify-between gap-3">
         
-        {/* Marca & Logo */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-rose-600 to-red-600 flex items-center justify-center shadow-lg shadow-rose-950/40">
-            <Flame className="w-6 h-6 text-white animate-pulse" />
+        {/* Brand Emblem & Casa */}
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-tr from-orange-600 via-amber-600 to-orange-500 text-white shadow-lg shadow-orange-500/25 ring-1 ring-white/20">
+            <Flame className="h-5 w-5" strokeWidth={2.2} />
+            <span className="absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 border-[#090a0f] bg-emerald-500" />
           </div>
-          <div>
-            <h1 className="font-bold text-base sm:text-lg tracking-tight text-white flex items-center gap-1.5">
-              Sabor da Carne
-              <span className="text-xs px-2 py-0.5 rounded-full bg-rose-950 text-rose-400 border border-rose-800 font-mono">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="truncate text-base sm:text-lg font-black tracking-tight text-white font-brand">
+                Sabor da Carne
+              </h1>
+              <span className="hidden sm:inline-flex items-center rounded-md bg-orange-500/15 border border-orange-500/30 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-orange-400">
                 ESPETARIA
               </span>
-            </h1>
-            <p className="text-xs text-slate-400 hidden xs:block">
-              Gestão Integrada & Tempo Real
+            </div>
+            <p className="truncate text-[11px] text-stone-400 flex items-center gap-1.5">
+              <span>Operação em Tempo Real</span>
+              <span className="text-stone-600">•</span>
+              <span className="text-amber-400 font-medium">Salão & Delivery</span>
             </p>
           </div>
         </div>
 
-        {/* Status do Turno & Indicadores Centrais */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {currentShift && currentShift.status === 'ABERTO' ? (
-            <div className="flex items-center gap-2 px-3 py-1 rounded-lg bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 text-xs sm:text-sm font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-              <span className="truncate max-w-[120px] sm:max-w-none">{currentShift.name}</span>
+        {/* Turno, Som e Status de Rede */}
+        <div className="hidden items-center gap-2 md:flex">
+          {currentShift?.status === 'ABERTO' ? (
+            <div className="flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-bold text-emerald-300 shadow-sm shadow-emerald-950/20">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <span>{currentShift.name}</span>
             </div>
           ) : (
-            <button
-              onClick={onOpenShiftClick}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs sm:text-sm font-semibold transition active:scale-95 shadow-md shadow-amber-950/50"
+            <button 
+              onClick={onOpenShiftClick} 
+              className="flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-amber-600 px-4 py-1.5 text-xs font-black text-white shadow-md shadow-orange-500/20 hover:brightness-110 active:scale-95 transition"
             >
-              <Clock className="w-4 h-4" />
-              <span>Abrir Turno da Noite</span>
+              <Clock3 className="h-3.5 w-3.5" /> Abrir Turno
             </button>
           )}
 
-          {/* Botão de Ativar/Desativar Som */}
-          <button
-            onClick={() => {
-              const next = !isAudioEnabled;
-              audioService.setAudioEnabled(next);
-              setIsAudioEnabled(next);
-              if (next) {
-                audioService.playNewOrderSound();
-              }
-            }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-semibold transition active:scale-95 ${
-              isAudioEnabled
-                ? 'bg-emerald-950/70 border-emerald-700 text-emerald-300'
-                : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-white'
+          <button 
+            onClick={() => { 
+              const next = !isAudioEnabled; 
+              audioService.setAudioEnabled(next); 
+              setIsAudioEnabled(next); 
+              if (next) audioService.playNewOrderSound(); 
+            }} 
+            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-95 ${
+              isAudioEnabled 
+                ? 'border-amber-500/30 bg-amber-500/10 text-amber-300' 
+                : 'border-white/10 bg-white/5 text-stone-400 hover:text-white'
             }`}
-            title={isAudioEnabled ? 'Som ativado para a cozinha e grelha' : 'Clique para ativar som de novos pedidos'}
           >
-            {isAudioEnabled ? (
-              <>
-                <Volume2 className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="hidden sm:inline">Som Ativo</span>
-              </>
-            ) : (
-              <>
-                <VolumeX className="w-3.5 h-3.5 text-slate-400" />
-                <span className="hidden sm:inline">Ativar Som</span>
-              </>
-            )}
+            {isAudioEnabled ? <Volume2 className="h-3.5 w-3.5 text-amber-400" /> : <VolumeX className="h-3.5 w-3.5" />} 
+            <span>{isAudioEnabled ? 'Bip Ativo' : 'Mudo'}</span>
           </button>
 
-          {/* Status de Conexão */}
-          <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs ${
+          <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold ${
             isOnline 
-              ? 'bg-slate-800/80 border-slate-700 text-slate-300' 
-              : 'bg-rose-950/80 border-rose-700 text-rose-300 animate-bounce'
+              ? 'border-white/10 bg-white/5 text-stone-300' 
+              : 'border-rose-500/40 bg-rose-500/15 text-rose-300'
           }`}>
-            {isOnline ? (
-              <>
-                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Online</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="w-3.5 h-3.5 text-rose-400" />
-                <span className="font-bold">SEM CONEXÃO</span>
-              </>
-            )}
+            {isOnline ? <Wifi className="h-3.5 w-3.5 text-emerald-400" /> : <WifiOff className="h-3.5 w-3.5 text-rose-400" />} 
+            <span>{isOnline ? 'Online' : 'Offline'}</span>
           </div>
         </div>
 
-        {/* Seletor Rápido de Perfil / Role */}
-        <div className="relative">
-          <button
-            onClick={() => setRoleDropdownOpen(!roleDropdownOpen)}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 transition text-xs sm:text-sm active:scale-95"
-            title="Trocar perfil operacional"
+        {/* Perfil Operacional Switcher */}
+        <div className="relative shrink-0">
+          <button 
+            onClick={() => setRoleDropdownOpen(!roleDropdownOpen)} 
+            className="flex items-center gap-2.5 rounded-2xl border border-white/10 bg-[#14151f] px-3 py-1.5 text-left hover:border-orange-500/40 transition active:scale-95 shadow-sm"
           >
-            <div className="w-7 h-7 rounded-lg bg-rose-600/30 text-rose-400 flex items-center justify-center font-bold">
-              <User className="w-4 h-4" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500/20 to-amber-500/10 text-orange-400 border border-orange-500/20">
+              <User className="h-4 w-4" />
             </div>
-            <div className="text-left hidden md:block">
-              <div className="font-semibold leading-tight text-white">{currentProfile.name.split(' ')[0]}</div>
-              <div className="text-[11px] text-slate-400 leading-tight">{formatRole(currentProfile.role)}</div>
+            <div className="hidden min-w-0 md:block">
+              <div className="text-xs font-bold text-white leading-tight">
+                {currentProfile.name.split(' ')[0]}
+              </div>
+              <div className="text-[10px] text-stone-400 font-medium">
+                {formatRole(currentProfile.role)}
+              </div>
             </div>
-            <ChevronDown className="w-4 h-4 text-slate-400" />
+            <ChevronDown className="h-3.5 w-3.5 text-stone-400" />
           </button>
 
-          {/* Dropdown de Roles */}
           {roleDropdownOpen && (
-            <div className="absolute right-0 mt-2 w-64 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-2 z-50">
-              <div className="px-3 py-1.5 border-b border-slate-800 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Simular Perfil Operacional
+            <div className="absolute right-0 mt-2 w-64 overflow-hidden rounded-2xl border border-white/15 bg-[#14151f] p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="px-3 py-2 text-[10px] font-black uppercase tracking-widest text-stone-500 border-b border-white/5">
+                Trocar Perfil Operacional
               </div>
-              {availableProfiles.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => {
-                    switchProfile(p.role as AppRole);
-                    setRoleDropdownOpen(false);
-                  }}
-                  className={`w-full text-left px-3 py-2 text-xs sm:text-sm flex items-center justify-between hover:bg-slate-800 transition ${
-                    p.role === currentProfile.role ? 'text-rose-400 font-semibold bg-rose-950/20' : 'text-slate-300'
-                  }`}
-                >
-                  <div>
-                    <div className="text-white font-medium">{p.name}</div>
-                    <div className="text-[11px] text-slate-400">{formatRole(p.role as AppRole)}</div>
-                  </div>
-                  {p.role === currentProfile.role && <CheckCircle2 className="w-4 h-4 text-rose-500" />}
-                </button>
-              ))}
+              <div className="py-1 space-y-0.5">
+                {availableProfiles.map((p) => {
+                  const isSelected = p.role === currentProfile.role;
+                  return (
+                    <button 
+                      key={p.id} 
+                      onClick={() => { 
+                        switchProfile(p.role as AppRole); 
+                        setRoleDropdownOpen(false); 
+                      }} 
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition ${
+                        isSelected 
+                          ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/10 text-orange-300 border border-orange-500/30' 
+                          : 'text-stone-300 hover:bg-white/5 hover:text-white'
+                      }`}
+                    >
+                      <div>
+                        <div className="text-xs font-bold">{p.name}</div>
+                        <div className="text-[10px] text-stone-400">{formatRole(p.role as AppRole)}</div>
+                      </div>
+                      {isSelected && <Check className="h-4 w-4 text-orange-400" />}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           )}
         </div>
 
       </div>
 
-      {/* Banner de Aviso Sem Conexão se offline */}
       {!isOnline && (
-        <div className="sm:hidden mt-2 bg-rose-950 border border-rose-700 px-3 py-1.5 rounded-lg text-rose-300 text-xs font-bold flex items-center justify-center gap-2">
-          <WifiOff className="w-4 h-4 text-rose-400" />
-          <span>SEM CONEXÃO COM A INTERNET</span>
+        <div className="mt-2 flex items-center justify-center gap-2 rounded-xl border border-rose-500/40 bg-rose-500/15 px-3 py-1.5 text-xs font-bold text-rose-300 md:hidden">
+          <WifiOff className="h-3.5 w-3.5" /> Sem conexão com a internet
         </div>
       )}
     </header>

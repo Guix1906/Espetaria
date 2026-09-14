@@ -50,48 +50,48 @@ export const WaiterDonenessModal: React.FC<WaiterDonenessModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-sm">
-      <div className="bg-slate-900 border-t sm:border border-slate-700 rounded-t-3xl sm:rounded-2xl w-full max-w-lg p-5 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
+      <div className="bg-[#14151f] border-t sm:border border-white/15 rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
         
         {/* Cabeçalho */}
-        <div className="flex items-start justify-between border-b border-slate-800 pb-3">
+        <div className="flex items-start justify-between border-b border-white/10 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-rose-600/20 text-rose-400 border border-rose-600/30 flex items-center justify-center shrink-0">
-              <Flame className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-500/20">
+              <Flame className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-white leading-tight">
+              <h3 className="text-base font-black text-white leading-tight">
                 {product.name}
               </h3>
-              <p className="text-xs text-amber-400 font-mono font-semibold">
+              <p className="text-xs text-amber-400 font-mono font-bold mt-0.5">
                 {formatBRL(product.price)} por espeto
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+            className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-white/10 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Quantidade */}
-        <div className="flex items-center justify-between p-3 rounded-xl bg-slate-800/60 border border-slate-800">
-          <span className="text-xs font-semibold text-slate-300 uppercase">Quantidade</span>
+        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#090a0f] border border-white/10">
+          <span className="text-xs font-black text-stone-300 uppercase tracking-wider">Quantidade</span>
           <div className="flex items-center gap-3">
             <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-lg flex items-center justify-center transition active:scale-95"
+              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xl flex items-center justify-center transition active:scale-95 border border-white/10"
             >
               -
             </button>
-            <span className="font-mono font-black text-xl text-white w-8 text-center">
+            <span className="font-mono font-black text-2xl text-white w-8 text-center">
               {quantity}
             </span>
             <button
               onClick={() => setQuantity(quantity + 1)}
-              className="w-9 h-9 rounded-lg bg-slate-700 hover:bg-slate-600 text-white font-bold text-lg flex items-center justify-center transition active:scale-95"
+              className="w-10 h-10 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-xl flex items-center justify-center transition active:scale-95 shadow-md shadow-orange-500/20"
             >
               +
             </button>
@@ -100,7 +100,7 @@ export const WaiterDonenessModal: React.FC<WaiterDonenessModalProps> = ({
 
         {/* Seleção do Ponto da Carne */}
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-300 uppercase tracking-wide">
+          <label className="block text-xs font-black text-stone-300 uppercase tracking-wider">
             Ponto da Carne (Selecione um)
           </label>
           <div className="space-y-1.5">
@@ -111,25 +111,25 @@ export const WaiterDonenessModal: React.FC<WaiterDonenessModalProps> = ({
                   type="button"
                   key={opt.value}
                   onClick={() => setSelectedDoneness(opt.value)}
-                  className={`w-full p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                  className={`w-full p-3.5 rounded-2xl border text-left transition flex items-center justify-between active:scale-[0.98] ${
                     isSelected
-                      ? 'bg-rose-950/70 border-rose-600 text-white shadow-md'
-                      : 'bg-slate-800/60 border-slate-700/80 text-slate-300 hover:bg-slate-800'
+                      ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/10 border-orange-500 text-white shadow-md shadow-orange-500/15'
+                      : 'bg-[#090a0f] border-white/10 text-stone-300 hover:bg-white/5'
                   }`}
                 >
                   <div>
                     <div className="font-bold text-sm flex items-center gap-2">
                       <span>{opt.label}</span>
                       {opt.value === 'AO_PONTO' && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-700 text-slate-300 font-normal">
-                          Padrão
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
+                          Padrão da Casa
                         </span>
                       )}
                     </div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{opt.desc}</div>
+                    <div className="text-[11px] text-stone-400 mt-0.5">{opt.desc}</div>
                   </div>
                   {isSelected && (
-                    <div className="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center shrink-0">
+                    <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-sm">
                       <Check className="w-4 h-4" />
                     </div>
                   )}
@@ -141,9 +141,9 @@ export const WaiterDonenessModal: React.FC<WaiterDonenessModalProps> = ({
 
         {/* Observações Rápidas */}
         <div className="space-y-2">
-          <label className="block text-xs font-bold text-slate-300 uppercase tracking-wide flex items-center gap-1.5">
+          <label className="block text-xs font-black text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
             <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-            <span>Observações do Pedido</span>
+            <span>Observações de Preparo</span>
           </label>
           
           <div className="flex flex-wrap gap-1.5">
@@ -152,10 +152,10 @@ export const WaiterDonenessModal: React.FC<WaiterDonenessModalProps> = ({
                 type="button"
                 key={tag}
                 onClick={() => handleToggleNote(tag)}
-                className={`text-xs px-2.5 py-1 rounded-lg border transition ${
+                className={`text-xs px-3 py-1.5 rounded-xl border transition ${
                   notes.includes(tag)
-                    ? 'bg-amber-600 border-amber-500 text-white font-semibold'
-                    : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
+                    ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold'
+                    : 'bg-[#090a0f] border-white/10 text-stone-400 hover:text-white'
                 }`}
               >
                 + {tag}
@@ -165,10 +165,10 @@ export const WaiterDonenessModal: React.FC<WaiterDonenessModalProps> = ({
 
           <input
             type="text"
-            placeholder="Digite outra observação se necessário..."
+            placeholder="Ex: Cortar em aperitivo, sem cebola..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-rose-500"
+            className="w-full bg-[#090a0f] border border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 transition"
           />
         </div>
 
@@ -177,13 +177,12 @@ export const WaiterDonenessModal: React.FC<WaiterDonenessModalProps> = ({
           <button
             type="button"
             onClick={handleConfirm}
-            className="w-full py-3.5 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-bold text-sm uppercase tracking-wide shadow-lg shadow-rose-950/60 active:scale-95 transition flex items-center justify-center gap-2"
+            className="w-full py-4 rounded-2xl btn-ember text-sm uppercase tracking-wider active:scale-95 transition flex items-center justify-center gap-2 shadow-xl shadow-orange-500/25"
           >
             <span>Adicionar {quantity}x ao Pedido</span>
-            <span className="font-mono">({formatBRL(product.price * quantity)})</span>
+            <span className="font-mono font-black">({formatBRL(product.price * quantity)})</span>
           </button>
         </div>
-
       </div>
     </div>
   );

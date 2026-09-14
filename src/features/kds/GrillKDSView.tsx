@@ -65,24 +65,24 @@ export const GrillKDSView: React.FC = () => {
   const countExhausted = dailyPrepStock.filter((s) => s.is_exhausted || s.current_quantity <= 0).length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-3 sm:p-5 space-y-4">
+    <div className="min-h-screen bg-[#090a0f] text-stone-100 p-3 sm:p-5 space-y-4">
       
       {/* Topo do KDS: Cabeçalho com Ações de Alta Prioridade */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-slate-900 border border-slate-800 p-4 rounded-2xl shadow-xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-[#14151f] border border-white/10 p-4 sm:p-5 rounded-3xl shadow-xl">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-amber-600 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-amber-950/60">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-orange-600 via-amber-600 to-orange-500 text-white flex items-center justify-center font-black shadow-lg shadow-orange-500/25">
             <Flame className="w-7 h-7 animate-pulse" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase">
+              <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase font-brand">
                 KDS Churrasqueira
               </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-mono font-bold">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30 font-mono font-bold">
                 Fila da Brasa
               </span>
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-stone-400 mt-0.5">
               Visualização de alta visibilidade para churrasqueiros • SLA e pontos da carne
             </p>
           </div>
@@ -92,10 +92,10 @@ export const GrillKDSView: React.FC = () => {
           {/* Botão de Áudio */}
           <button
             onClick={handleToggleAudio}
-            className={`p-2.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 ${
+            className={`p-2.5 rounded-2xl border text-xs font-semibold flex items-center gap-2 transition active:scale-95 ${
               audioEnabled
-                ? 'bg-emerald-950 text-emerald-300 border-emerald-700 hover:bg-emerald-900'
-                : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
+                : 'bg-white/5 text-stone-400 border-white/10 hover:bg-white/10'
             }`}
             title="Bipes de Novo Pedido e Pedido Pronto"
           >
@@ -106,7 +106,7 @@ export const GrillKDSView: React.FC = () => {
           {/* Botão de Esgotamento Imediato */}
           <button
             onClick={() => setIsExhaustModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-lg shadow-rose-950/60 flex items-center gap-2"
+            className="px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-lg shadow-rose-950/60 flex items-center gap-2"
           >
             <AlertCircle className="w-4 h-4" />
             <span>Esgotar Espeto</span>
@@ -119,17 +119,17 @@ export const GrillKDSView: React.FC = () => {
         </div>
       </div>
 
-      {/* Resumo Agregado da Grelha (Quantidades consolidadas de carnes e pontos) */}
+      {/* Resumo Agregado da Grelha */}
       <GrillLiveSummary orderItems={orderItems} />
 
       {/* Filtros Rápidos da Fila */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
-          className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+          className={`px-4 py-2 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
             filter === 'ALL_ACTIVE'
-              ? 'bg-amber-600 text-white shadow-md shadow-amber-950/50'
-              : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+              ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md shadow-orange-500/25 font-black'
+              : 'bg-[#14151f] text-stone-400 border border-white/10 hover:text-white'
           }`}
         >
           <Filter className="w-3.5 h-3.5" />
@@ -138,10 +138,10 @@ export const GrillKDSView: React.FC = () => {
 
         <button
           onClick={() => setFilter('RECEIVED')}
-          className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+          className={`px-4 py-2 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
             filter === 'RECEIVED'
-              ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-950/50'
-              : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+              ? 'bg-amber-500 text-stone-950 font-black shadow-md shadow-amber-500/25'
+              : 'bg-[#14151f] text-stone-400 border border-white/10 hover:text-white'
           }`}
         >
           <span>⏳ Aguardando Entrada ({countReceived})</span>
@@ -149,10 +149,10 @@ export const GrillKDSView: React.FC = () => {
 
         <button
           onClick={() => setFilter('IN_PREPARATION')}
-          className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+          className={`px-4 py-2 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
             filter === 'IN_PREPARATION'
-              ? 'bg-rose-600 text-white font-black shadow-md shadow-rose-950/50'
-              : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+              ? 'bg-orange-600 text-white font-black shadow-md shadow-orange-950/50'
+              : 'bg-[#14151f] text-stone-400 border border-white/10 hover:text-white'
           }`}
         >
           <span>🔥 Na Brasa ({countInPrep})</span>
@@ -160,10 +160,10 @@ export const GrillKDSView: React.FC = () => {
 
         <button
           onClick={() => setFilter('READY')}
-          className={`px-3.5 py-2 rounded-xl font-bold transition flex items-center gap-1.5 whitespace-nowrap active:scale-95 ${
+          className={`px-4 py-2 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
             filter === 'READY'
               ? 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-950/50'
-              : 'bg-slate-900 text-slate-400 border border-slate-800 hover:text-white'
+              : 'bg-[#14151f] text-stone-400 border border-white/10 hover:text-white'
           }`}
         >
           <span>✅ Prontos ({countReady})</span>
@@ -172,12 +172,12 @@ export const GrillKDSView: React.FC = () => {
 
       {/* Grade de Comandas / Pedidos em Produção */}
       {sortedOrders.length === 0 ? (
-        <div className="py-20 text-center rounded-3xl bg-slate-900/60 border border-slate-800/80 p-8 space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-slate-800/80 text-amber-500 flex items-center justify-center mx-auto">
+        <div className="py-20 text-center rounded-3xl bg-[#14151f] border border-white/10 p-8 space-y-3 shadow-xl">
+          <div className="w-14 h-14 rounded-2xl bg-white/5 text-orange-400 flex items-center justify-center mx-auto border border-white/10">
             <Sparkles className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-bold text-white">Nenhum pedido nesta fila no momento</h3>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+          <h3 className="text-lg font-black text-white">Nenhum pedido nesta fila no momento</h3>
+          <p className="text-xs text-stone-400 max-w-sm mx-auto">
             Quando os garçons enviarem novos pedidos de espetos pelo app, os cards aparecerão aqui com alerta sonoro automático.
           </p>
         </div>
@@ -187,7 +187,6 @@ export const GrillKDSView: React.FC = () => {
             const table = tables.find((t) => t.id === order.table_id);
             const tableNum = table ? String(table.number).padStart(2, '0') : '??';
 
-            // Itens de churrasqueira deste pedido específico
             const itemsInThisOrder = filteredItems.filter((i) => i.order_id === order.id);
             const allOrderGrillItems = grillItems.filter((i) => i.order_id === order.id);
 
@@ -197,22 +196,22 @@ export const GrillKDSView: React.FC = () => {
             return (
               <div
                 key={order.id}
-                className="bg-slate-900 border-2 border-slate-700/80 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between space-y-4 hover:border-amber-500/60 transition"
+                className="bg-[#14151f] border-2 border-white/10 rounded-3xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between space-y-4 hover:border-orange-500/50 transition"
               >
                 {/* Cabeçalho do Card */}
                 <div>
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-3.5">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2.5">
                         <span className="text-3xl font-black text-white font-mono tracking-tight">
                           MESA {tableNum}
                         </span>
-                        <span className="text-xs px-2 py-0.5 rounded-lg bg-slate-800 text-slate-300 font-mono font-bold">
+                        <span className="text-xs px-2.5 py-0.5 rounded-xl bg-white/10 text-stone-300 font-mono font-bold">
                           #{order.order_number}
                         </span>
                       </div>
                       {order.notes && (
-                        <p className="text-xs text-amber-400/90 italic mt-1 font-semibold">
+                        <p className="text-xs text-amber-300/90 italic mt-1 font-semibold">
                           Obs Mesa: {order.notes}
                         </p>
                       )}
@@ -233,12 +232,12 @@ export const GrillKDSView: React.FC = () => {
                       return (
                         <div
                           key={item.id}
-                          className={`p-3 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+                          className={`p-3.5 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md ${
                             isInPrep
-                              ? 'bg-amber-950/30 border-amber-500/70 shadow-md shadow-amber-950/40'
+                              ? 'bg-amber-500/10 border-amber-500/50 shadow-amber-950/30'
                               : isReady
-                              ? 'bg-emerald-950/40 border-emerald-600/70'
-                              : 'bg-slate-800/70 border-slate-700/80'
+                              ? 'bg-emerald-500/10 border-emerald-500/40'
+                              : 'bg-[#090a0f] border-white/10'
                           }`}
                         >
                           <div className="flex-1 min-w-0">
@@ -250,7 +249,7 @@ export const GrillKDSView: React.FC = () => {
                                 {item.product_name}
                               </span>
                               {item.doneness && (
-                                <span className="text-xs px-2 py-0.5 rounded-md bg-rose-950 text-rose-300 border border-rose-700 font-mono font-extrabold uppercase">
+                                <span className="text-xs px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 font-mono font-black uppercase">
                                   {formatDoneness(item.doneness)}
                                 </span>
                               )}
@@ -262,14 +261,14 @@ export const GrillKDSView: React.FC = () => {
                               </p>
                             )}
 
-                            <div className="mt-1 flex items-center gap-2">
+                            <div className="mt-1.5 flex items-center gap-2">
                               <span
-                                className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${statusConf.bg} ${statusConf.color}`}
+                                className={`text-[10px] px-2.5 py-0.5 rounded-full border font-bold ${statusConf.bg} ${statusConf.color}`}
                               >
                                 {statusConf.label}
                               </span>
                               {item.prepared_at && (
-                                <span className="text-[10px] text-slate-500 font-mono">
+                                <span className="text-[10px] text-stone-500 font-mono">
                                   Pronto às {new Date(item.prepared_at).toLocaleTimeString()}
                                 </span>
                               )}
@@ -281,9 +280,9 @@ export const GrillKDSView: React.FC = () => {
                             {isReceived && (
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'IN_PREPARATION')}
-                                className="w-full sm:w-auto px-4 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-amber-950/50 flex items-center justify-center gap-1.5"
+                                className="w-full sm:w-auto px-4 py-2.5 rounded-xl btn-gold text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5"
                               >
-                                <Flame className="w-4 h-4" />
+                                <Flame className="w-4 h-4 text-stone-950" />
                                 <span>Na Brasa</span>
                               </button>
                             )}
@@ -291,7 +290,7 @@ export const GrillKDSView: React.FC = () => {
                             {isInPrep && (
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'READY')}
-                                className="w-full sm:w-auto px-4 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1.5"
+                                className="w-full sm:w-auto px-4 py-2.5 rounded-xl btn-emerald text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-emerald-500/20 flex items-center justify-center gap-1.5"
                               >
                                 <CheckCheck className="w-4 h-4" />
                                 <span>Pronto!</span>
@@ -299,8 +298,8 @@ export const GrillKDSView: React.FC = () => {
                             )}
 
                             {isReady && (
-                              <div className="px-3 py-2 rounded-xl bg-emerald-950 text-emerald-400 border border-emerald-700 text-xs font-bold flex items-center gap-1.5">
-                                <CheckCheck className="w-4 h-4" />
+                              <div className="px-3 py-2 rounded-xl bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-xs font-bold flex items-center gap-1.5">
+                                <CheckCheck className="w-4 h-4 text-emerald-400" />
                                 <span>Aguardando Garçom</span>
                               </div>
                             )}
@@ -311,12 +310,12 @@ export const GrillKDSView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Ações em Lote do Pedido (Rapidez Máxima) */}
-                <div className="border-t border-slate-800 pt-3 flex items-center gap-2">
+                {/* Ações em Lote do Pedido */}
+                <div className="border-t border-white/10 pt-3.5 flex items-center gap-2">
                   {hasReceived && (
                     <button
                       onClick={() => updateOrderSectorItemsStatus(order.id, 'GRILL', 'IN_PREPARATION')}
-                      className="flex-1 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs uppercase tracking-wider transition active:scale-95 border border-slate-700 flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-amber-300 font-bold text-xs uppercase tracking-wider transition active:scale-95 border border-white/10 flex items-center justify-center gap-1.5"
                     >
                       <Layers className="w-4 h-4" />
                       <span>Todos na Brasa</span>
@@ -326,7 +325,7 @@ export const GrillKDSView: React.FC = () => {
                   {hasInPrep && (
                     <button
                       onClick={() => updateOrderSectorItemsStatus(order.id, 'GRILL', 'READY')}
-                      className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-emerald-950/50 flex items-center justify-center gap-1.5"
+                      className="flex-1 py-3 rounded-2xl btn-emerald text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-emerald-950/40 flex items-center justify-center gap-1.5"
                     >
                       <CheckCheck className="w-4 h-4" />
                       <span>Tudo Pronto!</span>
