@@ -1,5 +1,5 @@
+import { SearchX,type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { SearchX, type LucideIcon } from 'lucide-react';
 
 interface EmptyStateProps {
   title: string;

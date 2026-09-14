@@ -1,27 +1,27 @@
-import { Dialog } from '../../components/ui/Dialog';
-import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  Receipt, 
-  Trash2, 
-  CreditCard, 
-  Banknote, 
-  QrCode, 
-  Plus, 
-  Percent, 
-  Coins, 
-  CheckCheck,
+import {
   AlertCircle,
-  Users
+  Banknote,
+  CheckCheck,
+  Coins,
+  CreditCard,
+  Percent,
+  Plus,
+  QrCode,
+  Receipt,
+  Trash2,
+  Users,
+  X
 } from 'lucide-react';
-import { RestaurantTable, Tab, OrderItem, Payment } from '../../types/domain';
-import { PaymentMethod } from '../../types/enums';
-import { useTableStore } from '../../stores/useTableStore';
-import { useShiftStore } from '../../stores/useShiftStore';
+import React,{ useEffect,useState } from 'react';
+import { Dialog } from '../../components/ui/Dialog';
+import { formatBRL,formatDoneness,getOrderItemStatusConfig } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
-import { formatBRL, formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
-import { ReceiptModal } from './ReceiptModal';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useTableStore } from '../../stores/useTableStore';
+import { OrderItem,Payment,RestaurantTable,Tab } from '../../types/domain';
+import { PaymentMethod } from '../../types/enums';
 import { PixPaymentModal } from '../pix/PixPaymentModal';
+import { ReceiptModal } from './ReceiptModal';
 
 interface TableSettlementModalProps {
   table: RestaurantTable;

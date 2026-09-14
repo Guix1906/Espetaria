@@ -1,23 +1,26 @@
-import React, { useState } from 'react';
-import { 
-  Bike, 
-  MapPin, 
-  Phone, 
-  CheckCheck, 
-  Flame, 
-  MessageCircle, 
-  Trash2, 
-  Sparkles
+import {
+  Bike,
+  CheckCheck,
+  Flame,
+  MapPin,
+  MessageCircle,
+  Phone,
+  Trash2
 } from 'lucide-react';
-import { useDeliveryStore } from '../../stores/useDeliveryStore';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { DeliveryOrder } from '../../types/domain';
-import { formatBRL, formatDoneness } from '../../lib/formatters';
-import { 
-  buildWhatsAppLink, 
-  buildDeliveryConfirmedWhatsAppMessage, 
-  buildDeliveryDispatchedWhatsAppMessage 
+import React,{ useState } from 'react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatCard } from '../../components/ui/StatCard';
+import { getDeliveryStatusConfig } from '../../lib/deliveryStatus';
+import { formatBRL,formatDoneness } from '../../lib/formatters';
+import {
+  buildDeliveryConfirmedWhatsAppMessage,
+  buildDeliveryDispatchedWhatsAppMessage,
+  buildWhatsAppLink
 } from '../../lib/whatsapp';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useDeliveryStore } from '../../stores/useDeliveryStore';
+import { DeliveryOrder } from '../../types/domain';
 
 type DeliveryFilter = 'ALL_ACTIVE' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
 
@@ -89,37 +92,13 @@ export const DeliveryManagementView: React.FC = () => {
   const countDelivered = deliveryOrders.filter((o) => o.status === 'DELIVERED').length;
 
   return (
-    <div className="min-h-0 bg-surface text-ink p-3 sm:p-5 space-y-4">
+    <div className="page-layout">
       
-      {/* Topo do Painel de Expedição */}
-      <div className="bg-surface-muted border border-line p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-3.5">
-          <div className="bg-brand-700 w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold shadow-card">
-            <Bike className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-bold text-ink font-sans">
-                Expedição & Gestão Delivery
-              </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-100 text-brand-800 border border-brand-200 tabular-nums font-bold">
-                CONTROLE EM TEMPO REAL
-              </span>
-            </div>
-            <p className="text-xs text-ink-muted mt-0.5">
-              Despacho de motoboys, avisos automáticos no WhatsApp e conciliação de entregas
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs tabular-nums">
-          <span className="px-3.5 py-2 rounded-2xl bg-surface-muted text-ink border border-line font-bold">
-            🔥 {countActive} em preparo
-          </span>
-          <span className="px-3.5 py-2 rounded-2xl bg-sky-50 text-sky-800 border border-sky-300 font-bold shadow-sm">
-            🛵 {countDispatched} na rota
-          </span>
-        </div>
+      <PageHeader eyebrow="Pedidos e entregas" title="Delivery" description="Acompanhe cada pedido, organize as saídas e mantenha o cliente informado." icon={Bike} />
+      <div className="stat-grid">
+        <StatCard label="Em produção" value={countActive} hint="Confirmados e em preparo" icon={Flame} tone="warning" />
+        <StatCard label="Em rota de entrega" value={countDispatched} hint="Pedidos com o entregador" icon={Bike} tone="info" />
+        <StatCard label="Entregas concluídas" value={countDelivered} hint="Pedidos entregues" icon={CheckCheck} tone="success" />
       </div>
 
       {/* Filtros Rápidos */}
@@ -137,7 +116,7 @@ export const DeliveryManagementView: React.FC = () => {
           className={`filter-chip ${filter === 'OUT_FOR_DELIVERY' ? 'is-active' : ''}`}
          type="button" aria-pressed={filter === 'OUT_FOR_DELIVERY'}>
           <Bike className="w-4 h-4" />
-          <span>Com Motoboy ({countDispatched})</span>
+          <span>Em entrega ({countDispatched})</span>
         </button>
 
         <button
@@ -145,21 +124,13 @@ export const DeliveryManagementView: React.FC = () => {
           className={`filter-chip ${filter === 'DELIVERED' ? 'is-active' : ''}`}
          type="button" aria-pressed={filter === 'DELIVERED'}>
           <CheckCheck className="w-4 h-4" />
-          <span>Entregues Hoje ({countDelivered})</span>
+          <span>Entregues ({countDelivered})</span>
         </button>
       </div>
 
       {/* Grade de Pedidos de Delivery */}
       {filteredOrders.length === 0 ? (
-        <div className="py-20 text-center rounded-2xl bg-surface-muted border border-line p-8 space-y-3 shadow-sm">
-          <div className="w-16 h-16 rounded-2xl bg-surface-muted border border-line text-ink-muted flex items-center justify-center mx-auto">
-            <Sparkles className="w-8 h-8 text-amber-800" />
-          </div>
-          <h3 className="text-xl font-bold text-ink font-sans">Nenhum pedido nesta etapa no momento</h3>
-          <p className="text-xs text-ink-muted max-w-sm mx-auto">
-            Novos pedidos feitos pelo cardápio público digital aparecerão automaticamente nesta fila.
-          </p>
-        </div>
+        <EmptyState title="Nenhum pedido nesta etapa" description="Os pedidos do cardápio digital aparecerão aqui para acompanhamento." icon={Bike} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filteredOrders.map((order) => {
@@ -167,6 +138,7 @@ export const DeliveryManagementView: React.FC = () => {
             const isPreparing = order.status === 'PREPARING';
             const isDispatched = order.status === 'OUT_FOR_DELIVERY';
             const isDelivered = order.status === 'DELIVERED';
+            const status = getDeliveryStatusConfig(order.status);
 
             return (
               <div
@@ -180,7 +152,7 @@ export const DeliveryManagementView: React.FC = () => {
                 }`}
               >
                 <div>
-                  <div className="flex items-center justify-between border-b border-line pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
                     <div>
                       <span className="text-2xl font-bold tabular-nums text-ink">
                         #{order.order_number}
@@ -199,6 +171,8 @@ export const DeliveryManagementView: React.FC = () => {
                       </span>
                     </div>
                   </div>
+
+                  <span className={`status-badge mt-3 ${status.classes}`}>{status.label}</span>
 
                   {/* Endereço Completo de Entrega */}
                   <div className="mt-3.5 p-3.5 rounded-2xl bg-surface-muted border border-line space-y-1.5 text-xs">
@@ -249,7 +223,7 @@ export const DeliveryManagementView: React.FC = () => {
                     <div>
                       <span className="text-xs text-ink-muted font-semibold">Forma:</span>
                       <div className="font-bold text-ink">
-                        {order.payment_method === 'PIX' ? '⚡ PIX Online' : order.payment_method === 'DINHEIRO' ? '💰 Dinheiro' : '💳 Cartão na Entrega'}
+                        {order.payment_method === 'PIX' ? 'PIX' : order.payment_method === 'DINHEIRO' ? 'Dinheiro' : 'Cartão na entrega'}
                       </div>
                     </div>
                     {order.cash_change_for && (
@@ -298,7 +272,7 @@ export const DeliveryManagementView: React.FC = () => {
                       title="Enviar atualização de status no WhatsApp do cliente"
                      type="button" aria-label="Enviar atualização de status no WhatsApp do cliente">
                       <MessageCircle className="w-4 h-4 text-emerald-700" />
-                      <span className="hidden sm:inline">Zap</span>
+                      <span className="hidden sm:inline">WhatsApp</span>
                     </button>
 
                     {/* Cancelar */}

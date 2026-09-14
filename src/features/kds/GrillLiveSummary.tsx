@@ -1,8 +1,8 @@
-import { useId, useState } from 'react';
-import { ChevronDown, ChevronUp, Flame } from 'lucide-react';
+import { ChevronDown,ChevronUp,Flame } from 'lucide-react';
+import { useId,useState } from 'react';
+import { formatDoneness } from '../../lib/formatters';
 import type { OrderItem } from '../../types/domain';
 import type { MeatDoneness } from '../../types/enums';
-import { formatDoneness } from '../../lib/formatters';
 
 interface AggregatedSkewer {
   productId: string;

@@ -1,17 +1,17 @@
-import { useState, type FormEvent } from 'react';
-import { CheckCircle2, Info, Smartphone, Users, X } from 'lucide-react';
-import { useTableStore } from '../../stores/useTableStore';
-import { useShiftStore } from '../../stores/useShiftStore';
-import { useAuthStore } from '../../stores/useAuthStore';
-import type { RestaurantTable } from '../../types/domain';
-import type { TableStatus } from '../../types/enums';
-import { getTableStatusConfig } from '../../lib/formatters';
+import { CheckCircle2,Info,Smartphone,Users,X } from 'lucide-react';
+import { useState,type FormEvent } from 'react';
+import { Dialog } from '../../components/ui/Dialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SearchField } from '../../components/ui/SearchField';
-import { FilterChip } from '../../components/ui/FilterChip';
 import { TableCard } from '../../components/ui/TableCard';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { Dialog } from '../../components/ui/Dialog';
+import { getTableStatusConfig } from '../../lib/formatters';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useTableStore } from '../../stores/useTableStore';
+import type { RestaurantTable } from '../../types/domain';
+import type { TableStatus } from '../../types/enums';
 import { WaiterOrderPad } from './WaiterOrderPad';
 
 export function WaiterModule() {

@@ -1,10 +1,10 @@
+import { AlertCircle,CheckCircle2,Coins,Flame,Sparkles,X } from 'lucide-react';
+import React,{ useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
-import React, { useState } from 'react';
-import { X, Flame, Sparkles, AlertCircle, Coins, CheckCircle2 } from 'lucide-react';
-import { useStockStore, PrepItemInput } from '../../stores/useStockStore';
-import { useShiftStore } from '../../stores/useShiftStore';
-import { useAuthStore } from '../../stores/useAuthStore';
 import { formatBRL } from '../../lib/formatters';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { PrepItemInput,useStockStore } from '../../stores/useStockStore';
 
 interface ShiftOpenModalProps {
   isOpen: boolean;

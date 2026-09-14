@@ -1,15 +1,15 @@
-import { Dialog } from '../../components/ui/Dialog';
-import React from 'react';
-import { 
-  Receipt, 
-  X, 
-  CheckCircle2, 
-  Users, 
+import {
   CheckCheck,
+  CheckCircle2,
+  Receipt,
+  Users,
+  X,
 } from 'lucide-react';
+import React from 'react';
+import { Dialog } from '../../components/ui/Dialog';
+import { formatBRL,formatDoneness,getOrderItemStatusConfig } from '../../lib/formatters';
 import { useTableStore } from '../../stores/useTableStore';
-import { RestaurantTable, OrderItem } from '../../types/domain';
-import { formatBRL, formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
+import { OrderItem,RestaurantTable } from '../../types/domain';
 
 interface WaiterViewTabProps {
   table: RestaurantTable;

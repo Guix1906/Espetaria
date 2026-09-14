@@ -1,22 +1,25 @@
-import React, { useState } from 'react';
-import { 
-  Receipt, 
-  CreditCard, 
-  Banknote, 
-  QrCode, 
-  Users, 
-  Sparkles, 
-  AlertTriangle, 
+import {
+  AlertTriangle,
+  Banknote,
+  CheckCircle2,
+  CreditCard,
+  QrCode,
+  Receipt,
   RotateCcw,
-  CheckCircle2
+  Sparkles,
+  Users
 } from 'lucide-react';
-import { useTableStore } from '../../stores/useTableStore';
-import { useShiftStore } from '../../stores/useShiftStore';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { RestaurantTable, Tab } from '../../types/domain';
+import React,{ useState } from 'react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatCard } from '../../components/ui/StatCard';
 import { formatBRL } from '../../lib/formatters';
-import { TableSettlementModal } from './TableSettlementModal';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useTableStore } from '../../stores/useTableStore';
+import { RestaurantTable,Tab } from '../../types/domain';
 import { ReceiptModal } from './ReceiptModal';
+import { TableSettlementModal } from './TableSettlementModal';
 
 type CashierFilter = 'WAITING_BILL' | 'ALL_ACTIVE' | 'CLOSED_TODAY';
 
@@ -71,88 +74,14 @@ export const CashierModule: React.FC = () => {
   };
 
   return (
-    <div className="min-h-0 bg-surface text-ink p-3 sm:p-5 space-y-4">
+    <div className="page-layout">
       
-      {/* Topo do Módulo: Resumo Financeiro do Turno */}
-      <div className="bg-surface-muted border border-line p-4 sm:p-6 rounded-2xl shadow-sm space-y-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-line pb-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shadow-sm">
-              <Receipt className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl sm:text-2xl font-bold text-ink font-sans">
-                  Frente de Caixa & Fechamento
-                </h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 tabular-nums font-bold">
-                  TURNO EM ANDAMENTO
-                </span>
-              </div>
-              <p className="text-xs text-ink-muted mt-0.5">
-                Fechamento de contas, divisão multimeios, troco e emissão de cupons térmicos
-              </p>
-            </div>
-          </div>
-
-          <div className="text-left sm:text-right bg-surface-muted sm:bg-transparent p-3 sm:p-0 rounded-2xl border sm:border-0 border-line w-full sm:w-auto">
-            <span className="text-xs text-ink-muted tabular-nums block">Faturamento do Turno:</span>
-            <div className="text-2xl sm:text-3xl font-bold text-brand-700 tabular-nums tracking-tight">
-              {formatBRL(totalShiftRevenue)}
-            </div>
-          </div>
-        </div>
-
-        {/* Métricas por Meio de Pagamento */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line flex items-center gap-3 shadow-sm">
-            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-sm">
-              <Banknote className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs text-ink-muted font-semibold">Dinheiro</span>
-              <div className="tabular-nums font-bold text-ink text-sm">
-                {formatBRL(revenueByMethod.DINHEIRO)}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line flex items-center gap-3 shadow-sm">
-            <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center shadow-sm">
-              <QrCode className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs text-ink-muted font-semibold">PIX Instantâneo</span>
-              <div className="tabular-nums font-bold text-ink text-sm">
-                {formatBRL(revenueByMethod.PIX)}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line flex items-center gap-3 shadow-sm">
-            <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shadow-sm">
-              <CreditCard className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs text-ink-muted font-semibold">Cartão Débito</span>
-              <div className="tabular-nums font-bold text-ink text-sm">
-                {formatBRL(revenueByMethod.DEBITO)}
-              </div>
-            </div>
-          </div>
-
-          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line flex items-center gap-3 shadow-sm">
-            <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shadow-sm">
-              <CreditCard className="w-4 h-4" />
-            </div>
-            <div>
-              <span className="text-xs text-ink-muted font-semibold">Cartão Crédito</span>
-              <div className="tabular-nums font-bold text-ink text-sm">
-                {formatBRL(revenueByMethod.CREDITO)}
-              </div>
-            </div>
-          </div>
-        </div>
+      <PageHeader eyebrow="Recebimentos" title="Caixa" description="Feche contas, divida pagamentos e acompanhe os recebimentos do turno." icon={Receipt} actions={<div className="surface-card px-5 py-3"><p className="text-xs font-medium text-ink-muted">Recebido no turno</p><p className="text-2xl font-bold text-brand-800 tabular-nums">{formatBRL(totalShiftRevenue)}</p></div>} />
+      <div className="stat-grid">
+        <StatCard label="Dinheiro" value={formatBRL(revenueByMethod.DINHEIRO)} icon={Banknote} tone="success" />
+        <StatCard label="PIX" value={formatBRL(revenueByMethod.PIX)} icon={QrCode} />
+        <StatCard label="Débito" value={formatBRL(revenueByMethod.DEBITO)} icon={CreditCard} tone="info" />
+        <StatCard label="Crédito" value={formatBRL(revenueByMethod.CREDITO)} icon={CreditCard} tone="warning" />
       </div>
 
       {/* Barra de Filtros */}
@@ -162,7 +91,7 @@ export const CashierModule: React.FC = () => {
           className={`filter-chip ${effectiveFilter === 'WAITING_BILL' ? 'is-active' : ''}`}
          type="button" aria-pressed={effectiveFilter === 'WAITING_BILL'}>
           <AlertTriangle className="w-4 h-4" />
-          <span>Aguardando Conta ({waitingBillTables.length})</span>
+          <span>Conta solicitada ({waitingBillTables.length})</span>
         </button>
 
         <button
@@ -170,7 +99,7 @@ export const CashierModule: React.FC = () => {
           className={`filter-chip ${effectiveFilter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
          type="button" aria-pressed={effectiveFilter === 'ALL_ACTIVE'}>
           <Users className="w-4 h-4" />
-          <span>Todas Mesas Abertas ({activeTables.length})</span>
+          <span>Em atendimento ({activeTables.length})</span>
         </button>
 
         <button
@@ -178,22 +107,16 @@ export const CashierModule: React.FC = () => {
           className={`filter-chip ${effectiveFilter === 'CLOSED_TODAY' ? 'is-active' : ''}`}
          type="button" aria-pressed={effectiveFilter === 'CLOSED_TODAY'}>
           <CheckCircle2 className="w-4 h-4" />
-          <span>Comandas Encerradas ({closedTabs.length})</span>
+          <span>Encerradas ({closedTabs.length})</span>
         </button>
       </div>
 
       {/* Grade de Mesas / Comandas */}
       {effectiveFilter !== 'CLOSED_TODAY' ? (
         activeTables.length === 0 ? (
-          <div className="py-20 text-center rounded-2xl bg-surface-muted border border-line p-8 space-y-3 shadow-sm">
-            <div className="w-16 h-16 rounded-2xl bg-surface-muted border border-line text-ink-muted flex items-center justify-center mx-auto">
-              <Sparkles className="w-8 h-8 text-amber-800" />
-            </div>
-            <h3 className="text-xl font-bold text-ink font-sans">Nenhuma mesa aberta no salão</h3>
-            <p className="text-xs text-ink-muted">Todas as comandas estão fechadas e as mesas livres para novos clientes.</p>
-          </div>
+          <EmptyState title="Nenhuma mesa aberta" description="As mesas estão livres para novos clientes. As próximas comandas aparecerão aqui." icon={Sparkles} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
             {activeTables
               .filter((t) => (effectiveFilter === 'WAITING_BILL' ? t.status === 'AGUARDANDO_CONTA' : true))
               .map((table) => {
@@ -211,14 +134,14 @@ export const CashierModule: React.FC = () => {
                     }`}
                   >
                     <div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
                           <span className="text-2xl font-bold tabular-nums text-ink">
                             Mesa {String(table.number).padStart(2, '0')}
                           </span>
                           {isWaitingBill && (
                             <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 tabular-nums font-bold">
-                              Conta Pedida!
+                              Conta solicitada
                             </span>
                           )}
                         </div>
@@ -252,7 +175,7 @@ export const CashierModule: React.FC = () => {
                       }`}
                      type="button">
                       <Receipt className="w-4 h-4" />
-                      <span>Fechar Conta / Checkout</span>
+                      <span>Fechar conta</span>
                     </button>
                   </div>
                 );
@@ -262,10 +185,7 @@ export const CashierModule: React.FC = () => {
       ) : (
         /* Aba de Histórico de Comandas Fechadas */
         closedTabs.length === 0 ? (
-          <div className="py-20 text-center rounded-2xl bg-surface-muted border border-line p-8 space-y-2 shadow-sm">
-            <CheckCircle2 className="w-10 h-10 text-ink-muted mx-auto" />
-            <h3 className="text-sm font-bold text-ink-muted">Nenhuma comanda fechada neste turno ainda.</h3>
-          </div>
+          <EmptyState title="Nenhuma comanda encerrada" description="Os recibos e pagamentos aparecerão aqui após o fechamento das contas." icon={Receipt} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {closedTabs.map((tab) => {
@@ -277,7 +197,7 @@ export const CashierModule: React.FC = () => {
                   key={tab.id}
                   className="p-5 rounded-2xl bg-surface-muted border border-line space-y-3.5 shadow-sm"
                 >
-                  <div className="flex items-center justify-between border-b border-line pb-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
                     <div>
                       <div className="font-bold text-ink text-base tabular-nums">
                         Mesa {table ? String(table.number).padStart(2, '0') : '??'} • #{tab.id.slice(0, 6)}

@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Beer, Flame, UtensilsCrossed } from 'lucide-react';
-import { GrillKDSView } from './GrillKDSView';
-import { KitchenKDSView } from './KitchenKDSView';
-import { BarKDSView } from './BarKDSView';
+import { Beer,Flame,UtensilsCrossed } from 'lucide-react';
+import { useEffect,useState } from 'react';
+import { FilterChip } from '../../components/ui/FilterChip';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { FilterChip } from '../../components/ui/FilterChip';
+import { BarKDSView } from './BarKDSView';
+import { GrillKDSView } from './GrillKDSView';
+import { KitchenKDSView } from './KitchenKDSView';
 
 export type KDSSubSector = 'grill' | 'kitchen' | 'bar';
 

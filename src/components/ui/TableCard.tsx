@@ -1,7 +1,7 @@
-import { ArrowRight, Clock3, Plus, Receipt, ShoppingBag, Users } from 'lucide-react';
-import type { RestaurantTable, Tab } from '../../types/domain';
+import { ArrowRight,Clock3,Plus,Receipt,ShoppingBag,Users } from 'lucide-react';
+import { formatBRL,formatElapsedMinutes,getTableStatusConfig } from '../../lib/formatters';
+import type { RestaurantTable,Tab } from '../../types/domain';
 import type { TableStatus } from '../../types/enums';
-import { formatBRL, formatElapsedMinutes, getTableStatusConfig } from '../../lib/formatters';
 
 interface TableCardProps {
   table: RestaurantTable;

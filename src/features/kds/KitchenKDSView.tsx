@@ -1,23 +1,25 @@
-import React, { useState } from 'react';
-import { 
-  UtensilsCrossed, 
-  CheckCheck, 
-  Filter, 
-  Volume2, 
-  VolumeX, 
-  Sparkles,
+import {
+  AlertOctagon,
+  CheckCheck,
+  CheckCircle2,
+  Filter,
   Layers,
   Soup,
-  CheckCircle2,
-  AlertOctagon
+  Sparkles,
+  UtensilsCrossed,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
-import { useTableStore } from '../../stores/useTableStore';
-import { useStockStore } from '../../stores/useStockStore';
-import { useShiftStore } from '../../stores/useShiftStore';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { KDSElapsedTimer } from './KDSElapsedTimer';
-import { getOrderItemStatusConfig } from '../../lib/formatters';
+import React,{ useState } from 'react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
 import { audioService } from '../../lib/audio';
+import { getOrderItemStatusConfig } from '../../lib/formatters';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useStockStore } from '../../stores/useStockStore';
+import { useTableStore } from '../../stores/useTableStore';
+import { KDSElapsedTimer } from './KDSElapsedTimer';
 
 type KDSFilter = 'ALL_ACTIVE' | 'RECEIVED' | 'IN_PREPARATION' | 'READY';
 
@@ -77,73 +79,29 @@ export const KitchenKDSView: React.FC = () => {
   const countActive = countReceived + countInPrep;
 
   return (
-    <div className="min-h-0 bg-surface text-ink p-3 sm:p-5 space-y-4">
+    <div className="page-layout">
       
-      {/* Topo do KDS: Cabeçalho com Ações de Alta Prioridade */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface-muted border border-line p-4 sm:p-5 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="bg-emerald-700 w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold shadow-card">
-            <UtensilsCrossed className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-bold text-ink font-sans">
-                KDS Cozinha & Guarnições
-              </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 tabular-nums font-bold">
-                Acompanhamentos & Cubas
-              </span>
-            </div>
-            <p className="text-xs text-ink-muted mt-0.5">
-              Fila de porções, arrozes, feijão tropeiro e monitoramento de cubas gastronômicas
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          <button
-            onClick={() => setShowCubasMonitor(!showCubasMonitor)}
-            className={`px-4 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition ${
-              showCubasMonitor
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-sm'
-                : 'bg-surface-muted text-ink-muted border-line hover:bg-surface-muted'
-            }`}
-           type="button">
-            <Soup className="w-4 h-4 text-emerald-700" />
-            <span>{showCubasMonitor ? 'Ocultar Cubas' : 'Monitor de Cubas'}</span>
-          </button>
-
-          <button
-            onClick={handleToggleAudio}
-            className={`p-2.5 rounded-2xl border text-xs font-semibold flex items-center gap-2 transition ${
-              audioEnabled
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                : 'bg-surface-muted text-ink-muted border-line hover:bg-surface-muted'
-            }`}
-            title="Sons de Alerta"
-           type="button" aria-label="Sons de Alerta">
-            {audioEnabled ? <Volume2 className="w-4 h-4 text-emerald-700" /> : <VolumeX className="w-4 h-4" />}
-            <span className="hidden sm:inline">{audioEnabled ? 'Som Ativo' : 'Mudo'}</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader eyebrow="Produção" title="Cozinha" description="Organize o preparo das porções e acompanhe o saldo das cubas." icon={UtensilsCrossed} actions={<>
+        <button type="button" onClick={handleToggleAudio} className="icon-button" aria-pressed={audioEnabled} aria-label={audioEnabled ? 'Desativar alertas sonoros' : 'Ativar alertas sonoros'} title={audioEnabled ? 'Som ativado' : 'Som desativado'}>{audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
+        <button type="button" aria-expanded={showCubasMonitor} onClick={() => setShowCubasMonitor(!showCubasMonitor)} className="btn-secondary"><Soup className="h-4 w-4" aria-hidden="true" />{showCubasMonitor ? 'Ocultar cubas' : 'Mostrar cubas'}</button>
+      </>} />
 
       {/* MONITOR DE CUBAS GASTRONÔMICAS (GN) */}
       {showCubasMonitor && (
         <div className="bg-surface-muted border border-emerald-200 rounded-2xl shadow-sm overflow-hidden p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-line pb-3">
-            <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <Soup className="w-5 h-5 text-emerald-700" />
               <h3 className="font-bold text-ink text-sm font-sans">
-                Monitor em Tempo Real das Cubas Gastronômicas
+                Estoque das cubas
               </h3>
             </div>
             <span className="text-xs text-ink-muted tabular-nums">
-              Baixa atômica automática por porção
+              Saldo disponível em porções
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
             {cubaStockItems.map((item) => {
               const prod = products.find((p) => p.id === item.product_id);
               if (!prod) return null;
@@ -237,42 +195,34 @@ export const KitchenKDSView: React.FC = () => {
           className={`filter-chip ${filter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
          type="button" aria-pressed={filter === 'ALL_ACTIVE'}>
           <Filter className="w-3.5 h-3.5" />
-          <span>Fila Ativa ({countActive})</span>
+          <span>Fila ativa ({countActive})</span>
         </button>
 
         <button
           onClick={() => setFilter('RECEIVED')}
           className={`filter-chip ${filter === 'RECEIVED' ? 'is-active' : ''}`}
          type="button" aria-pressed={filter === 'RECEIVED'}>
-          <span>⏳ Aguardando Preparo ({countReceived})</span>
+          <span>Aguardando ({countReceived})</span>
         </button>
 
         <button
           onClick={() => setFilter('IN_PREPARATION')}
           className={`filter-chip ${filter === 'IN_PREPARATION' ? 'is-active' : ''}`}
          type="button" aria-pressed={filter === 'IN_PREPARATION'}>
-          <span>🍳 Em Preparo ({countInPrep})</span>
+          <span>Em preparo ({countInPrep})</span>
         </button>
 
         <button
           onClick={() => setFilter('READY')}
           className={`filter-chip ${filter === 'READY' ? 'is-active' : ''}`}
          type="button" aria-pressed={filter === 'READY'}>
-          <span>✅ Prontos ({countReady})</span>
+          <span>Prontos ({countReady})</span>
         </button>
       </div>
 
       {/* Grade de Pedidos da Cozinha */}
       {sortedOrders.length === 0 ? (
-        <div className="py-20 text-center rounded-2xl bg-surface-muted border border-line p-8 space-y-3 shadow-sm">
-          <div className="w-14 h-14 rounded-2xl bg-surface-muted text-emerald-700 flex items-center justify-center mx-auto border border-line">
-            <Sparkles className="w-8 h-8" />
-          </div>
-          <h3 className="text-lg font-bold text-ink">Nenhuma porção ou acompanhamento pendente</h3>
-          <p className="text-xs text-ink-muted max-w-sm mx-auto">
-            Quando os garçons solicitarem mandioca, arroz, vinagrete ou feijão tropeiro, aparecerão imediatamente nesta tela.
-          </p>
-        </div>
+        <EmptyState title="Tudo em dia na cozinha" description="Os próximos acompanhamentos aparecerão nesta fila." icon={Sparkles} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {sortedOrders.map((order) => {
@@ -291,10 +241,10 @@ export const KitchenKDSView: React.FC = () => {
                 className="bg-surface-muted border border-line hover:border-emerald-300 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col justify-between space-y-4 transition"
               >
                 <div>
-                  <div className="flex items-center justify-between border-b border-line pb-3.5">
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3.5">
                     <div>
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-3xl font-bold text-ink tabular-nums tracking-tight">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="text-2xl font-bold text-ink tabular-nums tracking-tight">
                           MESA {tableNum}
                         </span>
                         <span className="text-xs px-2.5 py-0.5 rounded-xl bg-surface-muted border border-line text-ink-muted tabular-nums font-bold">
@@ -322,7 +272,7 @@ export const KitchenKDSView: React.FC = () => {
                       return (
                         <div
                           key={item.id}
-                          className={`p-3.5 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm ${
+                          className={`p-3.5 rounded-2xl border transition flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3 shadow-sm ${
                             isInPrep
                               ? 'bg-emerald-50 border-emerald-300'
                               : isReady
@@ -365,7 +315,7 @@ export const KitchenKDSView: React.FC = () => {
                             {isReceived && (
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'IN_PREPARATION')}
-                                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+                                className="w-full 2xl:w-auto px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
                                type="button">
                                 <UtensilsCrossed className="w-4 h-4" />
                                 <span>Preparar</span>
@@ -375,7 +325,7 @@ export const KitchenKDSView: React.FC = () => {
                             {isInPrep && (
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'READY')}
-                                className="w-full sm:w-auto px-4 py-2.5 rounded-xl btn-success text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+                                className="w-full 2xl:w-auto px-4 py-2.5 rounded-xl btn-success text-xs transition shadow-sm flex items-center justify-center gap-1.5"
                                type="button">
                                 <CheckCheck className="w-4 h-4" />
                                 <span>Pronto!</span>

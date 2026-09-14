@@ -1,9 +1,9 @@
+import { Check,Flame,Minus,Plus,X } from 'lucide-react';
 import { useState } from 'react';
-import { Check, Flame, Minus, Plus, X } from 'lucide-react';
+import { Dialog } from '../../components/ui/Dialog';
+import { formatBRL } from '../../lib/formatters';
 import type { Product } from '../../types/domain';
 import type { MeatDoneness } from '../../types/enums';
-import { formatBRL } from '../../lib/formatters';
-import { Dialog } from '../../components/ui/Dialog';
 
 interface WaiterDonenessModalProps {
   product: Product | null;

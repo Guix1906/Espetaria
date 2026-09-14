@@ -1,11 +1,11 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import { CalendarDays, Check, ChevronDown, Clock3, Menu, UserRound, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { useShiftStore } from '../../stores/useShiftStore';
+import { CalendarDays,Check,ChevronDown,Clock3,Menu,UserRound,Volume2,VolumeX,Wifi,WifiOff } from 'lucide-react';
+import { useEffect,useId,useRef,useState } from 'react';
 import { audioService } from '../../lib/audio';
 import { formatRole } from '../../lib/formatters';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useShiftStore } from '../../stores/useShiftStore';
 import { BrandMark } from './BrandMark';
-import { PAGE_TITLES, type ActiveTab } from './navigation';
+import { PAGE_TITLES,type ActiveTab } from './navigation';
 
 interface HeaderProps {
   activeTab: ActiveTab;

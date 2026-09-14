@@ -1,8 +1,8 @@
-import { Dialog } from '../../components/ui/Dialog';
+import { CheckCircle2,Printer,X } from 'lucide-react';
 import React from 'react';
-import { Printer, X, CheckCircle2 } from 'lucide-react';
-import { Tab, OrderItem, Payment, RestaurantTable } from '../../types/domain';
-import { formatBRL, formatDoneness } from '../../lib/formatters';
+import { Dialog } from '../../components/ui/Dialog';
+import { formatBRL,formatDoneness } from '../../lib/formatters';
+import { OrderItem,Payment,RestaurantTable,Tab } from '../../types/domain';
 
 interface ReceiptModalProps {
   isOpen: boolean;

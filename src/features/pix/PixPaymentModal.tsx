@@ -1,20 +1,20 @@
-import { Dialog } from '../../components/ui/Dialog';
-import React, { useState, useEffect } from 'react';
-import { 
-  QrCode, 
-  Copy, 
-  Check, 
-  Clock, 
-  MessageCircle, 
-  Sparkles, 
-  ShieldCheck, 
+import {
+  Check,
   CheckCircle2,
+  Clock,
+  Copy,
+  MessageCircle,
+  QrCode,
+  ShieldCheck,
+  Sparkles,
   X
 } from 'lucide-react';
-import { generatePixPayload, generateQRCodeMatrix } from '../../lib/pix';
-import { formatBRL } from '../../lib/formatters';
-import { buildWhatsAppLink, buildTableBillWhatsAppMessage } from '../../lib/whatsapp';
+import React,{ useEffect,useState } from 'react';
+import { Dialog } from '../../components/ui/Dialog';
 import { audioService } from '../../lib/audio';
+import { formatBRL } from '../../lib/formatters';
+import { generatePixPayload,generateQRCodeMatrix } from '../../lib/pix';
+import { buildTableBillWhatsAppMessage,buildWhatsAppLink } from '../../lib/whatsapp';
 
 interface PixPaymentModalProps {
   isOpen: boolean;

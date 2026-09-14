@@ -1,185 +1,35 @@
+import { Bike,CheckCircle2,Clock3,Flame,MapPin,MessageCircle,X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
-import React from 'react';
-import { 
-  X, 
-  CheckCircle2, 
-  Flame, 
-  Bike, 
-  MessageCircle, 
-  Clock, 
-  MapPin, 
-  Receipt 
-} from 'lucide-react';
-import { DeliveryOrder } from '../../types/domain';
-import { formatBRL, formatDoneness } from '../../lib/formatters';
+import { getDeliveryStatusConfig } from '../../lib/deliveryStatus';
+import { formatBRL,formatDoneness } from '../../lib/formatters';
+import type { DeliveryOrder } from '../../types/domain';
 
-interface DeliveryTrackingModalProps {
-  order: DeliveryOrder;
-  isOpen: boolean;
-  onClose: () => void;
-}
+interface DeliveryTrackingModalProps { order: DeliveryOrder; isOpen: boolean; onClose: () => void; }
 
-export const DeliveryTrackingModal: React.FC<DeliveryTrackingModalProps> = ({
-  order,
-  isOpen,
-  onClose,
-}) => {
+export function DeliveryTrackingModal({ order, isOpen, onClose }: DeliveryTrackingModalProps) {
   if (!isOpen) return null;
-
-  const steps = [
-    { key: 'CONFIRMED', label: 'Pedido Confirmado', icon: CheckCircle2, desc: 'Recebido pela espetaria' },
-    { key: 'PREPARING', label: 'Na Brasa', icon: Flame, desc: 'Espetos assando no ponto' },
-    { key: 'OUT_FOR_DELIVERY', label: 'A Caminho', icon: Bike, desc: order.driver_name ? `Com ${order.driver_name}` : 'Motoboy a caminho' },
-    { key: 'DELIVERED', label: 'Entregue', icon: CheckCircle2, desc: 'Bom apetite!' },
-  ];
-
-  const getStepIndex = (status: string) => {
-    switch (status) {
-      case 'CONFIRMED': return 0;
-      case 'PREPARING': return 1;
-      case 'OUT_FOR_DELIVERY': return 2;
-      case 'DELIVERED': return 3;
-      default: return 0;
-    }
-  };
-
-  const currentStepIdx = getStepIndex(order.status);
-
+  const status = getDeliveryStatusConfig(order.status);
+  const steps = [{ key: 'CONFIRMED', label: 'Confirmado', icon: CheckCircle2 }, { key: 'PREPARING', label: 'Em preparo', icon: Flame }, { key: 'OUT_FOR_DELIVERY', label: 'A caminho', icon: Bike }, { key: 'DELIVERED', label: 'Entregue', icon: CheckCircle2 }];
+  const currentStep = steps.findIndex((step) => step.key === order.status);
+  const finished = order.status === 'DELIVERED' || order.status === 'CANCELLED';
   const openWhatsApp = () => {
-    const text = encodeURIComponent(
-      `Olá! Gostaria de saber sobre o meu pedido de delivery #${order.order_number} (${order.customer_name}).`
-    );
-    window.open(`https://wa.me/5511987654321?text=${text}`, '_blank');
+    const message = encodeURIComponent(`Olá! Gostaria de saber sobre o meu pedido de delivery #${order.order_number} (${order.customer_name}).`);
+    window.open(`https://wa.me/5511987654321?text=${message}`, '_blank', 'noopener,noreferrer');
   };
 
   return (
-    <Dialog label="Acompanhar entrega" onClose={onClose}>
-      <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-card space-y-4 max-h-[92vh] flex flex-col zoom-in-95 duration-200">
-        
-        {/* Topo do Acompanhamento */}
-        <div className="flex items-center justify-between border-b border-line pb-3">
-          <div>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 tabular-nums font-bold">
-              Acompanhamento ao Vivo
-            </span>
-            <h3 className="font-bold text-ink text-lg mt-1 leading-none font-sans">
-              Pedido #{order.order_number}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition"
-           type="button" aria-label="Fechar janela">
-            <X className="w-5 h-5" />
-          </button>
+    <Dialog label={`Acompanhar pedido ${order.order_number}`} onClose={onClose} placement="sheet">
+      <div className="dialog-panel flex w-full max-w-lg flex-col">
+        <div className="flex items-start justify-between gap-3 border-b border-line p-5"><div><p className="eyebrow">Seu delivery</p><h2 className="text-xl font-bold text-ink">Pedido #{order.order_number}</h2><p className="mt-1 text-sm text-ink-muted">{order.customer_name}</p></div><button type="button" className="icon-button" onClick={onClose} aria-label="Fechar acompanhamento"><X className="h-5 w-5" /></button></div>
+        <div className="flex-1 space-y-5 overflow-y-auto p-5">
+          <div className={`rounded-2xl border p-4 ${status.classes}`} role="status"><h3 className="font-semibold">{status.label}</h3><p className="mt-1 text-sm">{status.description}</p>{order.driver_name && order.status === 'OUT_FOR_DELIVERY' && <p className="mt-2 flex items-center gap-2 text-sm font-medium"><Bike className="h-4 w-4" aria-hidden="true" />Entregador: {order.driver_name}</p>}</div>
+          {order.status !== 'CANCELLED' && <ol aria-label="Etapas da entrega" className="grid grid-cols-2 gap-3 sm:grid-cols-4">{steps.map((step, index) => { const Icon = step.icon; return <li key={step.key} aria-current={currentStep === index ? 'step' : undefined} className="flex flex-col items-center gap-2 text-center"><span className={`flex h-11 w-11 items-center justify-center rounded-xl ${index <= currentStep ? 'bg-brand-700 text-white' : 'bg-surface-muted text-ink-muted'}`}><Icon className="h-5 w-5" aria-hidden="true" /></span><span className={`text-xs font-semibold ${index <= currentStep ? 'text-brand-800' : 'text-ink-muted'}`}>{index + 1}. {step.label}</span></li>; })}</ol>}
+          {!finished && <p className="flex items-center gap-2 text-xs text-ink-muted"><Clock3 className="h-4 w-4" aria-hidden="true" />Estimativa de entrega: 35–50 min · Pedido às {new Date(order.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>}
+          <section className="rounded-xl border border-line bg-surface-soft p-4"><h3 className="flex items-center gap-2 text-sm font-semibold"><MapPin className="h-4 w-4 text-brand-700" aria-hidden="true" />Endereço de entrega</h3><p className="mt-2 text-sm text-ink-secondary">{order.address_street}, {order.address_number}<br />{order.address_neighborhood}</p>{order.address_complement && <p className="mt-1 text-xs text-ink-muted">{order.address_complement}</p>}{order.address_reference && <p className="mt-1 text-xs text-ink-muted">Referência: {order.address_reference}</p>}</section>
+          <section><h3 className="mb-3 text-sm font-semibold">Itens do pedido</h3><ul className="divide-y divide-line">{order.items.map((item) => <li key={item.id} className="flex items-start justify-between gap-3 py-3 text-sm"><div><span className="font-semibold">{item.quantity}x {item.product_name}</span>{item.doneness && <span className="mt-1 block text-xs text-ink-muted">{formatDoneness(item.doneness)}</span>}{item.notes && <span className="mt-1 block text-xs text-ink-muted">{item.notes}</span>}</div><span className="shrink-0 text-ink-secondary tabular-nums">{formatBRL(item.unit_price * item.quantity)}</span></li>)}</ul><div className="mt-2 space-y-2 rounded-xl bg-surface-soft p-4 text-sm"><div className="flex justify-between gap-3 text-ink-secondary"><span>Subtotal</span><span className="tabular-nums">{formatBRL(order.subtotal)}</span></div><div className="flex justify-between gap-3 text-ink-secondary"><span>Taxa de entrega</span><span className="tabular-nums">{formatBRL(order.delivery_fee)}</span></div><div className="flex justify-between gap-3 border-t border-line pt-3 font-semibold"><span>Total do pedido</span><span className="text-lg text-brand-800 tabular-nums">{formatBRL(order.total)}</span></div></div></section>
         </div>
-
-        {/* Linha do Tempo Visual do Pedido */}
-        <div className="bg-surface-muted p-4 rounded-2xl border border-line space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-xs text-amber-800 font-semibold">
-              <Clock className="w-4 h-4 text-amber-800" />
-              <span>Previsão de Entrega: 35 a 50 min</span>
-            </div>
-            <span className="text-xs text-ink-muted tabular-nums">
-              {new Date(order.created_at).toLocaleTimeString('pt-BR')}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-4 gap-1 relative">
-            {steps.map((step, idx) => {
-              const Icon = step.icon;
-              const isPast = idx < currentStepIdx;
-              const isCurrent = idx === currentStepIdx;
-
-              return (
-                <div key={step.key} className="flex flex-col items-center text-center space-y-1">
-                  <div
-                    className={`w-10 h-10 rounded-2xl flex items-center justify-center transition shadow-sm ${
-                      isCurrent
-                        ? 'bg-brand-700 text-white font-bold ring-4 ring-brand-200'
-                        : isPast
-                        ? 'bg-emerald-700 text-white font-bold'
-                        : 'bg-surface-muted text-ink-muted'
-                    }`}
-                  >
-                    <Icon className="w-5 h-5" />
-                  </div>
-                  <span
-                    className={`text-xs font-bold leading-tight ${
-                      isCurrent ? 'text-brand-700 font-bold' : isPast ? 'text-emerald-700' : 'text-ink-muted'
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                  <span className="text-xs text-ink-muted leading-none hidden sm:block">
-                    {step.desc}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Detalhes do Pedido & Endereço */}
-        <div className="overflow-y-auto flex-1 space-y-3 pr-1 text-xs">
-          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line space-y-1">
-            <div className="flex items-center gap-2 font-bold text-ink text-xs font-sans">
-              <MapPin className="w-3.5 h-3.5 text-red-700" />
-              <span>Entregar em:</span>
-            </div>
-            <p className="text-ink">
-              {order.address_street}, {order.address_number} — {order.address_neighborhood}
-            </p>
-            {order.address_complement && (
-              <p className="text-ink-muted text-xs">Comp: {order.address_complement}</p>
-            )}
-            {order.address_reference && (
-              <p className="text-amber-800 text-xs italic font-medium">Ref: {order.address_reference}</p>
-            )}
-          </div>
-
-          {/* Itens */}
-          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line space-y-2">
-            <div className="flex items-center gap-2 font-bold text-ink text-xs font-sans">
-              <Receipt className="w-3.5 h-3.5 text-amber-800" />
-              <span>Itens Solicitados:</span>
-            </div>
-            {order.items.map((item) => (
-              <div key={item.id} className="flex justify-between items-center text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-ink tabular-nums">{item.quantity}x</span>
-                  <span className="text-ink">{item.product_name}</span>
-                  {item.doneness && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-brand-100 text-brand-800 tabular-nums">
-                      {formatDoneness(item.doneness)}
-                    </span>
-                  )}
-                </div>
-                <span className="tabular-nums text-ink-muted">
-                  {formatBRL(item.unit_price * item.quantity)}
-                </span>
-              </div>
-            ))}
-            <div className="pt-2 border-t border-line flex justify-between font-bold text-ink text-xs">
-              <span className="font-sans">Total com entrega:</span>
-              <span className="text-brand-700 tabular-nums text-base font-bold">{formatBRL(order.total)}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Botão de WhatsApp */}
-        <div className="pt-1">
-          <button
-            onClick={openWhatsApp}
-            className="btn-success w-full py-3.5 rounded-2xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm"
-           type="button">
-            <MessageCircle className="w-4 h-4" />
-            <span>Tirar Dúvidas via WhatsApp</span>
-          </button>
-        </div>
-
+        <div className="border-t border-line p-5"><button type="button" onClick={openWhatsApp} className="btn-success w-full"><MessageCircle className="h-4 w-4" aria-hidden="true" />Falar com a espetaria</button></div>
       </div>
     </Dialog>
   );
-};
+}

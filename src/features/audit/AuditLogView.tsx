@@ -1,191 +1,51 @@
-import React, { useState } from 'react';
-import { 
-  ArrowDownRight, 
-  ArrowUpRight, 
-  RotateCcw, 
-  AlertOctagon, 
-  SlidersHorizontal,
-  Clock,
-  ShieldCheck,
-  Search
-} from 'lucide-react';
-import { useStockStore } from '../../stores/useStockStore';
-import { StockMovementType } from '../../types/enums';
+import { AlertOctagon,ArrowDownRight,ArrowUpRight,Clock3,RotateCcw,ShieldCheck,SlidersHorizontal } from 'lucide-react';
+import { useState } from 'react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { FilterChip } from '../../components/ui/FilterChip';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { SearchField } from '../../components/ui/SearchField';
 import { formatDateTime } from '../../lib/formatters';
+import { useStockStore } from '../../stores/useStockStore';
+import type { StockMovementType } from '../../types/enums';
 
-export const AuditLogView: React.FC = () => {
+const movementConfig = {
+  PRODUCAO: { label: 'Produção', icon: ArrowUpRight, classes: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
+  VENDA: { label: 'Venda', icon: ArrowDownRight, classes: 'border-amber-200 bg-amber-50 text-amber-800' },
+  CANCELAMENTO_RETORNO: { label: 'Retorno ao estoque', icon: RotateCcw, classes: 'border-sky-200 bg-sky-50 text-sky-800' },
+  PERDA: { label: 'Perda', icon: AlertOctagon, classes: 'border-rose-200 bg-rose-50 text-rose-800' },
+  DESCARTE: { label: 'Descarte', icon: AlertOctagon, classes: 'border-rose-200 bg-rose-50 text-rose-800' },
+  AJUSTE: { label: 'Ajuste de contagem', icon: SlidersHorizontal, classes: 'border-violet-200 bg-violet-50 text-violet-800' },
+};
+const filters = [{ id: 'ALL', label: 'Todas' }, { id: 'PRODUCAO', label: 'Produção' }, { id: 'VENDA', label: 'Vendas' }, { id: 'CANCELAMENTO_RETORNO', label: 'Retornos' }, { id: 'PERDA', label: 'Perdas' }, { id: 'DESCARTE', label: 'Descartes' }, { id: 'AJUSTE', label: 'Ajustes' }] as const;
+
+export function AuditLogView() {
   const { stockMovements } = useStockStore();
-
   const [typeFilter, setTypeFilter] = useState<'ALL' | StockMovementType>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-
-  const filteredMovements = stockMovements.filter((m) => {
-    const matchesType = typeFilter === 'ALL' || m.movement_type === typeFilter;
-    const matchesSearch = 
-      (m.product_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
-      (m.reason?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false);
-    return matchesType && matchesSearch;
-  });
-
-  const getMovementConfig = (type: StockMovementType) => {
-    switch (type) {
-      case 'PRODUCAO':
-        return {
-          label: 'Produção (Mise en Place)',
-          icon: ArrowUpRight,
-          color: 'text-emerald-700',
-          bg: 'bg-emerald-50 border-emerald-200',
-        };
-      case 'VENDA':
-        return {
-          label: 'Venda de Salão/Mesa',
-          icon: ArrowDownRight,
-          color: 'text-amber-800',
-          bg: 'bg-amber-50 border-amber-200',
-        };
-      case 'CANCELAMENTO_RETORNO':
-        return {
-          label: 'Cancelamento c/ Retorno',
-          icon: RotateCcw,
-          color: 'text-sky-700',
-          bg: 'bg-sky-50 border-sky-200',
-        };
-      case 'PERDA':
-      case 'DESCARTE':
-        return {
-          label: 'Perda / Descarte Grelha',
-          icon: AlertOctagon,
-          color: 'text-red-700',
-          bg: 'bg-red-50 border-red-200',
-        };
-      case 'AJUSTE':
-        return {
-          label: 'Ajuste de Contagem Física',
-          icon: SlidersHorizontal,
-          color: 'text-purple-700',
-          bg: 'bg-purple-50 border-purple-200',
-        };
-    }
-  };
+  const query = searchTerm.trim().toLocaleLowerCase('pt-BR');
+  const filteredMovements = stockMovements.filter((movement) => (typeFilter === 'ALL' || movement.movement_type === typeFilter) && `${movement.product_name || ''} ${movement.reason || ''}`.toLocaleLowerCase('pt-BR').includes(query));
 
   return (
-    <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-5">
-      
-      {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-muted p-5 rounded-2xl border border-line shadow-sm">
-        <div>
-          <h2 className="text-base sm:text-lg font-bold text-ink tracking-tight flex items-center gap-2 font-sans">
-            <ShieldCheck className="w-5 h-5 text-emerald-700" />
-            <span>Trilha de Auditoria e Movimentações de Estoque</span>
-          </h2>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Registro imutável de todas as baixas, devoluções, perdas e ajustes em tempo real
-          </p>
-        </div>
-
-        {/* Filtro por Tipo de Movimentação */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          {(['ALL', 'PRODUCAO', 'VENDA', 'CANCELAMENTO_RETORNO', 'PERDA', 'AJUSTE'] as const).map((t) => {
-            const label = 
-              t === 'ALL' ? 'Todas' :
-              t === 'PRODUCAO' ? 'Produção' :
-              t === 'VENDA' ? 'Vendas' :
-              t === 'CANCELAMENTO_RETORNO' ? 'Retornos' :
-              t === 'PERDA' ? 'Perdas' : 'Ajustes';
-            const isActive = typeFilter === t;
-
-            return (
-              <button
-                key={t}
-                onClick={() => setTypeFilter(t)}
-                className={`filter-chip ${isActive ? 'is-active' : ''}`}
-               type="button" aria-pressed={isActive}>
-                {label}
-              </button>
-            );
+    <div className="page-layout">
+      <PageHeader eyebrow="Controle e transparência" title="Auditoria" description="Acompanhe as entradas, vendas, perdas e ajustes de estoque, com seus respectivos motivos." icon={ShieldCheck} actions={<span className="status-badge border-line bg-surface text-ink-secondary">{filteredMovements.length} {filteredMovements.length === 1 ? 'registro' : 'registros'}</span>} />
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="filter-bar" aria-label="Tipo de movimentação">{filters.map((filter) => <FilterChip key={filter.id} active={typeFilter === filter.id} onClick={() => setTypeFilter(filter.id)}>{filter.label}</FilterChip>)}</div>
+        <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar movimentação por produto ou motivo" placeholder="Buscar produto ou motivo" className="w-full shrink-0 xl:w-64" />
+      </div>
+      {filteredMovements.length === 0 ? <EmptyState title="Nenhuma movimentação encontrada" description="As movimentações do estoque aparecerão aqui. Se você usou filtros, tente outra combinação." action={searchTerm || typeFilter !== 'ALL' ? <button type="button" className="btn-secondary" onClick={() => { setTypeFilter('ALL'); setSearchTerm(''); }}>Limpar filtros</button> : undefined} /> : <div className="surface-card overflow-hidden">
+        <div className="hidden grid-cols-[1fr_240px] gap-4 border-b border-line bg-surface-soft px-5 py-3 text-xs font-semibold text-ink-muted md:grid"><span>Produto e movimentação</span><span className="text-right">Saldo e quantidade</span></div>
+        <ul className="divide-y divide-line">
+          {filteredMovements.map((movement) => {
+            const config = movementConfig[movement.movement_type];
+            const Icon = config.icon;
+            const isPositive = movement.quantity > 0;
+            return <li key={movement.id} className="flex flex-col justify-between gap-4 p-4 transition-colors hover:bg-surface-soft sm:p-5 md:flex-row md:items-center">
+              <div className="flex min-w-0 items-start gap-3"><span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${config.classes}`}><Icon className="h-5 w-5" aria-hidden="true" /></span><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h2 className="text-sm font-semibold text-ink">{movement.product_name || 'Produto'}</h2><span className={`status-badge ${config.classes}`}>{config.label}</span></div><p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">{movement.reason || 'Operação de rotina'}</p><p className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted"><Clock3 className="h-3.5 w-3.5" aria-hidden="true" /><time dateTime={movement.created_at}>{formatDateTime(movement.created_at)}</time></p></div></div>
+              <div className="flex shrink-0 items-center justify-between gap-4 border-t border-line pt-3 md:border-0 md:pt-0"><div className="text-xs text-ink-muted"><span className="block">Saldo do produto</span><span className="mt-1 block text-sm text-ink-secondary tabular-nums">{movement.previous_balance}<span className="mx-2" aria-label="para">→</span><strong className="text-ink">{movement.new_balance}</strong></span></div><span className={`min-w-[68px] rounded-xl border px-3 py-2 text-center text-base font-semibold tabular-nums ${isPositive ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-rose-200 bg-rose-50 text-rose-800'}`}>{isPositive ? '+' : ''}{movement.quantity}</span></div>
+            </li>;
           })}
-        </div>
-      </div>
-
-      {/* Busca */}
-      <div className="relative">
-        <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
-        <input
-          type="text"
-          placeholder="Buscar por produto ou motivo..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-surface-muted border border-line rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-ink placeholder-ink-muted focus:outline-none focus:border-brand-600 focus:ring-1 focus:ring-brand-600 transition shadow-sm"
-         aria-label="Buscar por produto ou cliente"/>
-      </div>
-
-      {/* Lista de Movimentações em Tabela / Cards */}
-      <div className="bg-surface-muted border border-line rounded-2xl overflow-hidden shadow-sm">
-        {filteredMovements.length === 0 ? (
-          <div className="p-8 text-center text-ink-muted text-sm">
-            Nenhuma movimentação registrada com os filtros selecionados.
-          </div>
-        ) : (
-          <div className="divide-y divide-line">
-            {filteredMovements.map((mov) => {
-              const conf = getMovementConfig(mov.movement_type);
-              const Icon = conf.icon;
-              const isPositive = mov.quantity > 0;
-
-              return (
-                <div
-                  key={mov.id}
-                  className="p-3.5 sm:p-4 hover:bg-surface-muted transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                >
-                  {/* Informações Principais */}
-                  <div className="flex items-start sm:items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${conf.bg} ${conf.color}`}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-ink text-sm">
-                          {mov.product_name || 'Produto'}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-bold tabular-nums ${conf.bg} ${conf.color}`}>
-                          {conf.label}
-                        </span>
-                      </div>
-
-                      <div className="text-ink-muted mt-0.5">
-                        {mov.reason || 'Operação de rotina'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Saldo Anterior, Quantidade e Novo Saldo */}
-                  <div className="flex items-center justify-between sm:justify-end gap-5 pl-12 sm:pl-0">
-                    <div className="text-left sm:text-right tabular-nums">
-                      <div className="text-xs text-ink-muted">
-                        Saldo: <span className="text-ink-muted">{mov.previous_balance}</span> ➔ <strong className="text-ink">{mov.new_balance}</strong>
-                      </div>
-                      <div className="text-xs text-ink-muted flex items-center sm:justify-end gap-1">
-                        <Clock className="w-3 h-3" />
-                        <span>{formatDateTime(mov.created_at)}</span>
-                      </div>
-                    </div>
-
-                    <div className={`px-3 py-1.5 rounded-xl tabular-nums font-bold text-sm border shrink-0 ${
-                      isPositive
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                        : 'bg-red-50 border-red-200 text-red-700'
-                    }`}>
-                      {isPositive ? `+${mov.quantity}` : mov.quantity}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
+        </ul>
+      </div>}
     </div>
   );
-};
+}

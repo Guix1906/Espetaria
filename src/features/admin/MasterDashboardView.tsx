@@ -1,22 +1,24 @@
-import React, { useState } from 'react';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  Users, 
-  Receipt, 
-  PieChart, 
-  Flame, 
-  PackageCheck, 
-  Download, 
-  Lock, 
-  ShieldCheck, 
-  Clock 
+import {
+  Clock,
+  DollarSign,
+  Download,
+  Flame,
+  Lock,
+  PackageCheck,
+  PieChart,
+  Receipt,
+  ShieldCheck,
+  TrendingUp,
+  Users
 } from 'lucide-react';
-import { useShiftStore } from '../../stores/useShiftStore';
-import { useTableStore } from '../../stores/useTableStore';
-import { useDeliveryStore } from '../../stores/useDeliveryStore';
-import { useStockStore } from '../../stores/useStockStore';
+import React,{ useState } from 'react';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { StatCard } from '../../components/ui/StatCard';
 import { formatBRL } from '../../lib/formatters';
+import { useDeliveryStore } from '../../stores/useDeliveryStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useStockStore } from '../../stores/useStockStore';
+import { useTableStore } from '../../stores/useTableStore';
 import { ShiftCloseModal } from './ShiftCloseModal';
 
 export const MasterDashboardView: React.FC = () => {
@@ -73,7 +75,7 @@ export const MasterDashboardView: React.FC = () => {
     if (d.payment_method === 'CARTAO_ENTREGA') paymentBreakdown['CREDITO'] = (paymentBreakdown['CREDITO'] || 0) + d.total;
   });
 
-  const totalPaidAll = Object.values(paymentBreakdown).reduce((a, b) => a + b, 0) || 1;
+  const totalPaidAll = Object.values(paymentBreakdown).reduce((a, b) => a + b, 0);
 
   // 5. Curva ABC dos Produtos Mais Vendidos
   const productSalesMap: Record<string, { name: string; category: string; qty: number; total: number }> = {};
@@ -151,122 +153,26 @@ export const MasterDashboardView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-0 bg-surface-muted text-ink p-3 sm:p-6 space-y-6">
+    <div className="page-layout">
       
-      {/* Topo do Painel Master */}
-      <div className="bg-surface-muted border border-line p-4 sm:p-6 rounded-2xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-amber-700 text-white flex items-center justify-center shadow-sm">
-              <ShieldCheck className="w-7 h-7" />
-            </div>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-ink font-sans">
-                Painel Master & DRE Executivo
-              </h1>
-              <p className="text-xs text-ink-muted mt-0.5">
-                Gestão Estratégica, Financeira e Auditoria Noturna da Espetaria
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader eyebrow="Gestão da espetaria" title="Visão geral" description={<>Vendas, recebimentos e resultados em um só lugar.<span className="mt-1 block font-medium text-ink-secondary">{currentShift ? currentShift.name : 'Nenhum turno aberto no momento'}</span></>} icon={ShieldCheck} actions={<>
+        <button type="button" onClick={handleExportCSV} disabled={!currentShift} className="btn-secondary"><Download className="h-4 w-4" aria-hidden="true" />Exportar relatório</button>
+        {currentShift?.status === 'ABERTO' && <button type="button" onClick={() => setIsCloseModalOpen(true)} className="btn-secondary text-rose-700 hover:border-rose-400 hover:bg-rose-50 hover:text-rose-800"><Lock className="h-4 w-4" aria-hidden="true" />Fechar turno</button>}
+      </>} />
 
-        {/* Ações Rápidas do Master */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            onClick={handleExportCSV}
-            disabled={!currentShift}
-            className="bg-surface-muted hover:bg-surface-muted text-ink border border-line px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
-           type="button">
-            <Download className="w-4 h-4 text-emerald-700" />
-            <span>Exportar DRE (CSV)</span>
-          </button>
-
-          {currentShift && currentShift.status === 'ABERTO' ? (
-            <button
-              onClick={() => setIsCloseModalOpen(true)}
-              className="px-5 py-2.5 rounded-2xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold flex items-center gap-2 transition shadow-sm"
-             type="button">
-              <Lock className="w-4 h-4" />
-              <span>Fechar Turno (Reconciliação)</span>
-            </button>
-          ) : (
-            <div className="px-3.5 py-2 rounded-2xl bg-surface-muted border border-line text-ink-muted text-xs tabular-nums">
-              Nenhum turno aberto no momento
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* DRE DO TURNO: CARDS DE MÉTRICAS PRINCIPAIS */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        
-        {/* Faturamento Bruto */}
-        <div className="bg-surface-muted border border-line p-5 rounded-2xl shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted font-sans">Faturamento Bruto</span>
-            <DollarSign className="w-5 h-5 text-emerald-700" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold tabular-nums text-emerald-700 mt-2.5">
-            {formatBRL(grossRevenue)}
-          </div>
-          <div className="text-xs text-ink-muted mt-1.5 flex items-center gap-1 tabular-nums">
-            <span>Salão: {formatBRL(salonGross)}</span>
-            <span>•</span>
-            <span>Delivery: {formatBRL(deliveryGross)}</span>
-          </div>
-        </div>
-
-        {/* Faturamento Líquido */}
-        <div className="bg-surface-muted border border-line p-5 rounded-2xl shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted font-sans">Faturamento Líquido</span>
-            <TrendingUp className="w-5 h-5 text-amber-800" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold tabular-nums text-ink mt-2.5">
-            {formatBRL(netRevenue)}
-          </div>
-          <div className="text-xs text-ink-muted mt-1.5 tabular-nums">
-            Taxa 10%: +{formatBRL(totalServiceFee)} | Desc: -{formatBRL(totalDiscounts)}
-          </div>
-        </div>
-
-        {/* Comandas e Pessoas */}
-        <div className="bg-surface-muted border border-line p-5 rounded-2xl shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted font-sans">Mesas & Clientes</span>
-            <Users className="w-5 h-5 text-sky-700" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold tabular-nums text-ink mt-2.5">
-            {closedTabs.length} <span className="text-base text-ink-muted font-sans font-normal">mesas</span>
-          </div>
-          <div className="text-xs text-ink-muted mt-1.5">
-            {totalPeople} clientes atendidos no salão
-          </div>
-        </div>
-
-        {/* Ticket Médio */}
-        <div className="bg-surface-muted border border-line p-5 rounded-2xl shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-ink-muted font-sans">Ticket Médio</span>
-            <Receipt className="w-5 h-5 text-brand-700" />
-          </div>
-          <div className="text-2xl sm:text-3xl font-bold tabular-nums text-brand-700 mt-2.5">
-            {formatBRL(avgTicketTab)}
-          </div>
-          <div className="text-xs text-ink-muted mt-1.5 tabular-nums">
-            {formatBRL(avgTicketPerson)} por pessoa
-          </div>
-        </div>
-
+      <div className="stat-grid">
+        <StatCard label="Faturamento bruto" value={formatBRL(grossRevenue)} hint={<>Salão: {formatBRL(salonGross)}<br />Delivery: {formatBRL(deliveryGross)}</>} icon={DollarSign} tone="success" />
+        <StatCard label="Faturamento líquido" value={formatBRL(netRevenue)} hint={<>Serviço: +{formatBRL(totalServiceFee)}<br />Descontos: -{formatBRL(totalDiscounts)}</>} icon={TrendingUp} />
+        <StatCard label="Comandas encerradas" value={closedTabs.length} hint={<>{totalPeople} pessoas atendidas no salão</>} icon={Users} tone="info" />
+        <StatCard label="Ticket médio" value={formatBRL(avgTicketTab)} hint={<>{formatBRL(avgTicketPerson)} por pessoa</>} icon={Receipt} tone="warning" />
       </div>
 
       {/* SEÇÃO INTERMEDIÁRIA: FORMAS DE PAGAMENTO & CURVA ABC */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         
         {/* Distribuição por Meio de Pagamento */}
         <div className="bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-line pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
             <h2 className="text-sm font-bold text-ink flex items-center gap-2 font-sans">
               <PieChart className="w-4 h-4 text-emerald-700" />
               <span>Meios de Pagamento</span>
@@ -307,11 +213,11 @@ export const MasterDashboardView: React.FC = () => {
         </div>
 
         {/* Curva ABC de Produtos Mais Vendidos */}
-        <div className="lg:col-span-2 bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b border-line pb-3">
+        <div className="xl:col-span-2 bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
             <h2 className="text-sm font-bold text-ink flex items-center gap-2 font-sans">
               <Flame className="w-4 h-4 text-brand-700" />
-              <span>Curva ABC — Top Produtos Mais Vendidos</span>
+              <span>Produtos mais vendidos</span>
             </h2>
             <span className="text-xs text-ink-muted">Classificação por Faturamento</span>
           </div>
@@ -366,11 +272,11 @@ export const MasterDashboardView: React.FC = () => {
 
       {/* AUDITORIA DE QUEBRAS E PERDAS */}
       <div className="bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-line pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
           <div className="flex items-center gap-2">
             <PackageCheck className="w-5 h-5 text-red-700" />
             <h2 className="text-sm font-bold text-ink font-sans">
-              Auditoria de Quebras, Perdas & Descartes do Turno
+              Perdas e descartes do turno
             </h2>
           </div>
           <span className="text-xs tabular-nums text-red-700 font-bold">
@@ -407,10 +313,10 @@ export const MasterDashboardView: React.FC = () => {
 
       {/* HISTÓRICO DE TURNOS ANTERIORES */}
       <div className="bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-line pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
           <h2 className="text-sm font-bold text-ink flex items-center gap-2 font-sans">
             <Clock className="w-4 h-4 text-amber-800" />
-            <span>Histórico de Turnos Fechados</span>
+            <span>Histórico de turnos</span>
           </h2>
           <span className="text-xs text-ink-muted tabular-nums">
             {shiftsHistory.length} registros
@@ -430,6 +336,7 @@ export const MasterDashboardView: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
+              {shiftsHistory.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-ink-muted">Nenhum turno registrado no histórico.</td></tr>}
               {shiftsHistory.map((shift) => (
                 <tr key={shift.id} className="hover:bg-surface-muted transition">
                   <td className="py-3 font-semibold text-ink">{shift.name}</td>

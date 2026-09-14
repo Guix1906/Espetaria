@@ -1,21 +1,21 @@
-import { Dialog } from '../../components/ui/Dialog';
-import React, { useState } from 'react';
-import { 
-  X, 
-  PackageCheck, 
-  Banknote, 
-  FileText, 
-  CheckCheck, 
-  AlertTriangle, 
-  ArrowRight, 
-  ArrowLeft 
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Banknote,
+  CheckCheck,
+  FileText,
+  PackageCheck,
+  X
 } from 'lucide-react';
+import React,{ useState } from 'react';
+import { Dialog } from '../../components/ui/Dialog';
+import { formatBRL } from '../../lib/formatters';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { useDeliveryStore } from '../../stores/useDeliveryStore';
-import { useAuthStore } from '../../stores/useAuthStore';
-import { formatBRL } from '../../lib/formatters';
 
 interface ShiftCloseModalProps {
   isOpen: boolean;

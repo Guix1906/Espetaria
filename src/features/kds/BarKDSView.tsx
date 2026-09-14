@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
-import { 
-  Wine, 
-  CheckCheck, 
-  Filter, 
-  Volume2, 
-  VolumeX, 
-  Sparkles,
+import {
+  Beer,
+  CheckCheck,
+  Filter,
   Layers,
-  Beer
+  Sparkles,
+  Volume2,
+  VolumeX,
+  Wine
 } from 'lucide-react';
+import React,{ useState } from 'react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { audioService } from '../../lib/audio';
+import { getOrderItemStatusConfig } from '../../lib/formatters';
 import { useTableStore } from '../../stores/useTableStore';
 import { KDSElapsedTimer } from './KDSElapsedTimer';
-import { getOrderItemStatusConfig } from '../../lib/formatters';
-import { audioService } from '../../lib/audio';
 
 type KDSFilter = 'ALL_ACTIVE' | 'RECEIVED' | 'READY';
 
@@ -51,44 +53,12 @@ export const BarKDSView: React.FC = () => {
   const countReady = barItems.filter((i) => i.status === 'READY').length;
 
   return (
-    <div className="min-h-0 bg-surface text-ink p-3 sm:p-5 space-y-4">
+    <div className="page-layout">
       
-      {/* Topo do Bar KDS */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface-muted border border-line p-4 sm:p-5 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <div className="bg-sky-700 w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold shadow-card">
-            <Beer className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-bold text-ink font-sans">
-                KDS Bar & Bebidas
-              </h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200 tabular-nums font-bold">
-                EXPEDIÇÃO &lt; 3 MIN
-              </span>
-            </div>
-            <p className="text-xs text-ink-muted mt-0.5">
-              Chopps, caipirinhas artesanais, drinks, refrigerantes e sucos naturais
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          <button
-            onClick={handleToggleAudio}
-            className={`px-3.5 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition ${
-              audioEnabled
-                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-sm'
-                : 'bg-surface-muted text-ink-muted border-line hover:bg-surface-muted'
-            }`}
-            title="Sons de Alerta"
-           type="button" aria-label="Sons de Alerta">
-            {audioEnabled ? <Volume2 className="w-4 h-4 text-emerald-700" /> : <VolumeX className="w-4 h-4" />}
-            <span className="hidden sm:inline">{audioEnabled ? 'Alerta Sonoro Ativo' : 'Mudo'}</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader eyebrow="Produção" title="Bar e bebidas" description="Prepare e libere as bebidas com rapidez. Priorize os pedidos mais antigos." icon={Beer} actions={<>
+        <button type="button" onClick={handleToggleAudio} className="icon-button" aria-pressed={audioEnabled} aria-label={audioEnabled ? 'Desativar alertas sonoros' : 'Ativar alertas sonoros'} title={audioEnabled ? 'Som ativado' : 'Som desativado'}>{audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
+        
+      </>} />
 
       {/* Filtros da Fila do Bar */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
@@ -97,35 +67,27 @@ export const BarKDSView: React.FC = () => {
           className={`filter-chip ${filter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
          type="button" aria-pressed={filter === 'ALL_ACTIVE'}>
           <Filter className="w-3.5 h-3.5" />
-          <span>Fila Ativa ({countReceived})</span>
+          <span>Fila ativa ({countReceived})</span>
         </button>
 
         <button
           onClick={() => setFilter('RECEIVED')}
           className={`filter-chip ${filter === 'RECEIVED' ? 'is-active' : ''}`}
          type="button" aria-pressed={filter === 'RECEIVED'}>
-          <span>⏳ Aguardando Tirar ({countReceived})</span>
+          <span>Aguardando ({countReceived})</span>
         </button>
 
         <button
           onClick={() => setFilter('READY')}
           className={`filter-chip ${filter === 'READY' ? 'is-active' : ''}`}
          type="button" aria-pressed={filter === 'READY'}>
-          <span>✅ Prontos no Balcão ({countReady})</span>
+          <span>Prontos ({countReady})</span>
         </button>
       </div>
 
       {/* Grade de Pedidos do Bar */}
       {sortedOrders.length === 0 ? (
-        <div className="py-20 text-center rounded-2xl bg-surface-muted border border-line p-8 space-y-3 shadow-sm">
-          <div className="w-16 h-16 rounded-2xl bg-surface-muted border border-line text-sky-700 flex items-center justify-center mx-auto shadow-sm">
-            <Sparkles className="w-8 h-8" />
-          </div>
-          <h3 className="text-xl font-bold text-ink font-sans">Nenhuma bebida pendente no balcão</h3>
-          <p className="text-xs text-ink-muted max-w-sm mx-auto">
-            Drinks e bebidas pedidas pelos garçons ou clientes cairão instantaneamente nesta esteira.
-          </p>
-        </div>
+        <EmptyState title="Tudo em dia no bar" description="As próximas bebidas aparecerão nesta fila." icon={Sparkles} />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {sortedOrders.map((order) => {
@@ -143,10 +105,10 @@ export const BarKDSView: React.FC = () => {
                 className="bg-surface-muted border border-line hover:border-sky-300 rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4 transition duration-200"
               >
                 <div>
-                  <div className="flex items-center justify-between border-b border-line pb-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl sm:text-3xl font-bold text-ink tabular-nums tracking-tight">
+                        <span className="text-2xl sm:text-2xl font-bold text-ink tabular-nums tracking-tight">
                           MESA {tableNum}
                         </span>
                         <span className="text-xs px-2.5 py-0.5 rounded-lg bg-surface-muted border border-line text-ink-muted tabular-nums font-bold">
@@ -173,7 +135,7 @@ export const BarKDSView: React.FC = () => {
                       return (
                         <div
                           key={item.id}
-                          className={`p-3.5 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm ${
+                          className={`p-3.5 rounded-2xl border transition flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3 shadow-sm ${
                             isReady
                               ? 'bg-emerald-50 border-emerald-300'
                               : 'bg-surface-muted border-line'
@@ -214,7 +176,7 @@ export const BarKDSView: React.FC = () => {
                             {isPending && (
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'READY')}
-                                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+                                className="w-full 2xl:w-auto px-4 py-2.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
                                type="button">
                                 <Wine className="w-4 h-4" />
                                 <span>Pronto!</span>

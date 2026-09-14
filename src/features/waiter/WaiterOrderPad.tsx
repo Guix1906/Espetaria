@@ -1,17 +1,17 @@
+import { ArrowLeft,ArrowRight,CheckCircle2,Flame,Plus,Receipt,ShoppingBag,X } from 'lucide-react';
 import { useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, Flame, Plus, Receipt, ShoppingBag, X } from 'lucide-react';
-import { useStockStore } from '../../stores/useStockStore';
-import { useCartStore } from '../../stores/useCartStore';
-import { useTableStore } from '../../stores/useTableStore';
-import type { RestaurantTable, Product } from '../../types/domain';
-import type { MeatDoneness } from '../../types/enums';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { FilterChip } from '../../components/ui/FilterChip';
+import { SearchField } from '../../components/ui/SearchField';
 import { formatBRL } from '../../lib/formatters';
 import { getProductAvailability } from '../../lib/productAvailability';
-import { SearchField } from '../../components/ui/SearchField';
-import { FilterChip } from '../../components/ui/FilterChip';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { WaiterDonenessModal } from './WaiterDonenessModal';
+import { useCartStore } from '../../stores/useCartStore';
+import { useStockStore } from '../../stores/useStockStore';
+import { useTableStore } from '../../stores/useTableStore';
+import type { Product,RestaurantTable } from '../../types/domain';
+import type { MeatDoneness } from '../../types/enums';
 import { WaiterCartDrawer } from './WaiterCartDrawer';
+import { WaiterDonenessModal } from './WaiterDonenessModal';
 import { WaiterViewTab } from './WaiterViewTab';
 
 interface WaiterOrderPadProps { table: RestaurantTable; onBackToTables: () => void; }

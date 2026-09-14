@@ -1,17 +1,21 @@
-import { Dialog } from '../../components/ui/Dialog';
-import React, { useState } from 'react';
-import { 
-  Flame, 
-  CheckCircle, 
-  Ban, 
-  RotateCcw, 
-  SlidersHorizontal, 
-  Search,
+import {
+  Ban,
+  CheckCircle,
   Clock,
+  Flame,
+  RotateCcw,
+  SlidersHorizontal
 } from 'lucide-react';
-import { useStockStore } from '../../stores/useStockStore';
-import { useShiftStore } from '../../stores/useShiftStore';
+import React,{ useState } from 'react';
+import { Dialog } from '../../components/ui/Dialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { FilterChip } from '../../components/ui/FilterChip';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { SearchField } from '../../components/ui/SearchField';
+import { StatCard } from '../../components/ui/StatCard';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useStockStore } from '../../stores/useStockStore';
 import { DailyPrepStock } from '../../types/domain';
 
 interface DailyStockViewProps {
@@ -32,23 +36,7 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
   const [adjustReason, setAdjustReason] = useState<string>('');
 
   if (!currentShift || currentShift.status !== 'ABERTO') {
-    return (
-      <div className="max-w-xl mx-auto my-12 p-8 bg-surface-muted border border-line rounded-2xl text-center space-y-4 shadow-sm">
-        <div className="w-16 h-16 rounded-2xl bg-brand-50 border border-brand-200 text-brand-700 flex items-center justify-center mx-auto shadow-sm">
-          <Clock className="w-8 h-8 animate-pulse" />
-        </div>
-        <h2 className="text-xl font-bold text-ink font-sans">Nenhum Turno Aberto no Momento</h2>
-        <p className="text-sm text-ink-muted">
-          Para acompanhar o estoque diário e a produção da noite, abra o turno informando os espetos e cubas preparados.
-        </p>
-        <button
-          onClick={onOpenShiftClick}
-          className="btn-primary px-8 py-3.5 rounded-2xl text-white font-bold text-sm shadow-sm"
-         type="button">
-          Iniciar Abertura da Noite
-        </button>
-      </div>
-    );
+    return <div className="page-layout"><PageHeader eyebrow="Controle de produção" title="Estoque diário" description="Acompanhe a disponibilidade dos produtos e a preparação do turno." icon={Flame} /><EmptyState title="Vamos preparar o próximo turno?" description="Informe os espetos, as bebidas e as cubas preparados para começar a acompanhar o estoque." icon={Clock} action={<button type="button" onClick={onOpenShiftClick} className="btn-primary">Abrir turno</button>} /></div>;
   }
 
   const handleToggleExhaust = (stock: DailyPrepStock) => {
@@ -101,60 +89,21 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
   });
 
   return (
-    <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-5">
+    <div className="page-layout">
       
-      {/* Cabeçalho da Visão de Estoque */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-muted p-5 rounded-2xl border border-line shadow-sm">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-brand-700 text-white flex items-center justify-center font-bold shadow-sm">
-            <Flame className="w-7 h-7" />
-          </div>
-          <div>
-            <h2 className="text-base sm:text-xl font-bold text-ink tracking-tight flex items-center gap-2 font-sans">
-              <span>Estoque Operacional da Noite (Mise en Place)</span>
-            </h2>
-            <p className="text-xs text-ink-muted mt-0.5">
-              Turno: <strong className="text-brand-700 tabular-nums">{currentShift.name}</strong> • Bloqueio instantâneo para churrasqueira e cozinha
-            </p>
-          </div>
-        </div>
-
-        {/* Filtros por Setor */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          {(['ALL', 'GRILL', 'KITCHEN', 'BAR'] as const).map((sector) => {
-            const label = 
-              sector === 'ALL' ? 'Todos os Setores' :
-              sector === 'GRILL' ? 'Churrasqueira' :
-              sector === 'KITCHEN' ? 'Cozinha (Cubas)' : 'Bar';
-            const isActive = selectedSector === sector;
-
-            return (
-              <button
-                key={sector}
-                onClick={() => setSelectedSector(sector)}
-                className={`filter-chip ${isActive ? 'is-active' : ''}`}
-               type="button" aria-pressed={isActive}>
-                {label}
-              </button>
-            );
-          })}
-        </div>
+      <PageHeader eyebrow="Controle de produção" title="Estoque diário" description={<>Disponibilidade, reposição e contagem física dos produtos.<span className="mt-1 block font-medium text-ink-secondary">{currentShift.name}</span></>} icon={Flame} />
+      <div className="stat-grid">
+        <StatCard label="Produtos disponíveis" value={dailyPrepStock.filter((stock) => !stock.is_exhausted && stock.current_quantity > 0).length} hint="Liberados para atendimento" icon={CheckCircle} tone="success" />
+        <StatCard label="Estoque baixo" value={dailyPrepStock.filter((stock) => !stock.is_exhausted && stock.current_quantity > 0 && stock.current_quantity <= 5).length} hint="Até 5 unidades disponíveis" icon={SlidersHorizontal} tone="warning" />
+        <StatCard label="Produtos esgotados" value={dailyPrepStock.filter((stock) => stock.is_exhausted || stock.current_quantity <= 0).length} hint="Bloqueados para novos pedidos" icon={Ban} tone="info" />
       </div>
+      <div className="filter-bar" aria-label="Setor do estoque">{(['ALL', 'GRILL', 'KITCHEN', 'BAR'] as const).map((sector) => <FilterChip key={sector} active={selectedSector === sector} onClick={() => setSelectedSector(sector)}>{sector === 'ALL' ? 'Todos os setores' : sector === 'GRILL' ? 'Churrasqueira' : sector === 'KITCHEN' ? 'Cozinha e cubas' : 'Bar'}</FilterChip>)}</div>
 
-      {/* Barra de Busca Rápida */}
-      <div className="relative">
-        <Search className="w-4 h-4 text-ink-muted absolute left-4 top-1/2 -translate-y-1/2" />
-        <input
-          type="text"
-          placeholder="Buscar espeto, porção ou acompanhamento..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-surface-muted border border-line rounded-2xl pl-11 pr-4 py-3 text-xs sm:text-sm text-ink placeholder-ink-muted focus:outline-none focus:border-brand-600 focus:ring-1 focus:ring-brand-600 shadow-sm"
-         aria-label="Buscar por produto ou cliente"/>
-      </div>
+      <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar produto no estoque" placeholder="Buscar espeto, porção ou bebida" />
+      {filteredStock.length === 0 && <EmptyState title="Nenhum produto encontrado" description="Tente outro nome ou selecione todos os setores." action={<button type="button" className="btn-secondary" onClick={() => { setSearchTerm(''); setSelectedSector('ALL'); }}>Limpar filtros</button>} />}
 
       {/* Cards de Itens em Produção Diária */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {filteredStock.map((stock) => {
           const prod = stock.product;
           if (!prod) return null;
@@ -183,7 +132,7 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
                     </h3>
                     <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                       <span className="text-xs px-2.5 py-0.5 rounded-full bg-surface-muted border border-line text-ink tabular-nums font-bold">
-                        {prod.sector}
+                        {prod.sector === 'GRILL' ? 'Churrasqueira' : prod.sector === 'KITCHEN' ? 'Cozinha' : prod.sector === 'BAR' ? 'Bar' : 'Outros'}
                       </span>
                       {prod.is_cubas && (
                         <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 tabular-nums font-semibold">

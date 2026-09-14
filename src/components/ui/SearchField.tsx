@@ -1,5 +1,5 @@
+import { Search,X } from 'lucide-react';
 import { useId } from 'react';
-import { Search, X } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface SearchFieldProps {

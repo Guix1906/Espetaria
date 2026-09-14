@@ -1,25 +1,30 @@
-import { Dialog } from '../../components/ui/Dialog';
-import React, { useState } from 'react';
-import { 
-  Users, 
-  Plus, 
-  Receipt, 
-  Clock, 
-  Flame, 
-  AlertCircle, 
-  CheckCircle2, 
-  X, 
-  Trash2,
+import {
+  AlertCircle,
+  CheckCircle2,
+  Flame,
+  Receipt,
   Send,
-  ShoppingBag
+  ShoppingBag,
+  Trash2,
+  Users,
+  X
 } from 'lucide-react';
-import { useTableStore } from '../../stores/useTableStore';
-import { useStockStore } from '../../stores/useStockStore';
+import React,{ useState } from 'react';
+import { Dialog } from '../../components/ui/Dialog';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { FilterChip } from '../../components/ui/FilterChip';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { SearchField } from '../../components/ui/SearchField';
+import { StatCard } from '../../components/ui/StatCard';
+import { TableCard } from '../../components/ui/TableCard';
+import { formatBRL,formatDoneness,getOrderItemStatusConfig,getTableStatusConfig } from '../../lib/formatters';
+import { getProductAvailability } from '../../lib/productAvailability';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
-import { RestaurantTable, Tab, OrderItem } from '../../types/domain';
-import { MeatDoneness, TableStatus } from '../../types/enums';
-import { formatBRL, formatElapsedMinutes, formatDoneness, getTableStatusConfig, getOrderItemStatusConfig } from '../../lib/formatters';
+import { useStockStore } from '../../stores/useStockStore';
+import { useTableStore } from '../../stores/useTableStore';
+import { OrderItem,RestaurantTable,Tab } from '../../types/domain';
+import { MeatDoneness,TableStatus } from '../../types/enums';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
 
 export const TableGridView: React.FC = () => {
@@ -29,6 +34,7 @@ export const TableGridView: React.FC = () => {
   const { currentShift } = useShiftStore();
 
   const [filter, setFilter] = useState<'ALL' | TableStatus>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
   
   // Modais
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<RestaurantTable | null>(null);
@@ -48,15 +54,9 @@ export const TableGridView: React.FC = () => {
   const [orderNotes, setOrderNotes] = useState<string>('');
   const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Filtro de mesas
-  const filteredTables = tables.filter((t) => {
-    if (filter === 'ALL') return true;
-    return t.status === filter;
-  });
-
-  const getTableTab = (tableId: string): Tab | undefined => {
-    return tabs.find((tab) => tab.table_id === tableId && tab.status === 'OPEN');
-  };
+  const getTableTab = (tableId: string): Tab | undefined => tabs.find((tab) => tab.table_id === tableId && tab.status === 'OPEN');
+  const query = searchTerm.trim().toLocaleLowerCase('pt-BR');
+  const filteredTables = tables.filter((table) => (filter === 'ALL' || table.status === filter) && (String(table.number).padStart(2, '0').includes(query) || (getTableTab(table.id)?.customer_name?.toLocaleLowerCase('pt-BR').includes(query) ?? false)));
 
   const handleOpenTabSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,138 +136,21 @@ export const TableGridView: React.FC = () => {
   };
 
   return (
-    <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-5">
+    <div className="page-layout">
       
-      {/* Barra de Filtros e Resumo do Salão */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-muted p-4 rounded-2xl border border-line shadow-sm">
-        <div>
-          <h2 className="text-base sm:text-lg font-bold text-ink tracking-tight flex items-center gap-2 font-sans">
-            <span>Visão do Salão & Mesas</span>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-surface-muted text-ink tabular-nums font-bold border border-line">
-              20 Mesas
-            </span>
-          </h2>
-          <p className="text-xs text-ink-muted mt-0.5">
-            Acompanhe o consumo em tempo real, abra novas comandas e lance pedidos diretamente
-          </p>
-        </div>
-
-        {/* Botões de Filtro */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-          {(['ALL', 'LIVRE', 'OCUPADA', 'AGUARDANDO_CONTA'] as const).map((status) => {
-            const label = status === 'ALL' ? 'Todas as Mesas' : getTableStatusConfig(status).label;
-            const count = status === 'ALL' ? tables.length : tables.filter((t) => t.status === status).length;
-            const isActive = filter === status;
-
-            return (
-              <button
-                key={status}
-                onClick={() => setFilter(status)}
-                className={`filter-chip ${isActive ? 'is-active' : ''}`}
-               type="button" aria-pressed={isActive}>
-                {label} ({count})
-              </button>
-            );
-          })}
-        </div>
+      <PageHeader eyebrow="Operação do salão" title="Salão e mesas" description="Uma visão completa do atendimento, do primeiro pedido ao fechamento da conta." icon={Users} actions={<span className="status-badge border-line bg-surface text-ink-secondary">{tables.length} mesas no salão</span>} />
+      <div className="stat-grid">
+        <StatCard label="Mesas livres" value={tables.filter((table) => table.status === 'LIVRE').length} hint="Disponíveis para novos clientes" icon={CheckCircle2} tone="success" />
+        <StatCard label="Em atendimento" value={tables.filter((table) => table.status === 'OCUPADA').length} hint="Comandas em andamento" icon={Users} tone="info" />
+        <StatCard label="Conta solicitada" value={tables.filter((table) => table.status === 'AGUARDANDO_CONTA').length} hint="Prontas para o fechamento" icon={Receipt} tone="warning" />
+        <StatCard label="Consumo em aberto" value={formatBRL(tabs.filter((tab) => tab.status === 'OPEN').reduce((sum, tab) => sum + tab.total, 0))} hint="Total das comandas abertas" icon={ShoppingBag} />
       </div>
-
-      {/* Grid de Mesas */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
-        {filteredTables.map((table) => {
-          const tab = getTableTab(table.id);
-          const statusConfig = getTableStatusConfig(table.status);
-
-          return (
-            <div
-              key={table.id}
-              className={`relative rounded-2xl p-4 border transition flex flex-col justify-between min-h-[175px] shadow-sm ${
-                table.status === 'LIVRE'
-                  ? 'bg-surface-muted border-line hover:border-emerald-400 hover:shadow-card'
-                  : table.status === 'OCUPADA'
-                  ? 'bg-surface-muted border-2 border-amber-200'
-                  : 'bg-surface-muted border-2 border-rose-200'
-              }`}
-            >
-              {/* Topo do Card da Mesa */}
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-ink tabular-nums leading-none">
-                    Mesa {String(table.number).padStart(2, '0')}
-                  </div>
-                  <div className="flex items-center gap-1 text-xs text-ink-muted mt-1 font-medium">
-                    <Users className="w-3.5 h-3.5 text-ink-muted" />
-                    <span>{table.capacity} lugares</span>
-                  </div>
-                </div>
-
-                <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${statusConfig.badgeBg}`}>
-                  {statusConfig.label}
-                </span>
-              </div>
-
-              {/* Informações da Comanda (se aberta) */}
-              {tab ? (
-                <div className="my-2 py-2 border-y border-line space-y-1 text-xs">
-                  <div className="font-bold text-ink truncate" title={tab.customer_name || ''}>
-                    {tab.customer_name || 'Comanda Sem Nome'}
-                  </div>
-                  <div className="flex items-center justify-between text-ink-muted text-xs">
-                    <span className="flex items-center gap-1 text-amber-800 font-semibold tabular-nums">
-                      <Clock className="w-3 h-3 text-amber-800" />
-                      {formatElapsedMinutes(tab.opened_at)}
-                    </span>
-                    <span className="tabular-nums font-bold text-brand-700 text-sm">
-                      {formatBRL(tab.total)}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="my-auto py-3 text-center text-xs text-ink-muted font-medium">
-                  Mesa desocupada
-                </div>
-              )}
-
-              {/* Botões de Ação na Mesa */}
-              <div className="pt-2">
-                {table.status === 'LIVRE' ? (
-                  <button
-                    disabled={!currentShift}
-                    onClick={() => {
-                      if (!currentShift) {
-                        alert('Abra o turno primeiro.');
-                        return;
-                      }
-                      setSelectedTableForOpen(table);
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold transition flex items-center justify-center gap-1.5 disabled:opacity-40 shadow-sm"
-                   type="button">
-                    <Plus className="w-4 h-4" />
-                    <span>Abrir Comanda</span>
-                  </button>
-                ) : (
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      onClick={() => setSelectedTableForOrder(table)}
-                      className="btn-primary py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 shadow-sm"
-                     type="button">
-                      <ShoppingBag className="w-3.5 h-3.5" />
-                      <span>Pedir</span>
-                    </button>
-                    <button
-                      onClick={() => setSelectedTableForBill(table)}
-                      className="btn-secondary py-2 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1"
-                     type="button">
-                      <Receipt className="w-3.5 h-3.5 text-amber-800" />
-                      <span>Conta</span>
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      {currentShift?.status !== 'ABERTO' && <div className="notice border-amber-200 bg-amber-50 text-amber-900" role="status"><AlertCircle className="h-5 w-5 shrink-0" />Abra um turno no topo para iniciar novas comandas.</div>}
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="filter-bar" aria-label="Situação das mesas">{(['ALL', 'LIVRE', 'OCUPADA', 'AGUARDANDO_CONTA', 'RESERVADA'] as const).map((status) => <FilterChip key={status} active={filter === status} onClick={() => setFilter(status)} count={status === 'ALL' ? tables.length : tables.filter((table) => table.status === status).length}>{status === 'ALL' ? 'Todas' : getTableStatusConfig(status).label}</FilterChip>)}</div>
+        <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar mesa ou cliente" placeholder="Número da mesa ou cliente" className="w-full shrink-0 xl:w-64" />
       </div>
+      {filteredTables.length ? <div className="table-grid">{filteredTables.map((table) => <TableCard key={table.id} table={table} tab={getTableTab(table.id)} disabled={currentShift?.status !== 'ABERTO'} onOpen={() => setSelectedTableForOpen(table)} onOrder={() => setSelectedTableForOrder(table)} onBill={() => setSelectedTableForBill(table)} />)}</div> : <EmptyState title="Nenhuma mesa encontrada" description="Tente outra busca ou situação da mesa." action={<button type="button" className="btn-secondary" onClick={() => { setFilter('ALL'); setSearchTerm(''); }}>Limpar filtros</button>} />}
 
       {/* ------------------------------------------------------------------ */}
       {/* MODAL: ABRIR COMANDA */}
@@ -397,7 +280,7 @@ export const TableGridView: React.FC = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-52 overflow-y-auto p-1.5 bg-surface-muted rounded-2xl border border-line">
                   {products.map((prod) => {
                     const daily = dailyPrepStock.find((s) => s.product_id === prod.id);
-                    const isExhausted = !prod.available || (daily && (daily.is_exhausted || daily.current_quantity <= 0));
+                    const isExhausted = !getProductAvailability(prod, daily).isAvailable;
                     const isSelected = selectedProductId === prod.id;
 
                     return (
