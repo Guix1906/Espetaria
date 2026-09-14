@@ -1,7 +1,7 @@
 import React from 'react';
-import { Smartphone, LayoutGrid, Flame, PackageCheck, FileText } from 'lucide-react';
+import { Smartphone, LayoutGrid, Flame, Receipt, PackageCheck, FileText } from 'lucide-react';
 
-export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'stock' | 'audit';
+export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'stock' | 'audit';
 
 interface NavigationTabsProps {
   activeTab: ActiveTab;
@@ -9,6 +9,7 @@ interface NavigationTabsProps {
   openTablesCount: number;
   exhaustedCount: number;
   pendingProductionCount?: number;
+  waitingBillCount?: number;
 }
 
 export const NavigationTabs: React.FC<NavigationTabsProps> = ({
@@ -17,6 +18,7 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
   openTablesCount,
   exhaustedCount,
   pendingProductionCount = 0,
+  waitingBillCount = 0,
 }) => {
   const tabs = [
     {
@@ -39,6 +41,13 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       icon: Flame,
       badge: pendingProductionCount > 0 ? `${pendingProductionCount} na fila` : undefined,
       badgeColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse',
+    },
+    {
+      id: 'cashier' as ActiveTab,
+      label: 'Caixa & Fechamento',
+      icon: Receipt,
+      badge: waitingBillCount > 0 ? `${waitingBillCount} pedindo conta` : undefined,
+      badgeColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse font-bold',
     },
     {
       id: 'stock' as ActiveTab,

@@ -261,13 +261,8 @@ export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
         isOpen={isViewTabOpen}
         onClose={() => setIsViewTabOpen(false)}
         onRequestBill={() => {
-          useTableStore.setState((state) => ({
-            tables: state.tables.map((t) =>
-              t.id === table.id ? { ...t, status: 'AGUARDANDO_CONTA' as const } : t
-            ),
-          }));
+          useTableStore.getState().requestBill(table.id);
           setIsViewTabOpen(false);
-          alert('Mesa marcada como AGUARDANDO CONTA.');
         }}
       />
 

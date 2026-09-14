@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { RestaurantTable, Tab, Order, OrderItem } from '../types/domain';
-import { MeatDoneness, OrderItemStatus, ProductionSector } from '../types/enums';
+import { RestaurantTable, Tab, Order, OrderItem, Payment } from '../types/domain';
+import { MeatDoneness, OrderItemStatus, ProductionSector, PaymentMethod } from '../types/enums';
 import { INITIAL_TABLES } from '../lib/mockData';
 import { generateId } from '../lib/utils';
 import { useStockStore } from './useStockStore';
@@ -20,6 +20,7 @@ interface TableState {
   tabs: Tab[];
   orders: Order[];
   orderItems: OrderItem[];
+  payments: Payment[];
 
   // Ações de Negócio
   openTab: (
@@ -46,6 +47,13 @@ interface TableState {
   updateOrderItemStatus: (orderItemId: string, status: OrderItemStatus) => void;
   updateOrderSectorItemsStatus: (orderId: string, sector: ProductionSector, status: OrderItemStatus) => void;
   markDelivered: (orderItemId: string) => void;
+  requestBill: (tableId: string) => void;
+  updateTabBillAdjustments: (tabId: string, options: { includeServiceFee: boolean; discountAmount?: number }) => void;
+  addPaymentAtomic: (shiftId: string, tabId: string, amount: number, method: PaymentMethod, receivedBy: string, notes?: string) => Payment;
+  removePayment: (paymentId: string) => void;
+  getTabPayments: (tabId: string) => Payment[];
+  closeTabAtomic: (shiftId: string, tabId: string, userId: string) => { tab: Tab; payments: Payment[]; items: OrderItem[] };
+  reopenTabAtomic: (tabId: string, userId: string, reason: string) => void;
   getTabByTableId: (tableId: string) => Tab | undefined;
   getTabOrderItems: (tabId: string) => OrderItem[];
 }
@@ -55,6 +63,7 @@ export const useTableStore = create<TableState>((set, get) => ({
   tabs: [],
   orders: [],
   orderItems: [],
+  payments: [],
 
   openTab: (tableId, customerName, peopleCount, notes, userId, shiftId) => {
     const table = get().tables.find((t) => t.id === tableId);
@@ -346,6 +355,185 @@ export const useTableStore = create<TableState>((set, get) => ({
 
   markDelivered: (orderItemId) => {
     get().updateOrderItemStatus(orderItemId, 'DELIVERED');
+  },
+
+  requestBill: (tableId) => {
+    const table = get().tables.find((t) => t.id === tableId);
+    if (!table) return;
+
+    set({
+      tables: get().tables.map((t) =>
+        t.id === tableId ? { ...t, status: 'AGUARDANDO_CONTA' as const } : t
+      ),
+    });
+
+    logger.info({
+      context: 'TableStore',
+      message: `Mesa ${table.number} solicitou a conta ao caixa.`,
+    });
+  },
+
+  updateTabBillAdjustments: (tabId, options) => {
+    const tab = get().tabs.find((t) => t.id === tabId);
+    if (!tab) throw new Error('Comanda não encontrada.');
+
+    const subtotal = tab.subtotal;
+    const serviceFee = options.includeServiceFee ? Math.round(subtotal * 0.1 * 100) / 100 : 0;
+    const discount = Math.max(0, Math.min(subtotal + serviceFee, options.discountAmount ?? tab.discount));
+    const total = Math.max(0, subtotal + serviceFee - discount);
+
+    const updatedTab: Tab = {
+      ...tab,
+      service_fee: serviceFee,
+      discount,
+      total,
+    };
+
+    set({
+      tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
+    });
+
+    logger.info({
+      context: 'TableStore',
+      message: `Ajuste de conta na comanda ${tabId}: Serviço 10% = ${options.includeServiceFee ? 'SIM' : 'NÃO'}, Desconto = R$ ${discount.toFixed(2)}, Novo Total = R$ ${total.toFixed(2)}.`,
+    });
+  },
+
+  addPaymentAtomic: (shiftId, tabId, amount, method, receivedBy, notes) => {
+    if (amount <= 0) throw new Error('O valor do pagamento deve ser maior que zero.');
+
+    const tab = get().tabs.find((t) => t.id === tabId);
+    if (!tab) throw new Error('Comanda não encontrada.');
+    if (tab.status === 'CLOSED') throw new Error('Comanda já encerrada.');
+
+    const newPayment: Payment = {
+      id: generateId(),
+      shift_id: shiftId,
+      tab_id: tabId,
+      amount: Math.round(amount * 100) / 100,
+      method,
+      status: 'PAID',
+      external_reference: null,
+      notes: notes ?? null,
+      received_by: receivedBy,
+      paid_at: new Date().toISOString(),
+    };
+
+    set({
+      payments: [...get().payments, newPayment],
+    });
+
+    logger.info({
+      context: 'TableStore',
+      message: `Pagamento de R$ ${amount.toFixed(2)} (${method}) registrado na comanda ${tabId}.`,
+    });
+
+    return newPayment;
+  },
+
+  removePayment: (paymentId) => {
+    const payment = get().payments.find((p) => p.id === paymentId);
+    if (!payment) return;
+
+    const tab = get().tabs.find((t) => t.id === payment.tab_id);
+    if (tab && tab.status === 'CLOSED') {
+      throw new Error('Não é possível remover pagamento de uma comanda já fechada.');
+    }
+
+    set({
+      payments: get().payments.filter((p) => p.id !== paymentId),
+    });
+
+    logger.info({
+      context: 'TableStore',
+      message: `Pagamento #${paymentId} de R$ ${payment.amount.toFixed(2)} removido.`,
+    });
+  },
+
+  getTabPayments: (tabId) => {
+    return get().payments.filter((p) => p.tab_id === tabId && p.status === 'PAID');
+  },
+
+  closeTabAtomic: (_shiftId, tabId, userId) => {
+    const tab = get().tabs.find((t) => t.id === tabId);
+    if (!tab) throw new Error('Comanda não encontrada.');
+    if (tab.status === 'CLOSED') throw new Error('Esta comanda já foi encerrada anteriormente.');
+
+    const tabPayments = get().payments.filter((p) => p.tab_id === tabId && p.status === 'PAID');
+    const totalPaid = tabPayments.reduce((sum, p) => sum + p.amount, 0);
+
+    // Validação estrita: total pago deve ser maior ou igual ao total devido (tolerância 0.01 por centavos)
+    if (totalPaid < tab.total - 0.01) {
+      const missing = tab.total - totalPaid;
+      throw new Error(
+        `Pagamento insuficiente. Total devido: R$ ${tab.total.toFixed(2)}, Total pago: R$ ${totalPaid.toFixed(2)}. Faltam R$ ${missing.toFixed(2)}.`
+      );
+    }
+
+    const now = new Date().toISOString();
+    const updatedTab: Tab = {
+      ...tab,
+      status: 'CLOSED',
+      closed_by: userId,
+      closed_at: now,
+    };
+
+    // Atualiza comanda, desocupa mesa e fecha pedidos da comanda
+    const table = get().tables.find((t) => t.id === tab.table_id);
+    const updatedTables = get().tables.map((t) =>
+      t.id === tab.table_id ? { ...t, status: 'LIVRE' as const, current_tab: undefined } : t
+    );
+
+    const updatedOrders = get().orders.map((o) =>
+      o.tab_id === tabId ? { ...o, status: 'CLOSED' as const } : o
+    );
+
+    set({
+      tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
+      tables: updatedTables,
+      orders: updatedOrders,
+    });
+
+    const items = get().getTabOrderItems(tabId);
+
+    logger.info({
+      context: 'TableStore',
+      message: `Comanda da Mesa ${table?.number ?? '??'} encerrada com sucesso pelo Caixa. Total: R$ ${tab.total.toFixed(2)}, Pago: R$ ${totalPaid.toFixed(2)}.`,
+    });
+
+    return {
+      tab: updatedTab,
+      payments: tabPayments,
+      items,
+    };
+  },
+
+  reopenTabAtomic: (tabId, userId, reason) => {
+    const tab = get().tabs.find((t) => t.id === tabId);
+    if (!tab) throw new Error('Comanda não encontrada.');
+    if (tab.status !== 'CLOSED') throw new Error('Apenas comandas fechadas podem ser reabertas.');
+
+    const updatedTab: Tab = {
+      ...tab,
+      status: 'OPEN',
+      closed_by: null,
+      closed_at: null,
+    };
+
+    const table = get().tables.find((t) => t.id === tab.table_id);
+    const updatedTables = get().tables.map((t) =>
+      t.id === tab.table_id ? { ...t, status: 'OCUPADA' as const, current_tab: updatedTab } : t
+    );
+
+    set({
+      tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
+      tables: updatedTables,
+    });
+
+    logger.warn({
+      context: 'TableStore',
+      message: `Comanda da Mesa ${table?.number} reaberta por ${userId}. Motivo: ${reason}`,
+    });
   },
 
   getTabByTableId: (tableId) => {

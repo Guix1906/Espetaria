@@ -6,6 +6,7 @@ import { DailyStockView } from './features/stock/DailyStockView';
 import { AuditLogView } from './features/audit/AuditLogView';
 import { WaiterModule } from './features/waiter/WaiterModule';
 import { KDSModule } from './features/kds/KDSModule';
+import { CashierModule } from './features/cashier/CashierModule';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { useTableStore } from './stores/useTableStore';
 import { useStockStore } from './stores/useStockStore';
@@ -25,13 +26,16 @@ export const App: React.FC = () => {
       setActiveTab('waiter');
     } else if (['CHURRASQUEIRA', 'COZINHA', 'BAR'].includes(currentProfile.role)) {
       setActiveTab('kds');
+    } else if (currentProfile.role === 'CAIXA') {
+      setActiveTab('cashier');
     }
   }, [currentProfile.role]);
 
   const { tables, orderItems } = useTableStore();
   const { dailyPrepStock } = useStockStore();
 
-  const openTablesCount = tables.filter((t) => t.status === 'OCUPADA').length;
+  const openTablesCount = tables.filter((t) => t.status === 'OCUPADA' || t.status === 'AGUARDANDO_CONTA').length;
+  const waitingBillCount = tables.filter((t) => t.status === 'AGUARDANDO_CONTA').length;
   const exhaustedCount = dailyPrepStock.filter((s) => s.is_exhausted || s.current_quantity <= 0).length;
   const pendingProductionCount = orderItems.filter(
     (i) => i.status === 'RECEIVED' || i.status === 'IN_PREPARATION'
@@ -50,6 +54,7 @@ export const App: React.FC = () => {
         openTablesCount={openTablesCount}
         exhaustedCount={exhaustedCount}
         pendingProductionCount={pendingProductionCount}
+        waitingBillCount={waitingBillCount}
       />
 
       {/* Conteúdo do Módulo Ativo */}
@@ -57,6 +62,7 @@ export const App: React.FC = () => {
         {activeTab === 'waiter' && <WaiterModule />}
         {activeTab === 'tables' && <TableGridView />}
         {activeTab === 'kds' && <KDSModule />}
+        {activeTab === 'cashier' && <CashierModule />}
         {activeTab === 'stock' && (
           <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />
         )}

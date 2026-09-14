@@ -19,6 +19,7 @@ import { useShiftStore } from '../../stores/useShiftStore';
 import { RestaurantTable, Tab, OrderItem } from '../../types/domain';
 import { MeatDoneness, TableStatus } from '../../types/enums';
 import { formatBRL, formatElapsedMinutes, formatDoneness, getTableStatusConfig, getOrderItemStatusConfig } from '../../lib/formatters';
+import { TableSettlementModal } from '../cashier/TableSettlementModal';
 
 export const TableGridView: React.FC = () => {
   const { tables, tabs, openTab, addOrderAtomic, cancelOrderItemAtomic, getTabOrderItems } = useTableStore();
@@ -32,6 +33,7 @@ export const TableGridView: React.FC = () => {
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<RestaurantTable | null>(null);
   const [selectedTableForOrder, setSelectedTableForOrder] = useState<RestaurantTable | null>(null);
   const [selectedTableForBill, setSelectedTableForBill] = useState<RestaurantTable | null>(null);
+  const [selectedTableForCheckout, setSelectedTableForCheckout] = useState<RestaurantTable | null>(null);
 
   // Estados dos formulários de modal
   const [customerName, setCustomerName] = useState('');
@@ -653,12 +655,35 @@ export const TableGridView: React.FC = () => {
                   <div className="text-[11px] text-slate-400 text-right pt-0.5">
                     Divisão sugerida ({tab.people_count} pessoas): <span className="font-mono font-semibold text-white">{formatBRL(tab.total / tab.people_count)}</span> cada
                   </div>
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => {
+                        const target = selectedTableForBill;
+                        setSelectedTableForBill(null);
+                        setSelectedTableForCheckout(target);
+                      }}
+                      className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50"
+                    >
+                      <Receipt className="w-4 h-4" />
+                      <span>Ir para Fechamento no Caixa</span>
+                    </button>
+                  </div>
                 </div>
               );
             })()}
 
           </div>
         </div>
+      )}
+
+      {/* Modal de Fechamento e Checkout do Caixa */}
+      {selectedTableForCheckout && (
+        <TableSettlementModal
+          table={selectedTableForCheckout}
+          isOpen={true}
+          onClose={() => setSelectedTableForCheckout(null)}
+        />
       )}
 
     </div>
