@@ -1,3 +1,4 @@
+import { Dialog } from '../../components/ui/Dialog';
 import React, { useState } from 'react';
 import { X, Flame, AlertOctagon, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useStockStore } from '../../stores/useStockStore';
@@ -60,57 +61,57 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
-      <div className="card-carbon border border-carbon-700 rounded-3xl w-full max-w-2xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] flex flex-col">
+    <Dialog label="Disponibilidade dos espetos" onClose={onClose}>
+      <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-2xl p-5 sm:p-6 shadow-card space-y-4 max-h-[92vh] flex flex-col fade-in zoom-in-95">
         
         {/* Topo do Modal */}
-        <div className="flex items-center justify-between border-b border-carbon-800 pb-4">
+        <div className="flex items-center justify-between border-b border-line pb-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-ruby-950/80 border border-ruby-600/50 text-ruby-400 flex items-center justify-center shadow-lg shadow-ruby-950/50">
+            <div className="w-11 h-11 rounded-2xl bg-rose-100 text-rose-700 flex items-center justify-center shadow-sm">
               <Flame className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="font-extrabold text-white text-lg leading-tight font-serif">
+              <h3 className="font-bold text-ink text-lg leading-tight font-sans">
                 Controle Rápido de Esgotamento
               </h3>
-              <p className="text-xs text-obsidian-400 mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 Esgote ou reative espetos em &lt; 100ms para todos os garçons e delivery
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2.5 rounded-xl text-obsidian-400 hover:text-white hover:bg-carbon-800 transition"
-          >
+            className="p-2.5 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
+           type="button" aria-label="Fechar janela">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Modal interno de confirmação com motivo */}
         {selectedProductId && (
-          <div className="p-4 rounded-2xl bg-ruby-950/50 border border-ruby-600/70 space-y-3 animate-in fade-in zoom-in-95 shadow-xl shadow-ruby-950/40">
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-300 space-y-3 fade-in zoom-in-95 shadow-sm">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-ruby-300 font-bold text-sm">
-                <AlertOctagon className="w-5 h-5 text-ruby-400" />
+              <div className="flex items-center gap-2 text-rose-900 font-bold text-sm">
+                <AlertOctagon className="w-5 h-5 text-rose-700" />
                 <span>Esgotar {products.find((p) => p.id === selectedProductId)?.name}?</span>
               </div>
               <button
                 onClick={() => setSelectedProductId(null)}
-                className="text-xs text-obsidian-400 hover:text-white"
-              >
+                className="text-xs text-ink-muted hover:text-ink"
+               type="button">
                 Cancelar
               </button>
             </div>
 
             <div>
-              <label className="text-xs text-obsidian-300 font-semibold mb-1 block">
+              <label className="text-xs text-ink font-semibold mb-1 block" htmlFor="grillexhaustmodal-field-1">
                 Motivo do Esgotamento Imediato:
               </label>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-obsidian-900 border border-ruby-700/60 text-white text-xs focus:ring-2 focus:ring-ruby-500 focus:outline-none"
-              >
+                className="w-full px-3.5 py-2.5 rounded-xl bg-surface-muted border border-rose-300 text-ink text-xs focus:ring-2 focus:ring-brand-600 focus:outline-none"
+               aria-label="Motivo do Esgotamento Imediato:" id="grillexhaustmodal-field-1">
                 {COMMON_REASONS.map((r) => (
                   <option key={r} value={r}>
                     {r}
@@ -122,15 +123,15 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
             <div className="flex gap-2.5 pt-1">
               <button
                 onClick={confirmExhaustion}
-                className="flex-1 py-3 rounded-xl bg-ruby-600 hover:bg-ruby-500 text-white font-bold text-xs uppercase tracking-wider transition active:scale-95 shadow-lg shadow-ruby-950/50 flex items-center justify-center gap-2"
-              >
+                className="flex-1 py-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-2"
+               type="button">
                 <AlertOctagon className="w-4 h-4" />
                 <span>Confirmar Bloqueio Imediato</span>
               </button>
               <button
                 onClick={() => setSelectedProductId(null)}
-                className="btn-carbon px-4 py-3 rounded-xl text-xs"
-              >
+                className="btn-secondary px-4 py-3 rounded-xl text-xs"
+               type="button">
                 Voltar
               </button>
             </div>
@@ -149,34 +150,34 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
                 key={prod.id}
                 className={`p-3.5 sm:p-4 rounded-2xl border transition flex items-center justify-between gap-3 ${
                   isExhausted
-                    ? 'bg-ruby-950/25 border-ruby-800/60 text-obsidian-400'
-                    : 'bg-carbon-800/70 border-carbon-700/80 text-white hover:border-carbon-600'
+                    ? 'bg-rose-50 border-rose-200 text-ink-muted'
+                    : 'bg-surface-muted border-line text-ink hover:border-line'
                 }`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-white truncate">
+                    <span className="font-bold text-sm text-ink truncate">
                       {prod.name}
                     </span>
                     {isExhausted ? (
-                      <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-ruby-900/80 text-ruby-300 border border-ruby-600 font-bold uppercase tracking-wider animate-pulse">
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 font-bold">
                         ESGOTADO
                       </span>
                     ) : (
-                      <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/70 font-semibold">
+                      <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold">
                         DISPONÍVEL
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-3 mt-1.5 text-xs text-obsidian-400">
+                  <div className="flex items-center gap-3 mt-1.5 text-xs text-ink-muted">
                     <span>
                       Estoque disponível:{' '}
-                      <strong className={remaining <= 5 ? 'text-gold-400 font-mono font-bold' : 'text-emerald-400 font-mono font-bold'}>
+                      <strong className={remaining <= 5 ? 'text-amber-800 tabular-nums font-bold' : 'text-emerald-700 tabular-nums font-bold'}>
                         {remaining} espetos
                       </strong>
                     </span>
                     {stock?.exhaust_reason && isExhausted && (
-                      <span className="text-ruby-400/90 italic truncate max-w-[200px]">
+                      <span className="text-rose-700 italic truncate max-w-[200px]">
                         Motivo: {stock.exhaust_reason}
                       </span>
                     )}
@@ -186,12 +187,12 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
                 {/* Botão de Ação 1-Tap */}
                 <button
                   onClick={() => handleToggle(prod.id, isExhausted)}
-                  className={`px-4 py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition active:scale-95 flex items-center gap-2 shrink-0 ${
+                  className={`px-4 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 shrink-0 ${
                     isExhausted
-                      ? 'btn-emerald text-white shadow-md'
-                      : 'bg-ruby-600 hover:bg-ruby-500 text-white shadow-md shadow-ruby-950/50'
+                      ? 'btn-success text-white shadow-sm'
+                      : 'bg-rose-700 hover:bg-rose-800 text-white shadow-sm'
                   }`}
-                >
+                 type="button">
                   {isExhausted ? (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
@@ -210,17 +211,17 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
         </div>
 
         {/* Rodapé Informativo */}
-        <div className="pt-3 border-t border-carbon-800 flex items-center justify-between text-xs text-obsidian-400">
+        <div className="pt-3 border-t border-line flex items-center justify-between text-xs text-ink-muted">
           <span>* Ao esgotar, o item congela imediatamente nos celulares dos garçons e delivery.</span>
           <button
             onClick={onClose}
-            className="btn-carbon px-4 py-2 rounded-xl text-xs"
-          >
+            className="btn-secondary px-4 py-2 rounded-xl text-xs"
+           type="button">
             Fechar
           </button>
         </div>
 
       </div>
-    </div>
+    </Dialog>
   );
 };

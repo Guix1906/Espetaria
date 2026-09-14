@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Clock, AlertTriangle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { AlertTriangle, Clock } from 'lucide-react';
 
 interface KDSElapsedTimerProps {
   createdAt: string;
@@ -7,51 +7,28 @@ interface KDSElapsedTimerProps {
   urgentMinutes?: number;
 }
 
-export const KDSElapsedTimer: React.FC<KDSElapsedTimerProps> = ({
-  createdAt,
-  warningMinutes = 10,
-  urgentMinutes = 20,
-}) => {
-  const [elapsedSeconds, setElapsedSeconds] = useState<number>(() => {
-    const diff = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000);
-    return Math.max(0, diff);
-  });
+export function KDSElapsedTimer({ createdAt, warningMinutes = 10, urgentMinutes = 20 }: KDSElapsedTimerProps) {
+  const elapsed = () => Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000));
+  const [elapsedSeconds, setElapsedSeconds] = useState(elapsed);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      const diff = Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000);
-      setElapsedSeconds(Math.max(0, diff));
-    }, 1000);
-
-    return () => clearInterval(interval);
+    const update = () => setElapsedSeconds(Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000)));
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
   }, [createdAt]);
 
   const minutes = Math.floor(elapsedSeconds / 60);
-  const seconds = elapsedSeconds % 60;
-  const timeFormatted = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-
+  const time = `${String(minutes).padStart(2, '0')}:${String(elapsedSeconds % 60).padStart(2, '0')}`;
   const isUrgent = minutes >= urgentMinutes;
-  const isWarning = minutes >= warningMinutes && !isUrgent;
-
-  let colorClasses = 'bg-white/5 text-stone-300 border-white/10';
-  if (isUrgent) {
-    colorClasses = 'bg-rose-500/20 text-rose-300 border-rose-500/50 animate-pulse font-bold shadow-md shadow-rose-950/40';
-  } else if (isWarning) {
-    colorClasses = 'bg-amber-500/20 text-amber-300 border-amber-500/50 font-semibold';
-  }
+  const isWarning = minutes >= warningMinutes;
+  const label = isUrgent ? 'Atrasado' : isWarning ? 'Atenção' : 'No prazo';
+  const colors = isUrgent ? 'border-rose-300 bg-rose-50 text-rose-800' : isWarning ? 'border-amber-300 bg-amber-50 text-amber-900' : 'border-emerald-200 bg-emerald-50 text-emerald-800';
 
   return (
-    <div
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-xl border font-mono text-xs ${colorClasses}`}
-      title={`Pedido feito às ${new Date(createdAt).toLocaleTimeString()}`}
-    >
-      {isUrgent ? (
-        <AlertTriangle className="w-3.5 h-3.5 text-rose-400 animate-bounce" />
-      ) : (
-        <Clock className="w-3.5 h-3.5 opacity-80 text-stone-400" />
-      )}
-      <span className="font-bold">{timeFormatted}</span>
-      {isUrgent && <span className="text-[10px] uppercase tracking-wider font-black ml-0.5 text-rose-300">SLA!</span>}
+    <div className={`inline-flex shrink-0 flex-col items-end gap-0.5 rounded-xl border px-2.5 py-1.5 ${colors}`} aria-label={`${label}. Tempo de espera: ${minutes} minutos e ${elapsedSeconds % 60} segundos`} title={`Pedido feito às ${new Date(createdAt).toLocaleTimeString('pt-BR')}`}>
+      <span className="flex items-center gap-1.5 text-sm font-bold tabular-nums">{isUrgent ? <AlertTriangle className="h-4 w-4" aria-hidden="true" /> : <Clock className="h-4 w-4" aria-hidden="true" />}{time}</span>
+      <span className="text-xs font-semibold">{label}</span>
     </div>
   );
-};
+}

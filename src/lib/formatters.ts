@@ -74,13 +74,13 @@ export function formatDoneness(doneness: MeatDoneness | null | undefined): strin
 export function getTableStatusConfig(status: TableStatus): { label: string; color: string; badgeBg: string } {
   switch (status) {
     case 'LIVRE':
-      return { label: 'Livre', color: 'text-emerald-400', badgeBg: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-sm shadow-emerald-950/20' };
+      return { label: 'Livre', color: 'text-emerald-700', badgeBg: 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm' };
     case 'OCUPADA':
-      return { label: 'Ocupada', color: 'text-amber-400', badgeBg: 'bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-sm shadow-amber-950/20' };
+      return { label: 'Ocupada', color: 'text-amber-800', badgeBg: 'bg-amber-50 border-amber-300 text-amber-800 shadow-sm' };
     case 'AGUARDANDO_CONTA':
-      return { label: 'Aguardando Conta', color: 'text-rose-400', badgeBg: 'bg-rose-500/15 border-rose-500/40 text-rose-300 shadow-sm shadow-rose-950/20 animate-pulse' };
+      return { label: 'Aguardando Conta', color: 'text-rose-700', badgeBg: 'bg-rose-50 border-rose-300 text-rose-800 shadow-sm' };
     case 'RESERVADA':
-      return { label: 'Reservada', color: 'text-sky-400', badgeBg: 'bg-sky-500/10 border-sky-500/30 text-sky-300 shadow-sm shadow-sky-950/20' };
+      return { label: 'Reservada', color: 'text-sky-700', badgeBg: 'bg-sky-50 border-sky-300 text-sky-800 shadow-sm' };
   }
 }
 
@@ -90,15 +90,15 @@ export function getTableStatusConfig(status: TableStatus): { label: string; colo
 export function getOrderItemStatusConfig(status: OrderItemStatus): { label: string; color: string; bg: string } {
   switch (status) {
     case 'RECEIVED':
-      return { label: 'Recebido', color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/30 text-amber-300' };
+      return { label: 'Recebido', color: 'text-amber-800', bg: 'bg-amber-50 border-amber-200 text-amber-800' };
     case 'IN_PREPARATION':
-      return { label: 'Na Grelha / Preparo', color: 'text-orange-400', bg: 'bg-orange-500/15 border-orange-500/40 text-orange-300 shadow-sm shadow-orange-950/30' };
+      return { label: 'Na Grelha / Preparo', color: 'text-brand-700', bg: 'bg-brand-50 border-brand-300 text-brand-800 shadow-sm' };
     case 'READY':
-      return { label: 'Pronto', color: 'text-emerald-400', bg: 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 shadow-sm shadow-emerald-950/30' };
+      return { label: 'Pronto', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm' };
     case 'DELIVERED':
-      return { label: 'Entregue', color: 'text-stone-400', bg: 'bg-white/5 border-white/10 text-stone-300' };
+      return { label: 'Entregue', color: 'text-ink-muted', bg: 'bg-surface-muted border-line text-ink-muted' };
     case 'CANCELLED':
-      return { label: 'Cancelado', color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/30 text-rose-300 line-through' };
+      return { label: 'Cancelado', color: 'text-rose-700', bg: 'bg-rose-50 border-rose-200 text-rose-800 line-through' };
   }
 }
 

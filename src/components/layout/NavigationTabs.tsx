@@ -1,69 +1,75 @@
-import React from 'react';
-import { Smartphone, LayoutGrid, Flame, Receipt, PackageCheck, FileText, Bike, Sparkles, ShieldCheck } from 'lucide-react';
+import { ChefHat, X } from 'lucide-react';
+import { Dialog } from '../ui/Dialog';
+import { BrandMark } from './BrandMark';
+import { NAVIGATION_GROUPS, PAGE_TITLES, type ActiveTab } from './navigation';
 
-export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'master' | 'stock' | 'audit';
-interface NavigationTabsProps { activeTab: ActiveTab; onChangeTab: (tab: ActiveTab) => void; openTablesCount: number; exhaustedCount: number; pendingProductionCount?: number; waitingBillCount?: number; activeDeliveriesCount?: number; }
+export type { ActiveTab } from './navigation';
 
-export const NavigationTabs: React.FC<NavigationTabsProps> = ({ 
-  activeTab, 
-  onChangeTab, 
-  openTablesCount, 
-  exhaustedCount, 
-  pendingProductionCount = 0, 
-  waitingBillCount = 0, 
-  activeDeliveriesCount = 0 
-}) => {
-  const tabs = [
-    { id: 'waiter' as ActiveTab, label: 'Garçom', icon: Smartphone, badge: 'PWA', badgeVariant: 'default' },
-    { id: 'tables' as ActiveTab, label: 'Salão & Mesas', icon: LayoutGrid, badge: openTablesCount ? `${openTablesCount}` : undefined, badgeVariant: 'gold' },
-    { id: 'kds' as ActiveTab, label: 'KDS Produção', icon: Flame, badge: pendingProductionCount ? `${pendingProductionCount}` : undefined, badgeVariant: 'ember' },
-    { id: 'cashier' as ActiveTab, label: 'Caixa', icon: Receipt, badge: waitingBillCount ? `${waitingBillCount}` : undefined, badgeVariant: 'ruby' },
-    { id: 'delivery' as ActiveTab, label: 'Delivery', icon: Bike, badge: activeDeliveriesCount ? `${activeDeliveriesCount}` : undefined, badgeVariant: 'sky' },
-    { id: 'menu' as ActiveTab, label: 'Cardápio Digital', icon: Sparkles },
-    { id: 'master' as ActiveTab, label: 'Gestão Master', icon: ShieldCheck },
-    { id: 'stock' as ActiveTab, label: 'Estoque Diário', icon: PackageCheck, badge: exhaustedCount ? `${exhaustedCount}` : undefined, badgeVariant: 'ruby' },
-    { id: 'audit' as ActiveTab, label: 'Auditoria', icon: FileText },
-  ];
+interface NavigationTabsProps {
+  activeTab: ActiveTab;
+  onChangeTab: (tab: ActiveTab) => void;
+  openTablesCount: number;
+  exhaustedCount: number;
+  pendingProductionCount?: number;
+  waitingBillCount?: number;
+  activeDeliveriesCount?: number;
+  isMobileOpen: boolean;
+  onCloseMobile: () => void;
+}
+
+export function NavigationTabs({ activeTab, onChangeTab, openTablesCount, exhaustedCount, pendingProductionCount = 0, waitingBillCount = 0, activeDeliveriesCount = 0, isMobileOpen, onCloseMobile }: NavigationTabsProps) {
+  const counts: Partial<Record<ActiveTab, number>> = {
+    tables: openTablesCount,
+    kds: pendingProductionCount,
+    cashier: waitingBillCount,
+    delivery: activeDeliveriesCount,
+    stock: exhaustedCount,
+  };
+
+  const content = (mobile: boolean) => (
+    <>
+      <div className="flex items-center justify-between gap-2 border-b border-line px-5 py-6">
+        <BrandMark />
+        {mobile && <button type="button" onClick={onCloseMobile} className="icon-button" aria-label="Fechar menu"><X className="h-5 w-5" /></button>}
+      </div>
+      <nav aria-label={mobile ? 'Menu principal' : 'Navegação principal'} className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5">
+        {NAVIGATION_GROUPS.map((group) => (
+          <div key={group.label}>
+            <p className="mb-2 px-3.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-ink-muted">{group.label}</p>
+            <div className="space-y-1">
+              {group.items.map(({ id, icon: Icon }) => {
+                const count = counts[id] ?? 0;
+                const needsAttention = id === 'cashier' || id === 'stock';
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className="nav-item"
+                    aria-current={activeTab === id ? 'page' : undefined}
+                    aria-controls="main-content"
+                    onClick={() => { onChangeTab(id); if (mobile) onCloseMobile(); }}
+                  >
+                    <Icon className="h-[18px] w-[18px]" strokeWidth={1.8} aria-hidden="true" />
+                    <span className="flex-1">{PAGE_TITLES[id]}</span>
+                    {count > 0 && <span className={`rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums ${needsAttention ? 'bg-rose-50 text-rose-700' : 'bg-surface-muted text-ink-secondary'}`} aria-label={`${count} ${id === 'stock' ? 'produtos esgotados' : 'em andamento'}`}>{count}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </nav>
+      <div className="m-4 mt-0 flex items-start gap-3 rounded-2xl border border-brand-100 bg-brand-50 p-4">
+        <ChefHat className="mt-0.5 h-5 w-5 shrink-0 text-brand-700" aria-hidden="true" />
+        <div><p className="text-xs font-semibold text-brand-900">Uma operação, mais simples.</p><p className="mt-1 text-xs leading-relaxed text-ink-muted">Salão, cozinha e delivery no mesmo lugar.</p></div>
+      </div>
+    </>
+  );
 
   return (
-    <nav className="border-b border-white/[0.08] bg-[#0c0d14]/90 px-3 backdrop-blur-xl sm:px-6">
-      <div className="mx-auto flex max-w-[1520px] items-center gap-1.5 overflow-x-auto py-2 scrollbar-none">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-
-          let badgeClasses = 'bg-white/10 text-stone-300';
-          if (tab.badgeVariant === 'ember') badgeClasses = 'bg-orange-500/20 text-orange-400 border border-orange-500/30';
-          else if (tab.badgeVariant === 'gold') badgeClasses = 'bg-amber-500/20 text-amber-300 border border-amber-500/30';
-          else if (tab.badgeVariant === 'ruby') badgeClasses = 'bg-rose-500/20 text-rose-300 border border-rose-500/30 animate-pulse';
-          else if (tab.badgeVariant === 'sky') badgeClasses = 'bg-sky-500/20 text-sky-300 border border-sky-500/30';
-
-          return (
-            <button
-              key={tab.id}
-              onClick={() => onChangeTab(tab.id)}
-              className={`group relative flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-bold whitespace-nowrap transition active:scale-95 ${
-                isActive
-                  ? 'bg-gradient-to-r from-orange-500/20 via-amber-500/15 to-orange-500/20 border border-orange-500/40 text-orange-300 shadow-[0_0_15px_rgba(249,115,22,0.15)] font-black'
-                  : 'text-stone-400 hover:bg-white/[0.05] hover:text-stone-200 border border-transparent'
-              }`}
-            >
-              <Icon
-                className={`h-4 w-4 transition ${
-                  isActive ? 'text-orange-400 scale-110' : 'text-stone-500 group-hover:text-stone-300'
-                }`}
-                strokeWidth={isActive ? 2.2 : 1.8}
-              />
-              <span>{tab.label}</span>
-              {tab.badge && (
-                <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-mono font-black ${badgeClasses}`}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </nav>
+    <>
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col border-r border-line bg-surface lg:flex">{content(false)}</aside>
+      {isMobileOpen && <Dialog label="Navegação do sistema" onClose={onCloseMobile} placement="navigation"><div className="dialog-panel flex flex-col">{content(true)}</div></Dialog>}
+    </>
   );
-};
+}

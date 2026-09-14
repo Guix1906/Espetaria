@@ -51,24 +51,24 @@ export const BarKDSView: React.FC = () => {
   const countReady = barItems.filter((i) => i.status === 'READY').length;
 
   return (
-    <div className="min-h-screen bg-obsidian-950 text-obsidian-100 p-3 sm:p-5 space-y-4">
+    <div className="min-h-0 bg-surface text-ink p-3 sm:p-5 space-y-4">
       
       {/* Topo do Bar KDS */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-carbon-900 border border-carbon-800 p-4 sm:p-5 rounded-3xl shadow-2xl">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-surface-muted border border-line p-4 sm:p-5 rounded-2xl shadow-sm">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-950/80 border border-cyan-600/50 text-cyan-400 flex items-center justify-center font-black shadow-lg shadow-cyan-950/50">
+          <div className="bg-sky-700 w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold shadow-card">
             <Beer className="w-7 h-7" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase font-serif">
+              <h2 className="text-xl sm:text-2xl font-bold text-ink font-sans">
                 KDS Bar & Bebidas
               </h2>
-              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 font-mono font-bold tracking-wider">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-sky-100 text-sky-800 border border-sky-200 tabular-nums font-bold">
                 EXPEDIÇÃO &lt; 3 MIN
               </span>
             </div>
-            <p className="text-xs text-obsidian-400 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Chopps, caipirinhas artesanais, drinks, refrigerantes e sucos naturais
             </p>
           </div>
@@ -77,14 +77,14 @@ export const BarKDSView: React.FC = () => {
         <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <button
             onClick={handleToggleAudio}
-            className={`px-3.5 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition active:scale-95 ${
+            className={`px-3.5 py-2.5 rounded-2xl border text-xs font-bold flex items-center gap-2 transition ${
               audioEnabled
-                ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600/60 shadow-lg shadow-emerald-950/40 hover:bg-emerald-900'
-                : 'bg-carbon-800 text-obsidian-400 border-carbon-700 hover:bg-carbon-700 hover:text-white'
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 shadow-sm'
+                : 'bg-surface-muted text-ink-muted border-line hover:bg-surface-muted'
             }`}
             title="Sons de Alerta"
-          >
-            {audioEnabled ? <Volume2 className="w-4 h-4 text-emerald-400 animate-pulse" /> : <VolumeX className="w-4 h-4" />}
+           type="button" aria-label="Sons de Alerta">
+            {audioEnabled ? <Volume2 className="w-4 h-4 text-emerald-700" /> : <VolumeX className="w-4 h-4" />}
             <span className="hidden sm:inline">{audioEnabled ? 'Alerta Sonoro Ativo' : 'Mudo'}</span>
           </button>
         </div>
@@ -94,47 +94,35 @@ export const BarKDSView: React.FC = () => {
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
-          className={`px-4 py-2.5 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
-            filter === 'ALL_ACTIVE'
-              ? 'bg-cyan-600 text-obsidian-950 font-black shadow-lg shadow-cyan-950/60'
-              : 'bg-carbon-900 text-obsidian-400 border border-carbon-800 hover:text-white hover:border-carbon-700'
-          }`}
-        >
+          className={`filter-chip ${filter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
+         type="button" aria-pressed={filter === 'ALL_ACTIVE'}>
           <Filter className="w-3.5 h-3.5" />
           <span>Fila Ativa ({countReceived})</span>
         </button>
 
         <button
           onClick={() => setFilter('RECEIVED')}
-          className={`px-4 py-2.5 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
-            filter === 'RECEIVED'
-              ? 'bg-gold-500 text-obsidian-950 font-black shadow-lg shadow-gold-950/60'
-              : 'bg-carbon-900 text-obsidian-400 border border-carbon-800 hover:text-white hover:border-carbon-700'
-          }`}
-        >
+          className={`filter-chip ${filter === 'RECEIVED' ? 'is-active' : ''}`}
+         type="button" aria-pressed={filter === 'RECEIVED'}>
           <span>⏳ Aguardando Tirar ({countReceived})</span>
         </button>
 
         <button
           onClick={() => setFilter('READY')}
-          className={`px-4 py-2.5 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
-            filter === 'READY'
-              ? 'bg-emerald-600 text-white font-black shadow-lg shadow-emerald-950/60'
-              : 'bg-carbon-900 text-obsidian-400 border border-carbon-800 hover:text-white hover:border-carbon-700'
-          }`}
-        >
+          className={`filter-chip ${filter === 'READY' ? 'is-active' : ''}`}
+         type="button" aria-pressed={filter === 'READY'}>
           <span>✅ Prontos no Balcão ({countReady})</span>
         </button>
       </div>
 
       {/* Grade de Pedidos do Bar */}
       {sortedOrders.length === 0 ? (
-        <div className="py-20 text-center rounded-3xl bg-carbon-900/60 border border-carbon-800/80 p-8 space-y-3">
-          <div className="w-16 h-16 rounded-2xl bg-cyan-950/40 border border-cyan-800/30 text-cyan-400 flex items-center justify-center mx-auto shadow-lg shadow-cyan-950/30">
+        <div className="py-20 text-center rounded-2xl bg-surface-muted border border-line p-8 space-y-3 shadow-sm">
+          <div className="w-16 h-16 rounded-2xl bg-surface-muted border border-line text-sky-700 flex items-center justify-center mx-auto shadow-sm">
             <Sparkles className="w-8 h-8" />
           </div>
-          <h3 className="text-xl font-bold text-white font-serif">Nenhuma bebida pendente no balcão</h3>
-          <p className="text-xs text-obsidian-400 max-w-sm mx-auto">
+          <h3 className="text-xl font-bold text-ink font-sans">Nenhuma bebida pendente no balcão</h3>
+          <p className="text-xs text-ink-muted max-w-sm mx-auto">
             Drinks e bebidas pedidas pelos garçons ou clientes cairão instantaneamente nesta esteira.
           </p>
         </div>
@@ -152,21 +140,21 @@ export const BarKDSView: React.FC = () => {
             return (
               <div
                 key={order.id}
-                className="bg-carbon-900 border border-carbon-700/80 hover:border-cyan-500/50 rounded-3xl p-5 shadow-2xl flex flex-col justify-between space-y-4 transition duration-200"
+                className="bg-surface-muted border border-line hover:border-sky-300 rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4 transition duration-200"
               >
                 <div>
-                  <div className="flex items-center justify-between border-b border-carbon-800 pb-3">
+                  <div className="flex items-center justify-between border-b border-line pb-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl sm:text-3xl font-black text-white font-mono tracking-tight">
+                        <span className="text-2xl sm:text-3xl font-bold text-ink tabular-nums tracking-tight">
                           MESA {tableNum}
                         </span>
-                        <span className="text-xs px-2.5 py-0.5 rounded-lg bg-carbon-800 border border-carbon-700 text-obsidian-300 font-mono font-bold">
+                        <span className="text-xs px-2.5 py-0.5 rounded-lg bg-surface-muted border border-line text-ink-muted tabular-nums font-bold">
                           #{order.order_number}
                         </span>
                       </div>
                       {order.notes && (
-                        <p className="text-xs text-gold-400 italic mt-1 font-medium">
+                        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 p-2 rounded-xl italic mt-1 font-medium">
                           Obs: {order.notes}
                         </p>
                       )}
@@ -185,36 +173,36 @@ export const BarKDSView: React.FC = () => {
                       return (
                         <div
                           key={item.id}
-                          className={`p-3.5 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          className={`p-3.5 rounded-2xl border transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm ${
                             isReady
-                              ? 'bg-emerald-950/30 border-emerald-700/50'
-                              : 'bg-carbon-800/80 border-carbon-700/80'
+                              ? 'bg-emerald-50 border-emerald-300'
+                              : 'bg-surface-muted border-line'
                           }`}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-lg font-black text-cyan-400 font-mono">
+                              <span className="text-lg font-bold text-sky-700 tabular-nums">
                                 {item.quantity}x
                               </span>
-                              <span className="font-bold text-white text-base">
+                              <span className="font-bold text-ink text-base">
                                 {item.product_name}
                               </span>
                             </div>
 
                             {item.notes && (
-                              <p className="text-xs text-gold-300/90 italic mt-0.5">
+                              <p className="text-xs text-amber-800 italic mt-0.5">
                                 Obs: {item.notes}
                               </p>
                             )}
 
                             <div className="mt-1 flex items-center gap-2">
                               <span
-                                className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${statusConf.bg} ${statusConf.color}`}
+                                className={`text-xs px-2 py-0.5 rounded-full border font-bold ${statusConf.bg} ${statusConf.color}`}
                               >
                                 {statusConf.label}
                               </span>
                               {item.prepared_at && (
-                                <span className="text-[10px] text-obsidian-400 font-mono">
+                                <span className="text-xs text-ink-muted tabular-nums">
                                   Pronto às {new Date(item.prepared_at).toLocaleTimeString()}
                                 </span>
                               )}
@@ -226,16 +214,16 @@ export const BarKDSView: React.FC = () => {
                             {isPending && (
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'READY')}
-                                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-obsidian-950 font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-md shadow-cyan-950/50 flex items-center justify-center gap-1.5"
-                              >
+                                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-sky-700 hover:bg-sky-800 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
+                               type="button">
                                 <Wine className="w-4 h-4" />
                                 <span>Pronto!</span>
                               </button>
                             )}
 
                             {isReady && (
-                              <div className="px-3 py-2 rounded-xl bg-emerald-950 text-emerald-400 border border-emerald-700 text-xs font-bold flex items-center gap-1.5">
-                                <CheckCheck className="w-4 h-4" />
+                              <div className="px-3 py-2 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1.5">
+                                <CheckCheck className="w-4 h-4 text-emerald-700" />
                                 <span>No Balcão</span>
                               </div>
                             )}
@@ -248,11 +236,11 @@ export const BarKDSView: React.FC = () => {
 
                 {/* Ação em Lote */}
                 {hasPending && (
-                  <div className="border-t border-carbon-800 pt-3">
+                  <div className="border-t border-line pt-3">
                     <button
                       onClick={() => updateOrderSectorItemsStatus(order.id, 'BAR', 'READY')}
-                      className="btn-emerald w-full py-3 rounded-2xl flex items-center justify-center gap-2 text-xs"
-                    >
+                      className="btn-success w-full py-3 rounded-2xl flex items-center justify-center gap-2 text-xs"
+                     type="button">
                       <Layers className="w-4 h-4" />
                       <span>Liberar Todas as Bebidas da Mesa!</span>
                     </button>

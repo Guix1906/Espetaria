@@ -64,21 +64,21 @@ export const PWAInstallBanner: React.FC = () => {
   if (!isVisible) return null;
 
   return (
-    <div className="bg-gradient-to-r from-obsidian-950 via-carbon-900 to-obsidian-950 border-b border-ember-500/30 px-3 py-2.5 sm:px-6 animate-in slide-in-from-top">
+    <div className="bg-brand-50 border-b border-brand-200 px-3 py-2.5 sm:px-6 slide-in-from-top">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-ember-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-md shadow-ember-950/60">
+          <div className="bg-brand-700 w-8 h-8 rounded-xl text-white flex items-center justify-center shrink-0 shadow-sm">
             <Flame className="w-5 h-5" />
           </div>
           <div>
-            <div className="text-xs font-bold text-white flex items-center gap-1.5">
+            <div className="text-xs font-bold text-ink flex items-center gap-1.5">
               <span>Instale o App da Espetaria</span>
-              <span className="text-[10px] bg-ember-500/20 text-ember-400 font-mono px-1.5 py-0.5 rounded border border-ember-500/30">PWA</span>
+              <span className="text-xs bg-brand-100 text-brand-800 tabular-nums px-1.5 py-0.5 rounded border border-brand-300">PWA</span>
             </div>
-            <p className="text-[11px] text-obsidian-300">
+            <p className="text-xs text-ink-muted">
               {isIOS ? (
                 <span className="flex items-center gap-1">
-                  Toque em <Share2 className="w-3 h-3 text-ember-400 inline" /> e depois em "Adicionar à Tela de Início"
+                  Toque em <Share2 className="w-3 h-3 text-brand-700 inline" /> e depois em "Adicionar à Tela de Início"
                 </span>
               ) : (
                 'Acesso offline instantâneo, notificações sonoras e resposta em milissegundos.'
@@ -91,8 +91,8 @@ export const PWAInstallBanner: React.FC = () => {
           {!isIOS && deferredPrompt && (
             <button
               onClick={handleInstallClick}
-              className="btn-ember px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-md shadow-ember-950/60"
-            >
+              className="btn-primary px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-sm"
+             type="button">
               <Download className="w-3.5 h-3.5" />
               <span>Instalar</span>
             </button>
@@ -100,10 +100,10 @@ export const PWAInstallBanner: React.FC = () => {
 
           <button
             onClick={handleDismiss}
-            className="p-1.5 rounded-lg text-obsidian-400 hover:text-white hover:bg-carbon-800 transition"
+            className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-brand-100 transition"
             title="Fechar"
             aria-label="Fechar banner de instalação"
-          >
+           type="button">
             <X className="w-4 h-4" />
           </button>
         </div>

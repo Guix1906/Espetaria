@@ -1,3 +1,4 @@
+import { Dialog } from '../../components/ui/Dialog';
 import React, { useState } from 'react';
 import { 
   X, 
@@ -106,43 +107,43 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
     : 0;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-obsidian-950/85 backdrop-blur-md">
-      <div className="card-carbon border border-carbon-700/80 rounded-3xl w-full max-w-3xl shadow-2xl shadow-black/80 overflow-hidden flex flex-col max-h-[92vh]">
+    <Dialog label="Conferência e fechamento do turno" onClose={onClose}>
+      <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-3xl shadow-card overflow-hidden flex flex-col max-h-[92vh] text-ink zoom-in-95 duration-200">
         
         {/* Cabeçalho do Modal */}
-        <div className="bg-carbon-900/90 p-4 sm:p-5 border-b border-carbon-800/80 flex items-center justify-between">
+        <div className="bg-surface-muted p-4 sm:p-5 border-b border-line flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-ruby-500/10 border border-ruby-500/30 text-ruby-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-center justify-center shadow-sm">
               <PackageCheck className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base sm:text-lg font-black text-white tracking-tight">
+              <h2 className="text-base sm:text-lg font-bold text-ink tracking-tight font-sans">
                 Fechamento do Turno da Noite
               </h2>
-              <p className="text-xs text-obsidian-400 font-mono">
+              <p className="text-xs text-ink-muted tabular-nums">
                 {currentShift.name} • Reconciliação Física vs Teórica
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-obsidian-400 hover:text-white hover:bg-carbon-800 transition"
+            className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
             aria-label="Fechar modal"
-          >
+           type="button">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Indicador de Passos */}
-        <div className="grid grid-cols-3 bg-carbon-950 border-b border-carbon-800/80 text-xs font-semibold text-center">
+        <div className="grid grid-cols-3 bg-surface-muted border-b border-line text-xs font-semibold text-center">
           <button
             onClick={() => setStep('STOCK_COUNT')}
             className={`py-3 px-3 border-b-2 transition flex items-center justify-center gap-1.5 ${
               step === 'STOCK_COUNT'
-                ? 'border-ember-500 text-ember-400 bg-carbon-800/60 font-bold'
-                : 'border-transparent text-obsidian-400 hover:text-white hover:bg-carbon-800/30'
+                ? 'border-brand-400 text-brand-700 bg-surface-muted font-bold'
+                : 'border-transparent text-ink-muted hover:text-ink hover:bg-surface-muted'
             }`}
-          >
+           type="button">
             <PackageCheck className="w-4 h-4" />
             <span>1. Estoque Físico</span>
           </button>
@@ -150,10 +151,10 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
             onClick={() => setStep('CASH_DRAWER')}
             className={`py-3 px-3 border-b-2 transition flex items-center justify-center gap-1.5 ${
               step === 'CASH_DRAWER'
-                ? 'border-ember-500 text-ember-400 bg-carbon-800/60 font-bold'
-                : 'border-transparent text-obsidian-400 hover:text-white hover:bg-carbon-800/30'
+                ? 'border-brand-400 text-brand-700 bg-surface-muted font-bold'
+                : 'border-transparent text-ink-muted hover:text-ink hover:bg-surface-muted'
             }`}
-          >
+           type="button">
             <Banknote className="w-4 h-4" />
             <span>2. Gaveta do Caixa</span>
           </button>
@@ -161,10 +162,10 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
             onClick={() => setStep('FINAL_CONFIRMATION')}
             className={`py-3 px-3 border-b-2 transition flex items-center justify-center gap-1.5 ${
               step === 'FINAL_CONFIRMATION'
-                ? 'border-ember-500 text-ember-400 bg-carbon-800/60 font-bold'
-                : 'border-transparent text-obsidian-400 hover:text-white hover:bg-carbon-800/30'
+                ? 'border-brand-400 text-brand-700 bg-surface-muted font-bold'
+                : 'border-transparent text-ink-muted hover:text-ink hover:bg-surface-muted'
             }`}
-          >
+           type="button">
             <FileText className="w-4 h-4" />
             <span>3. Resumo & Fechar</span>
           </button>
@@ -172,8 +173,8 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
 
         {/* Mensagem de Erro */}
         {errorMessage && (
-          <div className="m-4 p-3 bg-ruby-950/50 border border-ruby-500/40 rounded-xl text-ruby-300 text-xs flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-ruby-400" />
+          <div className="m-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2" role="alert">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-700" />
             <span>{errorMessage}</span>
           </div>
         )}
@@ -184,14 +185,14 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
           {/* PASSO 1: CONFERÊNCIA FÍSICA DO ESTOQUE */}
           {step === 'STOCK_COUNT' && (
             <div className="space-y-4">
-              <div className="bg-carbon-950 p-3.5 rounded-2xl border border-carbon-800 text-xs text-obsidian-300">
-                <span className="font-bold text-gold-400">Instruções de Conferência: </span>
+              <div className="bg-surface-muted p-3.5 rounded-2xl border border-line text-xs text-ink-muted">
+                <span className="font-bold text-ink">Instruções de Conferência: </span>
                 Digite a quantidade física real de espetos crus que restaram no expositor/freezer e as porções nas cubas. O sistema calculará divergências e quebras de turno automaticamente.
               </div>
 
-              <div className="border border-carbon-800/80 rounded-2xl overflow-hidden bg-carbon-950">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-carbon-900/90 text-obsidian-400 font-bold uppercase tracking-wider text-[11px] border-b border-carbon-800/80">
+              <div className="border border-line rounded-2xl overflow-x-auto bg-surface-muted shadow-sm">
+                <table className="data-table w-full text-left text-xs">
+                  <thead className="bg-surface-muted text-ink-muted font-bold text-xs border-b border-line">
                     <tr>
                       <th className="p-3">Produto / Corte</th>
                       <th className="p-3 text-center">Teórico</th>
@@ -199,7 +200,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
                       <th className="p-3 text-right">Diferença</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-carbon-800/70">
+                  <tbody className="divide-y divide-line">
                     {shiftStockItems.map((stock) => {
                       const prod = products.find((p) => p.id === stock.product_id);
                       const inputCount = physicalCounts[stock.product_id];
@@ -207,14 +208,14 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
                       const diff = numInput !== null ? numInput - stock.current_quantity : null;
 
                       return (
-                        <tr key={stock.id} className="hover:bg-carbon-850/60 transition">
-                          <td className="p-3 font-semibold text-white">
+                        <tr key={stock.id} className="hover:bg-surface-muted transition">
+                          <td className="p-3 font-semibold text-ink">
                             <div>{prod?.name || stock.product_id}</div>
-                            <span className="text-[10px] text-obsidian-400 font-mono">
+                            <span className="text-xs text-ink-muted tabular-nums">
                               {prod?.is_cubas ? 'Cuba Gastronômica' : 'Espeto na Brasa'}
                             </span>
                           </td>
-                          <td className="p-3 text-center font-mono font-bold text-obsidian-200">
+                          <td className="p-3 text-center tabular-nums font-bold text-ink">
                             {stock.current_quantity} un
                           </td>
                           <td className="p-3 text-center">
@@ -224,22 +225,22 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
                               placeholder={String(stock.current_quantity)}
                               value={inputCount ?? ''}
                               onChange={(e) => handlePhysicalCountChange(stock.product_id, e.target.value)}
-                              className="w-20 px-2.5 py-1.5 rounded-xl bg-carbon-900 border border-carbon-700 text-white font-mono text-center text-xs focus:ring-1 focus:ring-ember-500 focus:outline-none"
-                            />
+                              className="w-20 px-2.5 py-1.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-center text-xs focus:ring-1 focus:ring-brand-600 focus:outline-none"
+                             aria-label="Contagem física do produto"/>
                           </td>
-                          <td className="p-3 text-right font-mono font-bold">
+                          <td className="p-3 text-right tabular-nums font-bold">
                             {diff === null ? (
-                              <span className="text-obsidian-500">—</span>
+                              <span className="text-ink-muted">—</span>
                             ) : diff === 0 ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-emerald-50 text-emerald-700 border border-emerald-200">
                                 Exato (0)
                               </span>
                             ) : diff < 0 ? (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-ruby-500/10 text-ruby-400 border border-ruby-500/30">
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-red-50 text-red-700 border border-red-200">
                                 {diff} un (Falta)
                               </span>
                             ) : (
-                              <span className="px-2 py-0.5 rounded-full text-[10px] bg-gold-500/10 text-gold-400 border border-gold-500/30">
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-amber-50 text-amber-800 border border-amber-200">
                                 +{diff} un (Sobra)
                               </span>
                             )}
@@ -256,39 +257,39 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
           {/* PASSO 2: CONFERÊNCIA DE GAVETA DE CAIXA */}
           {step === 'CASH_DRAWER' && (
             <div className="space-y-4 max-w-lg mx-auto">
-              <div className="bg-carbon-950 p-5 rounded-2xl border border-carbon-800 space-y-3 shadow-inner">
-                <div className="flex justify-between items-center text-xs text-obsidian-400">
+              <div className="bg-surface-muted p-5 rounded-2xl border border-line space-y-3 shadow-sm">
+                <div className="flex justify-between items-center text-xs text-ink-muted">
                   <span>Fundo de Caixa Inicial (Abertura):</span>
-                  <span className="font-mono font-bold text-white">
+                  <span className="tabular-nums font-bold text-ink">
                     {formatBRL(currentShift.cash_drawer_start)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-xs text-obsidian-400">
+                <div className="flex justify-between items-center text-xs text-ink-muted">
                   <span>Vendas em Dinheiro (Salão):</span>
-                  <span className="font-mono font-bold text-emerald-400">
+                  <span className="tabular-nums font-bold text-emerald-700">
                     +{formatBRL(salonCashTotal)}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-xs text-obsidian-400">
+                <div className="flex justify-between items-center text-xs text-ink-muted">
                   <span>Vendas em Dinheiro (Delivery):</span>
-                  <span className="font-mono font-bold text-emerald-400">
+                  <span className="tabular-nums font-bold text-emerald-700">
                     +{formatBRL(deliveryCashTotal)}
                   </span>
                 </div>
-                <div className="pt-3 border-t border-carbon-800 flex justify-between items-center text-sm font-bold">
-                  <span className="text-obsidian-200">Total Esperado na Gaveta:</span>
-                  <span className="font-mono text-gold-400 text-base">
+                <div className="pt-3 border-t border-line flex justify-between items-center text-sm font-bold">
+                  <span className="text-ink">Total Esperado na Gaveta:</span>
+                  <span className="tabular-nums text-brand-700 text-base font-bold">
                     {formatBRL(expectedCashDrawer)}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-obsidian-200">
+                <label className="block text-xs font-semibold text-ink">
                   Valor em Dinheiro Contado Fisicamente no Fechamento:
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3.5 top-2.5 text-xs text-obsidian-500 font-mono font-bold">
+                  <span className="absolute left-3.5 top-2.5 text-xs text-ink-muted tabular-nums font-bold">
                     R$
                   </span>
                   <input
@@ -296,16 +297,16 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
                     value={cashDrawerEnd}
                     onChange={(e) => setCashDrawerEnd(e.target.value)}
                     placeholder={expectedCashDrawer.toFixed(2)}
-                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-carbon-950 border border-carbon-700 text-white font-mono text-sm font-bold focus:ring-2 focus:ring-ember-500 focus:outline-none"
-                  />
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-sm font-bold focus:ring-2 focus:ring-brand-600 focus:outline-none"
+                   aria-label="Dinheiro contado no fechamento" inputMode="decimal"/>
                 </div>
                 {cashDrawerEnd && (
-                  <div className={`text-xs font-mono font-bold pt-1.5 ${
+                  <div className={`text-xs tabular-nums font-bold pt-1.5 ${
                     cashDiscrepancy === 0
-                      ? 'text-emerald-400'
+                      ? 'text-emerald-700'
                       : cashDiscrepancy < 0
-                      ? 'text-ruby-400'
-                      : 'text-gold-400'
+                      ? 'text-red-700'
+                      : 'text-amber-800'
                   }`}>
                     {cashDiscrepancy === 0
                       ? '✅ Caixa fechou com valor exato!'
@@ -321,18 +322,18 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
           {/* PASSO 3: NOTAS FINAIS & ENCERRAMENTO */}
           {step === 'FINAL_CONFIRMATION' && (
             <div className="space-y-4 max-w-xl mx-auto">
-              <div className="bg-gold-950/20 border border-gold-500/30 p-4 rounded-2xl text-xs text-gold-300 space-y-1.5">
-                <div className="font-black flex items-center gap-1.5 uppercase tracking-wide">
-                  <AlertTriangle className="w-4 h-4 text-gold-400" />
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-xs text-amber-800 space-y-1.5">
+                <div className="font-bold flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-800" />
                   Atenção ao Encerramento Definitivo
                 </div>
-                <p className="text-obsidian-300">
+                <p className="text-ink-muted">
                   Ao encerrar este turno, todas as movimentações de estoque físico e caixa serão consolidadas. Nenhuma nova comanda ou pedido poderá ser lançado até a abertura de um próximo turno.
                 </p>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-obsidian-200">
+                <label className="block text-xs font-semibold text-ink" htmlFor="shiftclosemodal-field-1">
                   Observações de Encerramento (opcional):
                 </label>
                 <textarea
@@ -340,8 +341,8 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
                   value={closingNotes}
                   onChange={(e) => setClosingNotes(e.target.value)}
                   placeholder="Ex: Turno movimentado, chuva reduziu movimento após as 23h, 2 espetos queimaram na grelha..."
-                  className="w-full p-3 rounded-xl bg-carbon-950 border border-carbon-700 text-white text-xs placeholder-obsidian-500 focus:outline-none focus:ring-1 focus:ring-ember-500"
-                />
+                  className="w-full p-3 rounded-xl bg-surface-muted border border-line text-ink text-xs placeholder-ink-muted focus:outline-none focus:ring-1 focus:ring-brand-600"
+                 aria-label="Observações de Encerramento (opcional):" id="shiftclosemodal-field-1"/>
               </div>
             </div>
           )}
@@ -349,12 +350,12 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
         </div>
 
         {/* Rodapé com Navegação dos Passos */}
-        <div className="p-4 bg-carbon-900/90 border-t border-carbon-800/80 flex items-center justify-between">
+        <div className="p-4 bg-surface-muted border-t border-line flex items-center justify-between">
           {step !== 'STOCK_COUNT' ? (
             <button
               onClick={() => setStep(step === 'FINAL_CONFIRMATION' ? 'CASH_DRAWER' : 'STOCK_COUNT')}
-              className="btn-carbon px-4 py-2 text-xs font-bold flex items-center gap-1.5"
-            >
+              className="bg-surface-muted hover:bg-surface-muted text-ink border border-line px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
+             type="button">
               <ArrowLeft className="w-4 h-4" />
               <span>Voltar</span>
             </button>
@@ -363,8 +364,8 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
           {step !== 'FINAL_CONFIRMATION' ? (
             <button
               onClick={() => setStep(step === 'STOCK_COUNT' ? 'CASH_DRAWER' : 'FINAL_CONFIRMATION')}
-              className="btn-ember px-5 py-2.5 text-xs font-bold flex items-center gap-1.5 shadow-lg shadow-ember-950/40"
-            >
+              className="btn-primary px-5 py-2.5 text-xs font-bold flex items-center gap-1.5 shadow-sm text-white rounded-xl"
+             type="button">
               <span>Avançar</span>
               <ArrowRight className="w-4 h-4" />
             </button>
@@ -372,8 +373,8 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
             <button
               onClick={handleFinishShift}
               disabled={isSubmitting}
-              className="btn-ruby px-6 py-2.5 text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-ruby-950/50 disabled:opacity-50"
-            >
+              className="btn-ruby px-6 py-2.5 text-xs font-bold flex items-center gap-2 shadow-sm text-ink rounded-xl disabled:opacity-50"
+             type="button">
               <CheckCheck className="w-4 h-4" />
               <span>{isSubmitting ? 'Encerrando...' : 'Encerrar Turno Definitivamente'}</span>
             </button>
@@ -381,6 +382,6 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
         </div>
 
       </div>
-    </div>
+    </Dialog>
   );
 };

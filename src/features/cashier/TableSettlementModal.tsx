@@ -1,3 +1,4 @@
+import { Dialog } from '../../components/ui/Dialog';
 import React, { useState, useEffect } from 'react';
 import { 
   X, 
@@ -195,29 +196,29 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md">
-        <div className="card-carbon border border-carbon-700 rounded-3xl w-full max-w-4xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[95vh] flex flex-col">
+      <Dialog label="Fechamento da conta" onClose={onClose}>
+        <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-4xl p-5 sm:p-6 shadow-card space-y-4 max-h-[95vh] flex flex-col fade-in zoom-in-95">
           
           {/* Topo do Checkout */}
-          <div className="flex items-center justify-between border-b border-carbon-800 pb-3">
+          <div className="flex items-center justify-between border-b border-line pb-3">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-ember-600 to-gold-600 text-obsidian-950 flex items-center justify-center font-black text-xl shadow-lg shadow-ember-950/60">
+              <div className="bg-brand-700 w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold text-xl shadow-card">
                 {String(table.number).padStart(2, '0')}
               </div>
               <div>
-                <h3 className="font-extrabold text-white text-lg leading-none flex items-center gap-2 font-serif">
+                <h3 className="font-bold text-ink text-lg leading-none flex items-center gap-2 font-sans">
                   <span>Fechamento de Conta — Mesa {String(table.number).padStart(2, '0')}</span>
                   {table.status === 'AGUARDANDO_CONTA' && (
-                    <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-mono font-bold animate-pulse">
+                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 tabular-nums font-bold">
                       Conta Solicitada
                     </span>
                   )}
                 </h3>
-                <p className="text-xs text-obsidian-400 mt-1 flex items-center gap-2">
+                <p className="text-xs text-ink-muted mt-1 flex items-center gap-2">
                   <span>{currentTab.customer_name}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
-                    <Users className="w-3.5 h-3.5 text-obsidian-500" />
+                    <Users className="w-3.5 h-3.5 text-ink-muted" />
                     {currentTab.people_count} pessoas
                   </span>
                   <span>•</span>
@@ -227,16 +228,16 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-xl text-obsidian-400 hover:text-white hover:bg-carbon-800 transition"
-            >
+              className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
+             type="button" aria-label="Fechar janela">
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Mensagem de Erro se houver */}
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-ruby-950/80 border border-ruby-600 text-ruby-300 text-xs flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0 text-ruby-400" />
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2" role="alert">
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-700" />
               <span>{errorMessage}</span>
             </div>
           )}
@@ -245,21 +246,21 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 overflow-y-auto pr-1 custom-scrollbar">
             
             {/* COLUNA ESQUERDA: Conferência Item a Item (6 colunas) */}
-            <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-obsidian-900/80 p-4 rounded-2xl border border-carbon-800">
-              <div className="flex items-center justify-between border-b border-carbon-800 pb-2">
-                <span className="text-xs font-bold text-obsidian-300 uppercase tracking-wide flex items-center gap-1.5 font-serif">
-                  <Receipt className="w-4 h-4 text-gold-400" />
+            <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-surface-muted p-4 rounded-2xl border border-line">
+              <div className="flex items-center justify-between border-b border-line pb-2">
+                <span className="text-xs font-bold text-ink flex items-center gap-1.5 font-sans">
+                  <Receipt className="w-4 h-4 text-brand-700" />
                   <span>Itens Lançados ({items.filter(i => i.status !== 'CANCELLED').length})</span>
                 </span>
-                <span className="text-[11px] text-obsidian-500 font-mono">
+                <span className="text-xs text-ink-muted tabular-nums">
                   Auditoria de consumo
                 </span>
               </div>
 
               {/* Lista de Itens */}
-              <div className="overflow-y-auto max-h-[36vh] space-y-2 pr-1 text-xs custom-scrollbar">
+              <div className="overflow-y-auto max-h-[36vh] space-y-2 pr-1 text-xs">
                 {items.length === 0 ? (
-                  <div className="py-8 text-center text-obsidian-500">Nenhum item consumido.</div>
+                  <div className="py-8 text-center text-ink-muted">Nenhum item consumido.</div>
                 ) : (
                   items.map((item) => {
                     const statusConf = getOrderItemStatusConfig(item.status);
@@ -270,39 +271,39 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                         key={item.id}
                         className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
                           isCancelled
-                            ? 'bg-ruby-950/20 border-ruby-900/40 text-obsidian-500 line-through'
-                            : 'bg-carbon-900 border-carbon-800 text-obsidian-200'
+                            ? 'bg-rose-50 border-rose-200 text-ink-muted line-through'
+                            : 'bg-surface-muted border-line text-ink'
                         }`}
                       >
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-white text-xs truncate">
+                          <div className="font-bold text-ink text-xs truncate">
                             {item.quantity}x {item.product_name}
                           </div>
                           {item.doneness && (
-                            <div className="text-[10px] text-amber-400 font-mono">
+                            <div className="text-xs text-amber-800 tabular-nums">
                               {formatDoneness(item.doneness)}
                             </div>
                           )}
                           <div className="flex items-center gap-2 mt-0.5">
-                            <span className={`text-[9px] px-1.5 py-0.2 rounded border font-semibold ${statusConf.bg} ${statusConf.color}`}>
+                            <span className={`text-xs px-1.5 py-0.5 rounded border font-semibold ${statusConf.bg} ${statusConf.color}`}>
                               {statusConf.label}
                             </span>
-                            <span className="text-obsidian-400 font-mono text-[10px]">
+                            <span className="text-ink-muted tabular-nums text-xs">
                               {formatBRL(item.unit_price)} unid.
                             </span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-bold text-white text-xs">
+                          <span className="tabular-nums font-bold text-ink text-xs">
                             {formatBRL(item.unit_price * item.quantity)}
                           </span>
                           {!isCancelled && (
                             <button
                               onClick={() => handleCancelItem(item)}
                               title="Cancelar item"
-                              className="p-1 rounded text-obsidian-500 hover:text-ruby-400 hover:bg-ruby-950/60 transition"
-                            >
+                              className="p-1 rounded text-ink-muted hover:text-rose-700 hover:bg-rose-50 transition"
+                             type="button" aria-label="Cancelar item">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
@@ -314,25 +315,25 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
               </div>
 
               {/* Ajustes de Taxa de Serviço e Desconto */}
-              <div className="border-t border-carbon-800 pt-3 space-y-2 text-xs">
+              <div className="border-t border-line pt-3 space-y-2 text-xs">
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-obsidian-300">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-ink">
                     <input
                       type="checkbox"
                       checked={includeServiceFee}
                       onChange={handleToggleServiceFee}
-                      className="w-4 h-4 rounded text-ember-500 focus:ring-0 focus:outline-none cursor-pointer bg-carbon-800 border-carbon-700"
+                      className="w-4 h-4 rounded text-brand-700 focus:ring-0 focus:outline-none cursor-pointer bg-surface-muted border-line"
                     />
                     <span className="font-semibold">Taxa de Serviço Garçom (10%)</span>
                   </label>
-                  <span className="font-mono text-obsidian-300 font-bold">
+                  <span className="tabular-nums text-ink font-bold">
                     {formatBRL(currentTab.service_fee)}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-obsidian-300 font-semibold flex items-center gap-1">
-                    <Percent className="w-3.5 h-3.5 text-ruby-400" />
+                  <span className="text-ink font-semibold flex items-center gap-1">
+                    <Percent className="w-3.5 h-3.5 text-rose-700" />
                     <span>Desconto (R$):</span>
                   </span>
                   <div className="flex items-center gap-1.5 w-32">
@@ -343,14 +344,14 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                       value={discountAmount || ''}
                       placeholder="0,00"
                       onChange={(e) => handleApplyDiscount(parseFloat(e.target.value) || 0)}
-                      className="w-full px-2.5 py-1.5 rounded-xl bg-carbon-900 border border-carbon-700 text-white font-mono text-right text-xs focus:ring-1 focus:ring-gold-500 focus:outline-none"
-                    />
+                      className="w-full px-2.5 py-1.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-right text-xs focus:ring-1 focus:ring-brand-600 focus:outline-none"
+                     aria-label="Desconto em reais"/>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-baseline pt-2 border-t border-carbon-800">
-                  <span className="font-extrabold text-white text-sm font-serif">TOTAL DEVIDO:</span>
-                  <span className="font-mono text-2xl font-black text-gold-400 drop-shadow-md">
+                <div className="flex justify-between items-baseline pt-2 border-t border-line">
+                  <span className="font-bold text-ink text-sm font-sans">TOTAL DEVIDO:</span>
+                  <span className="tabular-nums text-2xl font-bold text-brand-700">
                     {formatBRL(currentTab.total)}
                   </span>
                 </div>
@@ -358,39 +359,39 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
             </div>
 
             {/* COLUNA DIREITA: Divisão de Pagamentos Multimeios (6 colunas) */}
-            <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-obsidian-900/80 p-4 rounded-2xl border border-carbon-800">
-              <div className="flex items-center justify-between border-b border-carbon-800 pb-2">
-                <span className="text-xs font-bold text-obsidian-300 uppercase tracking-wide flex items-center gap-1.5 font-serif">
-                  <Coins className="w-4 h-4 text-emerald-400" />
+            <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-surface-muted p-4 rounded-2xl border border-line">
+              <div className="flex items-center justify-between border-b border-line pb-2">
+                <span className="text-xs font-bold text-ink flex items-center gap-1.5 font-sans">
+                  <Coins className="w-4 h-4 text-emerald-700" />
                   <span>Divisão e Recebimento Multimeios</span>
                 </span>
-                <span className="text-[11px] font-mono text-obsidian-400">
-                  Total Pago: <strong className="text-emerald-400">{formatBRL(totalPaid)}</strong>
+                <span className="text-xs tabular-nums text-ink-muted">
+                  Total Pago: <strong className="text-emerald-700">{formatBRL(totalPaid)}</strong>
                 </span>
               </div>
 
               {/* Lista de Fatias de Pagamentos já Registradas */}
               <div className="space-y-1.5 max-h-[22vh] overflow-y-auto pr-1 custom-scrollbar">
                 {payments.length === 0 ? (
-                  <div className="py-4 text-center text-obsidian-500 text-xs">
+                  <div className="py-4 text-center text-ink-muted text-xs">
                     Nenhum pagamento registrado ainda. Selecione o método abaixo.
                   </div>
                 ) : (
                   payments.map((p) => (
                     <div
                       key={p.id}
-                      className="p-2.5 rounded-xl bg-carbon-900 border border-emerald-800/40 flex items-center justify-between text-xs"
+                      className="p-2.5 rounded-xl bg-surface-muted border border-line flex items-center justify-between text-xs shadow-sm"
                     >
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 font-bold border border-emerald-700/60 font-mono text-[10px]">
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold border border-emerald-200 tabular-nums text-xs">
                           {p.method}
                         </span>
                         <div>
-                          <span className="font-mono font-bold text-white text-sm">
+                          <span className="tabular-nums font-bold text-ink text-sm">
                             {formatBRL(p.amount)}
                           </span>
                           {p.notes && (
-                            <p className="text-[10px] text-obsidian-400 italic mt-0.5">
+                            <p className="text-xs text-ink-muted italic mt-0.5">
                               {p.notes}
                             </p>
                           )}
@@ -398,9 +399,9 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                       </div>
                       <button
                         onClick={() => removePayment(p.id)}
-                        className="p-1.5 text-obsidian-500 hover:text-ruby-400 hover:bg-ruby-950/50 rounded transition"
+                        className="p-1.5 text-ink-muted hover:text-rose-700 hover:bg-rose-50 rounded transition"
                         title="Remover este pagamento"
-                      >
+                       type="button" aria-label="Remover este pagamento">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -410,10 +411,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
               {/* Status do Saldo da Conta */}
               <div
-                className={`p-3 rounded-2xl border flex items-center justify-between text-xs font-mono font-bold ${
+                className={`p-3 rounded-2xl border flex items-center justify-between text-xs tabular-nums font-bold ${
                   isFullyPaid
-                    ? 'bg-emerald-950/50 border-emerald-600/70 text-emerald-300 shadow-md shadow-emerald-950/40'
-                    : 'bg-amber-950/30 border-amber-600/70 text-amber-300 shadow-md shadow-amber-950/30'
+                    ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm'
+                    : 'bg-amber-50 border-amber-300 text-amber-800 shadow-sm'
                 }`}
               >
                 <span>{isFullyPaid ? '✅ CONTA QUITADA!' : '⏳ SALDO RESTANTE A PAGAR:'}</span>
@@ -422,7 +423,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
               {/* Formulário para Adicionar Pagamento */}
               {!isFullyPaid && (
-                <form onSubmit={handleAddPayment} className="space-y-2.5 pt-1 border-t border-carbon-800">
+                <form onSubmit={handleAddPayment} className="space-y-2.5 pt-1 border-t border-line">
                   {/* Seletor de Meio de Pagamento */}
                   <div className="grid grid-cols-4 gap-1.5">
                     {[
@@ -438,10 +439,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                           key={m.id}
                           type="button"
                           onClick={() => handleSelectMethod(m.id)}
-                          className={`py-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 active:scale-95 ${
+                          className={`py-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 ${
                             isSelected
-                              ? 'bg-gradient-to-r from-ember-600 to-gold-600 text-obsidian-950 font-black shadow-lg shadow-ember-950/50'
-                              : 'bg-carbon-900 border border-carbon-800 text-obsidian-300 hover:bg-carbon-800 hover:text-white'
+                              ? 'bg-brand-700 text-white font-bold shadow-sm'
+                              : 'bg-surface-muted border border-line text-ink hover:bg-surface-muted'
                           }`}
                         >
                           <Icon className="w-4 h-4" />
@@ -456,7 +457,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsPixModalOpen(true)}
-                      className="w-full py-2.5 px-3 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 transition active:scale-98 animate-pulse"
+                      className="w-full py-2.5 px-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition"
                     >
                       <QrCode className="w-4 h-4" />
                       <span>Gerar QR Code PIX Dinâmico & WhatsApp Zap</span>
@@ -467,7 +468,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                   <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
                       <div className="relative flex-1">
-                        <span className="absolute left-3.5 top-2.5 text-xs text-obsidian-500 font-mono font-bold">
+                        <span className="absolute left-3.5 top-2.5 text-xs text-ink-muted tabular-nums font-bold">
                           R$
                         </span>
                         <input
@@ -475,13 +476,13 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                           value={paymentAmount}
                           onChange={(e) => setPaymentAmount(e.target.value)}
                           placeholder={remainingDue.toFixed(2)}
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-carbon-900 border border-carbon-700 text-white font-mono text-sm font-bold focus:ring-2 focus:ring-gold-500 focus:outline-none"
-                        />
+                          className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-sm font-bold focus:ring-2 focus:ring-brand-600 focus:outline-none"
+                         aria-label="Valor do pagamento em reais" inputMode="decimal"/>
                       </div>
 
                       <button
                         type="submit"
-                        className="btn-emerald px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shrink-0"
+                        className="btn-success px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shrink-0"
                       >
                         <Plus className="w-4 h-4" />
                         <span>Lançar</span>
@@ -489,25 +490,25 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     </div>
 
                     {/* Botões Rápidos de Divisão */}
-                    <div className="flex gap-1.5 text-[10px] font-mono text-obsidian-400">
+                    <div className="flex gap-1.5 text-xs tabular-nums text-ink-muted">
                       <button
                         type="button"
                         onClick={() => setPaymentAmount(remainingDue.toFixed(2))}
-                        className="px-2.5 py-1 rounded-lg bg-carbon-900 border border-carbon-800 hover:bg-carbon-800 hover:text-white"
+                        className="px-2.5 py-1 rounded-lg bg-surface-muted border border-line hover:bg-surface-muted hover:text-ink"
                       >
                         Total ({formatBRL(remainingDue)})
                       </button>
                       <button
                         type="button"
                         onClick={() => setPaymentAmount((remainingDue / 2).toFixed(2))}
-                        className="px-2.5 py-1 rounded-lg bg-carbon-900 border border-carbon-800 hover:bg-carbon-800 hover:text-white"
+                        className="px-2.5 py-1 rounded-lg bg-surface-muted border border-line hover:bg-surface-muted hover:text-ink"
                       >
                         1/2 ({formatBRL(remainingDue / 2)})
                       </button>
                       <button
                         type="button"
                         onClick={() => setPaymentAmount((remainingDue / 3).toFixed(2))}
-                        className="px-2.5 py-1 rounded-lg bg-carbon-900 border border-carbon-800 hover:bg-carbon-800 hover:text-white"
+                        className="px-2.5 py-1 rounded-lg bg-surface-muted border border-line hover:bg-surface-muted hover:text-ink"
                       >
                         1/3 ({formatBRL(remainingDue / 3)})
                       </button>
@@ -516,13 +517,13 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
                   {/* Campo de Dinheiro Entregue e Cálculo de Troco */}
                   {paymentMethod === 'DINHEIRO' && (
-                    <div className="p-3 rounded-2xl bg-carbon-900 border border-carbon-700 space-y-2 text-xs">
+                    <div className="p-3 rounded-2xl bg-surface-muted border border-line space-y-2 text-xs">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-obsidian-300 font-semibold">
+                        <span className="text-ink font-semibold">
                           Valor entregue pelo cliente:
                         </span>
                         <div className="relative w-32">
-                          <span className="absolute left-2.5 top-2 text-[11px] text-obsidian-500 font-mono font-bold">
+                          <span className="absolute left-2.5 top-2 text-xs text-ink-muted tabular-nums font-bold">
                             R$
                           </span>
                           <input
@@ -530,13 +531,13 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                             placeholder="0,00"
                             value={cashTendered}
                             onChange={(e) => setCashTendered(e.target.value)}
-                            className="w-full pl-7 pr-2.5 py-1.5 rounded-xl bg-obsidian-950 border border-carbon-700 text-white font-mono text-xs text-right focus:ring-1 focus:ring-emerald-500 focus:outline-none"
-                          />
+                            className="w-full pl-7 pr-2.5 py-1.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-xs text-right focus:ring-1 focus:ring-brand-600 focus:outline-none"
+                           aria-label="Dinheiro recebido do cliente" inputMode="decimal"/>
                         </div>
                       </div>
 
                       {cashChange > 0 && (
-                        <div className="flex justify-between items-center pt-2 border-t border-carbon-800 text-emerald-400 font-mono font-bold">
+                        <div className="flex justify-between items-center pt-2 border-t border-line text-emerald-700 tabular-nums font-bold">
                           <span>Troco a devolver:</span>
                           <span className="text-base">{formatBRL(cashChange)}</span>
                         </div>
@@ -552,10 +553,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                   type="button"
                   disabled={!isFullyPaid}
                   onClick={handleFinalizeClosure}
-                  className={`w-full py-4 rounded-2xl font-black text-xs uppercase tracking-wider transition active:scale-95 shadow-xl flex items-center justify-center gap-2 ${
+                  className={`w-full py-4 rounded-2xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-2 ${
                     isFullyPaid
-                      ? 'btn-emerald shadow-emerald-950/60'
-                      : 'bg-carbon-800 text-obsidian-500 cursor-not-allowed border border-carbon-700'
+                      ? 'btn-success'
+                      : 'bg-surface-muted text-ink-muted cursor-not-allowed border border-line'
                   }`}
                 >
                   <CheckCheck className="w-4 h-4" />
@@ -568,7 +569,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
           </div>
 
         </div>
-      </div>
+      </Dialog>
 
       {/* Modal de Impressão do Cupom Térmico */}
       {receiptData && (

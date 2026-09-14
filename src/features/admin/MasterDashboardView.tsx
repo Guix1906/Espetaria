@@ -151,20 +151,20 @@ export const MasterDashboardView: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-obsidian-950 text-obsidian-100 p-3 sm:p-6 space-y-6">
+    <div className="min-h-0 bg-surface-muted text-ink p-3 sm:p-6 space-y-6">
       
       {/* Topo do Painel Master */}
-      <div className="bg-carbon-900 border border-carbon-800 p-4 sm:p-6 rounded-3xl shadow-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+      <div className="bg-surface-muted border border-line p-4 sm:p-6 rounded-2xl shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gold-600 to-amber-600 text-obsidian-950 flex items-center justify-center shadow-lg shadow-gold-950/50">
+            <div className="w-12 h-12 rounded-2xl bg-amber-700 text-white flex items-center justify-center shadow-sm">
               <ShieldCheck className="w-7 h-7" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-black text-white uppercase tracking-wide font-serif">
+              <h1 className="text-xl sm:text-2xl font-bold text-ink font-sans">
                 Painel Master & DRE Executivo
               </h1>
-              <p className="text-xs text-obsidian-400 mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 Gestão Estratégica, Financeira e Auditoria Noturna da Espetaria
               </p>
             </div>
@@ -176,22 +176,22 @@ export const MasterDashboardView: React.FC = () => {
           <button
             onClick={handleExportCSV}
             disabled={!currentShift}
-            className="btn-carbon px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-md"
-          >
-            <Download className="w-4 h-4 text-emerald-400" />
+            className="bg-surface-muted hover:bg-surface-muted text-ink border border-line px-4 py-2.5 rounded-2xl text-xs font-bold flex items-center gap-2 shadow-sm transition"
+           type="button">
+            <Download className="w-4 h-4 text-emerald-700" />
             <span>Exportar DRE (CSV)</span>
           </button>
 
           {currentShift && currentShift.status === 'ABERTO' ? (
             <button
               onClick={() => setIsCloseModalOpen(true)}
-              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-ruby-600 to-red-600 hover:from-ruby-500 hover:to-red-500 text-white text-xs font-black uppercase tracking-wider flex items-center gap-2 transition active:scale-95 shadow-lg shadow-ruby-950/60"
-            >
+              className="px-5 py-2.5 rounded-2xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold flex items-center gap-2 transition shadow-sm"
+             type="button">
               <Lock className="w-4 h-4" />
               <span>Fechar Turno (Reconciliação)</span>
             </button>
           ) : (
-            <div className="px-3.5 py-2 rounded-2xl bg-carbon-800 border border-carbon-700 text-obsidian-400 text-xs font-mono">
+            <div className="px-3.5 py-2 rounded-2xl bg-surface-muted border border-line text-ink-muted text-xs tabular-nums">
               Nenhum turno aberto no momento
             </div>
           )}
@@ -202,15 +202,15 @@ export const MasterDashboardView: React.FC = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         
         {/* Faturamento Bruto */}
-        <div className="card-carbon border border-carbon-800 p-5 rounded-3xl shadow-xl relative overflow-hidden">
+        <div className="bg-surface-muted border border-line p-5 rounded-2xl shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-obsidian-400 uppercase tracking-wider font-serif">Faturamento Bruto</span>
-            <DollarSign className="w-5 h-5 text-emerald-400" />
+            <span className="text-xs font-bold text-ink-muted font-sans">Faturamento Bruto</span>
+            <DollarSign className="w-5 h-5 text-emerald-700" />
           </div>
-          <div className="text-2xl sm:text-3xl font-black font-mono text-emerald-400 mt-2.5 drop-shadow-md">
+          <div className="text-2xl sm:text-3xl font-bold tabular-nums text-emerald-700 mt-2.5">
             {formatBRL(grossRevenue)}
           </div>
-          <div className="text-[11px] text-obsidian-400 mt-1.5 flex items-center gap-1 font-mono">
+          <div className="text-xs text-ink-muted mt-1.5 flex items-center gap-1 tabular-nums">
             <span>Salão: {formatBRL(salonGross)}</span>
             <span>•</span>
             <span>Delivery: {formatBRL(deliveryGross)}</span>
@@ -218,43 +218,43 @@ export const MasterDashboardView: React.FC = () => {
         </div>
 
         {/* Faturamento Líquido */}
-        <div className="card-carbon border border-carbon-800 p-5 rounded-3xl shadow-xl relative overflow-hidden">
+        <div className="bg-surface-muted border border-line p-5 rounded-2xl shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-obsidian-400 uppercase tracking-wider font-serif">Faturamento Líquido</span>
-            <TrendingUp className="w-5 h-5 text-gold-400" />
+            <span className="text-xs font-bold text-ink-muted font-sans">Faturamento Líquido</span>
+            <TrendingUp className="w-5 h-5 text-amber-800" />
           </div>
-          <div className="text-2xl sm:text-3xl font-black font-mono text-gold-400 mt-2.5 drop-shadow-md">
+          <div className="text-2xl sm:text-3xl font-bold tabular-nums text-ink mt-2.5">
             {formatBRL(netRevenue)}
           </div>
-          <div className="text-[11px] text-obsidian-400 mt-1.5 font-mono">
+          <div className="text-xs text-ink-muted mt-1.5 tabular-nums">
             Taxa 10%: +{formatBRL(totalServiceFee)} | Desc: -{formatBRL(totalDiscounts)}
           </div>
         </div>
 
         {/* Comandas e Pessoas */}
-        <div className="card-carbon border border-carbon-800 p-5 rounded-3xl shadow-xl relative overflow-hidden">
+        <div className="bg-surface-muted border border-line p-5 rounded-2xl shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-obsidian-400 uppercase tracking-wider font-serif">Mesas & Clientes</span>
-            <Users className="w-5 h-5 text-cyan-400" />
+            <span className="text-xs font-bold text-ink-muted font-sans">Mesas & Clientes</span>
+            <Users className="w-5 h-5 text-sky-700" />
           </div>
-          <div className="text-2xl sm:text-3xl font-black font-mono text-white mt-2.5">
-            {closedTabs.length} <span className="text-base text-obsidian-400 font-sans font-normal">mesas</span>
+          <div className="text-2xl sm:text-3xl font-bold tabular-nums text-ink mt-2.5">
+            {closedTabs.length} <span className="text-base text-ink-muted font-sans font-normal">mesas</span>
           </div>
-          <div className="text-[11px] text-obsidian-400 mt-1.5">
+          <div className="text-xs text-ink-muted mt-1.5">
             {totalPeople} clientes atendidos no salão
           </div>
         </div>
 
         {/* Ticket Médio */}
-        <div className="card-carbon border border-carbon-800 p-5 rounded-3xl shadow-xl relative overflow-hidden">
+        <div className="bg-surface-muted border border-line p-5 rounded-2xl shadow-sm relative overflow-hidden">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-obsidian-400 uppercase tracking-wider font-serif">Ticket Médio</span>
-            <Receipt className="w-5 h-5 text-ember-400" />
+            <span className="text-xs font-bold text-ink-muted font-sans">Ticket Médio</span>
+            <Receipt className="w-5 h-5 text-brand-700" />
           </div>
-          <div className="text-2xl sm:text-3xl font-black font-mono text-white mt-2.5">
+          <div className="text-2xl sm:text-3xl font-bold tabular-nums text-brand-700 mt-2.5">
             {formatBRL(avgTicketTab)}
           </div>
-          <div className="text-[11px] text-obsidian-400 mt-1.5 font-mono">
+          <div className="text-xs text-ink-muted mt-1.5 tabular-nums">
             {formatBRL(avgTicketPerson)} por pessoa
           </div>
         </div>
@@ -265,23 +265,23 @@ export const MasterDashboardView: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Distribuição por Meio de Pagamento */}
-        <div className="card-carbon border border-carbon-800 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-carbon-800 pb-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2 font-serif">
-              <PieChart className="w-4 h-4 text-emerald-400" />
+        <div className="bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <h2 className="text-sm font-bold text-ink flex items-center gap-2 font-sans">
+              <PieChart className="w-4 h-4 text-emerald-700" />
               <span>Meios de Pagamento</span>
             </h2>
-            <span className="text-xs font-mono text-gold-400 font-bold">
+            <span className="text-xs tabular-nums text-ink font-bold">
               {formatBRL(totalPaidAll)}
             </span>
           </div>
 
           <div className="space-y-3.5">
             {[
-              { id: 'PIX', label: 'PIX Instantâneo', color: 'bg-emerald-500', text: 'text-emerald-400' },
-              { id: 'CREDITO', label: 'Cartão de Crédito', color: 'bg-purple-500', text: 'text-purple-400' },
-              { id: 'DEBITO', label: 'Cartão de Débito', color: 'bg-cyan-500', text: 'text-cyan-400' },
-              { id: 'DINHEIRO', label: 'Dinheiro em Espécie', color: 'bg-gold-500', text: 'text-gold-400' },
+              { id: 'PIX', label: 'PIX Instantâneo', color: 'bg-emerald-700', text: 'text-emerald-700' },
+              { id: 'CREDITO', label: 'Cartão de Crédito', color: 'bg-purple-700', text: 'text-purple-700' },
+              { id: 'DEBITO', label: 'Cartão de Débito', color: 'bg-sky-700', text: 'text-sky-700' },
+              { id: 'DINHEIRO', label: 'Dinheiro em Espécie', color: 'bg-amber-700', text: 'text-amber-800' },
             ].map((method) => {
               const amount = paymentBreakdown[method.id] || 0;
               const percent = totalPaidAll > 0 ? (amount / totalPaidAll) * 100 : 0;
@@ -289,14 +289,14 @@ export const MasterDashboardView: React.FC = () => {
               return (
                 <div key={method.id} className="space-y-1.5">
                   <div className="flex justify-between text-xs font-semibold">
-                    <span className="text-obsidian-300">{method.label}</span>
-                    <span className={`font-mono font-bold ${method.text}`}>
+                    <span className="text-ink">{method.label}</span>
+                    <span className={`tabular-nums font-bold ${method.text}`}>
                       {formatBRL(amount)} ({percent.toFixed(1)}%)
                     </span>
                   </div>
-                  <div className="w-full bg-obsidian-950 h-2.5 rounded-full overflow-hidden border border-carbon-800">
+                  <div className="w-full bg-surface-muted h-2.5 rounded-full overflow-hidden border border-line">
                     <div
-                      className={`h-full ${method.color} transition-all duration-500 rounded-full`}
+                      className={`h-full ${method.color} transition-colors duration-500 rounded-full`}
                       style={{ width: `${percent}%` }}
                     />
                   </div>
@@ -307,18 +307,18 @@ export const MasterDashboardView: React.FC = () => {
         </div>
 
         {/* Curva ABC de Produtos Mais Vendidos */}
-        <div className="lg:col-span-2 card-carbon border border-carbon-800 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
-          <div className="flex items-center justify-between border-b border-carbon-800 pb-3">
-            <h2 className="text-sm font-bold text-white flex items-center gap-2 font-serif">
-              <Flame className="w-4 h-4 text-ember-500" />
+        <div className="lg:col-span-2 bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <h2 className="text-sm font-bold text-ink flex items-center gap-2 font-sans">
+              <Flame className="w-4 h-4 text-brand-700" />
               <span>Curva ABC — Top Produtos Mais Vendidos</span>
             </h2>
-            <span className="text-xs text-obsidian-400">Classificação por Faturamento</span>
+            <span className="text-xs text-ink-muted">Classificação por Faturamento</span>
           </div>
 
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="text-obsidian-400 font-semibold border-b border-carbon-800 font-serif">
+            <table className="data-table w-full text-left text-xs">
+              <thead className="text-ink-muted font-semibold border-b border-line font-sans">
                 <tr>
                   <th className="pb-3">#</th>
                   <th className="pb-3">Produto / Corte</th>
@@ -327,10 +327,10 @@ export const MasterDashboardView: React.FC = () => {
                   <th className="pb-3 text-right">% Vendas</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-carbon-800/80">
+              <tbody className="divide-y divide-line">
                 {topProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="py-8 text-center text-obsidian-500 italic">
+                    <td colSpan={5} className="py-8 text-center text-ink-muted italic">
                       Nenhum item vendido até o momento neste turno.
                     </td>
                   </tr>
@@ -338,19 +338,19 @@ export const MasterDashboardView: React.FC = () => {
                   topProducts.slice(0, 7).map((prod, idx) => {
                     const pct = grossRevenue > 0 ? (prod.total / grossRevenue) * 100 : 0;
                     return (
-                      <tr key={idx} className="hover:bg-carbon-800/40 transition">
-                        <td className="py-3 font-bold font-mono text-gold-400">{idx + 1}º</td>
-                        <td className="py-3 font-semibold text-white">
+                      <tr key={idx} className="hover:bg-surface-muted transition">
+                        <td className="py-3 font-bold tabular-nums text-brand-700">{idx + 1}º</td>
+                        <td className="py-3 font-semibold text-ink">
                           <div>{prod.name}</div>
-                          <span className="text-[10px] text-obsidian-400">{prod.category}</span>
+                          <span className="text-xs text-ink-muted">{prod.category}</span>
                         </td>
-                        <td className="py-3 text-center font-mono font-bold text-obsidian-300">
+                        <td className="py-3 text-center tabular-nums font-bold text-ink">
                           {prod.qty} un
                         </td>
-                        <td className="py-3 text-right font-mono font-bold text-gold-400">
+                        <td className="py-3 text-right tabular-nums font-bold text-ink">
                           {formatBRL(prod.total)}
                         </td>
-                        <td className="py-3 text-right font-mono text-obsidian-400">
+                        <td className="py-3 text-right tabular-nums text-ink-muted">
                           {pct.toFixed(1)}%
                         </td>
                       </tr>
@@ -365,21 +365,21 @@ export const MasterDashboardView: React.FC = () => {
       </div>
 
       {/* AUDITORIA DE QUEBRAS E PERDAS */}
-      <div className="card-carbon border border-carbon-800 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-carbon-800 pb-3">
+      <div className="bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-line pb-3">
           <div className="flex items-center gap-2">
-            <PackageCheck className="w-5 h-5 text-ruby-400" />
-            <h2 className="text-sm font-bold text-white font-serif">
+            <PackageCheck className="w-5 h-5 text-red-700" />
+            <h2 className="text-sm font-bold text-ink font-sans">
               Auditoria de Quebras, Perdas & Descartes do Turno
             </h2>
           </div>
-          <span className="text-xs font-mono text-ruby-400 font-bold">
+          <span className="text-xs tabular-nums text-red-700 font-bold">
             {shiftLossMovements.length} ocorrências registradas
           </span>
         </div>
 
         {shiftLossMovements.length === 0 ? (
-          <div className="p-5 rounded-2xl bg-obsidian-900/60 text-center text-obsidian-500 text-xs italic">
+          <div className="p-5 rounded-2xl bg-surface-muted text-center text-ink-muted text-xs italic">
             Nenhuma perda ou descarte operacional registrado no turno de hoje.
           </div>
         ) : (
@@ -387,16 +387,16 @@ export const MasterDashboardView: React.FC = () => {
             {shiftLossMovements.map((m) => (
               <div
                 key={m.id}
-                className="p-3.5 rounded-2xl bg-obsidian-900 border border-ruby-900/40 text-xs space-y-1.5 shadow-md"
+                className="p-3.5 rounded-2xl bg-surface-muted border border-red-200 text-xs space-y-1.5 shadow-sm"
               >
-                <div className="flex justify-between font-semibold text-white">
+                <div className="flex justify-between font-semibold text-ink">
                   <span>{m.product_name || m.product_id}</span>
-                  <span className="font-mono text-ruby-400 font-bold">{m.quantity} un</span>
+                  <span className="tabular-nums text-red-700 font-bold">{m.quantity} un</span>
                 </div>
-                <div className="text-[11px] text-obsidian-400 italic">
+                <div className="text-xs text-ink-muted italic">
                   Motivo: {m.reason || 'Sem justificativa'}
                 </div>
-                <div className="text-[10px] text-obsidian-500 font-mono">
+                <div className="text-xs text-ink-muted tabular-nums">
                   {new Date(m.created_at).toLocaleTimeString('pt-BR')}
                 </div>
               </div>
@@ -406,20 +406,20 @@ export const MasterDashboardView: React.FC = () => {
       </div>
 
       {/* HISTÓRICO DE TURNOS ANTERIORES */}
-      <div className="card-carbon border border-carbon-800 p-5 sm:p-6 rounded-3xl shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-carbon-800 pb-3">
-          <h2 className="text-sm font-bold text-white flex items-center gap-2 font-serif">
-            <Clock className="w-4 h-4 text-gold-400" />
+      <div className="bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-line pb-3">
+          <h2 className="text-sm font-bold text-ink flex items-center gap-2 font-sans">
+            <Clock className="w-4 h-4 text-amber-800" />
             <span>Histórico de Turnos Fechados</span>
           </h2>
-          <span className="text-xs text-obsidian-400 font-mono">
+          <span className="text-xs text-ink-muted tabular-nums">
             {shiftsHistory.length} registros
           </span>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="text-obsidian-400 font-semibold border-b border-carbon-800 font-serif">
+          <table className="data-table w-full text-left text-xs">
+            <thead className="text-ink-muted font-semibold border-b border-line font-sans">
               <tr>
                 <th className="pb-3">Turno</th>
                 <th className="pb-3">Data</th>
@@ -429,27 +429,27 @@ export const MasterDashboardView: React.FC = () => {
                 <th className="pb-3">Observações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-carbon-800/80">
+            <tbody className="divide-y divide-line">
               {shiftsHistory.map((shift) => (
-                <tr key={shift.id} className="hover:bg-carbon-800/40 transition">
-                  <td className="py-3 font-semibold text-white">{shift.name}</td>
-                  <td className="py-3 font-mono text-obsidian-300">{shift.date}</td>
+                <tr key={shift.id} className="hover:bg-surface-muted transition">
+                  <td className="py-3 font-semibold text-ink">{shift.name}</td>
+                  <td className="py-3 tabular-nums text-ink-muted">{shift.date}</td>
                   <td className="py-3">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold font-mono ${
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums ${
                       shift.status === 'ABERTO'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-carbon-800 text-obsidian-400 border border-carbon-700'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : 'bg-surface-muted text-ink-muted border border-line'
                     }`}>
                       {shift.status}
                     </span>
                   </td>
-                  <td className="py-3 text-right font-mono text-obsidian-300">
+                  <td className="py-3 text-right tabular-nums text-ink-muted">
                     {formatBRL(shift.cash_drawer_start)}
                   </td>
-                  <td className="py-3 text-right font-mono font-bold text-gold-400">
+                  <td className="py-3 text-right tabular-nums font-bold text-ink">
                     {shift.cash_drawer_end !== null ? formatBRL(shift.cash_drawer_end) : '—'}
                   </td>
-                  <td className="py-3 text-obsidian-400 italic max-w-xs truncate">
+                  <td className="py-3 text-ink-muted italic max-w-xs truncate">
                     {shift.closing_notes || '—'}
                   </td>
                 </tr>

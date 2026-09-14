@@ -1,271 +1,73 @@
-import React, { useState } from 'react';
-import { 
-  ArrowLeft, 
-  Search, 
-  Flame, 
-  Plus, 
-  Receipt
-} from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Flame, Plus, Receipt, ShoppingBag, X } from 'lucide-react';
 import { useStockStore } from '../../stores/useStockStore';
 import { useCartStore } from '../../stores/useCartStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { RestaurantTable, Product } from '../../types/domain';
-import { MeatDoneness } from '../../types/enums';
+import type { RestaurantTable, Product } from '../../types/domain';
+import type { MeatDoneness } from '../../types/enums';
 import { formatBRL } from '../../lib/formatters';
+import { getProductAvailability } from '../../lib/productAvailability';
+import { SearchField } from '../../components/ui/SearchField';
+import { FilterChip } from '../../components/ui/FilterChip';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { WaiterDonenessModal } from './WaiterDonenessModal';
 import { WaiterCartDrawer } from './WaiterCartDrawer';
 import { WaiterViewTab } from './WaiterViewTab';
 
-interface WaiterOrderPadProps {
-  table: RestaurantTable;
-  onBackToTables: () => void;
-}
+interface WaiterOrderPadProps { table: RestaurantTable; onBackToTables: () => void; }
+const categories = [{ id: 'ALL', name: 'Todos' }, { id: 'cat-1', name: 'Espetos nobres' }, { id: 'cat-2', name: 'Tradicionais' }, { id: 'cat-3', name: 'Acompanhamentos' }, { id: 'cat-4', name: 'Bebidas' }, { id: 'cat-5', name: 'Sobremesas' }];
 
-export const WaiterOrderPad: React.FC<WaiterOrderPadProps> = ({
-  table,
-  onBackToTables,
-}) => {
+export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
   const { products, dailyPrepStock } = useStockStore();
   const { addItem, getCartItemsCount, getCartTotal } = useCartStore();
   const { tabs } = useTableStore();
-
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-
-  // Modais do Garçom
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
-  const [isDonenessModalOpen, setIsDonenessModalOpen] = useState(false);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [isViewTabOpen, setIsViewTabOpen] = useState(false);
-
-  const activeTab = tabs.find((t) => t.table_id === table.id && t.status === 'OPEN');
+  const [orderSent, setOrderSent] = useState(false);
+  const activeTab = tabs.find((tab) => tab.table_id === table.id && tab.status === 'OPEN');
   const cartCount = getCartItemsCount(table.id);
   const cartTotal = getCartTotal(table.id);
-
-  // Categorias únicas existentes
-  const categories = [
-    { id: 'ALL', name: 'Todos' },
-    { id: 'cat-1', name: 'Espetos Nobres' },
-    { id: 'cat-2', name: 'Tradicionais' },
-    { id: 'cat-3', name: 'Acompanhamentos' },
-    { id: 'cat-4', name: 'Bebidas' },
-    { id: 'cat-5', name: 'Sobremesas' },
-  ];
+  const query = searchQuery.trim().toLocaleLowerCase('pt-BR');
+  const filteredProducts = products.filter((product) => product.active && (selectedCategory === 'ALL' || product.category_id === selectedCategory) && product.name.toLocaleLowerCase('pt-BR').includes(query));
 
   const handleProductTap = (product: Product) => {
-    // Se exige seleção de ponto de carne, abre o modal de ponto
-    if (product.allows_doneness) {
-      setModalProduct(product);
-      setIsDonenessModalOpen(true);
-    } else {
-      // Adiciona 1 unidade diretamente ao rascunho da mesa
-      addItem(table.id, product, 1);
-    }
+    setOrderSent(false);
+    if (product.allows_doneness) setModalProduct(product);
+    else addItem(table.id, product, 1);
   };
-
   const handleDonenessConfirm = (doneness: MeatDoneness, notes: string, quantity: number) => {
-    if (!modalProduct) return;
-    addItem(table.id, modalProduct, quantity, doneness, notes);
-    setModalProduct(null);
+    if (modalProduct) addItem(table.id, modalProduct, quantity, doneness, notes);
   };
-
-  const filteredProducts = products.filter((p) => {
-    const matchesCategory = selectedCategory === 'ALL' || p.category_id === selectedCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#090a0f] text-stone-100 pb-28">
-      
-      {/* Barra de Topo do Bloco de Pedidos */}
-      <div className="sticky top-0 z-30 bg-[#090a0f]/95 backdrop-blur-xl border-b border-white/10 px-3 sm:px-6 py-2.5 shadow-lg">
-        <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-          
-          <div className="flex items-center gap-3">
-            <button
-              onClick={onBackToTables}
-              className="p-2.5 rounded-2xl bg-[#14151f] hover:bg-[#1e202f] border border-white/10 text-stone-300 hover:text-white transition active:scale-95 shadow-sm"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono font-black text-xl text-white leading-none">
-                  Mesa {String(table.number).padStart(2, '0')}
-                </span>
-                <span className="text-[10px] uppercase font-black tracking-wider px-2.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 truncate max-w-[140px]">
-                  {activeTab?.customer_name || 'Comanda Aberta'}
-                </span>
-              </div>
-              <p className="text-[11px] text-stone-400 mt-1">
-                Total acumulado: <strong className="text-amber-400 font-mono font-bold text-xs">{formatBRL(activeTab?.total)}</strong>
-              </p>
-            </div>
-          </div>
-
-          {/* Botão de Ver Conta Atual da Mesa */}
-          <button
-            onClick={() => setIsViewTabOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#14151f] hover:bg-[#1e202f] border border-white/15 text-stone-200 text-xs font-bold transition active:scale-95 shadow-sm"
-          >
-            <Receipt className="w-4 h-4 text-amber-400" />
-            <span className="hidden xs:inline">Ver Consumo</span>
-          </button>
-
+    <div className="min-w-0 pb-28">
+      <div className="subnav-sticky px-4 py-3 sm:px-6 xl:px-8">
+        <div className="mx-auto flex max-w-[1536px] flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3"><button type="button" onClick={onBackToTables} className="icon-button" aria-label="Voltar às mesas"><ArrowLeft className="h-5 w-5" /></button><div><h1 className="text-xl font-bold tracking-tight text-ink">Mesa {String(table.number).padStart(2, '0')}</h1><p className="text-xs text-ink-muted">{activeTab?.customer_name || 'Comanda aberta'}</p></div></div>
+          <button type="button" onClick={() => setIsViewTabOpen(true)} className="btn-secondary"><Receipt className="h-4 w-4" aria-hidden="true" /><span>Ver consumo <span className="ml-1 font-bold text-ink tabular-nums">{formatBRL(activeTab?.total)}</span></span></button>
         </div>
       </div>
-
-      <div className="max-w-5xl mx-auto w-full p-3 sm:p-5 space-y-4 flex-1">
-        
-        {/* Barra de Busca Rápida */}
-        <div className="relative">
-          <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Buscar espeto nobre, porção, bebida gelada..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-[#14151f] border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 transition shadow-inner"
-          />
-        </div>
-
-        {/* Categorias Deslizantes em Pílulas */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-2xl text-xs font-bold transition whitespace-nowrap active:scale-95 ${
-                selectedCategory === cat.id
-                  ? 'bg-gradient-to-r from-orange-500 to-amber-600 text-white shadow-md shadow-orange-500/25 font-black'
-                  : 'bg-[#14151f] border border-white/10 text-stone-400 hover:text-white hover:bg-[#181a26]'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-
-        {/* Grade de Produtos */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
-          {filteredProducts.map((prod) => {
-            const daily = dailyPrepStock.find((s) => s.product_id === prod.id);
-            const isExhausted = !prod.available || (daily && (daily.is_exhausted || daily.current_quantity <= 0));
-
-            return (
-              <button
-                key={prod.id}
-                disabled={Boolean(isExhausted)}
-                onClick={() => handleProductTap(prod)}
-                className={`relative p-3.5 sm:p-4 rounded-3xl border text-left transition flex flex-col justify-between min-h-[110px] active:scale-[0.97] shadow-lg ${
-                  isExhausted
-                    ? 'bg-[#14151f]/40 border-white/5 opacity-50 cursor-not-allowed'
-                    : 'bg-[#14151f] border-white/10 hover:border-orange-500/40 hover:bg-[#181a26]'
-                }`}
-              >
-                {/* Topo do Card de Produto */}
-                <div>
-                  <div className="flex items-start justify-between gap-1.5">
-                    <span className="font-bold text-white text-xs sm:text-sm leading-snug line-clamp-2">
-                      {prod.name}
-                    </span>
-                    {isExhausted && (
-                      <span className="text-[9px] uppercase font-black px-1.5 py-0.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-400 shrink-0">
-                        ESGOTADO
-                      </span>
-                    )}
-                  </div>
-                  {prod.allows_doneness && !isExhausted && (
-                    <span className="text-[10px] text-orange-400 flex items-center gap-1 mt-1 font-semibold">
-                      <Flame className="w-3 h-3 text-orange-500" /> Ponto da carne
-                    </span>
-                  )}
-                </div>
-
-                {/* Preço e Saldo Restante */}
-                <div className="flex items-center justify-between mt-3 pt-2 border-t border-white/5">
-                  <span className="text-amber-400 font-mono font-black text-sm sm:text-base">
-                    {formatBRL(prod.price)}
-                  </span>
-
-                  {daily && !isExhausted && (
-                    <span className="text-[10px] font-mono text-stone-400">
-                      Resta: <strong className="text-stone-200 font-bold">{daily.current_quantity}</strong>
-                    </span>
-                  )}
-
-                  {!isExhausted && (
-                    <div className="w-7 h-7 rounded-xl bg-orange-500/20 text-orange-400 border border-orange-500/30 flex items-center justify-center hover:bg-orange-500 hover:text-white transition">
-                      <Plus className="w-4 h-4" />
-                    </div>
-                  )}
-                </div>
-              </button>
-            );
+      <div className="page-layout">
+        {orderSent && <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção. Acompanhe em <strong>Ver consumo</strong>.</span></div><button type="button" className="icon-button border-emerald-200 bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-semibold">O que vamos servir?</h2><p className="mt-1 text-sm text-ink-muted">Toque em um produto para adicionar ao pedido.</p></div><SearchField value={searchQuery} onChange={setSearchQuery} label="Buscar produto no cardápio" placeholder="Buscar espeto, porção ou bebida" className="w-full sm:w-80" /></div>
+        <div className="filter-bar" aria-label="Categorias do cardápio">{categories.map((category) => <FilterChip key={category.id} active={selectedCategory === category.id} onClick={() => setSelectedCategory(category.id)}>{category.name}</FilterChip>)}</div>
+        {filteredProducts.length ? <div className="grid grid-cols-1 gap-4 xs:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          {filteredProducts.map((product) => {
+            const { isAvailable, remaining } = getProductAvailability(product, dailyPrepStock.find((stock) => stock.product_id === product.id));
+            return <button key={product.id} type="button" disabled={!isAvailable} onClick={() => handleProductTap(product)} className={`product-card min-h-[176px] justify-between ${!isAvailable ? 'border-dashed bg-surface-soft' : ''}`} aria-label={`${product.name}, ${formatBRL(product.price)}. ${isAvailable ? 'Adicionar ao pedido' : 'Indisponível'}`}>
+              <div><div className="mb-3 flex items-center justify-between gap-2"><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${isAvailable ? 'bg-accent-50 text-accent-700' : 'bg-surface-muted text-ink-muted'}`}><Flame className="h-4 w-4" aria-hidden="true" /></span>{!isAvailable && <span className="status-badge border-rose-200 bg-rose-50 text-rose-700">Indisponível</span>}</div><h3 className="text-sm font-semibold leading-relaxed text-ink">{product.name}</h3><p className="mt-1 min-h-[18px] text-xs text-ink-muted">{product.allows_doneness ? 'Escolha o ponto da carne' : 'Adicionar com um toque'}</p></div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3"><div><span className="text-lg font-bold text-brand-800 tabular-nums">{formatBRL(product.price)}</span>{remaining !== null && <span className="mt-0.5 block text-xs text-ink-muted">{remaining} disponíveis</span>}</div>{isAvailable && <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-800"><Plus className="h-5 w-5" aria-hidden="true" /></span>}</div>
+            </button>;
           })}
-        </div>
-
+        </div> : <EmptyState title="Nenhum produto encontrado" description="Tente outro nome ou escolha uma categoria diferente." action={<button type="button" className="btn-secondary" onClick={() => { setSelectedCategory('ALL'); setSearchQuery(''); }}>Limpar filtros</button>} />}
       </div>
-
-      {/* BARRA FLUTUANTE DE CARRINHO (STICKY BOTTOM) */}
-      {cartCount > 0 && (
-        <div className="fixed bottom-0 inset-x-0 z-40 p-3 bg-gradient-to-t from-[#090a0f] via-[#090a0f]/95 to-transparent">
-          <div className="max-w-xl mx-auto">
-            <button
-              onClick={() => setIsCartDrawerOpen(true)}
-              className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-orange-500 via-amber-600 to-orange-600 hover:brightness-110 text-white font-bold text-sm shadow-2xl shadow-orange-500/30 active:scale-[0.98] transition flex items-center justify-between border border-white/20"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-black/30 flex items-center justify-center font-mono font-black text-sm text-white">
-                  {cartCount}
-                </div>
-                <span className="font-extrabold tracking-wide">Itens no Rascunho</span>
-              </div>
-
-              <div className="flex items-center gap-3">
-                <span className="font-mono font-black text-lg text-white">{formatBRL(cartTotal)}</span>
-                <span className="text-xs px-3 py-1 rounded-xl bg-black/30 uppercase font-black tracking-wider text-amber-200">
-                  Revisar ➔
-                </span>
-              </div>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Ponto da Carne */}
-      <WaiterDonenessModal
-        product={modalProduct}
-        isOpen={isDonenessModalOpen}
-        onClose={() => {
-          setIsDonenessModalOpen(false);
-          setModalProduct(null);
-        }}
-        onConfirm={handleDonenessConfirm}
-      />
-
-      {/* Drawer de Revisão do Pedido */}
-      <WaiterCartDrawer
-        table={table}
-        isOpen={isCartDrawerOpen}
-        onClose={() => setIsCartDrawerOpen(false)}
-        onSuccess={() => {
-          alert('Pedido lançado com sucesso na churrasqueira e cozinha!');
-        }}
-      />
-
-      {/* Modal de Extrato e Conta da Mesa */}
-      <WaiterViewTab
-        table={table}
-        isOpen={isViewTabOpen}
-        onClose={() => setIsViewTabOpen(false)}
-        onRequestBill={() => {
-          useTableStore.getState().requestBill(table.id);
-          setIsViewTabOpen(false);
-        }}
-      />
-
+      {cartCount > 0 && <div className="floating-cart"><button type="button" onClick={() => setIsCartDrawerOpen(true)} className="btn-primary mx-auto flex w-full max-w-2xl flex-wrap justify-between gap-3 px-4 py-4 shadow-floating"><span className="flex items-center gap-3"><ShoppingBag className="h-5 w-5" aria-hidden="true" /><span className="text-left"><span className="block font-semibold">Revisar pedido</span><span className="block text-xs text-white">{cartCount} {cartCount === 1 ? 'item no rascunho' : 'itens no rascunho'}</span></span></span><span className="flex items-center gap-3"><span className="text-lg font-bold tabular-nums">{formatBRL(cartTotal)}</span><ArrowRight className="h-5 w-5" aria-hidden="true" /></span></button></div>}
+      <WaiterDonenessModal product={modalProduct} isOpen={!!modalProduct} onClose={() => setModalProduct(null)} onConfirm={handleDonenessConfirm} />
+      <WaiterCartDrawer table={table} isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} onSuccess={() => setOrderSent(true)} />
+      <WaiterViewTab table={table} isOpen={isViewTabOpen} onClose={() => setIsViewTabOpen(false)} onRequestBill={() => { useTableStore.getState().requestBill(table.id); setIsViewTabOpen(false); }} />
     </div>
   );
-};
+}

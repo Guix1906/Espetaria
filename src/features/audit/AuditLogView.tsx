@@ -33,37 +33,37 @@ export const AuditLogView: React.FC = () => {
         return {
           label: 'Produção (Mise en Place)',
           icon: ArrowUpRight,
-          color: 'text-emerald-400',
-          bg: 'bg-emerald-500/10 border-emerald-500/30',
+          color: 'text-emerald-700',
+          bg: 'bg-emerald-50 border-emerald-200',
         };
       case 'VENDA':
         return {
           label: 'Venda de Salão/Mesa',
           icon: ArrowDownRight,
-          color: 'text-gold-400',
-          bg: 'bg-gold-500/10 border-gold-500/30',
+          color: 'text-amber-800',
+          bg: 'bg-amber-50 border-amber-200',
         };
       case 'CANCELAMENTO_RETORNO':
         return {
           label: 'Cancelamento c/ Retorno',
           icon: RotateCcw,
-          color: 'text-cyan-400',
-          bg: 'bg-cyan-500/10 border-cyan-500/30',
+          color: 'text-sky-700',
+          bg: 'bg-sky-50 border-sky-200',
         };
       case 'PERDA':
       case 'DESCARTE':
         return {
           label: 'Perda / Descarte Grelha',
           icon: AlertOctagon,
-          color: 'text-ruby-400',
-          bg: 'bg-ruby-500/10 border-ruby-500/30',
+          color: 'text-red-700',
+          bg: 'bg-red-50 border-red-200',
         };
       case 'AJUSTE':
         return {
           label: 'Ajuste de Contagem Física',
           icon: SlidersHorizontal,
-          color: 'text-purple-400',
-          bg: 'bg-purple-500/10 border-purple-500/30',
+          color: 'text-purple-700',
+          bg: 'bg-purple-50 border-purple-200',
         };
     }
   };
@@ -72,13 +72,13 @@ export const AuditLogView: React.FC = () => {
     <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-5">
       
       {/* Cabeçalho */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 card-carbon p-5 rounded-2xl border border-carbon-800/80 shadow-lg">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-surface-muted p-5 rounded-2xl border border-line shadow-sm">
         <div>
-          <h2 className="text-base sm:text-lg font-black text-white tracking-tight flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+          <h2 className="text-base sm:text-lg font-bold text-ink tracking-tight flex items-center gap-2 font-sans">
+            <ShieldCheck className="w-5 h-5 text-emerald-700" />
             <span>Trilha de Auditoria e Movimentações de Estoque</span>
           </h2>
-          <p className="text-xs text-obsidian-400 mt-0.5">
+          <p className="text-xs text-ink-muted mt-0.5">
             Registro imutável de todas as baixas, devoluções, perdas e ajustes em tempo real
           </p>
         </div>
@@ -98,12 +98,8 @@ export const AuditLogView: React.FC = () => {
               <button
                 key={t}
                 onClick={() => setTypeFilter(t)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap active:scale-95 ${
-                  isActive
-                    ? 'bg-ember-500 text-white shadow-md shadow-ember-950/60'
-                    : 'btn-carbon text-obsidian-400 hover:text-white'
-                }`}
-              >
+                className={`filter-chip ${isActive ? 'is-active' : ''}`}
+               type="button" aria-pressed={isActive}>
                 {label}
               </button>
             );
@@ -113,24 +109,24 @@ export const AuditLogView: React.FC = () => {
 
       {/* Busca */}
       <div className="relative">
-        <Search className="w-4 h-4 text-obsidian-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+        <Search className="w-4 h-4 text-ink-muted absolute left-3.5 top-1/2 -translate-y-1/2" />
         <input
           type="text"
           placeholder="Buscar por produto ou motivo..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full bg-carbon-900 border border-carbon-800 rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-white placeholder-obsidian-500 focus:outline-none focus:border-ember-500 transition shadow-inner"
-        />
+          className="w-full bg-surface-muted border border-line rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm text-ink placeholder-ink-muted focus:outline-none focus:border-brand-600 focus:ring-1 focus:ring-brand-600 transition shadow-sm"
+         aria-label="Buscar por produto ou cliente"/>
       </div>
 
       {/* Lista de Movimentações em Tabela / Cards */}
-      <div className="card-carbon border border-carbon-800/80 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-surface-muted border border-line rounded-2xl overflow-hidden shadow-sm">
         {filteredMovements.length === 0 ? (
-          <div className="p-8 text-center text-obsidian-500 text-sm">
+          <div className="p-8 text-center text-ink-muted text-sm">
             Nenhuma movimentação registrada com os filtros selecionados.
           </div>
         ) : (
-          <div className="divide-y divide-carbon-800/70">
+          <div className="divide-y divide-line">
             {filteredMovements.map((mov) => {
               const conf = getMovementConfig(mov.movement_type);
               const Icon = conf.icon;
@@ -139,7 +135,7 @@ export const AuditLogView: React.FC = () => {
               return (
                 <div
                   key={mov.id}
-                  className="p-3.5 sm:p-4 hover:bg-carbon-800/40 transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  className="p-3.5 sm:p-4 hover:bg-surface-muted transition flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                 >
                   {/* Informações Principais */}
                   <div className="flex items-start sm:items-center gap-3">
@@ -149,15 +145,15 @@ export const AuditLogView: React.FC = () => {
 
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-bold text-white text-sm">
+                        <span className="font-bold text-ink text-sm">
                           {mov.product_name || 'Produto'}
                         </span>
-                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold font-mono ${conf.bg} ${conf.color}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-bold tabular-nums ${conf.bg} ${conf.color}`}>
                           {conf.label}
                         </span>
                       </div>
 
-                      <div className="text-obsidian-400 mt-0.5">
+                      <div className="text-ink-muted mt-0.5">
                         {mov.reason || 'Operação de rotina'}
                       </div>
                     </div>
@@ -165,20 +161,20 @@ export const AuditLogView: React.FC = () => {
 
                   {/* Saldo Anterior, Quantidade e Novo Saldo */}
                   <div className="flex items-center justify-between sm:justify-end gap-5 pl-12 sm:pl-0">
-                    <div className="text-left sm:text-right font-mono">
-                      <div className="text-[11px] text-obsidian-400">
-                        Saldo: <span className="text-obsidian-300">{mov.previous_balance}</span> ➔ <strong className="text-white">{mov.new_balance}</strong>
+                    <div className="text-left sm:text-right tabular-nums">
+                      <div className="text-xs text-ink-muted">
+                        Saldo: <span className="text-ink-muted">{mov.previous_balance}</span> ➔ <strong className="text-ink">{mov.new_balance}</strong>
                       </div>
-                      <div className="text-[10px] text-obsidian-500 flex items-center sm:justify-end gap-1">
+                      <div className="text-xs text-ink-muted flex items-center sm:justify-end gap-1">
                         <Clock className="w-3 h-3" />
                         <span>{formatDateTime(mov.created_at)}</span>
                       </div>
                     </div>
 
-                    <div className={`px-3 py-1.5 rounded-xl font-mono font-black text-sm border shrink-0 ${
+                    <div className={`px-3 py-1.5 rounded-xl tabular-nums font-bold text-sm border shrink-0 ${
                       isPositive
-                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                        : 'bg-ruby-500/10 border-ruby-500/30 text-ruby-400'
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        : 'bg-red-50 border-red-200 text-red-700'
                     }`}>
                       {isPositive ? `+${mov.quantity}` : mov.quantity}
                     </div>

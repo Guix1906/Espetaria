@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { X, Check, Flame, MessageSquare } from 'lucide-react';
-import { Product } from '../../types/domain';
-import { MeatDoneness } from '../../types/enums';
+import { useState } from 'react';
+import { Check, Flame, Minus, Plus, X } from 'lucide-react';
+import type { Product } from '../../types/domain';
+import type { MeatDoneness } from '../../types/enums';
 import { formatBRL } from '../../lib/formatters';
+import { Dialog } from '../../components/ui/Dialog';
 
 interface WaiterDonenessModalProps {
   product: Product | null;
@@ -11,179 +12,46 @@ interface WaiterDonenessModalProps {
   onConfirm: (doneness: MeatDoneness, notes: string, quantity: number) => void;
 }
 
-const DONENESS_OPTIONS: { value: MeatDoneness; label: string; desc: string }[] = [
-  { value: 'MAL_PASSADA', label: 'Mal Passada', desc: 'Selada por fora, centro vermelho vivo' },
-  { value: 'AO_PONTO_PARA_MAL', label: 'Ao Ponto p/ Mal', desc: 'Centro bem rosado e muito suculenta' },
-  { value: 'AO_PONTO', label: 'Ao Ponto', desc: 'Ponto padrão da casa, centro rosado' },
-  { value: 'AO_PONTO_PARA_BEM', label: 'Ao Ponto p/ Bem', desc: 'Apenas levemente rosada no centro' },
-  { value: 'BEM_PASSADA', label: 'Bem Passada', desc: 'Totalmente cozida, tostada e sem sangue' },
+const DONENESS_OPTIONS: { value: MeatDoneness; label: string; description: string; swatch: string }[] = [
+  { value: 'MAL_PASSADA', label: 'Mal passada', description: 'Selada por fora, centro vermelho.', swatch: 'bg-rose-600' },
+  { value: 'AO_PONTO_PARA_MAL', label: 'Ao ponto para mal', description: 'Centro bem rosado e suculento.', swatch: 'bg-rose-400' },
+  { value: 'AO_PONTO', label: 'Ao ponto', description: 'Centro rosado. O padrão da casa.', swatch: 'bg-orange-400' },
+  { value: 'AO_PONTO_PARA_BEM', label: 'Ao ponto para bem', description: 'Levemente rosada no centro.', swatch: 'bg-amber-700' },
+  { value: 'BEM_PASSADA', label: 'Bem passada', description: 'Totalmente cozida e bem tostada.', swatch: 'bg-stone-700' },
 ];
-
 const COMMON_NOTES = ['Sem sal grosso', 'Pouco sal', 'Mais torradinho', 'Cortar em aperitivo', 'Farofa à parte'];
 
-export const WaiterDonenessModal: React.FC<WaiterDonenessModalProps> = ({
-  product,
-  isOpen,
-  onClose,
-  onConfirm,
-}) => {
+function DonenessForm({ product, onClose, onConfirm }: { product: Product; onClose: () => void; onConfirm: WaiterDonenessModalProps['onConfirm'] }) {
   const [selectedDoneness, setSelectedDoneness] = useState<MeatDoneness>('AO_PONTO');
-  const [quantity, setQuantity] = useState<number>(1);
-  const [notes, setNotes] = useState<string>('');
+  const [quantity, setQuantity] = useState(1);
+  const [notes, setNotes] = useState('');
+  const noteTags = notes.split(',').map((note) => note.trim()).filter(Boolean);
 
-  if (!isOpen || !product) return null;
-
-  const handleToggleNote = (noteTag: string) => {
-    if (notes.includes(noteTag)) {
-      setNotes(notes.replace(noteTag, '').replace(/,\s*,/g, ',').trim());
-    } else {
-      setNotes(notes ? `${notes}, ${noteTag}` : noteTag);
-    }
-  };
-
-  const handleConfirm = () => {
-    onConfirm(selectedDoneness, notes.trim(), quantity);
-    onClose();
-    setQuantity(1);
-    setNotes('');
-    setSelectedDoneness('AO_PONTO');
+  const toggleNote = (tag: string) => {
+    setNotes((noteTags.includes(tag) ? noteTags.filter((note) => note !== tag) : [...noteTags, tag]).join(', '));
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md">
-      <div className="bg-[#14151f] border-t sm:border border-white/15 rounded-t-3xl sm:rounded-3xl w-full max-w-lg p-5 sm:p-6 shadow-2xl space-y-4 max-h-[92vh] overflow-y-auto animate-in fade-in zoom-in-95">
-        
-        {/* Cabeçalho */}
-        <div className="flex items-start justify-between border-b border-white/10 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-orange-600 to-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-500/20">
-              <Flame className="w-6 h-6" />
-            </div>
-            <div>
-              <h3 className="text-base font-black text-white leading-tight">
-                {product.name}
-              </h3>
-              <p className="text-xs text-amber-400 font-mono font-bold mt-0.5">
-                {formatBRL(product.price)} por espeto
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl text-stone-400 hover:text-white hover:bg-white/10 transition"
-          >
-            <X className="w-5 h-5" />
-          </button>
+    <Dialog label={`Personalizar ${product.name}`} onClose={onClose} placement="sheet">
+      <div className="dialog-panel flex w-full max-w-lg flex-col">
+        <div className="flex items-start justify-between gap-3 border-b border-line p-5 sm:p-6">
+          <div className="flex items-start gap-3"><div className="icon-tile bg-accent-50 text-accent-700"><Flame className="h-5 w-5" aria-hidden="true" /></div><div><h2 className="font-bold text-ink">{product.name}</h2><p className="mt-1 text-sm text-ink-muted">{formatBRL(product.price)} por unidade</p></div></div>
+          <button type="button" className="icon-button" aria-label="Fechar personalização" onClick={onClose}><X className="h-5 w-5" /></button>
         </div>
-
-        {/* Quantidade */}
-        <div className="flex items-center justify-between p-3.5 rounded-2xl bg-[#090a0f] border border-white/10">
-          <span className="text-xs font-black text-stone-300 uppercase tracking-wider">Quantidade</span>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xl flex items-center justify-center transition active:scale-95 border border-white/10"
-            >
-              -
-            </button>
-            <span className="font-mono font-black text-2xl text-white w-8 text-center">
-              {quantity}
-            </span>
-            <button
-              onClick={() => setQuantity(quantity + 1)}
-              className="w-10 h-10 rounded-xl bg-orange-500 hover:bg-orange-400 text-white font-bold text-xl flex items-center justify-center transition active:scale-95 shadow-md shadow-orange-500/20"
-            >
-              +
-            </button>
-          </div>
+        <div className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-surface-soft p-3"><span className="text-sm font-semibold">Quantidade</span><div className="flex items-center gap-3"><button type="button" className="icon-button" aria-label="Diminuir quantidade" disabled={quantity <= 1} onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus className="h-4 w-4" /></button><output aria-live="polite" className="w-8 text-center text-xl font-bold tabular-nums">{quantity}</output><button type="button" className="icon-button border-brand-200 bg-brand-50 text-brand-800" aria-label="Aumentar quantidade" onClick={() => setQuantity(quantity + 1)}><Plus className="h-4 w-4" /></button></div></div>
+          <fieldset className="space-y-2.5"><legend className="mb-3 text-sm font-semibold text-ink">Como você prefere o ponto?</legend>
+            {DONENESS_OPTIONS.map((option) => <label key={option.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-colors ${selectedDoneness === option.value ? 'border-brand-600 bg-brand-50' : 'border-line bg-surface hover:bg-surface-soft'}`}><input type="radio" name="meat-doneness" value={option.value} checked={selectedDoneness === option.value} onChange={() => setSelectedDoneness(option.value)} className="h-4 w-4 shrink-0" /><span className={`h-7 w-2 shrink-0 rounded-full ${option.swatch}`} aria-hidden="true" /><span className="flex-1"><span className="block text-sm font-semibold text-ink">{option.label}</span><span className="mt-0.5 block text-xs text-ink-muted">{option.description}</span></span>{selectedDoneness === option.value && <Check className="h-4 w-4 text-brand-700" aria-hidden="true" />}</label>)}
+          </fieldset>
+          <div><label htmlFor="doneness-notes" className="mb-2 block text-sm font-semibold">Alguma observação?</label><div className="mb-3 flex flex-wrap gap-2">{COMMON_NOTES.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`rounded-xl border px-3 py-2 text-xs font-medium ${noteTags.includes(tag) ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line bg-surface text-ink-secondary hover:bg-surface-muted'}`}>{noteTags.includes(tag) ? <Check className="mr-1 inline h-3 w-3" aria-hidden="true" /> : '+ '}{tag}</button>)}</div><textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ex.: Cortar em aperitivo, sem cebola..." className="w-full rounded-xl border border-line-strong p-3 text-sm" /></div>
         </div>
-
-        {/* Seleção do Ponto da Carne */}
-        <div className="space-y-2">
-          <label className="block text-xs font-black text-stone-300 uppercase tracking-wider">
-            Ponto da Carne (Selecione um)
-          </label>
-          <div className="space-y-1.5">
-            {DONENESS_OPTIONS.map((opt) => {
-              const isSelected = selectedDoneness === opt.value;
-              return (
-                <button
-                  type="button"
-                  key={opt.value}
-                  onClick={() => setSelectedDoneness(opt.value)}
-                  className={`w-full p-3.5 rounded-2xl border text-left transition flex items-center justify-between active:scale-[0.98] ${
-                    isSelected
-                      ? 'bg-gradient-to-r from-orange-500/20 to-amber-500/10 border-orange-500 text-white shadow-md shadow-orange-500/15'
-                      : 'bg-[#090a0f] border-white/10 text-stone-300 hover:bg-white/5'
-                  }`}
-                >
-                  <div>
-                    <div className="font-bold text-sm flex items-center gap-2">
-                      <span>{opt.label}</span>
-                      {opt.value === 'AO_PONTO' && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold">
-                          Padrão da Casa
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-[11px] text-stone-400 mt-0.5">{opt.desc}</div>
-                  </div>
-                  {isSelected && (
-                    <div className="w-6 h-6 rounded-full bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-sm">
-                      <Check className="w-4 h-4" />
-                    </div>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Observações Rápidas */}
-        <div className="space-y-2">
-          <label className="block text-xs font-black text-stone-300 uppercase tracking-wider flex items-center gap-1.5">
-            <MessageSquare className="w-3.5 h-3.5 text-amber-400" />
-            <span>Observações de Preparo</span>
-          </label>
-          
-          <div className="flex flex-wrap gap-1.5">
-            {COMMON_NOTES.map((tag) => (
-              <button
-                type="button"
-                key={tag}
-                onClick={() => handleToggleNote(tag)}
-                className={`text-xs px-3 py-1.5 rounded-xl border transition ${
-                  notes.includes(tag)
-                    ? 'bg-amber-500/20 border-amber-500 text-amber-300 font-bold'
-                    : 'bg-[#090a0f] border-white/10 text-stone-400 hover:text-white'
-                }`}
-              >
-                + {tag}
-              </button>
-            ))}
-          </div>
-
-          <input
-            type="text"
-            placeholder="Ex: Cortar em aperitivo, sem cebola..."
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            className="w-full bg-[#090a0f] border border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-orange-500 transition"
-          />
-        </div>
-
-        {/* Botão de Adicionar */}
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={handleConfirm}
-            className="w-full py-4 rounded-2xl btn-ember text-sm uppercase tracking-wider active:scale-95 transition flex items-center justify-center gap-2 shadow-xl shadow-orange-500/25"
-          >
-            <span>Adicionar {quantity}x ao Pedido</span>
-            <span className="font-mono font-black">({formatBRL(product.price * quantity)})</span>
-          </button>
-        </div>
+        <div className="border-t border-line p-5 sm:px-6"><button type="button" onClick={() => { onConfirm(selectedDoneness, notes.trim(), quantity); onClose(); }} className="btn-primary w-full flex-wrap justify-between gap-2 py-3.5"><span>Adicionar {quantity} {quantity === 1 ? 'item' : 'itens'}</span><span className="font-bold tabular-nums">{formatBRL(product.price * quantity)}</span></button></div>
       </div>
-    </div>
+    </Dialog>
   );
-};
+}
+
+export function WaiterDonenessModal({ product, isOpen, onClose, onConfirm }: WaiterDonenessModalProps) {
+  if (!isOpen || !product) return null;
+  return <DonenessForm key={product.id} product={product} onClose={onClose} onConfirm={onConfirm} />;
+}

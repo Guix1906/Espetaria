@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Header } from './components/layout/Header';
-import { NavigationTabs, ActiveTab } from './components/layout/NavigationTabs';
+import { NavigationTabs } from './components/layout/NavigationTabs';
+import { PAGE_TITLES, type ActiveTab } from './components/layout/navigation';
 import { TableGridView } from './features/tables/TableGridView';
 import { DailyStockView } from './features/stock/DailyStockView';
 import { AuditLogView } from './features/audit/AuditLogView';
@@ -18,11 +19,14 @@ import { useDeliveryStore } from './stores/useDeliveryStore';
 import { useAuthStore } from './stores/useAuthStore';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 
-export const App: React.FC = () => {
+export function App() {
   useRealtimeSync();
   const { currentProfile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<ActiveTab>('waiter');
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+  const previousTab = useRef(activeTab);
 
   useEffect(() => {
     if (currentProfile.role === 'GARCOM') setActiveTab('waiter');
@@ -31,34 +35,46 @@ export const App: React.FC = () => {
     else if (currentProfile.role === 'MASTER' || currentProfile.role === 'GERENTE') setActiveTab('master');
   }, [currentProfile.role]);
 
+  useEffect(() => {
+    document.title = `${PAGE_TITLES[activeTab]} | Sabor da Carne`;
+    if (previousTab.current !== activeTab) {
+      window.scrollTo({ top: 0 });
+      mainRef.current?.focus({ preventScroll: true });
+    }
+    previousTab.current = activeTab;
+  }, [activeTab]);
+
   const { tables, orderItems } = useTableStore();
   const { dailyPrepStock } = useStockStore();
   const { deliveryOrders } = useDeliveryStore();
-  const openTablesCount = tables.filter((t) => t.status === 'OCUPADA' || t.status === 'AGUARDANDO_CONTA').length;
-  const waitingBillCount = tables.filter((t) => t.status === 'AGUARDANDO_CONTA').length;
-  const exhaustedCount = dailyPrepStock.filter((s) => s.is_exhausted || s.current_quantity <= 0).length;
-  const pendingProductionCount = orderItems.filter((i) => i.status === 'RECEIVED' || i.status === 'IN_PREPARATION').length;
-  const activeDeliveriesCount = deliveryOrders.filter((o) => ['CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY'].includes(o.status)).length;
+  const openTablesCount = tables.filter((table) => table.status === 'OCUPADA' || table.status === 'AGUARDANDO_CONTA').length;
+  const waitingBillCount = tables.filter((table) => table.status === 'AGUARDANDO_CONTA').length;
+  const exhaustedCount = dailyPrepStock.filter((stock) => stock.is_exhausted || stock.current_quantity <= 0).length;
+  const pendingProductionCount = orderItems.filter((item) => item.status === 'RECEIVED' || item.status === 'IN_PREPARATION').length;
+  const activeDeliveriesCount = deliveryOrders.filter((order) => ['CONFIRMED', 'PREPARING', 'OUT_FOR_DELIVERY'].includes(order.status)).length;
 
   return (
-    <div className="app-shell min-h-screen text-stone-100 flex flex-col">
-      <PWAInstallBanner />
-      <Header onOpenShiftClick={() => setIsShiftModalOpen(true)} />
-      <NavigationTabs activeTab={activeTab} onChangeTab={setActiveTab} openTablesCount={openTablesCount} exhaustedCount={exhaustedCount} pendingProductionCount={pendingProductionCount} waitingBillCount={waitingBillCount} activeDeliveriesCount={activeDeliveriesCount} />
-      <main className="flex-1 pb-16">
-        {activeTab === 'waiter' && <WaiterModule />}
-        {activeTab === 'tables' && <TableGridView />}
-        {activeTab === 'kds' && <KDSModule />}
-        {activeTab === 'cashier' && <CashierModule />}
-        {activeTab === 'delivery' && <DeliveryManagementView />}
-        {activeTab === 'menu' && <DeliveryCatalogView />}
-        {activeTab === 'master' && <MasterDashboardView />}
-        {activeTab === 'stock' && <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
-        {activeTab === 'audit' && <AuditLogView />}
-      </main>
+    <div className="app-shell">
+      <a href="#main-content" className="skip-link">Pular para o conteúdo</a>
+      <NavigationTabs activeTab={activeTab} onChangeTab={setActiveTab} openTablesCount={openTablesCount} exhaustedCount={exhaustedCount} pendingProductionCount={pendingProductionCount} waitingBillCount={waitingBillCount} activeDeliveriesCount={activeDeliveriesCount} isMobileOpen={isMobileMenuOpen} onCloseMobile={() => setIsMobileMenuOpen(false)} />
+      <div className="app-workspace flex flex-col">
+        <PWAInstallBanner />
+        <Header activeTab={activeTab} onOpenShiftClick={() => setIsShiftModalOpen(true)} onMenuClick={() => setIsMobileMenuOpen(true)} isMenuOpen={isMobileMenuOpen} />
+        <main id="main-content" ref={mainRef} tabIndex={-1} aria-label={PAGE_TITLES[activeTab]} className="min-w-0 flex-1 pb-8 outline-none">
+          {activeTab === 'waiter' && <WaiterModule />}
+          {activeTab === 'tables' && <TableGridView />}
+          {activeTab === 'kds' && <KDSModule />}
+          {activeTab === 'cashier' && <CashierModule />}
+          {activeTab === 'delivery' && <DeliveryManagementView />}
+          {activeTab === 'menu' && <DeliveryCatalogView />}
+          {activeTab === 'master' && <MasterDashboardView />}
+          {activeTab === 'stock' && <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
+          {activeTab === 'audit' && <AuditLogView />}
+        </main>
+      </div>
       <ShiftOpenModal isOpen={isShiftModalOpen} onClose={() => setIsShiftModalOpen(false)} />
     </div>
   );
-};
+}
 
 export default App;

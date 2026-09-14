@@ -71,33 +71,33 @@ export const CashierModule: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-obsidian-950 text-obsidian-100 p-3 sm:p-5 space-y-4">
+    <div className="min-h-0 bg-surface text-ink p-3 sm:p-5 space-y-4">
       
       {/* Topo do Módulo: Resumo Financeiro do Turno */}
-      <div className="bg-carbon-900 border border-carbon-800 p-4 sm:p-6 rounded-3xl shadow-2xl space-y-5">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-carbon-800 pb-4">
+      <div className="bg-surface-muted border border-line p-4 sm:p-6 rounded-2xl shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-line pb-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-950/80 border border-emerald-600/50 text-emerald-400 flex items-center justify-center font-black shadow-lg shadow-emerald-950/50">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold shadow-sm">
               <Receipt className="w-7 h-7" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-xl sm:text-2xl font-black text-white tracking-wide uppercase font-serif">
+                <h2 className="text-xl sm:text-2xl font-bold text-ink font-sans">
                   Frente de Caixa & Fechamento
                 </h2>
-                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-mono font-bold tracking-wider">
+                <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 tabular-nums font-bold">
                   TURNO EM ANDAMENTO
                 </span>
               </div>
-              <p className="text-xs text-obsidian-400 mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 Fechamento de contas, divisão multimeios, troco e emissão de cupons térmicos
               </p>
             </div>
           </div>
 
-          <div className="text-left sm:text-right bg-carbon-800/60 sm:bg-transparent p-3 sm:p-0 rounded-2xl border sm:border-0 border-carbon-700/60 w-full sm:w-auto">
-            <span className="text-xs text-obsidian-400 font-mono uppercase tracking-wider block">Faturamento do Turno:</span>
-            <div className="text-2xl sm:text-3xl font-black text-gold-400 font-mono tracking-tight drop-shadow-md">
+          <div className="text-left sm:text-right bg-surface-muted sm:bg-transparent p-3 sm:p-0 rounded-2xl border sm:border-0 border-line w-full sm:w-auto">
+            <span className="text-xs text-ink-muted tabular-nums block">Faturamento do Turno:</span>
+            <div className="text-2xl sm:text-3xl font-bold text-brand-700 tabular-nums tracking-tight">
               {formatBRL(totalShiftRevenue)}
             </div>
           </div>
@@ -105,49 +105,49 @@ export const CashierModule: React.FC = () => {
 
         {/* Métricas por Meio de Pagamento */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3.5 rounded-2xl bg-obsidian-900/80 border border-carbon-800 flex items-center gap-3 shadow-inner">
-            <div className="w-9 h-9 rounded-xl bg-emerald-950/80 text-emerald-400 border border-emerald-700/50 flex items-center justify-center shadow-md">
+          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line flex items-center gap-3 shadow-sm">
+            <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shadow-sm">
               <Banknote className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[10px] text-obsidian-400 uppercase font-semibold">Dinheiro</span>
-              <div className="font-mono font-bold text-white text-sm">
+              <span className="text-xs text-ink-muted font-semibold">Dinheiro</span>
+              <div className="tabular-nums font-bold text-ink text-sm">
                 {formatBRL(revenueByMethod.DINHEIRO)}
               </div>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-obsidian-900/80 border border-carbon-800 flex items-center gap-3 shadow-inner">
-            <div className="w-9 h-9 rounded-xl bg-teal-950/80 text-teal-400 border border-teal-700/50 flex items-center justify-center shadow-md">
+          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line flex items-center gap-3 shadow-sm">
+            <div className="w-9 h-9 rounded-xl bg-teal-100 text-teal-700 flex items-center justify-center shadow-sm">
               <QrCode className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[10px] text-obsidian-400 uppercase font-semibold">PIX Instantâneo</span>
-              <div className="font-mono font-bold text-white text-sm">
+              <span className="text-xs text-ink-muted font-semibold">PIX Instantâneo</span>
+              <div className="tabular-nums font-bold text-ink text-sm">
                 {formatBRL(revenueByMethod.PIX)}
               </div>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-obsidian-900/80 border border-carbon-800 flex items-center gap-3 shadow-inner">
-            <div className="w-9 h-9 rounded-xl bg-cyan-950/80 text-cyan-400 border border-cyan-700/50 flex items-center justify-center shadow-md">
+          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line flex items-center gap-3 shadow-sm">
+            <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center shadow-sm">
               <CreditCard className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[10px] text-obsidian-400 uppercase font-semibold">Cartão Débito</span>
-              <div className="font-mono font-bold text-white text-sm">
+              <span className="text-xs text-ink-muted font-semibold">Cartão Débito</span>
+              <div className="tabular-nums font-bold text-ink text-sm">
                 {formatBRL(revenueByMethod.DEBITO)}
               </div>
             </div>
           </div>
 
-          <div className="p-3.5 rounded-2xl bg-obsidian-900/80 border border-carbon-800 flex items-center gap-3 shadow-inner">
-            <div className="w-9 h-9 rounded-xl bg-purple-950/80 text-purple-400 border border-purple-700/50 flex items-center justify-center shadow-md">
+          <div className="p-3.5 rounded-2xl bg-surface-muted border border-line flex items-center gap-3 shadow-sm">
+            <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shadow-sm">
               <CreditCard className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[10px] text-obsidian-400 uppercase font-semibold">Cartão Crédito</span>
-              <div className="font-mono font-bold text-white text-sm">
+              <span className="text-xs text-ink-muted font-semibold">Cartão Crédito</span>
+              <div className="tabular-nums font-bold text-ink text-sm">
                 {formatBRL(revenueByMethod.CREDITO)}
               </div>
             </div>
@@ -159,36 +159,24 @@ export const CashierModule: React.FC = () => {
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
         <button
           onClick={() => setFilter('WAITING_BILL')}
-          className={`px-4 py-2.5 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
-            effectiveFilter === 'WAITING_BILL'
-              ? 'bg-gold-500 text-obsidian-950 font-black shadow-lg shadow-gold-950/60 animate-pulse'
-              : 'bg-carbon-900 text-obsidian-400 border border-carbon-800 hover:text-white hover:border-carbon-700'
-          }`}
-        >
+          className={`filter-chip ${effectiveFilter === 'WAITING_BILL' ? 'is-active' : ''}`}
+         type="button" aria-pressed={effectiveFilter === 'WAITING_BILL'}>
           <AlertTriangle className="w-4 h-4" />
           <span>Aguardando Conta ({waitingBillTables.length})</span>
         </button>
 
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
-          className={`px-4 py-2.5 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
-            effectiveFilter === 'ALL_ACTIVE'
-              ? 'bg-ember-600 text-white font-black shadow-lg shadow-ember-950/60'
-              : 'bg-carbon-900 text-obsidian-400 border border-carbon-800 hover:text-white hover:border-carbon-700'
-          }`}
-        >
+          className={`filter-chip ${effectiveFilter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
+         type="button" aria-pressed={effectiveFilter === 'ALL_ACTIVE'}>
           <Users className="w-4 h-4" />
           <span>Todas Mesas Abertas ({activeTables.length})</span>
         </button>
 
         <button
           onClick={() => setFilter('CLOSED_TODAY')}
-          className={`px-4 py-2.5 rounded-2xl font-bold transition flex items-center gap-2 whitespace-nowrap active:scale-95 ${
-            effectiveFilter === 'CLOSED_TODAY'
-              ? 'bg-emerald-600 text-white font-black shadow-lg shadow-emerald-950/60'
-              : 'bg-carbon-900 text-obsidian-400 border border-carbon-800 hover:text-white hover:border-carbon-700'
-          }`}
-        >
+          className={`filter-chip ${effectiveFilter === 'CLOSED_TODAY' ? 'is-active' : ''}`}
+         type="button" aria-pressed={effectiveFilter === 'CLOSED_TODAY'}>
           <CheckCircle2 className="w-4 h-4" />
           <span>Comandas Encerradas ({closedTabs.length})</span>
         </button>
@@ -197,12 +185,12 @@ export const CashierModule: React.FC = () => {
       {/* Grade de Mesas / Comandas */}
       {effectiveFilter !== 'CLOSED_TODAY' ? (
         activeTables.length === 0 ? (
-          <div className="py-20 text-center rounded-3xl bg-carbon-900/60 border border-carbon-800 p-8 space-y-3">
-            <div className="w-16 h-16 rounded-2xl bg-carbon-800 border border-carbon-700 text-obsidian-400 flex items-center justify-center mx-auto">
-              <Sparkles className="w-8 h-8 text-gold-400" />
+          <div className="py-20 text-center rounded-2xl bg-surface-muted border border-line p-8 space-y-3 shadow-sm">
+            <div className="w-16 h-16 rounded-2xl bg-surface-muted border border-line text-ink-muted flex items-center justify-center mx-auto">
+              <Sparkles className="w-8 h-8 text-amber-800" />
             </div>
-            <h3 className="text-xl font-bold text-white font-serif">Nenhuma mesa aberta no salão</h3>
-            <p className="text-xs text-obsidian-400">Todas as comandas estão fechadas e as mesas livres para novos clientes.</p>
+            <h3 className="text-xl font-bold text-ink font-sans">Nenhuma mesa aberta no salão</h3>
+            <p className="text-xs text-ink-muted">Todas as comandas estão fechadas e as mesas livres para novos clientes.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -216,39 +204,39 @@ export const CashierModule: React.FC = () => {
                 return (
                   <div
                     key={table.id}
-                    className={`p-5 rounded-3xl border transition flex flex-col justify-between space-y-4 shadow-xl ${
+                    className={`p-5 rounded-2xl border transition flex flex-col justify-between space-y-4 shadow-sm ${
                       isWaitingBill
-                        ? 'bg-gradient-to-b from-carbon-900 to-amber-950/30 border-amber-500 shadow-amber-950/40 ring-1 ring-amber-500/50'
-                        : 'bg-carbon-900 border-carbon-800 hover:border-carbon-700'
+                        ? 'bg-amber-50 border-2 border-amber-400 shadow-card ring-1 ring-amber-300'
+                        : 'bg-surface-muted border-line hover:border-brand-300'
                     }`}
                   >
                     <div>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-2xl font-black font-mono text-white">
+                          <span className="text-2xl font-bold tabular-nums text-ink">
                             Mesa {String(table.number).padStart(2, '0')}
                           </span>
                           {isWaitingBill && (
-                            <span className="text-[10px] px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 font-mono font-bold animate-pulse">
+                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 tabular-nums font-bold">
                               Conta Pedida!
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-obsidian-400 flex items-center gap-1 font-mono">
-                          <Users className="w-3.5 h-3.5 text-obsidian-500" />
+                        <span className="text-xs text-ink-muted flex items-center gap-1 tabular-nums">
+                          <Users className="w-3.5 h-3.5 text-ink-muted" />
                           {currentTab?.people_count}p
                         </span>
                       </div>
 
-                      <p className="text-xs text-obsidian-400 mt-1 truncate">
+                      <p className="text-xs text-ink-muted mt-1 truncate font-medium">
                         {currentTab?.customer_name || `Mesa ${table.number}`}
                       </p>
 
-                      <div className="mt-3.5 pt-3 border-t border-carbon-800/80 flex items-baseline justify-between">
-                        <span className="text-xs text-obsidian-400">
+                      <div className="mt-3.5 pt-3 border-t border-line flex items-baseline justify-between">
+                        <span className="text-xs text-ink-muted">
                           {items.filter(i => i.status !== 'CANCELLED').length} itens consumidos
                         </span>
-                        <span className="text-xl font-black font-mono text-gold-400">
+                        <span className="text-xl font-bold tabular-nums text-brand-700">
                           {formatBRL(currentTab?.total || 0)}
                         </span>
                       </div>
@@ -257,12 +245,12 @@ export const CashierModule: React.FC = () => {
                     {/* Botão de Fechamento */}
                     <button
                       onClick={() => setSelectedTableForCheckout(table)}
-                      className={`w-full py-3.5 rounded-2xl font-black text-xs uppercase tracking-wider transition active:scale-95 flex items-center justify-center gap-2 shadow-lg ${
+                      className={`w-full py-3.5 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm ${
                         isWaitingBill
-                          ? 'btn-gold shadow-gold-950/50'
-                          : 'btn-carbon'
+                          ? 'btn-primary'
+                          : 'btn-secondary'
                       }`}
-                    >
+                     type="button">
                       <Receipt className="w-4 h-4" />
                       <span>Fechar Conta / Checkout</span>
                     </button>
@@ -274,9 +262,9 @@ export const CashierModule: React.FC = () => {
       ) : (
         /* Aba de Histórico de Comandas Fechadas */
         closedTabs.length === 0 ? (
-          <div className="py-20 text-center rounded-3xl bg-carbon-900/60 border border-carbon-800 p-8 space-y-2">
-            <CheckCircle2 className="w-10 h-10 text-obsidian-600 mx-auto" />
-            <h3 className="text-sm font-bold text-obsidian-400">Nenhuma comanda fechada neste turno ainda.</h3>
+          <div className="py-20 text-center rounded-2xl bg-surface-muted border border-line p-8 space-y-2 shadow-sm">
+            <CheckCircle2 className="w-10 h-10 text-ink-muted mx-auto" />
+            <h3 className="text-sm font-bold text-ink-muted">Nenhuma comanda fechada neste turno ainda.</h3>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -287,32 +275,32 @@ export const CashierModule: React.FC = () => {
               return (
                 <div
                   key={tab.id}
-                  className="p-5 rounded-3xl bg-carbon-900 border border-carbon-800 space-y-3.5 shadow-xl"
+                  className="p-5 rounded-2xl bg-surface-muted border border-line space-y-3.5 shadow-sm"
                 >
-                  <div className="flex items-center justify-between border-b border-carbon-800/80 pb-3">
+                  <div className="flex items-center justify-between border-b border-line pb-3">
                     <div>
-                      <div className="font-black text-white text-base font-mono">
+                      <div className="font-bold text-ink text-base tabular-nums">
                         Mesa {table ? String(table.number).padStart(2, '0') : '??'} • #{tab.id.slice(0, 6)}
                       </div>
-                      <p className="text-xs text-obsidian-400 mt-0.5">
+                      <p className="text-xs text-ink-muted mt-0.5">
                         {tab.customer_name} • Fechada às {new Date(tab.closed_at || tab.opened_at).toLocaleTimeString('pt-BR')}
                       </p>
                     </div>
-                    <span className="text-lg font-black text-emerald-400 font-mono">
+                    <span className="text-lg font-bold text-emerald-700 tabular-nums">
                       {formatBRL(tab.total)}
                     </span>
                   </div>
 
                   {/* Discriminativo de Meios de Pagamento */}
                   <div className="space-y-1 text-xs">
-                    <span className="text-[10px] text-obsidian-500 uppercase font-semibold">
+                    <span className="text-xs text-ink-muted font-semibold">
                       Recebimentos:
                     </span>
                     <div className="flex flex-wrap gap-1">
                       {tabPayments.map((p) => (
                         <span
                           key={p.id}
-                          className="px-2.5 py-0.5 rounded-lg bg-obsidian-900 border border-carbon-800 text-obsidian-300 font-mono text-[11px]"
+                          className="px-2.5 py-0.5 rounded-lg bg-surface-muted border border-line text-ink tabular-nums text-xs"
                         >
                           {p.method}: {formatBRL(p.amount)}
                         </span>
@@ -321,11 +309,11 @@ export const CashierModule: React.FC = () => {
                   </div>
 
                   {/* Ações */}
-                  <div className="flex gap-2 pt-1 border-t border-carbon-800/80">
+                  <div className="flex gap-2 pt-1 border-t border-line">
                     <button
                       onClick={() => setSelectedClosedTabForReceipt(tab)}
-                      className="btn-gold flex-1 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5"
-                    >
+                      className="btn-secondary flex-1 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold"
+                     type="button">
                       <Receipt className="w-3.5 h-3.5" />
                       <span>Ver Cupom</span>
                     </button>
@@ -333,9 +321,9 @@ export const CashierModule: React.FC = () => {
                     {['MASTER', 'GERENTE', 'CAIXA'].includes(currentProfile.role) && (
                       <button
                         onClick={() => handleReopen(tab)}
-                        className="btn-carbon px-3 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 text-obsidian-400 hover:text-ruby-400"
+                        className="btn-secondary px-3 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 text-ink-muted hover:text-rose-700"
                         title="Reabrir comanda caso tenha sido fechada por engano"
-                      >
+                       type="button" aria-label="Reabrir comanda caso tenha sido fechada por engano">
                         <RotateCcw className="w-3.5 h-3.5" />
                         <span>Reabrir</span>
                       </button>

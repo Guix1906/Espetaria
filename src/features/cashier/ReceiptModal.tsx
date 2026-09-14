@@ -1,3 +1,4 @@
+import { Dialog } from '../../components/ui/Dialog';
 import React from 'react';
 import { Printer, X, CheckCircle2 } from 'lucide-react';
 import { Tab, OrderItem, Payment, RestaurantTable } from '../../types/domain';
@@ -32,19 +33,19 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   const activeItems = items.filter((i) => i.status !== 'CANCELLED');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
-      <div className="card-carbon border border-carbon-700 rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-2xl space-y-4 max-h-[95vh] flex flex-col">
+    <Dialog label="Cupom da comanda" onClose={onClose}>
+      <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-card space-y-4 max-h-[95vh] flex flex-col fade-in zoom-in-95">
         
         {/* Topo do Modal */}
-        <div className="flex items-center justify-between border-b border-carbon-800 pb-3">
-          <div className="flex items-center gap-2 text-emerald-400 font-extrabold text-sm">
-            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-            <span className="font-serif">Conta Encerrada com Sucesso</span>
+        <div className="flex items-center justify-between border-b border-line pb-3">
+          <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
+            <CheckCircle2 className="w-5 h-5 text-emerald-700" />
+            <span className="font-sans">Conta Encerrada com Sucesso</span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-obsidian-400 hover:text-white hover:bg-carbon-800 transition"
-          >
+            className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition"
+           type="button" aria-label="Fechar janela">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -54,7 +55,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           
           {/* Cabeçalho do Cupom */}
           <div className="text-center space-y-0.5 border-b border-dashed border-stone-400 pb-3">
-            <h2 className="font-black text-base tracking-wider uppercase font-serif text-stone-950">
+            <h2 className="font-black text-base tracking-wider uppercase font-brand text-stone-950">
               ESPETARIA SABOR DA CARNE
             </h2>
             <p className="text-[11px] text-stone-700 font-sans font-medium">
@@ -163,7 +164,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <div className="text-center pt-2 text-[10px] text-stone-600 space-y-1">
             <p className="font-bold text-stone-800">OBRIGADO PELA PREFERÊNCIA!</p>
             <p>Volte sempre à Espetaria Sabor da Carne!</p>
-            <p className="text-[9px] text-stone-400 font-mono">Sistema Espetaria Pro • Versão 2.0 Dark Ember</p>
+            <p className="text-[9px] text-stone-400 font-mono">Sistema Espetaria Pro • Sabor da Carne</p>
           </div>
 
         </div>
@@ -172,20 +173,20 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         <div className="flex gap-2.5 pt-1">
           <button
             onClick={handlePrint}
-            className="btn-gold flex-1 py-3 rounded-2xl text-xs flex items-center justify-center gap-2"
-          >
+            className="btn-primary flex-1 py-3 rounded-2xl text-xs flex items-center justify-center gap-2"
+           type="button">
             <Printer className="w-4 h-4" />
             <span>Imprimir Cupom Térmico</span>
           </button>
           <button
             onClick={onClose}
-            className="btn-carbon px-5 py-3 rounded-2xl text-xs font-bold"
-          >
+            className="btn-secondary px-5 py-3 rounded-2xl text-xs font-bold"
+           type="button">
             Concluir
           </button>
         </div>
 
       </div>
-    </div>
+    </Dialog>
   );
 };
