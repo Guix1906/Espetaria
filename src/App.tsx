@@ -9,6 +9,7 @@ import { KDSModule } from './features/kds/KDSModule';
 import { CashierModule } from './features/cashier/CashierModule';
 import { DeliveryManagementView } from './features/delivery/DeliveryManagementView';
 import { DeliveryCatalogView } from './features/delivery/DeliveryCatalogView';
+import { MasterDashboardView } from './features/admin/MasterDashboardView';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { useTableStore } from './stores/useTableStore';
 import { useStockStore } from './stores/useStockStore';
@@ -31,6 +32,8 @@ export const App: React.FC = () => {
       setActiveTab('kds');
     } else if (currentProfile.role === 'CAIXA') {
       setActiveTab('cashier');
+    } else if (currentProfile.role === 'MASTER' || currentProfile.role === 'GERENTE') {
+      setActiveTab('master');
     }
   }, [currentProfile.role]);
 
@@ -73,6 +76,7 @@ export const App: React.FC = () => {
         {activeTab === 'cashier' && <CashierModule />}
         {activeTab === 'delivery' && <DeliveryManagementView />}
         {activeTab === 'menu' && <DeliveryCatalogView />}
+        {activeTab === 'master' && <MasterDashboardView />}
         {activeTab === 'stock' && (
           <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />
         )}

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Smartphone, LayoutGrid, Flame, Receipt, PackageCheck, FileText, Bike, Sparkles } from 'lucide-react';
+import { Smartphone, LayoutGrid, Flame, Receipt, PackageCheck, FileText, Bike, Sparkles, ShieldCheck } from 'lucide-react';
 
-export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'stock' | 'audit';
+export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'master' | 'stock' | 'audit';
 
 interface NavigationTabsProps {
   activeTab: ActiveTab;
@@ -64,6 +64,13 @@ export const NavigationTabs: React.FC<NavigationTabsProps> = ({
       icon: Sparkles,
       badge: 'Online',
       badgeColor: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/40',
+    },
+    {
+      id: 'master' as ActiveTab,
+      label: 'Painel Master (DRE)',
+      icon: ShieldCheck,
+      badge: 'Gerencial',
+      badgeColor: 'bg-amber-500/20 text-amber-400 border border-amber-500/40',
     },
     {
       id: 'stock' as ActiveTab,
