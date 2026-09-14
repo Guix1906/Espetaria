@@ -11,6 +11,7 @@ import { DeliveryManagementView } from './features/delivery/DeliveryManagementVi
 import { DeliveryCatalogView } from './features/delivery/DeliveryCatalogView';
 import { MasterDashboardView } from './features/admin/MasterDashboardView';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
+import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
 import { useTableStore } from './stores/useTableStore';
 import { useStockStore } from './stores/useStockStore';
 import { useDeliveryStore } from './stores/useDeliveryStore';
@@ -54,6 +55,9 @@ export const App: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
       
+      {/* Banner de Instalação PWA (Dispositivos Móveis e Desktop) */}
+      <PWAInstallBanner />
+
       {/* Cabeçalho Sticky com Controle de Turno e Perfil */}
       <Header onOpenShiftClick={() => setIsShiftModalOpen(true)} />
 
