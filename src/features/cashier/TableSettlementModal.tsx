@@ -12,13 +12,14 @@ import {
   Users,
   X
 } from 'lucide-react';
-import React,{ useEffect,useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
-import { formatBRL,formatDoneness,getOrderItemStatusConfig } from '../../lib/formatters';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
+import { formatBRL, formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { OrderItem,Payment,RestaurantTable,Tab } from '../../types/domain';
+import { OrderItem, Payment, RestaurantTable, Tab } from '../../types/domain';
 import { PaymentMethod } from '../../types/enums';
 import { PixPaymentModal } from '../pix/PixPaymentModal';
 import { ReceiptModal } from './ReceiptModal';
@@ -34,15 +35,16 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { 
-    tabs, 
-    getTabOrderItems, 
-    getTabPayments, 
-    updateTabBillAdjustments, 
-    addPaymentAtomic, 
-    removePayment, 
-    cancelOrderItemAtomic, 
-    closeTabAtomic 
+  const { requestText, notify } = useFeedback();
+  const {
+    tabs,
+    getTabOrderItems,
+    getTabPayments,
+    updateTabBillAdjustments,
+    addPaymentAtomic,
+    removePayment,
+    cancelOrderItemAtomic,
+    closeTabAtomic
   } = useTableStore();
   const { currentShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
@@ -80,7 +82,20 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     }
   }, [currentTab?.id]);
 
-  if (!isOpen || !currentTab) return null;
+  if (!isOpen) return null;
+  if (receiptData) return (<ReceiptModal
+    isOpen={true}
+    onClose={() => {
+      setReceiptData(null);
+      onClose();
+    }}
+    tab={receiptData.tab}
+    table={receiptData.table}
+    items={receiptData.items}
+    payments={receiptData.payments}
+    cashChange={receiptData.cashChange}
+  />);
+  if (!currentTab) return null;
 
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const remainingDue = Math.max(0, Math.round((currentTab.total - totalPaid) * 100) / 100);
@@ -168,7 +183,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
     try {
       const result = closeTabAtomic(currentShift.id, currentTab.id, currentProfile.id);
-      
+
       // Abre o cupom térmico
       setReceiptData({
         tab: result.tab,
@@ -182,15 +197,15 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     }
   };
 
-  const handleCancelItem = (item: OrderItem) => {
+  const handleCancelItem = async (item: OrderItem) => {
     if (!currentShift) return;
-    const reason = prompt(`Motivo do cancelamento de "${item.product_name}":`, 'Lançamento indevido pelo garçom');
+    const reason = await requestText({ title: "Cancelar item", label: "Motivo do cancelamento", confirmText: "Cancelar item", danger: true, message: `Motivo do cancelamento de "${item.product_name}":`, initialValue: 'Lançamento indevido pelo garçom' });
     if (!reason) return;
 
     try {
       cancelOrderItemAtomic(item.id, reason, currentProfile.id, currentShift.id);
     } catch (err) {
-      alert((err as Error).message);
+      notify((err as Error).message, 'error');
     }
   };
 
@@ -198,9 +213,9 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     <>
       <Dialog label="Fechamento da conta" onClose={onClose}>
         <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-4xl p-5 sm:p-6 shadow-card space-y-4 max-h-[95vh] flex flex-col fade-in zoom-in-95">
-          
+
           {/* Topo do Checkout */}
-          <div className="flex items-center justify-between border-b border-line pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
             <div className="flex items-center gap-3">
               <div className="bg-brand-700 w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold text-xl shadow-card">
                 {String(table.number).padStart(2, '0')}
@@ -229,7 +244,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
             <button
               onClick={onClose}
               className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
-             type="button" aria-label="Fechar janela">
+              type="button" aria-label="Fechar janela">
               <X className="w-5 h-5" />
             </button>
           </div>
@@ -244,10 +259,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
           {/* Grid Principal: Extrato à esquerda / Pagamento à direita */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 overflow-y-auto pr-1 custom-scrollbar">
-            
+
             {/* COLUNA ESQUERDA: Conferência Item a Item (6 colunas) */}
             <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-surface-muted p-4 rounded-2xl border border-line">
-              <div className="flex items-center justify-between border-b border-line pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
                 <span className="text-xs font-bold text-ink flex items-center gap-1.5 font-sans">
                   <Receipt className="w-4 h-4 text-brand-700" />
                   <span>Itens Lançados ({items.filter(i => i.status !== 'CANCELLED').length})</span>
@@ -269,11 +284,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     return (
                       <div
                         key={item.id}
-                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
-                          isCancelled
+                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${isCancelled
                             ? 'bg-rose-50 border-rose-200 text-ink-muted line-through'
                             : 'bg-surface-muted border-line text-ink'
-                        }`}
+                          }`}
                       >
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-ink text-xs truncate">
@@ -303,7 +317,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                               onClick={() => handleCancelItem(item)}
                               title="Cancelar item"
                               className="p-1 rounded text-ink-muted hover:text-rose-700 hover:bg-rose-50 transition"
-                             type="button" aria-label="Cancelar item">
+                              type="button" aria-label="Cancelar item">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           )}
@@ -345,7 +359,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                       placeholder="0,00"
                       onChange={(e) => handleApplyDiscount(parseFloat(e.target.value) || 0)}
                       className="w-full px-2.5 py-1.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-right text-xs focus:ring-1 focus:ring-brand-600 focus:outline-none"
-                     aria-label="Desconto em reais"/>
+                      aria-label="Desconto em reais" />
                   </div>
                 </div>
 
@@ -360,7 +374,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
             {/* COLUNA DIREITA: Divisão de Pagamentos Multimeios (6 colunas) */}
             <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-surface-muted p-4 rounded-2xl border border-line">
-              <div className="flex items-center justify-between border-b border-line pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
                 <span className="text-xs font-bold text-ink flex items-center gap-1.5 font-sans">
                   <Coins className="w-4 h-4 text-emerald-700" />
                   <span>Divisão e Recebimento Multimeios</span>
@@ -401,7 +415,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                         onClick={() => removePayment(p.id)}
                         className="p-1.5 text-ink-muted hover:text-rose-700 hover:bg-rose-50 rounded transition"
                         title="Remover este pagamento"
-                       type="button" aria-label="Remover este pagamento">
+                        type="button" aria-label="Remover este pagamento">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
@@ -411,11 +425,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
               {/* Status do Saldo da Conta */}
               <div
-                className={`p-3 rounded-2xl border flex items-center justify-between text-xs tabular-nums font-bold ${
-                  isFullyPaid
+                className={`p-3 rounded-2xl border flex items-center justify-between text-xs tabular-nums font-bold ${isFullyPaid
                     ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm'
                     : 'bg-amber-50 border-amber-300 text-amber-800 shadow-sm'
-                }`}
+                  }`}
               >
                 <span>{isFullyPaid ? '✅ CONTA QUITADA!' : '⏳ SALDO RESTANTE A PAGAR:'}</span>
                 <span className="text-lg">{formatBRL(remainingDue)}</span>
@@ -439,11 +452,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                           key={m.id}
                           type="button"
                           onClick={() => handleSelectMethod(m.id)}
-                          className={`py-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 ${
-                            isSelected
+                          className={`py-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 ${isSelected
                               ? 'bg-brand-700 text-white font-bold shadow-sm'
                               : 'bg-surface-muted border border-line text-ink hover:bg-surface-muted'
-                          }`}
+                            }`}
                         >
                           <Icon className="w-4 h-4" />
                           <span>{m.label}</span>
@@ -460,7 +472,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                       className="w-full py-2.5 px-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition"
                     >
                       <QrCode className="w-4 h-4" />
-                      <span>Gerar QR Code PIX Dinâmico & WhatsApp Zap</span>
+                      <span>Abrir PIX e código de pagamento</span>
                     </button>
                   )}
 
@@ -477,7 +489,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                           onChange={(e) => setPaymentAmount(e.target.value)}
                           placeholder={remainingDue.toFixed(2)}
                           className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-sm font-bold focus:ring-2 focus:ring-brand-600 focus:outline-none"
-                         aria-label="Valor do pagamento em reais" inputMode="decimal"/>
+                          aria-label="Valor do pagamento em reais" inputMode="decimal" />
                       </div>
 
                       <button
@@ -490,7 +502,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     </div>
 
                     {/* Botões Rápidos de Divisão */}
-                    <div className="flex gap-1.5 text-xs tabular-nums text-ink-muted">
+                    <div className="flex flex-wrap gap-1.5 text-xs tabular-nums text-ink-muted">
                       <button
                         type="button"
                         onClick={() => setPaymentAmount(remainingDue.toFixed(2))}
@@ -532,7 +544,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                             value={cashTendered}
                             onChange={(e) => setCashTendered(e.target.value)}
                             className="w-full pl-7 pr-2.5 py-1.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-xs text-right focus:ring-1 focus:ring-brand-600 focus:outline-none"
-                           aria-label="Dinheiro recebido do cliente" inputMode="decimal"/>
+                            aria-label="Dinheiro recebido do cliente" inputMode="decimal" />
                         </div>
                       </div>
 
@@ -553,11 +565,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                   type="button"
                   disabled={!isFullyPaid}
                   onClick={handleFinalizeClosure}
-                  className={`w-full py-4 rounded-2xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-2 ${
-                    isFullyPaid
+                  className={`w-full py-4 rounded-2xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-2 ${isFullyPaid
                       ? 'btn-success'
                       : 'bg-surface-muted text-ink-muted cursor-not-allowed border border-line'
-                  }`}
+                    }`}
                 >
                   <CheckCheck className="w-4 h-4" />
                   <span>{isFullyPaid ? 'Encerrar Conta e Liberar Mesa' : 'Aguardando Quitação Total'}</span>
@@ -572,20 +583,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
       </Dialog>
 
       {/* Modal de Impressão do Cupom Térmico */}
-      {receiptData && (
-        <ReceiptModal
-          isOpen={true}
-          onClose={() => {
-            setReceiptData(null);
-            onClose();
-          }}
-          tab={receiptData.tab}
-          table={receiptData.table}
-          items={receiptData.items}
-          payments={receiptData.payments}
-          cashChange={receiptData.cashChange}
-        />
-      )}
+
 
       {/* Modal de PIX Dinâmico Instantâneo com QR Code & Zap */}
       {currentTab && (

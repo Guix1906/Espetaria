@@ -1,5 +1,5 @@
-import { Beer,Flame,UtensilsCrossed } from 'lucide-react';
-import { useEffect,useState } from 'react';
+import { Beer, Flame, UtensilsCrossed } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { FilterChip } from '../../components/ui/FilterChip';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useTableStore } from '../../stores/useTableStore';

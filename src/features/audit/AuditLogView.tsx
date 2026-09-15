@@ -1,4 +1,4 @@
-import { AlertOctagon,ArrowDownRight,ArrowUpRight,Clock3,RotateCcw,ShieldCheck,SlidersHorizontal } from 'lucide-react';
+import { AlertOctagon, ArrowDownRight, ArrowUpRight, Clock3, RotateCcw, ShieldCheck, SlidersHorizontal } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FilterChip } from '../../components/ui/FilterChip';

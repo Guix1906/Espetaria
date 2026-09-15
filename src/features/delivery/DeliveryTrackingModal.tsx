@@ -1,7 +1,7 @@
-import { Bike,CheckCircle2,Clock3,Flame,MapPin,MessageCircle,X } from 'lucide-react';
+import { Bike, CheckCircle2, Clock3, Flame, MapPin, MessageCircle, X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { getDeliveryStatusConfig } from '../../lib/deliveryStatus';
-import { formatBRL,formatDoneness } from '../../lib/formatters';
+import { formatBRL, formatDoneness } from '../../lib/formatters';
 import type { DeliveryOrder } from '../../types/domain';
 
 interface DeliveryTrackingModalProps { order: DeliveryOrder; isOpen: boolean; onClose: () => void; }

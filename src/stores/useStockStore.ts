@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { DailyPrepStock, Product, StockMovement } from '../types/domain';
-import { OrderItemStatus } from '../types/enums';
+import { OrderItemStatus, ProductType, ProductionSector } from '../types/enums';
 import { INITIAL_PRODUCTS } from '../lib/mockData';
 import { generateId } from '../lib/utils';
 import { logger } from '../lib/logger';
@@ -14,6 +14,51 @@ export interface PrepItemInput {
   quantity?: number;
 }
 
+export type ProductInput = {
+  name: string;
+  price: number;
+  type: ProductType;
+  sector: ProductionSector;
+  category_id?: string;
+  category?: string;
+  description?: string | null;
+  image_url?: string | null;
+  active?: boolean;
+  available?: boolean;
+  tracks_stock?: boolean;
+  is_cubas?: boolean;
+  portions_per_cuba?: number;
+  allows_doneness?: boolean;
+  allows_notes?: boolean;
+  display_order?: number;
+};
+
+const PRODUCTS_STORAGE_KEY = 'espetaria_catalog_products';
+
+const loadPersistedProducts = (): Product[] => {
+  if (typeof window === 'undefined' || !window.localStorage) return INITIAL_PRODUCTS;
+  try {
+    const raw = window.localStorage.getItem(PRODUCTS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {
+    // fallback
+  }
+  return INITIAL_PRODUCTS;
+};
+
+const savePersistedProducts = (products: Product[]) => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(PRODUCTS_STORAGE_KEY, JSON.stringify(products));
+    } catch {
+      // ignore
+    }
+  }
+};
+
 interface StockState {
   products: Product[];
   dailyPrepStock: DailyPrepStock[];
@@ -21,6 +66,14 @@ interface StockState {
   
   // Ações de Negócio
   setProducts: (products: Product[]) => void;
+  addProduct: (
+    productData: ProductInput,
+    options?: number | { shiftId?: string; initialShiftQuantity?: number; userId?: string }
+  ) => Product;
+  updateProduct: (id: string, updates: Partial<Product>) => void;
+  deleteProduct: (id: string) => void;
+  toggleProductActive: (id: string) => void;
+  resetProductsToDefault: () => void;
   initShiftStock: (shiftId: string, items: PrepItemInput[], userId: string) => void;
   consumeStockAtomic: (
     shiftId: string,
@@ -55,11 +108,151 @@ interface StockState {
 }
 
 export const useStockStore = create<StockState>((set, get) => ({
-  products: INITIAL_PRODUCTS,
+  products: loadPersistedProducts(),
   dailyPrepStock: [],
   stockMovements: [],
 
-  setProducts: (products) => set({ products }),
+  setProducts: (products) => {
+    savePersistedProducts(products);
+    set({ products });
+  },
+
+  addProduct: (productData, options) => {
+    const newProduct: Product = {
+      id: `prod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      category_id: productData.category_id || (productData.type === 'ESPETO' ? 'cat-1' : productData.type === 'PORCAO' ? 'cat-3' : 'cat-4'),
+      description: productData.description ?? null,
+      image_url: productData.image_url ?? null,
+      available: productData.available ?? true,
+      active: productData.active ?? true,
+      tracks_stock: productData.tracks_stock ?? true,
+      allows_doneness: productData.allows_doneness ?? (productData.sector === 'GRILL' && productData.type === 'ESPETO'),
+      allows_notes: productData.allows_notes ?? true,
+      is_cubas: productData.is_cubas ?? false,
+      portions_per_cuba: productData.portions_per_cuba ?? 1,
+      display_order: productData.display_order ?? 99,
+      ...productData,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const updatedProducts = [newProduct, ...get().products];
+    savePersistedProducts(updatedProducts);
+
+    const resolvedOptions =
+      typeof options === 'number'
+        ? { initialShiftQuantity: options, shiftId: get().dailyPrepStock[0]?.shift_id }
+        : options;
+
+    // Se informado shiftId e quantidade inicial > 0, cria o registro de estoque do turno imediatamente
+    if (resolvedOptions?.shiftId && resolvedOptions?.initialShiftQuantity && resolvedOptions.initialShiftQuantity > 0) {
+      const initialQty = resolvedOptions.initialShiftQuantity;
+      const cubas = newProduct.is_cubas ? Math.ceil(initialQty / (newProduct.portions_per_cuba || 15)) : 0;
+      
+      const prepRecord: DailyPrepStock = {
+        id: generateId(),
+        shift_id: resolvedOptions.shiftId,
+        product_id: newProduct.id,
+        cubas_count: cubas,
+        portions_per_cuba: newProduct.portions_per_cuba || 1,
+        initial_quantity: initialQty,
+        current_quantity: initialQty,
+        reserved_quantity: 0,
+        consumed_quantity: 0,
+        discarded_quantity: 0,
+        adjusted_quantity: 0,
+        last_counted_quantity: null,
+        count_difference: null,
+        is_exhausted: false,
+        exhausted_at: null,
+        exhausted_by: null,
+        exhaust_reason: null,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        product: newProduct,
+      };
+
+      const mov: StockMovement = {
+        id: generateId(),
+        shift_id: resolvedOptions.shiftId,
+        product_id: newProduct.id,
+        quantity: initialQty,
+        movement_type: 'PRODUCAO',
+        previous_balance: 0,
+        new_balance: initialQty,
+        order_id: null,
+        order_item_id: null,
+        reason: 'Cadastro de Produto - Adição Imediata ao Turno',
+        user_id: resolvedOptions.userId || 'sistema',
+        created_at: new Date().toISOString(),
+        product_name: newProduct.name,
+      };
+
+      set({
+        products: updatedProducts,
+        dailyPrepStock: [prepRecord, ...get().dailyPrepStock],
+        stockMovements: [mov, ...get().stockMovements],
+      });
+    } else {
+      set({ products: updatedProducts });
+    }
+
+    logger.info({
+      context: 'StockStore',
+      message: `Novo produto cadastrado: ${newProduct.name} (${newProduct.price}).`
+    });
+
+    return newProduct;
+  },
+
+  updateProduct: (id, updates) => {
+    const updatedProducts = get().products.map((p) => {
+      if (p.id !== id) return p;
+      return { ...p, ...updates, updated_at: new Date().toISOString() };
+    });
+    savePersistedProducts(updatedProducts);
+
+    // Também atualiza o objeto product em dailyPrepStock se existir
+    const updatedDailyPrep = get().dailyPrepStock.map((s) => {
+      if (s.product_id !== id) return s;
+      const prod = updatedProducts.find((p) => p.id === id);
+      return { ...s, product: prod };
+    });
+
+    set({ products: updatedProducts, dailyPrepStock: updatedDailyPrep });
+
+    logger.info({
+      context: 'StockStore',
+      message: `Produto ${id} atualizado.`
+    });
+  },
+
+  deleteProduct: (id) => {
+    const updatedProducts = get().products.filter((p) => p.id !== id);
+    savePersistedProducts(updatedProducts);
+    set({ products: updatedProducts });
+
+    logger.info({
+      context: 'StockStore',
+      message: `Produto ${id} removido do catálogo.`
+    });
+  },
+
+  toggleProductActive: (id) => {
+    const prod = get().products.find((p) => p.id === id);
+    if (!prod) return;
+    const newActive = !prod.active;
+    get().updateProduct(id, { active: newActive });
+  },
+
+  resetProductsToDefault: () => {
+    savePersistedProducts(INITIAL_PRODUCTS);
+    set({ products: INITIAL_PRODUCTS });
+    logger.info({
+      context: 'StockStore',
+      message: 'Catálogo de produtos restaurado para os padrões iniciais.'
+    });
+  },
 
   initShiftStock: (shiftId, items, userId) => {
     const newDailyPrep: DailyPrepStock[] = [];

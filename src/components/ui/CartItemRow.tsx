@@ -1,13 +1,13 @@
 import { Minus, Plus, Trash2 } from 'lucide-react';
-import type { MeatDoneness } from '../../types/enums';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
+import type { MeatDoneness } from '../../types/enums';
 
 interface CartItemRowProps {
   name: string;
   unitPrice: number;
   quantity: number;
   doneness?: MeatDoneness | null;
-  notes?: string;
+  notes?: string | null;
   onQuantityChange: (delta: number) => void;
   onRemove: () => void;
 }

@@ -8,7 +8,7 @@ import {
   PackageCheck,
   X
 } from 'lucide-react';
-import React,{ useState } from 'react';
+import React, { useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { formatBRL } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -109,7 +109,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
   return (
     <Dialog label="Conferência e fechamento do turno" onClose={onClose}>
       <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-3xl shadow-card overflow-hidden flex flex-col max-h-[92vh] text-ink zoom-in-95 duration-200">
-        
+
         {/* Cabeçalho do Modal */}
         <div className="bg-surface-muted p-4 sm:p-5 border-b border-line flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -129,7 +129,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
             onClick={onClose}
             className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
             aria-label="Fechar modal"
-           type="button">
+            type="button">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -138,34 +138,31 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
         <div className="grid grid-cols-3 bg-surface-muted border-b border-line text-xs font-semibold text-center">
           <button
             onClick={() => setStep('STOCK_COUNT')}
-            className={`py-3 px-3 border-b-2 transition flex items-center justify-center gap-1.5 ${
-              step === 'STOCK_COUNT'
+            className={`py-3 px-3 border-b-2 transition flex items-center justify-center gap-1.5 ${step === 'STOCK_COUNT'
                 ? 'border-brand-400 text-brand-700 bg-surface-muted font-bold'
                 : 'border-transparent text-ink-muted hover:text-ink hover:bg-surface-muted'
-            }`}
-           type="button">
+              }`}
+            type="button">
             <PackageCheck className="w-4 h-4" />
             <span>1. Estoque Físico</span>
           </button>
           <button
             onClick={() => setStep('CASH_DRAWER')}
-            className={`py-3 px-3 border-b-2 transition flex items-center justify-center gap-1.5 ${
-              step === 'CASH_DRAWER'
+            className={`py-3 px-3 border-b-2 transition flex items-center justify-center gap-1.5 ${step === 'CASH_DRAWER'
                 ? 'border-brand-400 text-brand-700 bg-surface-muted font-bold'
                 : 'border-transparent text-ink-muted hover:text-ink hover:bg-surface-muted'
-            }`}
-           type="button">
+              }`}
+            type="button">
             <Banknote className="w-4 h-4" />
             <span>2. Gaveta do Caixa</span>
           </button>
           <button
             onClick={() => setStep('FINAL_CONFIRMATION')}
-            className={`py-3 px-3 border-b-2 transition flex items-center justify-center gap-1.5 ${
-              step === 'FINAL_CONFIRMATION'
+            className={`py-3 px-3 border-b-2 transition flex items-center justify-center gap-1.5 ${step === 'FINAL_CONFIRMATION'
                 ? 'border-brand-400 text-brand-700 bg-surface-muted font-bold'
                 : 'border-transparent text-ink-muted hover:text-ink hover:bg-surface-muted'
-            }`}
-           type="button">
+              }`}
+            type="button">
             <FileText className="w-4 h-4" />
             <span>3. Resumo & Fechar</span>
           </button>
@@ -181,7 +178,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
 
         {/* Conteúdo do Passo Ativo */}
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 custom-scrollbar">
-          
+
           {/* PASSO 1: CONFERÊNCIA FÍSICA DO ESTOQUE */}
           {step === 'STOCK_COUNT' && (
             <div className="space-y-4">
@@ -226,7 +223,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
                               value={inputCount ?? ''}
                               onChange={(e) => handlePhysicalCountChange(stock.product_id, e.target.value)}
                               className="w-20 px-2.5 py-1.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-center text-xs focus:ring-1 focus:ring-brand-600 focus:outline-none"
-                             aria-label="Contagem física do produto"/>
+                              aria-label="Contagem física do produto" />
                           </td>
                           <td className="p-3 text-right tabular-nums font-bold">
                             {diff === null ? (
@@ -298,21 +295,20 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
                     onChange={(e) => setCashDrawerEnd(e.target.value)}
                     placeholder={expectedCashDrawer.toFixed(2)}
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-sm font-bold focus:ring-2 focus:ring-brand-600 focus:outline-none"
-                   aria-label="Dinheiro contado no fechamento" inputMode="decimal"/>
+                    aria-label="Dinheiro contado no fechamento" inputMode="decimal" />
                 </div>
                 {cashDrawerEnd && (
-                  <div className={`text-xs tabular-nums font-bold pt-1.5 ${
-                    cashDiscrepancy === 0
+                  <div className={`text-xs tabular-nums font-bold pt-1.5 ${cashDiscrepancy === 0
                       ? 'text-emerald-700'
                       : cashDiscrepancy < 0
-                      ? 'text-red-700'
-                      : 'text-amber-800'
-                  }`}>
+                        ? 'text-red-700'
+                        : 'text-amber-800'
+                    }`}>
                     {cashDiscrepancy === 0
                       ? '✅ Caixa fechou com valor exato!'
                       : cashDiscrepancy < 0
-                      ? `⚠️ Falta no caixa: ${formatBRL(cashDiscrepancy)}`
-                      : `ℹ️ Sobra no caixa: +${formatBRL(cashDiscrepancy)}`}
+                        ? `⚠️ Falta no caixa: ${formatBRL(cashDiscrepancy)}`
+                        : `ℹ️ Sobra no caixa: +${formatBRL(cashDiscrepancy)}`}
                   </div>
                 )}
               </div>
@@ -342,7 +338,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
                   onChange={(e) => setClosingNotes(e.target.value)}
                   placeholder="Ex: Turno movimentado, chuva reduziu movimento após as 23h, 2 espetos queimaram na grelha..."
                   className="w-full p-3 rounded-xl bg-surface-muted border border-line text-ink text-xs placeholder-ink-muted focus:outline-none focus:ring-1 focus:ring-brand-600"
-                 aria-label="Observações de Encerramento (opcional):" id="shiftclosemodal-field-1"/>
+                  aria-label="Observações de Encerramento (opcional):" id="shiftclosemodal-field-1" />
               </div>
             </div>
           )}
@@ -350,12 +346,12 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
         </div>
 
         {/* Rodapé com Navegação dos Passos */}
-        <div className="p-4 bg-surface-muted border-t border-line flex items-center justify-between">
+        <div className="p-4 bg-surface-muted border-t border-line flex items-center justify-between flex-wrap gap-3">
           {step !== 'STOCK_COUNT' ? (
             <button
               onClick={() => setStep(step === 'FINAL_CONFIRMATION' ? 'CASH_DRAWER' : 'STOCK_COUNT')}
               className="bg-surface-muted hover:bg-surface-muted text-ink border border-line px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 transition"
-             type="button">
+              type="button">
               <ArrowLeft className="w-4 h-4" />
               <span>Voltar</span>
             </button>
@@ -365,7 +361,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
             <button
               onClick={() => setStep(step === 'STOCK_COUNT' ? 'CASH_DRAWER' : 'FINAL_CONFIRMATION')}
               className="btn-primary px-5 py-2.5 text-xs font-bold flex items-center gap-1.5 shadow-sm text-white rounded-xl"
-             type="button">
+              type="button">
               <span>Avançar</span>
               <ArrowRight className="w-4 h-4" />
             </button>
@@ -373,8 +369,8 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
             <button
               onClick={handleFinishShift}
               disabled={isSubmitting}
-              className="btn-ruby px-6 py-2.5 text-xs font-bold flex items-center gap-2 shadow-sm text-ink rounded-xl disabled:opacity-50"
-             type="button">
+              className="btn-danger px-5 py-3 text-sm font-semibold flex items-center gap-2 rounded-xl disabled:opacity-50"
+              type="button">
               <CheckCheck className="w-4 h-4" />
               <span>{isSubmitting ? 'Encerrando...' : 'Encerrar Turno Definitivamente'}</span>
             </button>

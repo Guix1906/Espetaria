@@ -1,13 +1,13 @@
-import { useState } from 'react';
 import { AlertCircle, Send, ShoppingBag, X } from 'lucide-react';
-import { useCartStore } from '../../stores/useCartStore';
-import { useTableStore } from '../../stores/useTableStore';
-import { useShiftStore } from '../../stores/useShiftStore';
-import { useAuthStore } from '../../stores/useAuthStore';
-import type { RestaurantTable } from '../../types/domain';
-import { formatBRL } from '../../lib/formatters';
+import { useState } from 'react';
 import { CartItemRow } from '../../components/ui/CartItemRow';
 import { Dialog } from '../../components/ui/Dialog';
+import { formatBRL } from '../../lib/formatters';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useCartStore } from '../../stores/useCartStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useTableStore } from '../../stores/useTableStore';
+import type { RestaurantTable } from '../../types/domain';
 
 interface WaiterCartDrawerProps { table: RestaurantTable; isOpen: boolean; onClose: () => void; onSuccess: () => void; }
 

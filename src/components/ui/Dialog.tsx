@@ -1,4 +1,4 @@
-import { useEffect,useRef,type ReactNode } from 'react';
+import { useEffect, useRef, type KeyboardEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 interface DialogProps {
@@ -33,21 +33,32 @@ export function Dialog({ label, onClose, children, placement = 'center' }: Dialo
       dialog.close();
       openDialogCount -= 1;
       if (openDialogCount === 0) document.body.style.overflow = previousOverflow;
-      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) {
-        previousFocus.focus({ preventScroll: true });
-      }
+      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus({ preventScroll: true });
     };
   }, []);
+
+  const keepKeyboardFocus = (event: KeyboardEvent<HTMLDialogElement>) => {
+    if (event.key !== 'Tab') return;
+    const dialog = event.currentTarget;
+    if ([...document.querySelectorAll('dialog[open]')].at(-1) !== dialog) return;
+    const controls = [...dialog.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input:not(:disabled):not([type="hidden"]),select:not(:disabled),textarea:not(:disabled),summary,[tabindex]')]
+      .filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0 && getComputedStyle(element).visibility !== 'hidden');
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (!first || !last) { event.preventDefault(); dialog.focus(); return; }
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || active === dialog)) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus(); }
+  };
 
   return createPortal(
     <dialog
       ref={dialogRef}
+      tabIndex={-1}
       aria-label={label}
       className={`dialog-root dialog-root--${placement}`}
-      onCancel={(event) => {
-        event.preventDefault();
-        onCloseRef.current();
-      }}
+      onKeyDown={keepKeyboardFocus}
+      onCancel={(event) => { event.preventDefault(); onCloseRef.current(); }}
     >
       {children}
     </dialog>,

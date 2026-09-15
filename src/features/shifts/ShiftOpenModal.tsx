@@ -1,10 +1,10 @@
-import { AlertCircle,CheckCircle2,Coins,Flame,Sparkles,X } from 'lucide-react';
-import React,{ useState } from 'react';
+import { AlertCircle, CheckCircle2, Coins, Flame, Sparkles, X } from 'lucide-react';
+import React, { useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { formatBRL } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
-import { PrepItemInput,useStockStore } from '../../stores/useStockStore';
+import { PrepItemInput, useStockStore } from '../../stores/useStockStore';
 
 interface ShiftOpenModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   );
   const [cashStart, setCashStart] = useState<number>(150);
   const [notes, setNotes] = useState<string>('');
-  
+
   // Estado das quantidades preparadas
   const [prepValues, setPrepValues] = useState<Record<string, { quantity: number; cubas: number; portions: number }>>(() => {
     const initial: Record<string, { quantity: number; cubas: number; portions: number }> = {};
@@ -142,7 +142,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   return (
     <Dialog label="Abrir turno e preparar estoque" onClose={onClose}>
       <div className="dialog-panel relative w-full max-w-3xl bg-surface-muted border border-line rounded-2xl shadow-card overflow-hidden my-auto max-h-[90vh] flex flex-col text-ink zoom-in-95 duration-200">
-        
+
         {/* Topo / Header do Modal */}
         <div className="px-5 py-4 bg-surface-muted border-b border-line flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -151,10 +151,10 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             </div>
             <div>
               <h2 className="text-lg font-bold text-ink tracking-tight font-sans">
-                Abertura da Noite (Mise en Place)
+                Abrir turno
               </h2>
               <p className="text-xs text-ink-muted">
-                Informe a quantidade de espetos espetados e cubas produzidas para o dia
+                Confira o fundo de caixa e os produtos preparados para começar.
               </p>
             </div>
           </div>
@@ -162,14 +162,14 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             onClick={onClose}
             className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
             aria-label="Fechar modal"
-           type="button">
+            type="button">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Formulário com Scroll Interno */}
         <form onSubmit={handleSubmit} className="p-5 overflow-y-auto space-y-6 flex-1 text-sm">
-          
+
           {errorMsg && (
             <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 flex items-center gap-2.5" role="alert">
               <AlertCircle className="w-5 h-5 shrink-0 text-red-700" />
@@ -189,7 +189,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 onChange={(e) => setShiftName(e.target.value)}
                 required
                 className="w-full bg-surface-muted border border-line rounded-xl px-3.5 py-2 text-ink font-medium placeholder-ink-muted focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600"
-               aria-label="Nome / Identificação do Turno" id="shiftopenmodal-field-1"/>
+                aria-label="Nome / Identificação do Turno" id="shiftopenmodal-field-1" />
             </div>
 
             <div>
@@ -204,7 +204,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 value={cashStart}
                 onChange={(e) => setCashStart(Number(e.target.value))}
                 className="w-full bg-surface-muted border border-line rounded-xl px-3.5 py-2 text-ink focus:outline-none focus:ring-1 focus:ring-brand-600 focus:border-brand-600 tabular-nums font-bold"
-               aria-label="Fundo de Troco Inicial (Caixa)" id="shiftopenmodal-field-2"/>
+                aria-label="Fundo de Troco Inicial (Caixa)" id="shiftopenmodal-field-2" />
             </div>
           </div>
 
@@ -216,14 +216,14 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 🥩 Espetos Preparados para Hoje (Unidades)
               </h3>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {grillProducts.map((p) => {
                 const val = prepValues[p.id]?.quantity ?? 0;
                 return (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-surface-muted border border-line hover:border-line transition"
+                    className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between p-3 rounded-2xl bg-surface-muted border border-line hover:border-line transition"
                   >
                     <div>
                       <div className="font-semibold text-ink">{p.name}</div>
@@ -234,7 +234,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                         type="button"
                         onClick={() => handleQuantityChange(p.id, val - 5)}
                         className="bg-surface-muted hover:bg-surface-muted text-ink w-8 h-8 rounded-lg font-bold flex items-center justify-center text-xs transition"
-                       aria-label="Diminuir quantidade">
+                        aria-label="Diminuir quantidade">
                         -5
                       </button>
                       <input
@@ -243,12 +243,12 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                         value={val}
                         onChange={(e) => handleQuantityChange(p.id, Number(e.target.value))}
                         className="w-16 bg-surface-muted border border-line rounded-lg px-2 py-1 text-center font-bold text-brand-700 tabular-nums focus:outline-none focus:border-brand-600 text-xs"
-                       aria-label="Quantidade disponível"/>
+                        aria-label="Quantidade disponível" />
                       <button
                         type="button"
                         onClick={() => handleQuantityChange(p.id, val + 5)}
                         className="bg-surface-muted hover:bg-surface-muted text-ink w-8 h-8 rounded-lg font-bold flex items-center justify-center text-xs transition"
-                       aria-label="Aumentar quantidade">
+                        aria-label="Aumentar quantidade">
                         +5
                       </button>
                     </div>
@@ -279,7 +279,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                     className="p-3.5 rounded-2xl bg-surface-muted border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                   >
                     <div>
-                      <div className="font-semibold text-ink flex items-center gap-2">
+                      <div className="font-semibold text-ink flex items-center gap-2 flex-wrap">
                         {p.name}
                         <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 tabular-nums font-bold">
                           CONTROLE POR CUBA
@@ -290,7 +290,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-end gap-3">
                       {/* Quantidade de Cubas */}
                       <div className="flex flex-col items-center">
                         <span className="text-xs text-ink-muted font-semibold">Cubas</span>
@@ -299,7 +299,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                             type="button"
                             onClick={() => handleCubaChange(p.id, Math.max(0, cubas - 1))}
                             className="bg-surface-muted hover:bg-surface-muted text-ink w-7 h-7 rounded-lg font-bold flex items-center justify-center text-xs transition"
-                           aria-label="Diminuir quantidade">
+                            aria-label="Diminuir quantidade">
                             -
                           </button>
                           <input
@@ -309,12 +309,12 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                             value={cubas}
                             onChange={(e) => handleCubaChange(p.id, Number(e.target.value))}
                             className="w-14 bg-surface-muted border border-line rounded-lg px-1.5 py-0.5 text-center font-bold text-ink tabular-nums text-xs"
-                           aria-label="Quantidade de cubas"/>
+                            aria-label="Quantidade de cubas" />
                           <button
                             type="button"
                             onClick={() => handleCubaChange(p.id, cubas + 1)}
                             className="bg-surface-muted hover:bg-surface-muted text-ink w-7 h-7 rounded-lg font-bold flex items-center justify-center text-xs transition"
-                           aria-label="Aumentar quantidade">
+                            aria-label="Aumentar quantidade">
                             +
                           </button>
                         </div>
@@ -330,7 +330,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                           onChange={(e) => handlePortionPerCubaChange(p.id, Number(e.target.value))}
                           className="w-14 bg-surface-muted border border-line rounded-lg px-1.5 py-1 text-center text-xs text-ink tabular-nums mt-0.5"
                           title="Porções por cuba"
-                         aria-label="Porções por cuba"/>
+                          aria-label="Porções por cuba" />
                       </div>
 
                       {/* Total Calculado */}
@@ -360,7 +360,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 return (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between p-3 rounded-2xl bg-surface-muted border border-line"
+                    className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between p-3 rounded-2xl bg-surface-muted border border-line"
                   >
                     <div>
                       <div className="font-semibold text-ink">{p.name}</div>
@@ -372,7 +372,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                       value={val}
                       onChange={(e) => handleQuantityChange(p.id, Number(e.target.value))}
                       className="w-16 bg-surface-muted border border-line rounded-lg px-2 py-1 text-center font-bold text-ink tabular-nums focus:outline-none focus:border-brand-600 text-xs"
-                     aria-label="Quantidade disponível"/>
+                      aria-label="Quantidade disponível" />
                   </div>
                 );
               })}
@@ -390,7 +390,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               placeholder="Ex: Sexta-feira com música ao vivo, previsão de 150 clientes..."
               rows={2}
               className="w-full bg-surface-muted border border-line rounded-xl px-3.5 py-2 text-ink placeholder-ink-muted focus:outline-none focus:ring-1 focus:ring-brand-600 text-xs"
-             aria-label="Observações Iniciais da Noite (Opcional)" id="shiftopenmodal-field-3"/>
+              aria-label="Observações Iniciais da Noite (Opcional)" id="shiftopenmodal-field-3" />
           </div>
 
           {/* Botão de Confirmação */}
@@ -400,7 +400,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               className="btn-primary w-full py-3.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-sm text-white"
             >
               <CheckCircle2 className="w-5 h-5" />
-              <span>Confirmar e Iniciar Turno da Noite</span>
+              <span>Confirmar e abrir turno</span>
             </button>
           </div>
 

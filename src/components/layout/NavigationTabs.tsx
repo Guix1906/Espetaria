@@ -1,7 +1,7 @@
-import { ChefHat,X } from 'lucide-react';
+import { ChefHat, X } from 'lucide-react';
 import { Dialog } from '../ui/Dialog';
 import { BrandMark } from './BrandMark';
-import { NAVIGATION_GROUPS,PAGE_TITLES,type ActiveTab } from './navigation';
+import { NAVIGATION_GROUPS, PAGE_TITLES, type ActiveTab } from './navigation';
 
 export type { ActiveTab } from './navigation';
 

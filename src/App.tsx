@@ -1,7 +1,7 @@
-import { useEffect,useRef,useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Header } from './components/layout/Header';
 import { NavigationTabs } from './components/layout/NavigationTabs';
-import { PAGE_TITLES,type ActiveTab } from './components/layout/navigation';
+import { PAGE_TITLES, type ActiveTab } from './components/layout/navigation';
 import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
 import { MasterDashboardView } from './features/admin/MasterDashboardView';
 import { AuditLogView } from './features/audit/AuditLogView';
@@ -9,6 +9,7 @@ import { CashierModule } from './features/cashier/CashierModule';
 import { DeliveryCatalogView } from './features/delivery/DeliveryCatalogView';
 import { DeliveryManagementView } from './features/delivery/DeliveryManagementView';
 import { KDSModule } from './features/kds/KDSModule';
+import { ProductCatalogManageView } from './features/products/ProductCatalogManageView';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { DailyStockView } from './features/stock/DailyStockView';
 import { TableGridView } from './features/tables/TableGridView';
@@ -67,6 +68,7 @@ export function App() {
           {activeTab === 'cashier' && <CashierModule />}
           {activeTab === 'delivery' && <DeliveryManagementView />}
           {activeTab === 'menu' && <DeliveryCatalogView />}
+          {activeTab === 'products' && <ProductCatalogManageView />}
           {activeTab === 'master' && <MasterDashboardView />}
           {activeTab === 'stock' && <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
           {activeTab === 'audit' && <AuditLogView />}

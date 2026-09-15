@@ -1,8 +1,8 @@
-import { CheckCircle2,Printer,X } from 'lucide-react';
+import { CheckCircle2, Printer, X } from 'lucide-react';
 import React from 'react';
 import { Dialog } from '../../components/ui/Dialog';
-import { formatBRL,formatDoneness } from '../../lib/formatters';
-import { OrderItem,Payment,RestaurantTable,Tab } from '../../types/domain';
+import { formatBRL, formatDoneness } from '../../lib/formatters';
+import { OrderItem, Payment, RestaurantTable, Tab } from '../../types/domain';
 
 interface ReceiptModalProps {
   isOpen: boolean;
@@ -35,7 +35,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   return (
     <Dialog label="Cupom da comanda" onClose={onClose}>
       <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-card space-y-4 max-h-[95vh] flex flex-col fade-in zoom-in-95">
-        
+
         {/* Topo do Modal */}
         <div className="flex items-center justify-between border-b border-line pb-3">
           <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
@@ -45,17 +45,17 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-surface-muted transition"
-           type="button" aria-label="Fechar janela">
+            type="button" aria-label="Fechar janela">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Cupom Térmico Formatado (Estilo Impressora 80mm / Recibo Não Fiscal) */}
         <div className="overflow-y-auto flex-1 bg-amber-50/95 text-stone-900 rounded-2xl p-5 font-mono text-xs shadow-inner select-all print-section space-y-3 border border-stone-300">
-          
+
           {/* Cabeçalho do Cupom */}
           <div className="text-center space-y-0.5 border-b border-dashed border-stone-400 pb-3">
-            <h2 className="font-black text-base tracking-wider uppercase font-brand text-stone-950">
+            <h2 className="font-black text-base tracking-wider uppercase font-sans text-stone-950">
               ESPETARIA SABOR DA CARNE
             </h2>
             <p className="text-[11px] text-stone-700 font-sans font-medium">
@@ -164,7 +164,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <div className="text-center pt-2 text-[10px] text-stone-600 space-y-1">
             <p className="font-bold text-stone-800">OBRIGADO PELA PREFERÊNCIA!</p>
             <p>Volte sempre à Espetaria Sabor da Carne!</p>
-            <p className="text-[9px] text-stone-400 font-mono">Sistema Espetaria Pro • Sabor da Carne</p>
+            <p className="text-xs print:text-[9px] text-stone-600 font-mono">Sistema Espetaria Pro • Sabor da Carne</p>
           </div>
 
         </div>
@@ -174,14 +174,14 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <button
             onClick={handlePrint}
             className="btn-primary flex-1 py-3 rounded-2xl text-xs flex items-center justify-center gap-2"
-           type="button">
+            type="button">
             <Printer className="w-4 h-4" />
             <span>Imprimir Cupom Térmico</span>
           </button>
           <button
             onClick={onClose}
             className="btn-secondary px-5 py-3 rounded-2xl text-xs font-bold"
-           type="button">
+            type="button">
             Concluir
           </button>
         </div>

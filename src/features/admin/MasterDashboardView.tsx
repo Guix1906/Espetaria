@@ -11,7 +11,7 @@ import {
   TrendingUp,
   Users
 } from 'lucide-react';
-import React,{ useState } from 'react';
+import React, { useState } from 'react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
 import { formatBRL } from '../../lib/formatters';
@@ -38,7 +38,7 @@ export const MasterDashboardView: React.FC = () => {
 
   // Pagamentos do turno
   const shiftPayments = currentShiftId ? payments.filter((p) => p.shift_id === currentShiftId) : [];
-  
+
   // Delivery do turno
   const shiftDeliveries = currentShiftId ? deliveryOrders.filter((d) => d.shift_id === currentShiftId && d.status !== 'CANCELLED') : [];
   const deliveredOrders = shiftDeliveries.filter((d) => d.status === 'DELIVERED');
@@ -154,7 +154,7 @@ export const MasterDashboardView: React.FC = () => {
 
   return (
     <div className="page-layout">
-      
+
       <PageHeader eyebrow="Gestão da espetaria" title="Visão geral" description={<>Vendas, recebimentos e resultados em um só lugar.<span className="mt-1 block font-medium text-ink-secondary">{currentShift ? currentShift.name : 'Nenhum turno aberto no momento'}</span></>} icon={ShieldCheck} actions={<>
         <button type="button" onClick={handleExportCSV} disabled={!currentShift} className="btn-secondary"><Download className="h-4 w-4" aria-hidden="true" />Exportar relatório</button>
         {currentShift?.status === 'ABERTO' && <button type="button" onClick={() => setIsCloseModalOpen(true)} className="btn-secondary text-rose-700 hover:border-rose-400 hover:bg-rose-50 hover:text-rose-800"><Lock className="h-4 w-4" aria-hidden="true" />Fechar turno</button>}
@@ -169,7 +169,7 @@ export const MasterDashboardView: React.FC = () => {
 
       {/* SEÇÃO INTERMEDIÁRIA: FORMAS DE PAGAMENTO & CURVA ABC */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
+
         {/* Distribuição por Meio de Pagamento */}
         <div className="bg-surface-muted border border-line p-5 sm:p-6 rounded-2xl shadow-sm space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
@@ -342,11 +342,10 @@ export const MasterDashboardView: React.FC = () => {
                   <td className="py-3 font-semibold text-ink">{shift.name}</td>
                   <td className="py-3 tabular-nums text-ink-muted">{shift.date}</td>
                   <td className="py-3">
-                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums ${
-                      shift.status === 'ABERTO'
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums ${shift.status === 'ABERTO'
                         ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                         : 'bg-surface-muted text-ink-muted border border-line'
-                    }`}>
+                      }`}>
                       {shift.status}
                     </span>
                   </td>

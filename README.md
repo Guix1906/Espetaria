@@ -45,14 +45,26 @@ Uma espetaria possui uma dinâmica operacional única e de altíssima velocidade
 | **Linguagem** | **TypeScript 5.6 (Strict)** | Tipagem estática integral em todas as entidades (comandas, itens, estoque, financeiro, DRE). |
 | **Interface** | **React 18** | Renderização reativa e componentes declarativos mobile-first. |
 | **Build & Bundler** | **Vite 6** | Compilação ultra-rápida em Rust/ESM, hot-reload instantâneo e minificação máxima. |
-| **Estilização** | **Tailwind CSS 3.4** | Design dark theme de alto contraste para visibilidade noturna e sob fumaça de churrasqueira. |
+| **Estilização** | **Tailwind CSS 3.4** | Tema claro com cores semânticas, contraste legível e componentes compartilhados em todas as telas. |
 | **PWA & Offline** | **Vite PWA (Workbox)** | Service Worker com pré-cache estático, atalho de instalação nativo e manifest standalone. |
 | **Banco de Dados** | **PostgreSQL 15 (Supabase)** | Banco relacional robusto com RLS, índices, triggers e funções transacionais atômicas. |
 | **Realtime WebSockets**| **Supabase Realtime** | Sincronização bidirecional de pedidos, dispensas e esgotamentos em menos de 100ms. |
 | **Áudio Sintetizado** | **Web Audio API** | Síntese de frequências nativa para alertas sonoros sem depender de arquivos MP3 externos. |
-| **Testes Unitários** | **Vitest 2.1** | Suíte completa com 45 testes automatizados de regras de negócio e concorrência. |
+| **Testes Unitários** | **Vitest 2.1** | Suíte completa com testes automatizados de regras de negócio e concorrência. |
 
 ---
+
+### Interface e usabilidade
+
+O sistema usa uma identidade visual única no atendimento, salão, produção (churrasqueira, cozinha e bar), caixa, delivery, cardápio, gestão, estoque e auditoria, incluindo os respectivos formulários, carrinhos e modais.
+
+- **Cores:** superfícies claras, texto escuro e verde-petróleo nas ações principais. Verde indica disponibilidade/conclusão; âmbar indica espera/atenção; vermelho indica bloqueio, cancelamento ou atraso. Os estados também possuem rótulos e/ou ícones.
+- **Navegação:** menu lateral no computador e menu compacto no celular, com indicação da tela ativa e contadores operacionais. A abertura de turno e o controle de som permanecem acessíveis em telas pequenas.
+- **Legibilidade e acesso:** textos secundários com contraste mínimo de 4,5:1 nas superfícies do tema, foco de teclado visível, controles de pelo menos 44px, zoom habilitado e respeito à preferência por movimento reduzido.
+- **Janelas:** diálogos nativos com foco contido, fechamento por Escape, retorno do foco à origem e rolagem interna. PIX e recibos ficam acima do fechamento de conta, sem sobrepor indevidamente a navegação.
+- **Consistência:** os tokens ficam em `src/index.css` e `tailwind.config.js`; os componentes compartilhados estão em `src/components/ui`. Novas telas devem reutilizar `PageHeader`, `StatCard`, `FilterChip`, `SearchField`, `EmptyState` e `Dialog`, sem reintroduzir cores escuras fixas. Confirmações e solicitações de motivo usam `useFeedback` e `FeedbackProvider`, no lugar dos alertas e prompts nativos do navegador.
+- **PIX:** a interface identifica o QR como prévia ilustrativa e a confirmação como manual, conforme a implementação atual. O código Copia e Cola permanece disponível; o recebimento deve ser conferido no banco antes de ser registrado.
+- **PWA e impressão:** ícones e cores de instalação acompanham a marca; a interface aceita orientação vertical e horizontal. A impressão do recibo mantém apenas o cupom, em preto sobre branco, adaptado à largura do papel.
 
 ## ⚡ MÓDULOS DO SISTEMA & FUNCIONALIDADES
 
@@ -63,7 +75,7 @@ Uma espetaria possui uma dinâmica operacional única e de altíssima velocidade
 - **Auditoria de Produção:** Criação automática de movimentações do tipo `PRODUCAO` no log de auditoria.
 
 ### 2. App do Garçom (PWA Mobile-First)
-- **Operação na Palma da Mão:** Interface ergonômica com botões de toque de no mínimo 48px, utilizável com apenas uma mão.
+- **Operação na Palma da Mão:** Interface ergonômica com botões com áreas de toque de no mínimo 44px, utilizável com apenas uma mão.
 - **Seletor Visual de Ponto da Carne:** Modal obrigatório para espetos bovinos com as opções oficiais:
   - `MAL PASSADA`
   - `AO PONTO PARA MAL`
@@ -71,7 +83,7 @@ Uma espetaria possui uma dinâmica operacional única e de altíssima velocidade
   - `AO PONTO PARA BEM`
   - `BEM PASSADA`
 - **Carrinho Multi-Itens por Mesa:** Adição de múltiplos itens com observações rápidas ("Sem cebola", "Pouco sal", "Gelo e limão").
-- **Lançamento Atômico:** Validação do estoque no momento do envio; produtos esgotados ficam desabilitados com tarja vermelha pulsante.
+- **Lançamento Atômico:** Validação do estoque no momento do envio; produtos esgotados ficam desabilitados com rótulo de indisponibilidade com contraste e ação desabilitada.
 - **Consulta de Comanda na Mesa:** O garçom vê instantaneamente o consumo acumulado da mesa, taxa de serviço de 10% e divisão sugerida por pessoa (`total / people_count`).
 
 ### 3. KDS de Produção (Churrasqueira, Cozinha e Bar)
@@ -83,7 +95,7 @@ Uma espetaria possui uma dinâmica operacional única e de altíssima velocidade
 - **SLA Visual de Tempo Decorrido:**
   - Menor que 10 minutos: Verde.
   - Entre 10 e 20 minutos: Âmbar.
-  - Acima de 20 minutos: Vermelho piscante de alerta urgente.
+  - Acima de 20 minutos: Vermelho com ícone e rótulo **Atrasado**, sem depender de animação.
 - **Web Audio API:** Alertas sonoros sintetizados para novos pedidos, itens prontos e pedidos urgentes.
 
 ### 4. Esgotamento Instantâneo em Tempo Real
@@ -92,7 +104,7 @@ Uma espetaria possui uma dinâmica operacional única e de altíssima velocidade
 - **Propagação Relâmpago:** Em menos de 100ms, o item é desativado via WebSocket em todos os celulares de garçons, no delivery e no caixa.
 
 ### 5. Módulo do Caixa, Fechamento e Cupom Térmico
-- **Painel de Mesas Ocupadas & Fila de Encerramento:** Destaque pulsante para mesas com status `AGUARDANDO_CONTA`.
+- **Painel de Mesas Ocupadas & Fila de Encerramento:** Destaque com rótulo e cor de atenção para mesas com status `AGUARDANDO_CONTA`.
 - **Conferência Detalhada:** Exibição de cada item consumido com hora de lançamento e quem atendeu.
 - **Divisão Flexível de Pagamentos:** Permite receber a conta em até 4 formas de pagamento na mesma comanda (ex: R$ 50 no PIX, R$ 30 em dinheiro e R$ 40 no cartão).
 - **Cálculo Automático de Troco:** Input de valor recebido em espécie com cálculo instantâneo de troco a devolver.
@@ -100,7 +112,7 @@ Uma espetaria possui uma dinâmica operacional única e de altíssima velocidade
 - **Impressão Térmica 80mm / 58mm:** Layout formatado para cupom de impressora térmica com comando `window.print()` e cabeçalho fiscal/não-fiscal da espetaria.
 
 ### 6. Delivery Próprio & Cardápio Digital
-- **Cardápio Digital para Clientes:** Visualização de todo o cardápio em layout mobile com fotos, preços e seleção de ponto da carne.
+- **Cardápio Digital para Clientes:** Visualização de todo o cardápio em layout responsivo com categorias, busca, preços e seleção de ponto da carne.
 - **Anti-Overselling Integrado:** O delivery consome o mesmo estoque diário da espetaria física. Se a picanha esgotar no salão, fica indisponível para delivery no mesmo instante.
 - **Tabela de Taxas por Bairro:** Cálculo automático de taxa de entrega com base no endereço do cliente.
 - **Painel Interno de Despacho:** Atribuição de motoboy, avanço de status (`CONFIRMED` ➔ `PREPARING` ➔ `OUT_FOR_DELIVERY` ➔ `DELIVERED`) e cancelamento com estorno automático de estoque.
@@ -308,7 +320,7 @@ Executa `tsc --noEmit` em modo estrito e compila os bundles minificados e Servic
 2. Monitore o card de **Cubas Gastronômicas**: quando a cuba estiver acabando (ex: menos de 5 porções), providencie uma nova panela ou clique em **"Esgotar Cuba"** para travar pedidos.
 
 ### 💵 Perfil: Caixa
-1. Fique atento às mesas com o badge âmbar pulsante **"Aguardando Conta"**.
+1. Fique atento às mesas com o indicador **"Conta solicitada"**.
 2. Abra a mesa no módulo de Caixa, confira os itens consumidos e confirme a inclusão ou não da taxa de 10%.
 3. Selecione o meio de pagamento (PIX, Dinheiro, Débito, Crédito). Se for PIX, clique em **"Gerar QR Code PIX Dinâmico"** para mostrar o QR Code na tela ou enviar a conta com Copia e Cola direto no WhatsApp do cliente.
 4. Após registrar a quitação integral, clique em **"Encerrar Conta e Liberar Mesa"** para imprimir o cupom térmico e liberar a mesa para novos clientes.

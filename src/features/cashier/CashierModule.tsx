@@ -9,21 +9,23 @@ import {
   Sparkles,
   Users
 } from 'lucide-react';
-import React,{ useState } from 'react';
+import React, { useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
 import { formatBRL } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { RestaurantTable,Tab } from '../../types/domain';
+import { RestaurantTable, Tab } from '../../types/domain';
 import { ReceiptModal } from './ReceiptModal';
 import { TableSettlementModal } from './TableSettlementModal';
 
 type CashierFilter = 'WAITING_BILL' | 'ALL_ACTIVE' | 'CLOSED_TODAY';
 
 export const CashierModule: React.FC = () => {
+  const { notify, requestText } = useFeedback();
   const { tables, tabs, payments, getTabOrderItems, reopenTabAtomic } = useTableStore();
   const { currentShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
@@ -56,26 +58,26 @@ export const CashierModule: React.FC = () => {
   // Se não houver mesas aguardando conta ao abrir, exibe todas as ativas
   const effectiveFilter = filter === 'WAITING_BILL' && waitingBillTables.length === 0 ? 'ALL_ACTIVE' : filter;
 
-  const handleReopen = (tab: Tab) => {
+  const handleReopen = async (tab: Tab) => {
     if (!['MASTER', 'GERENTE', 'CAIXA'].includes(currentProfile.role)) {
-      alert('Apenas Gerente ou Caixa podem reabrir comandas.');
+      notify('Apenas Gerente ou Caixa podem reabrir comandas.', 'error');
       return;
     }
 
-    const reason = prompt('Motivo para reabertura da comanda fechada:', 'Erro na cobrança de itens');
+    const reason = await requestText({ title: "Reabrir comanda", label: "Motivo da reabertura", confirmText: "Reabrir comanda", message: 'Motivo para reabertura da comanda fechada:', initialValue: 'Erro na cobrança de itens' });
     if (!reason) return;
 
     try {
       reopenTabAtomic(tab.id, currentProfile.id, reason);
-      alert('Comanda reaberta com sucesso.');
+      notify('Comanda reaberta com sucesso.', 'success');
     } catch (err) {
-      alert((err as Error).message);
+      notify((err as Error).message, 'error');
     }
   };
 
   return (
     <div className="page-layout">
-      
+
       <PageHeader eyebrow="Recebimentos" title="Caixa" description="Feche contas, divida pagamentos e acompanhe os recebimentos do turno." icon={Receipt} actions={<div className="surface-card px-5 py-3"><p className="text-xs font-medium text-ink-muted">Recebido no turno</p><p className="text-2xl font-bold text-brand-800 tabular-nums">{formatBRL(totalShiftRevenue)}</p></div>} />
       <div className="stat-grid">
         <StatCard label="Dinheiro" value={formatBRL(revenueByMethod.DINHEIRO)} icon={Banknote} tone="success" />
@@ -89,7 +91,7 @@ export const CashierModule: React.FC = () => {
         <button
           onClick={() => setFilter('WAITING_BILL')}
           className={`filter-chip ${effectiveFilter === 'WAITING_BILL' ? 'is-active' : ''}`}
-         type="button" aria-pressed={effectiveFilter === 'WAITING_BILL'}>
+          type="button" aria-pressed={effectiveFilter === 'WAITING_BILL'}>
           <AlertTriangle className="w-4 h-4" />
           <span>Conta solicitada ({waitingBillTables.length})</span>
         </button>
@@ -97,7 +99,7 @@ export const CashierModule: React.FC = () => {
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
           className={`filter-chip ${effectiveFilter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
-         type="button" aria-pressed={effectiveFilter === 'ALL_ACTIVE'}>
+          type="button" aria-pressed={effectiveFilter === 'ALL_ACTIVE'}>
           <Users className="w-4 h-4" />
           <span>Em atendimento ({activeTables.length})</span>
         </button>
@@ -105,7 +107,7 @@ export const CashierModule: React.FC = () => {
         <button
           onClick={() => setFilter('CLOSED_TODAY')}
           className={`filter-chip ${effectiveFilter === 'CLOSED_TODAY' ? 'is-active' : ''}`}
-         type="button" aria-pressed={effectiveFilter === 'CLOSED_TODAY'}>
+          type="button" aria-pressed={effectiveFilter === 'CLOSED_TODAY'}>
           <CheckCircle2 className="w-4 h-4" />
           <span>Encerradas ({closedTabs.length})</span>
         </button>
@@ -127,11 +129,10 @@ export const CashierModule: React.FC = () => {
                 return (
                   <div
                     key={table.id}
-                    className={`p-5 rounded-2xl border transition flex flex-col justify-between space-y-4 shadow-sm ${
-                      isWaitingBill
+                    className={`p-5 rounded-2xl border transition flex flex-col justify-between space-y-4 shadow-sm ${isWaitingBill
                         ? 'bg-amber-50 border-2 border-amber-400 shadow-card ring-1 ring-amber-300'
                         : 'bg-surface-muted border-line hover:border-brand-300'
-                    }`}
+                      }`}
                   >
                     <div>
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -168,12 +169,11 @@ export const CashierModule: React.FC = () => {
                     {/* Botão de Fechamento */}
                     <button
                       onClick={() => setSelectedTableForCheckout(table)}
-                      className={`w-full py-3.5 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm ${
-                        isWaitingBill
+                      className={`w-full py-3.5 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm ${isWaitingBill
                           ? 'btn-primary'
                           : 'btn-secondary'
-                      }`}
-                     type="button">
+                        }`}
+                      type="button">
                       <Receipt className="w-4 h-4" />
                       <span>Fechar conta</span>
                     </button>
@@ -233,7 +233,7 @@ export const CashierModule: React.FC = () => {
                     <button
                       onClick={() => setSelectedClosedTabForReceipt(tab)}
                       className="btn-secondary flex-1 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold"
-                     type="button">
+                      type="button">
                       <Receipt className="w-3.5 h-3.5" />
                       <span>Ver Cupom</span>
                     </button>
@@ -243,7 +243,7 @@ export const CashierModule: React.FC = () => {
                         onClick={() => handleReopen(tab)}
                         className="btn-secondary px-3 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1 text-ink-muted hover:text-rose-700"
                         title="Reabrir comanda caso tenha sido fechada por engano"
-                       type="button" aria-label="Reabrir comanda caso tenha sido fechada por engano">
+                        type="button" aria-label="Reabrir comanda caso tenha sido fechada por engano">
                         <RotateCcw className="w-3.5 h-3.5" />
                         <span>Reabrir</span>
                       </button>

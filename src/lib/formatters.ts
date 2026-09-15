@@ -78,7 +78,7 @@ export function getTableStatusConfig(status: TableStatus): { label: string; colo
     case 'OCUPADA':
       return { label: 'Ocupada', color: 'text-amber-800', badgeBg: 'bg-amber-50 border-amber-300 text-amber-800 shadow-sm' };
     case 'AGUARDANDO_CONTA':
-      return { label: 'Aguardando Conta', color: 'text-rose-700', badgeBg: 'bg-rose-50 border-rose-300 text-rose-800 shadow-sm' };
+      return { label: 'Conta solicitada', color: 'text-rose-700', badgeBg: 'bg-rose-50 border-rose-300 text-rose-800 shadow-sm' };
     case 'RESERVADA':
       return { label: 'Reservada', color: 'text-sky-700', badgeBg: 'bg-sky-50 border-sky-300 text-sky-800 shadow-sm' };
   }
@@ -92,7 +92,7 @@ export function getOrderItemStatusConfig(status: OrderItemStatus): { label: stri
     case 'RECEIVED':
       return { label: 'Recebido', color: 'text-amber-800', bg: 'bg-amber-50 border-amber-200 text-amber-800' };
     case 'IN_PREPARATION':
-      return { label: 'Na Grelha / Preparo', color: 'text-brand-700', bg: 'bg-brand-50 border-brand-300 text-brand-800 shadow-sm' };
+      return { label: 'Em preparo', color: 'text-brand-700', bg: 'bg-brand-50 border-brand-300 text-brand-800 shadow-sm' };
     case 'READY':
       return { label: 'Pronto', color: 'text-emerald-700', bg: 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-sm' };
     case 'DELIVERED':

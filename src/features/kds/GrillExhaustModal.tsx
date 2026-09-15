@@ -1,5 +1,5 @@
-import { AlertOctagon,AlertTriangle,CheckCircle2,Flame,X } from 'lucide-react';
-import React,{ useState } from 'react';
+import { AlertOctagon, AlertTriangle, CheckCircle2, Flame, X } from 'lucide-react';
+import React, { useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
@@ -63,7 +63,7 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
   return (
     <Dialog label="Disponibilidade dos espetos" onClose={onClose}>
       <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-2xl p-5 sm:p-6 shadow-card space-y-4 max-h-[92vh] flex flex-col fade-in zoom-in-95">
-        
+
         {/* Topo do Modal */}
         <div className="flex items-center justify-between border-b border-line pb-4">
           <div className="flex items-center gap-3.5">
@@ -82,7 +82,7 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
           <button
             onClick={onClose}
             className="p-2.5 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
-           type="button" aria-label="Fechar janela">
+            type="button" aria-label="Fechar janela">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -98,7 +98,7 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
               <button
                 onClick={() => setSelectedProductId(null)}
                 className="text-xs text-ink-muted hover:text-ink"
-               type="button">
+                type="button">
                 Cancelar
               </button>
             </div>
@@ -111,7 +111,7 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-surface-muted border border-rose-300 text-ink text-xs focus:ring-2 focus:ring-brand-600 focus:outline-none"
-               aria-label="Motivo do Esgotamento Imediato:" id="grillexhaustmodal-field-1">
+                aria-label="Motivo do Esgotamento Imediato:" id="grillexhaustmodal-field-1">
                 {COMMON_REASONS.map((r) => (
                   <option key={r} value={r}>
                     {r}
@@ -124,14 +124,14 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
               <button
                 onClick={confirmExhaustion}
                 className="flex-1 py-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-2"
-               type="button">
+                type="button">
                 <AlertOctagon className="w-4 h-4" />
                 <span>Confirmar Bloqueio Imediato</span>
               </button>
               <button
                 onClick={() => setSelectedProductId(null)}
                 className="btn-secondary px-4 py-3 rounded-xl text-xs"
-               type="button">
+                type="button">
                 Voltar
               </button>
             </div>
@@ -148,11 +148,10 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
             return (
               <div
                 key={prod.id}
-                className={`p-3.5 sm:p-4 rounded-2xl border transition flex items-center justify-between gap-3 ${
-                  isExhausted
+                className={`p-3.5 sm:p-4 rounded-2xl border transition flex items-center justify-between gap-3 ${isExhausted
                     ? 'bg-rose-50 border-rose-200 text-ink-muted'
                     : 'bg-surface-muted border-line text-ink hover:border-line'
-                }`}
+                  }`}
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -187,12 +186,11 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
                 {/* Botão de Ação 1-Tap */}
                 <button
                   onClick={() => handleToggle(prod.id, isExhausted)}
-                  className={`px-4 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 shrink-0 ${
-                    isExhausted
+                  className={`px-4 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 shrink-0 ${isExhausted
                       ? 'btn-success text-white shadow-sm'
                       : 'bg-rose-700 hover:bg-rose-800 text-white shadow-sm'
-                  }`}
-                 type="button">
+                    }`}
+                  type="button">
                   {isExhausted ? (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
@@ -216,7 +214,7 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
           <button
             onClick={onClose}
             className="btn-secondary px-4 py-2 rounded-xl text-xs"
-           type="button">
+            type="button">
             Fechar
           </button>
         </div>

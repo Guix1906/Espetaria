@@ -1,5 +1,5 @@
-import { CheckCircle2,Info,Smartphone,Users,X } from 'lucide-react';
-import { useState,type FormEvent } from 'react';
+import { CheckCircle2, Info, Smartphone, Users, X } from 'lucide-react';
+import { useState, type FormEvent } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FilterChip } from '../../components/ui/FilterChip';

@@ -9,25 +9,27 @@ import {
   Users,
   X
 } from 'lucide-react';
-import React,{ useState } from 'react';
+import React, { useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SearchField } from '../../components/ui/SearchField';
 import { StatCard } from '../../components/ui/StatCard';
 import { TableCard } from '../../components/ui/TableCard';
-import { formatBRL,formatDoneness,getOrderItemStatusConfig,getTableStatusConfig } from '../../lib/formatters';
+import { formatBRL, formatDoneness, getOrderItemStatusConfig, getTableStatusConfig } from '../../lib/formatters';
 import { getProductAvailability } from '../../lib/productAvailability';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { OrderItem,RestaurantTable,Tab } from '../../types/domain';
-import { MeatDoneness,TableStatus } from '../../types/enums';
+import { OrderItem, RestaurantTable, Tab } from '../../types/domain';
+import { MeatDoneness, TableStatus } from '../../types/enums';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
 
 export const TableGridView: React.FC = () => {
+  const { notify, requestText } = useFeedback();
   const { tables, tabs, openTab, addOrderAtomic, cancelOrderItemAtomic, getTabOrderItems } = useTableStore();
   const { products, dailyPrepStock } = useStockStore();
   const { currentProfile } = useAuthStore();
@@ -35,7 +37,7 @@ export const TableGridView: React.FC = () => {
 
   const [filter, setFilter] = useState<'ALL' | TableStatus>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Modais
   const [selectedTableForOpen, setSelectedTableForOpen] = useState<RestaurantTable | null>(null);
   const [selectedTableForOrder, setSelectedTableForOrder] = useState<RestaurantTable | null>(null);
@@ -46,7 +48,7 @@ export const TableGridView: React.FC = () => {
   const [customerName, setCustomerName] = useState('');
   const [peopleCount, setPeopleCount] = useState(2);
   const [tabNotes, setTabNotes] = useState('');
-  
+
   // Lançamento de pedido
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [orderQty, setOrderQty] = useState<number>(1);
@@ -76,7 +78,7 @@ export const TableGridView: React.FC = () => {
       setPeopleCount(2);
       setTabNotes('');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Erro ao abrir comanda.');
+      notify(err instanceof Error ? err.message : 'Erro ao abrir comanda.', 'error');
     }
   };
 
@@ -122,22 +124,22 @@ export const TableGridView: React.FC = () => {
     }
   };
 
-  const handleCancelItem = (item: OrderItem) => {
+  const handleCancelItem = async (item: OrderItem) => {
     if (!currentShift) return;
-    const reason = prompt('Informe o motivo do cancelamento:', 'Cliente desistiu');
+    const reason = await requestText({ title: "Cancelar item", label: "Motivo do cancelamento", confirmText: "Cancelar item", danger: true, message: 'Informe o motivo do cancelamento:', initialValue: 'Cliente desistiu' });
     if (!reason) return;
 
     try {
       cancelOrderItemAtomic(item.id, reason, currentProfile.id, currentShift.id);
-      alert('Item cancelado com sucesso e registrado na auditoria.');
+      notify('Item cancelado com sucesso e registrado na auditoria.', 'success');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Erro ao cancelar item.');
+      notify(err instanceof Error ? err.message : 'Erro ao cancelar item.', 'error');
     }
   };
 
   return (
     <div className="page-layout">
-      
+
       <PageHeader eyebrow="Operação do salão" title="Salão e mesas" description="Uma visão completa do atendimento, do primeiro pedido ao fechamento da conta." icon={Users} actions={<span className="status-badge border-line bg-surface text-ink-secondary">{tables.length} mesas no salão</span>} />
       <div className="stat-grid">
         <StatCard label="Mesas livres" value={tables.filter((table) => table.status === 'LIVRE').length} hint="Disponíveis para novos clientes" icon={CheckCircle2} tone="success" />
@@ -167,7 +169,7 @@ export const TableGridView: React.FC = () => {
                 onClick={() => setSelectedTableForOpen(null)}
                 className="p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
                 aria-label="Fechar"
-               type="button">
+                type="button">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -183,7 +185,7 @@ export const TableGridView: React.FC = () => {
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   className="w-full bg-surface-muted border border-line rounded-2xl px-3.5 py-2.5 text-ink placeholder-ink-muted focus:outline-none focus:border-brand-600 transition font-medium"
-                 aria-label="Nome do Cliente / Identificador (Opcional)" id="tablegridview-field-1"/>
+                  aria-label="Nome do Cliente / Identificador (Opcional)" id="tablegridview-field-1" />
               </div>
 
               <div>
@@ -197,7 +199,7 @@ export const TableGridView: React.FC = () => {
                   value={peopleCount}
                   onChange={(e) => setPeopleCount(Number(e.target.value))}
                   className="w-full bg-surface-muted border border-line rounded-2xl px-3.5 py-2.5 text-ink focus:outline-none focus:border-brand-600 tabular-nums font-bold transition"
-                 aria-label="Quantidade de Pessoas na Mesa" id="tablegridview-field-2"/>
+                  aria-label="Quantidade de Pessoas na Mesa" id="tablegridview-field-2" />
               </div>
 
               <div>
@@ -210,7 +212,7 @@ export const TableGridView: React.FC = () => {
                   value={tabNotes}
                   onChange={(e) => setTabNotes(e.target.value)}
                   className="w-full bg-surface-muted border border-line rounded-2xl px-3.5 py-2.5 text-ink placeholder-ink-muted focus:outline-none focus:border-brand-600 transition"
-                 aria-label="Observação da Mesa (Opcional)" id="tablegridview-field-3"/>
+                  aria-label="Observação da Mesa (Opcional)" id="tablegridview-field-3" />
               </div>
 
               <div className="pt-2">
@@ -233,7 +235,7 @@ export const TableGridView: React.FC = () => {
       {selectedTableForOrder && (
         <Dialog label="Lançar pedido" onClose={() => { setSelectedTableForOrder(null); setFeedbackMsg(null); }}>
           <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-card space-y-4 max-h-[90vh] flex flex-col fade-in zoom-in-95">
-            
+
             <div className="flex items-center justify-between border-b border-line pb-4">
               <div>
                 <h3 className="text-base font-bold text-ink flex items-center gap-2 font-sans">
@@ -251,17 +253,16 @@ export const TableGridView: React.FC = () => {
                 }}
                 className="p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
                 aria-label="Fechar"
-               type="button">
+                type="button">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {feedbackMsg && (
-              <div className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2 ${
-                feedbackMsg.type === 'success'
+              <div className={`p-3.5 rounded-2xl border text-xs flex items-center gap-2 ${feedbackMsg.type === 'success'
                   ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
                   : 'bg-rose-50 border-rose-300 text-rose-800'
-              }`}>
+                }`}>
                 {feedbackMsg.type === 'success' ? (
                   <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
                 ) : (
@@ -289,13 +290,12 @@ export const TableGridView: React.FC = () => {
                         key={prod.id}
                         disabled={Boolean(isExhausted)}
                         onClick={() => setSelectedProductId(prod.id)}
-                        className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${
-                          isExhausted
+                        className={`p-3 rounded-xl border text-left transition flex flex-col justify-between ${isExhausted
                             ? 'bg-surface-muted border-line text-ink-muted opacity-50 cursor-not-allowed'
                             : isSelected
-                            ? 'bg-brand-50 border-brand-400 text-brand-950 shadow-sm'
-                            : 'bg-surface-muted border-line text-ink hover:border-brand-300'
-                        }`}
+                              ? 'bg-brand-50 border-brand-400 text-brand-950 shadow-sm'
+                              : 'bg-surface-muted border-line text-ink hover:border-brand-300'
+                          }`}
                       >
                         <div className="flex items-start justify-between gap-1">
                           <span className="font-bold text-xs leading-snug">{prod.name}</span>
@@ -339,11 +339,10 @@ export const TableGridView: React.FC = () => {
                         type="button"
                         key={d}
                         onClick={() => setOrderDoneness(d)}
-                        className={`px-3 py-2 rounded-xl border text-xs font-bold transition text-center ${
-                          orderDoneness === d
+                        className={`px-3 py-2 rounded-xl border text-xs font-bold transition text-center ${orderDoneness === d
                             ? 'bg-brand-700 text-white border-brand-400 shadow-sm'
                             : 'bg-surface-muted border-line text-ink hover:bg-surface-muted'
-                        }`}
+                          }`}
                       >
                         {formatDoneness(d)}
                       </button>
@@ -363,7 +362,7 @@ export const TableGridView: React.FC = () => {
                       type="button"
                       onClick={() => setOrderQty(Math.max(1, orderQty - 1))}
                       className="btn-secondary w-10 h-10 rounded-xl font-bold text-lg flex items-center justify-center transition"
-                     aria-label="Diminuir quantidade">
+                      aria-label="Diminuir quantidade">
                       -
                     </button>
                     <input
@@ -372,12 +371,12 @@ export const TableGridView: React.FC = () => {
                       value={orderQty}
                       onChange={(e) => setOrderQty(Math.max(1, Number(e.target.value)))}
                       className="w-full bg-surface-muted border border-line rounded-xl py-2 text-center text-ink font-bold tabular-nums focus:outline-none focus:border-brand-600 transition"
-                     aria-label="Quantidade do produto"/>
+                      aria-label="Quantidade do produto" />
                     <button
                       type="button"
                       onClick={() => setOrderQty(orderQty + 1)}
                       className="btn-primary w-10 h-10 rounded-xl font-bold text-lg flex items-center justify-center transition shadow-sm"
-                     aria-label="Aumentar quantidade">
+                      aria-label="Aumentar quantidade">
                       +
                     </button>
                   </div>
@@ -393,7 +392,7 @@ export const TableGridView: React.FC = () => {
                     value={orderNotes}
                     onChange={(e) => setOrderNotes(e.target.value)}
                     className="w-full bg-surface-muted border border-line rounded-xl px-3 py-2 text-ink placeholder-ink-muted focus:outline-none focus:border-brand-600 transition"
-                   aria-label="Observação do Item" id="tablegridview-field-4"/>
+                    aria-label="Observação do Item" id="tablegridview-field-4" />
                 </div>
               </div>
 
@@ -418,7 +417,7 @@ export const TableGridView: React.FC = () => {
       {selectedTableForBill && (
         <Dialog label="Extrato da comanda" onClose={() => setSelectedTableForBill(null)}>
           <div className="dialog-panel bg-surface-muted border border-line rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-card space-y-4 max-h-[90vh] flex flex-col fade-in zoom-in-95">
-            
+
             <div className="flex items-center justify-between border-b border-line pb-4">
               <div>
                 <h3 className="text-base font-bold text-ink flex items-center gap-2 font-sans">
@@ -433,7 +432,7 @@ export const TableGridView: React.FC = () => {
                 onClick={() => setSelectedTableForBill(null)}
                 className="p-1.5 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
                 aria-label="Fechar"
-               type="button">
+                type="button">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -460,11 +459,10 @@ export const TableGridView: React.FC = () => {
                   return (
                     <div
                       key={item.id}
-                      className={`p-3 rounded-2xl border flex items-center justify-between gap-2 shadow-sm ${
-                        isCancelled
+                      className={`p-3 rounded-2xl border flex items-center justify-between gap-2 shadow-sm ${isCancelled
                           ? 'bg-rose-50 border-rose-200 text-ink-muted line-through'
                           : 'bg-surface-muted border-line text-ink'
-                      }`}
+                        }`}
                     >
                       <div>
                         <div className="font-bold text-ink flex items-center gap-2">
@@ -505,7 +503,7 @@ export const TableGridView: React.FC = () => {
                             title="Cancelar item"
                             onClick={() => handleCancelItem(item)}
                             className="p-2 rounded-xl text-rose-700 hover:text-rose-800 hover:bg-rose-100 transition"
-                           type="button" aria-label="Cancelar item">
+                            type="button" aria-label="Cancelar item">
                             <Trash2 className="w-4 h-4" />
                           </button>
                         )}
@@ -547,7 +545,7 @@ export const TableGridView: React.FC = () => {
                         setSelectedTableForCheckout(target);
                       }}
                       className="btn-primary w-full py-3.5 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-card"
-                     type="button">
+                      type="button">
                       <Receipt className="w-4 h-4" />
                       <span>Ir para Fechamento no Caixa</span>
                     </button>

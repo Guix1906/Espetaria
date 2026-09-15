@@ -6,9 +6,10 @@ import {
   RotateCcw,
   SlidersHorizontal
 } from 'lucide-react';
-import React,{ useState } from 'react';
+import React, { useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SearchField } from '../../components/ui/SearchField';
@@ -23,6 +24,7 @@ interface DailyStockViewProps {
 }
 
 export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick }) => {
+  const { requestText, notify } = useFeedback();
   const { dailyPrepStock, toggleExhaustProduct, adjustStockPhysicalCount } = useStockStore();
   const { currentShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
@@ -39,26 +41,28 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
     return <div className="page-layout"><PageHeader eyebrow="Controle de produção" title="Estoque diário" description="Acompanhe a disponibilidade dos produtos e a preparação do turno." icon={Flame} /><EmptyState title="Vamos preparar o próximo turno?" description="Informe os espetos, as bebidas e as cubas preparados para começar a acompanhar o estoque." icon={Clock} action={<button type="button" onClick={onOpenShiftClick} className="btn-primary">Abrir turno</button>} /></div>;
   }
 
-  const handleToggleExhaust = (stock: DailyPrepStock) => {
-    const isExhausting = !stock.is_exhausted;
-    let reason: string | undefined = undefined;
+  const handleToggleExhaust = async (stock: DailyPrepStock) => {
+    try {
+      const isExhausting = !stock.is_exhausted;
+      let reason: string | undefined = undefined;
 
-    if (isExhausting) {
-      const input = prompt(
-        `Confirma esgotar "${stock.product?.name}"? Ele será bloqueado imediatamente nos celulares dos garçons e no delivery.\n\nMotivo (opcional):`,
-        'Acabou a produção na grelha'
+      if (isExhausting) {
+        const input = await requestText({ title: "Esgotar produto", label: "Motivo do esgotamento", confirmText: "Esgotar produto", danger: true, required: false, message: `Confirma esgotar "${stock.product?.name}"? Ele será bloqueado imediatamente nos celulares dos garçons e no delivery.\n\nMotivo (opcional):`, initialValue: 'Acabou a produção na grelha' });
+        if (input === null) return; // cancelou o prompt
+        reason = input || 'Esgotado pelo operador';
+      }
+
+      toggleExhaustProduct(
+        currentShift.id,
+        stock.product_id,
+        isExhausting,
+        currentProfile.id,
+        reason
       );
-      if (input === null) return; // cancelou o prompt
-      reason = input || 'Esgotado pelo operador';
-    }
 
-    toggleExhaustProduct(
-      currentShift.id,
-      stock.product_id,
-      isExhausting,
-      currentProfile.id,
-      reason
-    );
+    } catch (error: unknown) {
+      notify(error instanceof Error ? error.message : 'Não foi possível concluir a operação. Tente novamente.', 'error');
+    }
   };
 
   const handleAdjustSubmit = (e: React.FormEvent) => {
@@ -76,7 +80,7 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
       setAdjustModalItem(null);
       setAdjustReason('');
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Erro ao ajustar estoque.');
+      notify(err instanceof Error ? err.message : 'Erro ao ajustar estoque.', 'error');
     }
   };
 
@@ -90,9 +94,9 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
 
   return (
     <div className="page-layout">
-      
+
       <PageHeader eyebrow="Controle de produção" title="Estoque diário" description={<>Disponibilidade, reposição e contagem física dos produtos.<span className="mt-1 block font-medium text-ink-secondary">{currentShift.name}</span></>} icon={Flame} />
-      <div className="stat-grid">
+      <div className="stat-grid stat-grid--three">
         <StatCard label="Produtos disponíveis" value={dailyPrepStock.filter((stock) => !stock.is_exhausted && stock.current_quantity > 0).length} hint="Liberados para atendimento" icon={CheckCircle} tone="success" />
         <StatCard label="Estoque baixo" value={dailyPrepStock.filter((stock) => !stock.is_exhausted && stock.current_quantity > 0 && stock.current_quantity <= 5).length} hint="Até 5 unidades disponíveis" icon={SlidersHorizontal} tone="warning" />
         <StatCard label="Produtos esgotados" value={dailyPrepStock.filter((stock) => stock.is_exhausted || stock.current_quantity <= 0).length} hint="Bloqueados para novos pedidos" icon={Ban} tone="info" />
@@ -108,8 +112,8 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
           const prod = stock.product;
           if (!prod) return null;
 
-          const percentRemaining = stock.initial_quantity > 0 
-            ? Math.round((stock.current_quantity / stock.initial_quantity) * 100) 
+          const percentRemaining = stock.initial_quantity > 0
+            ? Math.round((stock.current_quantity / stock.initial_quantity) * 100)
             : 0;
 
           const isExhausted = stock.is_exhausted || stock.current_quantity <= 0;
@@ -117,11 +121,10 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
           return (
             <div
               key={stock.id}
-              className={`p-5 rounded-2xl border transition flex flex-col justify-between space-y-4 shadow-sm ${
-                isExhausted
+              className={`p-5 rounded-2xl border transition flex flex-col justify-between space-y-4 shadow-sm ${isExhausted
                   ? 'bg-surface-muted border-red-200 opacity-90'
                   : 'bg-surface-muted border-line hover:border-line'
-              }`}
+                }`}
             >
               {/* Topo do Card */}
               <div>
@@ -166,7 +169,7 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
 
               {/* Métricas e Barra de Progresso */}
               <div className="space-y-2 py-2 border-y border-line text-xs">
-                
+
                 {/* Barra */}
                 <div>
                   <div className="flex justify-between text-xs text-ink-muted mb-1">
@@ -175,13 +178,12 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
                   </div>
                   <div className="w-full h-2.5 rounded-full bg-surface-muted overflow-hidden">
                     <div
-                      className={`h-full transition-colors duration-500 rounded-full ${
-                        isExhausted
+                      className={`h-full transition-colors duration-500 rounded-full ${isExhausted
                           ? 'bg-red-700'
                           : percentRemaining > 30
-                          ? 'bg-emerald-700'
-                          : 'bg-amber-700'
-                      }`}
+                            ? 'bg-emerald-700'
+                            : 'bg-amber-700'
+                        }`}
                       style={{ width: `${Math.min(100, Math.max(0, percentRemaining))}%` }}
                     />
                   </div>
@@ -208,12 +210,11 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
               <div className="grid grid-cols-2 gap-2 pt-1">
                 <button
                   onClick={() => handleToggleExhaust(stock)}
-                  className={`py-2.5 px-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm ${
-                    isExhausted
+                  className={`py-2.5 px-3 rounded-xl font-bold text-xs transition flex items-center justify-center gap-1.5 shadow-sm ${isExhausted
                       ? 'btn-success text-white'
                       : 'bg-red-700 hover:bg-red-800 text-white shadow-sm'
-                  }`}
-                 type="button">
+                    }`}
+                  type="button">
                   {isExhausted ? (
                     <>
                       <RotateCcw className="w-3.5 h-3.5" />
@@ -233,7 +234,7 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
                     setNewCount(stock.current_quantity);
                   }}
                   className="bg-surface-muted hover:bg-surface-muted text-ink border border-line font-semibold py-2.5 px-3 rounded-xl text-xs flex items-center justify-center gap-1.5 transition"
-                 type="button">
+                  type="button">
                   <SlidersHorizontal className="w-3.5 h-3.5" />
                   <span>Contagem</span>
                 </button>
@@ -272,7 +273,7 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
                   value={newCount}
                   onChange={(e) => setNewCount(Math.max(0, Number(e.target.value)))}
                   className="w-full bg-surface-muted border border-line rounded-xl px-3.5 py-2.5 text-ink font-bold tabular-nums text-base focus:outline-none focus:border-brand-600"
-                 aria-label="Nova Quantidade Física Contada" id="dailystockview-field-1"/>
+                  aria-label="Nova Quantidade Física Contada" id="dailystockview-field-1" />
               </div>
 
               <div>
@@ -286,7 +287,7 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
                   onChange={(e) => setAdjustReason(e.target.value)}
                   required
                   className="w-full bg-surface-muted border border-line rounded-xl px-3.5 py-2.5 text-ink focus:outline-none focus:border-brand-600 text-xs"
-                 aria-label="Motivo da Divergência (Obrigatório para Auditoria)" id="dailystockview-field-2"/>
+                  aria-label="Motivo da Divergência (Obrigatório para Auditoria)" id="dailystockview-field-2" />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5 pt-2">

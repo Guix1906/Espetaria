@@ -1,4 +1,4 @@
-import { SearchX,type LucideIcon } from 'lucide-react';
+import { SearchX, type LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 interface EmptyStateProps {

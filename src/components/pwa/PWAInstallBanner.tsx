@@ -1,113 +1,53 @@
-import { Download,Flame,Share2,X } from 'lucide-react';
-import React,{ useEffect,useState } from 'react';
+import { Download, Share2, Smartphone, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-export const PWAInstallBanner: React.FC = () => {
+export function PWAInstallBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isIOS, setIsIOS] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Verifica se já está instalado (standalone)
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-
-    if (isStandalone) {
-      return;
-    }
-
-    // Verifica se o usuário já dispensou nos últimos 3 dias
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || ('standalone' in navigator && navigator.standalone === true);
+    if (standalone) return;
     const dismissedAt = localStorage.getItem('espetaria_pwa_dismissed');
-    if (dismissedAt && Date.now() - parseInt(dismissedAt, 10) < 3 * 24 * 60 * 60 * 1000) {
-      return;
-    }
-
-    // Detecta iOS
-    const userAgent = window.navigator.userAgent.toLowerCase();
-    const isAppleDevice = /iphone|ipad|ipod/.test(userAgent);
-    if (isAppleDevice) {
-      setIsIOS(true);
-      setIsVisible(true);
-      return;
-    }
-
-    // Escuta evento nativo no Android/Chrome
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
+    if (dismissedAt && Date.now() - Number(dismissedAt) < 3 * 24 * 60 * 60 * 1000) return;
+    if (/iphone|ipad|ipod/i.test(navigator.userAgent)) { setIsIOS(true); setIsVisible(true); return; }
+    const handlePrompt = (event: Event) => {
+      event.preventDefault();
+      setDeferredPrompt(event as BeforeInstallPromptEvent);
       setIsVisible(true);
     };
-
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    window.addEventListener('beforeinstallprompt', handlePrompt);
+    return () => window.removeEventListener('beforeinstallprompt', handlePrompt);
   }, []);
 
-  const handleInstallClick = async () => {
+  const install = async () => {
     if (!deferredPrompt) return;
-    await deferredPrompt.prompt();
-    const choice = await deferredPrompt.userChoice;
-    if (choice.outcome === 'accepted') {
-      setIsVisible(false);
+    setErrorMessage(null);
+    try {
+      await deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice.outcome === 'accepted') setIsVisible(false);
+      setDeferredPrompt(null);
+    } catch {
+      setErrorMessage('Não foi possível instalar agora. Tente novamente pelo menu do navegador.');
     }
-    setDeferredPrompt(null);
   };
-
-  const handleDismiss = () => {
-    localStorage.setItem('espetaria_pwa_dismissed', Date.now().toString());
-    setIsVisible(false);
-  };
-
+  const dismiss = () => { localStorage.setItem('espetaria_pwa_dismissed', String(Date.now())); setIsVisible(false); };
   if (!isVisible) return null;
 
   return (
-    <div className="bg-brand-50 border-b border-brand-200 px-3 py-2.5 sm:px-6 slide-in-from-top">
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <div className="bg-brand-700 w-8 h-8 rounded-xl text-white flex items-center justify-center shrink-0 shadow-sm">
-            <Flame className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-ink flex items-center gap-1.5">
-              <span>Instale o App da Espetaria</span>
-              <span className="text-xs bg-brand-100 text-brand-800 tabular-nums px-1.5 py-0.5 rounded border border-brand-300">PWA</span>
-            </div>
-            <p className="text-xs text-ink-muted">
-              {isIOS ? (
-                <span className="flex items-center gap-1">
-                  Toque em <Share2 className="w-3 h-3 text-brand-700 inline" /> e depois em "Adicionar à Tela de Início"
-                </span>
-              ) : (
-                'Acesso offline instantâneo, notificações sonoras e resposta em milissegundos.'
-              )}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {!isIOS && deferredPrompt && (
-            <button
-              onClick={handleInstallClick}
-              className="btn-primary px-3 py-1.5 text-xs font-bold flex items-center gap-1.5 shadow-sm"
-             type="button">
-              <Download className="w-3.5 h-3.5" />
-              <span>Instalar</span>
-            </button>
-          )}
-
-          <button
-            onClick={handleDismiss}
-            className="p-1.5 rounded-lg text-ink-muted hover:text-ink hover:bg-brand-100 transition"
-            title="Fechar"
-            aria-label="Fechar banner de instalação"
-           type="button">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+    <div className="border-b border-brand-200 bg-brand-50 px-4 py-3 sm:px-6">
+      <div className="mx-auto flex max-w-[1536px] flex-wrap items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-start gap-3"><Smartphone className="mt-1 hidden h-5 w-5 shrink-0 text-brand-700 sm:block" aria-hidden="true" /><div><p className="text-sm font-semibold text-brand-900">A espetaria na sua tela inicial</p><p className="mt-1 text-xs leading-relaxed text-ink-secondary">{isIOS ? <span>Toque em <Share2 className="inline h-3.5 w-3.5" aria-label="Compartilhar" /> e escolha "Adicionar à Tela de Início".</span> : 'Instale o aplicativo para acessar o sistema mais rapidamente.'}</p>{errorMessage && <p role="alert" className="mt-2 text-sm text-rose-800">{errorMessage}</p>}</div></div>
+        <div className="flex shrink-0 items-center gap-2">{!isIOS && deferredPrompt && <button type="button" onClick={install} className="btn-primary"><Download className="h-4 w-4" aria-hidden="true" />Instalar</button>}<button type="button" onClick={dismiss} className="icon-button border-brand-200 bg-brand-50" aria-label="Dispensar instalação"><X className="h-4 w-4" /></button></div>
       </div>
     </div>
   );
-};
+}

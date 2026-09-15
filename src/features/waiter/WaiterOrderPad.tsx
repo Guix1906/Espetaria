@@ -1,4 +1,4 @@
-import { ArrowLeft,ArrowRight,CheckCircle2,Flame,Plus,Receipt,ShoppingBag,X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Flame, Plus, Receipt, ShoppingBag, X } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FilterChip } from '../../components/ui/FilterChip';
@@ -8,8 +8,9 @@ import { getProductAvailability } from '../../lib/productAvailability';
 import { useCartStore } from '../../stores/useCartStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
-import type { Product,RestaurantTable } from '../../types/domain';
+import type { Product, RestaurantTable } from '../../types/domain';
 import type { MeatDoneness } from '../../types/enums';
+import { ProductFormModal } from '../products/ProductFormModal';
 import { WaiterCartDrawer } from './WaiterCartDrawer';
 import { WaiterDonenessModal } from './WaiterDonenessModal';
 import { WaiterViewTab } from './WaiterViewTab';
@@ -24,6 +25,7 @@ export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [isViewTabOpen, setIsViewTabOpen] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
@@ -52,7 +54,24 @@ export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
       </div>
       <div className="page-layout">
         {orderSent && <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção. Acompanhe em <strong>Ver consumo</strong>.</span></div><button type="button" className="icon-button border-emerald-200 bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-semibold">O que vamos servir?</h2><p className="mt-1 text-sm text-ink-muted">Toque em um produto para adicionar ao pedido.</p></div><SearchField value={searchQuery} onChange={setSearchQuery} label="Buscar produto no cardápio" placeholder="Buscar espeto, porção ou bebida" className="w-full sm:w-80" /></div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-semibold">O que vamos servir?</h2>
+            <p className="mt-1 text-sm text-ink-muted">Toque em um produto para adicionar ao pedido.</p>
+          </div>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <SearchField value={searchQuery} onChange={setSearchQuery} label="Buscar produto no cardápio" placeholder="Buscar espeto, porção ou bebida" className="w-full sm:w-72" />
+            <button
+              type="button"
+              onClick={() => setIsProductModalOpen(true)}
+              className="btn-secondary shrink-0 text-xs py-2.5 px-3"
+              title="Cadastrar novo produto no cardápio"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Novo Produto</span>
+            </button>
+          </div>
+        </div>
         <div className="filter-bar" aria-label="Categorias do cardápio">{categories.map((category) => <FilterChip key={category.id} active={selectedCategory === category.id} onClick={() => setSelectedCategory(category.id)}>{category.name}</FilterChip>)}</div>
         {filteredProducts.length ? <div className="grid grid-cols-1 gap-4 xs:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filteredProducts.map((product) => {
@@ -68,6 +87,7 @@ export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
       <WaiterDonenessModal product={modalProduct} isOpen={!!modalProduct} onClose={() => setModalProduct(null)} onConfirm={handleDonenessConfirm} />
       <WaiterCartDrawer table={table} isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} onSuccess={() => setOrderSent(true)} />
       <WaiterViewTab table={table} isOpen={isViewTabOpen} onClose={() => setIsViewTabOpen(false)} onRequestBill={() => { useTableStore.getState().requestBill(table.id); setIsViewTabOpen(false); }} />
+      <ProductFormModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} />
     </div>
   );
 }

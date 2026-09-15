@@ -75,7 +75,7 @@
   .eyebrow { @apply mb-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-brand-700; }
   .surface-card { @apply rounded-2xl border border-line bg-surface shadow-card; }
   .section-title { @apply text-base font-semibold text-ink; }
-  .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 205px), 1fr)); gap: 1rem; }
+  .stat-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .stat-card { @apply surface-card flex flex-col gap-4 p-5; }
   .stat-value { @apply break-words text-2xl font-bold tracking-tight text-ink tabular-nums sm:text-3xl; }
   .icon-tile { @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700; }
@@ -119,7 +119,7 @@
   .data-table td { @apply border-b border-line py-3; }
 }
 
-.dialog-root { padding: 1rem; border: 0; margin: auto; width: 100%; height: 100%; max-width: none; max-height: none; color: rgb(var(--color-ink)); background: transparent; overflow: hidden; }
+.dialog-root { padding: 1rem; border: 0; margin: auto; width: 100%; height: 100dvh; max-width: none; max-height: none; color: rgb(var(--color-ink)); background: transparent; overflow: hidden; }
 .dialog-root[open] { display: flex; align-items: center; justify-content: center; }
 .dialog-root::backdrop { background: rgb(17 37 46 / 0.48); backdrop-filter: blur(4px); }
 .dialog-root > .dialog-panel { min-height: 0; max-height: 100%; overflow-y: auto; border: 1px solid rgb(var(--color-line)); background: rgb(var(--color-surface)); border-radius: 20px; box-shadow: 0 24px 80px -16px rgb(17 37 46 / 0.3); overscroll-behavior: contain; }
@@ -134,7 +134,12 @@
   .floating-cart { left: var(--sidebar-width); }
 }
 @media (min-width: 640px) {
+  .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-grid--three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   :where(input:not([type='checkbox']):not([type='radio']), select, textarea) { font-size: 0.875rem; }
+}
+@media (min-width: 1280px) {
+  .stat-grid:not(.stat-grid--three) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (max-width: 639px) {
   .dialog-root { padding: 0.75rem; }
@@ -153,11 +158,27 @@
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgb(var(--color-line-strong)); border: 2px solid rgb(var(--color-canvas)); border-radius: 99px; }
 
+
+.app-shell :is(input:not([type='checkbox']):not([type='radio']), select, textarea),
+.dialog-root :is(input:not([type='checkbox']):not([type='radio']), select, textarea) {
+  color: rgb(var(--color-ink));
+  background: rgb(var(--color-surface));
+  border-color: rgb(var(--color-line-strong));
+  font-size: 0.875rem;
+}
+.btn-primary, .btn-secondary, .btn-success, .btn-danger { font-size: 0.875rem; }
+.dialog-root input[type='number'] { min-width: 4rem; }
+@media (max-width: 639px) {
+  .app-shell :is(input:not([type='checkbox']):not([type='radio']), select, textarea),
+  .dialog-root :is(input:not([type='checkbox']):not([type='radio']), select, textarea) { font-size: 16px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0s !important; scroll-behavior: auto !important; }
 }
 
 @media print {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
   @page { margin: 5mm; }
   body { background: #fff !important; color: #000 !important; }
   body > :not(dialog), dialog:not(:has(.print-section)) { display: none !important; }

@@ -1,11 +1,11 @@
-import { CalendarDays,Check,ChevronDown,Clock3,Menu,UserRound,Volume2,VolumeX,Wifi,WifiOff } from 'lucide-react';
-import { useEffect,useId,useRef,useState } from 'react';
+import { CalendarDays, Check, ChevronDown, Clock3, Menu, UserRound, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { audioService } from '../../lib/audio';
 import { formatRole } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { BrandMark } from './BrandMark';
-import { PAGE_TITLES,type ActiveTab } from './navigation';
+import { PAGE_TITLES, type ActiveTab } from './navigation';
 
 interface HeaderProps {
   activeTab: ActiveTab;
@@ -64,7 +64,7 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
           <div className="hidden xs:block lg:hidden"><BrandMark /></div>
           <div className="xs:hidden"><p className="text-sm font-bold text-brand-950">Sabor da Carne</p><p className="text-xs text-ink-muted">{PAGE_TITLES[activeTab]}</p></div>
           <div className="hidden lg:block">
-            <div className="flex items-center gap-2 text-sm"><span className="text-ink-muted">Espetaria</span><span className="text-line-strong" aria-hidden="true">/</span><span className="font-semibold text-ink">{PAGE_TITLES[activeTab]}</span></div>
+            <div className="flex items-center gap-2 text-sm"><span className="text-ink-muted">Espetaria</span><span className="text-ink-muted" aria-hidden="true">/</span><span className="font-semibold text-ink">{PAGE_TITLES[activeTab]}</span></div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</div>
           </div>
         </div>

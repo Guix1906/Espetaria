@@ -1,6 +1,6 @@
-import { ArrowRight,Clock3,Plus,Receipt,ShoppingBag,Users } from 'lucide-react';
-import { formatBRL,formatElapsedMinutes,getTableStatusConfig } from '../../lib/formatters';
-import type { RestaurantTable,Tab } from '../../types/domain';
+import { ArrowRight, Clock3, Plus, Receipt, ShoppingBag, Users } from 'lucide-react';
+import { formatBRL, formatElapsedMinutes, getTableStatusConfig } from '../../lib/formatters';
+import type { RestaurantTable, Tab } from '../../types/domain';
 import type { TableStatus } from '../../types/enums';
 
 interface TableCardProps {
@@ -51,7 +51,7 @@ export function TableCard({ table, tab, onOpen, onOrder, onBill, disabled = fals
   return (
     <article className={`table-card ${borderByStatus[table.status]}`} aria-label={`Mesa ${table.number}, ${status.label}`}>
       {content}
-      <div className="mx-3.5 mb-3.5 flex gap-2 border-t border-line pt-3 sm:mx-4 sm:mb-4">
+      <div className="mx-3.5 mb-3.5 flex flex-col gap-2 sm:flex-row border-t border-line pt-3 sm:mx-4 sm:mb-4">
         {isFree ? <button type="button" disabled={disabled} onClick={onOpen} className="btn-secondary w-full px-2 text-xs text-brand-800"><Plus className="h-4 w-4" aria-hidden="true" />Abrir comanda</button> : <><button type="button" onClick={onOrder} className="btn-primary flex-1 px-2 text-xs"><ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />Pedir</button><button type="button" onClick={onBill} className="btn-secondary flex-1 px-2 text-xs"><Receipt className="h-3.5 w-3.5" aria-hidden="true" />Conta</button></>}
       </div>
     </article>

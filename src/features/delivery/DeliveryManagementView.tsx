@@ -7,12 +7,13 @@ import {
   Phone,
   Trash2
 } from 'lucide-react';
-import React,{ useState } from 'react';
+import React, { useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StatCard } from '../../components/ui/StatCard';
 import { getDeliveryStatusConfig } from '../../lib/deliveryStatus';
-import { formatBRL,formatDoneness } from '../../lib/formatters';
+import { formatBRL, formatDoneness } from '../../lib/formatters';
 import {
   buildDeliveryConfirmedWhatsAppMessage,
   buildDeliveryDispatchedWhatsAppMessage,
@@ -25,6 +26,7 @@ import { DeliveryOrder } from '../../types/domain';
 type DeliveryFilter = 'ALL_ACTIVE' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
 
 export const DeliveryManagementView: React.FC = () => {
+  const { requestText, notify } = useFeedback();
   const { deliveryOrders, updateDeliveryStatus, cancelDeliveryOrderAtomic } = useDeliveryStore();
   const { currentProfile } = useAuthStore();
 
@@ -37,23 +39,33 @@ export const DeliveryManagementView: React.FC = () => {
     return true;
   });
 
-  const handleAdvanceStatus = (order: DeliveryOrder) => {
-    if (order.status === 'CONFIRMED') {
-      updateDeliveryStatus(order.id, 'PREPARING');
-    } else if (order.status === 'PREPARING') {
-      const driverName = prompt('Nome do Motoboy responsável pela entrega:', 'Carlos Motoboy');
-      if (driverName) {
-        updateDeliveryStatus(order.id, 'OUT_FOR_DELIVERY', driverName);
+  const handleAdvanceStatus = async (order: DeliveryOrder) => {
+    try {
+      if (order.status === 'CONFIRMED') {
+        updateDeliveryStatus(order.id, 'PREPARING');
+      } else if (order.status === 'PREPARING') {
+        const driverName = await requestText({ title: "Despachar pedido", label: "Nome do entregador", confirmText: "Confirmar saída", multiline: false, message: 'Nome do Motoboy responsável pela entrega:', initialValue: 'Carlos Motoboy' });
+        if (driverName) {
+          updateDeliveryStatus(order.id, 'OUT_FOR_DELIVERY', driverName);
+        }
+      } else if (order.status === 'OUT_FOR_DELIVERY') {
+        updateDeliveryStatus(order.id, 'DELIVERED');
       }
-    } else if (order.status === 'OUT_FOR_DELIVERY') {
-      updateDeliveryStatus(order.id, 'DELIVERED');
+
+    } catch (error: unknown) {
+      notify(error instanceof Error ? error.message : 'Não foi possível concluir a operação. Tente novamente.', 'error');
     }
   };
 
-  const handleCancelOrder = (order: DeliveryOrder) => {
-    const reason = prompt(`Motivo do cancelamento do pedido #${order.order_number}:`, 'Desistência do cliente');
-    if (!reason) return;
-    cancelDeliveryOrderAtomic(order.id, reason, currentProfile.id);
+  const handleCancelOrder = async (order: DeliveryOrder) => {
+    try {
+      const reason = await requestText({ title: "Cancelar pedido", label: "Motivo do cancelamento", confirmText: "Cancelar pedido", danger: true, message: `Motivo do cancelamento do pedido #${order.order_number}:`, initialValue: 'Desistência do cliente' });
+      if (!reason) return;
+      cancelDeliveryOrderAtomic(order.id, reason, currentProfile.id);
+
+    } catch (error: unknown) {
+      notify(error instanceof Error ? error.message : 'Não foi possível concluir a operação. Tente novamente.', 'error');
+    }
   };
 
   const sendWhatsAppUpdate = (order: DeliveryOrder) => {
@@ -93,9 +105,9 @@ export const DeliveryManagementView: React.FC = () => {
 
   return (
     <div className="page-layout">
-      
+
       <PageHeader eyebrow="Pedidos e entregas" title="Delivery" description="Acompanhe cada pedido, organize as saídas e mantenha o cliente informado." icon={Bike} />
-      <div className="stat-grid">
+      <div className="stat-grid stat-grid--three">
         <StatCard label="Em produção" value={countActive} hint="Confirmados e em preparo" icon={Flame} tone="warning" />
         <StatCard label="Em rota de entrega" value={countDispatched} hint="Pedidos com o entregador" icon={Bike} tone="info" />
         <StatCard label="Entregas concluídas" value={countDelivered} hint="Pedidos entregues" icon={CheckCheck} tone="success" />
@@ -106,15 +118,15 @@ export const DeliveryManagementView: React.FC = () => {
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
           className={`filter-chip ${filter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'ALL_ACTIVE'}>
+          type="button" aria-pressed={filter === 'ALL_ACTIVE'}>
           <Flame className="w-4 h-4" />
-          <span>Em Produção / Brasa ({countActive})</span>
+          <span>Em produção ({countActive})</span>
         </button>
 
         <button
           onClick={() => setFilter('OUT_FOR_DELIVERY')}
           className={`filter-chip ${filter === 'OUT_FOR_DELIVERY' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'OUT_FOR_DELIVERY'}>
+          type="button" aria-pressed={filter === 'OUT_FOR_DELIVERY'}>
           <Bike className="w-4 h-4" />
           <span>Em entrega ({countDispatched})</span>
         </button>
@@ -122,7 +134,7 @@ export const DeliveryManagementView: React.FC = () => {
         <button
           onClick={() => setFilter('DELIVERED')}
           className={`filter-chip ${filter === 'DELIVERED' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'DELIVERED'}>
+          type="button" aria-pressed={filter === 'DELIVERED'}>
           <CheckCheck className="w-4 h-4" />
           <span>Entregues ({countDelivered})</span>
         </button>
@@ -143,13 +155,12 @@ export const DeliveryManagementView: React.FC = () => {
             return (
               <div
                 key={order.id}
-                className={`p-5 rounded-2xl border transition flex flex-col justify-between space-y-4 shadow-sm ${
-                  isDispatched
+                className={`p-5 rounded-2xl border transition flex flex-col justify-between space-y-4 shadow-sm ${isDispatched
                     ? 'bg-sky-50 border-sky-300 ring-1 ring-sky-300'
                     : isPreparing
-                    ? 'bg-brand-50 border-brand-300'
-                    : 'bg-surface-muted border-line hover:border-brand-300'
-                }`}
+                      ? 'bg-brand-50 border-brand-300'
+                      : 'bg-surface-muted border-line hover:border-brand-300'
+                  }`}
               >
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
@@ -241,14 +252,13 @@ export const DeliveryManagementView: React.FC = () => {
                     {!isDelivered && (
                       <button
                         onClick={() => handleAdvanceStatus(order)}
-                        className={`flex-1 py-3 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm ${
-                          isConfirmed
+                        className={`flex-1 py-3 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm ${isConfirmed
                             ? 'btn-primary text-white'
                             : isPreparing
-                            ? 'bg-sky-700 hover:bg-sky-800 text-white'
-                            : 'btn-success'
-                        }`}
-                       type="button">
+                              ? 'bg-sky-700 hover:bg-sky-800 text-white'
+                              : 'btn-success'
+                          }`}
+                        type="button">
                         {isConfirmed && <span>Iniciar Preparo</span>}
                         {isPreparing && (
                           <>
@@ -270,7 +280,7 @@ export const DeliveryManagementView: React.FC = () => {
                       onClick={() => sendWhatsAppUpdate(order)}
                       className="px-3.5 py-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs transition flex items-center gap-1.5 shadow-sm"
                       title="Enviar atualização de status no WhatsApp do cliente"
-                     type="button" aria-label="Enviar atualização de status no WhatsApp do cliente">
+                      type="button" aria-label="Enviar atualização de status no WhatsApp do cliente">
                       <MessageCircle className="w-4 h-4 text-emerald-700" />
                       <span className="hidden sm:inline">WhatsApp</span>
                     </button>
@@ -281,7 +291,7 @@ export const DeliveryManagementView: React.FC = () => {
                         onClick={() => handleCancelOrder(order)}
                         className="p-3 rounded-2xl text-ink-muted hover:text-rose-700 hover:bg-rose-50 border border-line transition"
                         title="Cancelar pedido"
-                       type="button" aria-label="Cancelar pedido">
+                        type="button" aria-label="Cancelar pedido">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     )}

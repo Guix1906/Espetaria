@@ -7,9 +7,9 @@ import {
 } from 'lucide-react';
 import React from 'react';
 import { Dialog } from '../../components/ui/Dialog';
-import { formatBRL,formatDoneness,getOrderItemStatusConfig } from '../../lib/formatters';
+import { formatBRL, formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
 import { useTableStore } from '../../stores/useTableStore';
-import { OrderItem,RestaurantTable } from '../../types/domain';
+import { OrderItem, RestaurantTable } from '../../types/domain';
 
 interface WaiterViewTabProps {
   table: RestaurantTable;
@@ -40,7 +40,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
   return (
     <Dialog label="Consumo da mesa" onClose={onClose} placement="sheet">
       <div className="dialog-panel bg-surface-muted border-t sm:border border-line rounded-t-3xl sm:rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-card space-y-4 max-h-[92vh] flex flex-col fade-in zoom-in-95">
-        
+
         {/* Topo do Extrato */}
         <div className="flex items-center justify-between border-b border-line pb-4">
           <div className="flex items-center gap-3">
@@ -64,7 +64,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
           <button
             onClick={onClose}
             className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
-           type="button" aria-label="Fechar janela">
+            type="button" aria-label="Fechar janela">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -97,13 +97,12 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
               return (
                 <div
                   key={item.id}
-                  className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-colors ${
-                    isReady
+                  className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-colors ${isReady
                       ? 'bg-emerald-50 border-emerald-300 shadow-sm'
                       : isCancelled
-                      ? 'bg-rose-50 border-rose-200 text-ink-muted line-through'
-                      : 'bg-surface-muted border-line text-ink'
-                  }`}
+                        ? 'bg-rose-50 border-rose-200 text-ink-muted line-through'
+                        : 'bg-surface-muted border-line text-ink'
+                    }`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -138,7 +137,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
                     <button
                       onClick={() => handleMarkDelivered(item)}
                       className="px-3.5 py-2.5 rounded-xl btn-success text-xs transition flex items-center gap-1.5 shrink-0 shadow-sm"
-                     type="button">
+                      type="button">
                       <CheckCheck className="w-4 h-4" />
                       <span>Servir Mesa</span>
                     </button>
@@ -191,7 +190,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
               <button
                 onClick={onRequestBill}
                 className="w-full py-3.5 rounded-2xl bg-surface-muted hover:bg-surface-muted border border-line text-ink font-bold transition flex items-center justify-center gap-2 shadow-sm"
-               type="button">
+                type="button">
                 <Receipt className="w-4 h-4 text-brand-700" />
                 <span>Solicitar Fechamento de Conta ao Caixa</span>
               </button>

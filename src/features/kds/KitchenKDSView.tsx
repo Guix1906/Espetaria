@@ -10,7 +10,7 @@ import {
   Volume2,
   VolumeX
 } from 'lucide-react';
-import React,{ useState } from 'react';
+import React, { useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { audioService } from '../../lib/audio';
@@ -80,7 +80,7 @@ export const KitchenKDSView: React.FC = () => {
 
   return (
     <div className="page-layout">
-      
+
       <PageHeader eyebrow="Produção" title="Cozinha" description="Organize o preparo das porções e acompanhe o saldo das cubas." icon={UtensilsCrossed} actions={<>
         <button type="button" onClick={handleToggleAudio} className="icon-button" aria-pressed={audioEnabled} aria-label={audioEnabled ? 'Desativar alertas sonoros' : 'Ativar alertas sonoros'} title={audioEnabled ? 'Som ativado' : 'Som desativado'}>{audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
         <button type="button" aria-expanded={showCubasMonitor} onClick={() => setShowCubasMonitor(!showCubasMonitor)} className="btn-secondary"><Soup className="h-4 w-4" aria-hidden="true" />{showCubasMonitor ? 'Ocultar cubas' : 'Mostrar cubas'}</button>
@@ -115,13 +115,12 @@ export const KitchenKDSView: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  className={`p-3.5 rounded-2xl border transition flex flex-col justify-between shadow-sm ${
-                    isExhausted
+                  className={`p-3.5 rounded-2xl border transition flex flex-col justify-between shadow-sm ${isExhausted
                       ? 'bg-rose-50 border-rose-200 text-ink-muted'
                       : isLow
-                      ? 'bg-amber-50 border-amber-200'
-                      : 'bg-surface-muted border-line'
-                  }`}
+                        ? 'bg-amber-50 border-amber-200'
+                        : 'bg-surface-muted border-line'
+                    }`}
                 >
                   <div>
                     <div className="flex items-start justify-between gap-1">
@@ -143,13 +142,12 @@ export const KitchenKDSView: React.FC = () => {
                     <div className="mt-2.5 space-y-1">
                       <div className="w-full h-2 rounded-full bg-surface-muted overflow-hidden">
                         <div
-                          className={`h-full transition-all duration-300 ${
-                            isExhausted
+                          className={`h-full transition-all duration-300 ${isExhausted
                               ? 'bg-rose-700'
                               : isLow
-                              ? 'bg-amber-700'
-                              : 'bg-emerald-700'
-                          }`}
+                                ? 'bg-amber-700'
+                                : 'bg-emerald-700'
+                            }`}
                           style={{ width: `${percent}%` }}
                         />
                       </div>
@@ -163,12 +161,11 @@ export const KitchenKDSView: React.FC = () => {
                   {/* Botão de Bloqueio Rápido de Cuba */}
                   <button
                     onClick={() => handleToggleExhaustCuba(item.product_id, item.is_exhausted)}
-                    className={`mt-3 w-full py-1.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${
-                      isExhausted
+                    className={`mt-3 w-full py-1.5 px-2 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1 ${isExhausted
                         ? 'btn-success'
                         : 'bg-surface-muted hover:bg-rose-50 border border-line hover:border-rose-300 text-ink hover:text-rose-700'
-                    }`}
-                   type="button">
+                      }`}
+                    type="button">
                     {isExhausted ? (
                       <>
                         <CheckCircle2 className="w-3 h-3" />
@@ -193,7 +190,7 @@ export const KitchenKDSView: React.FC = () => {
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
           className={`filter-chip ${filter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'ALL_ACTIVE'}>
+          type="button" aria-pressed={filter === 'ALL_ACTIVE'}>
           <Filter className="w-3.5 h-3.5" />
           <span>Fila ativa ({countActive})</span>
         </button>
@@ -201,21 +198,21 @@ export const KitchenKDSView: React.FC = () => {
         <button
           onClick={() => setFilter('RECEIVED')}
           className={`filter-chip ${filter === 'RECEIVED' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'RECEIVED'}>
+          type="button" aria-pressed={filter === 'RECEIVED'}>
           <span>Aguardando ({countReceived})</span>
         </button>
 
         <button
           onClick={() => setFilter('IN_PREPARATION')}
           className={`filter-chip ${filter === 'IN_PREPARATION' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'IN_PREPARATION'}>
+          type="button" aria-pressed={filter === 'IN_PREPARATION'}>
           <span>Em preparo ({countInPrep})</span>
         </button>
 
         <button
           onClick={() => setFilter('READY')}
           className={`filter-chip ${filter === 'READY' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'READY'}>
+          type="button" aria-pressed={filter === 'READY'}>
           <span>Prontos ({countReady})</span>
         </button>
       </div>
@@ -272,13 +269,12 @@ export const KitchenKDSView: React.FC = () => {
                       return (
                         <div
                           key={item.id}
-                          className={`p-3.5 rounded-2xl border transition flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3 shadow-sm ${
-                            isInPrep
+                          className={`p-3.5 rounded-2xl border transition flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3 shadow-sm ${isInPrep
                               ? 'bg-emerald-50 border-emerald-300'
                               : isReady
-                              ? 'bg-emerald-50 border-emerald-300'
-                              : 'bg-surface-muted border-line'
-                          }`}
+                                ? 'bg-emerald-50 border-emerald-300'
+                                : 'bg-surface-muted border-line'
+                            }`}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -316,7 +312,7 @@ export const KitchenKDSView: React.FC = () => {
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'IN_PREPARATION')}
                                 className="w-full 2xl:w-auto px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-1.5"
-                               type="button">
+                                type="button">
                                 <UtensilsCrossed className="w-4 h-4" />
                                 <span>Preparar</span>
                               </button>
@@ -326,7 +322,7 @@ export const KitchenKDSView: React.FC = () => {
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'READY')}
                                 className="w-full 2xl:w-auto px-4 py-2.5 rounded-xl btn-success text-xs transition shadow-sm flex items-center justify-center gap-1.5"
-                               type="button">
+                                type="button">
                                 <CheckCheck className="w-4 h-4" />
                                 <span>Pronto!</span>
                               </button>
@@ -351,7 +347,7 @@ export const KitchenKDSView: React.FC = () => {
                     <button
                       onClick={() => updateOrderSectorItemsStatus(order.id, 'KITCHEN', 'IN_PREPARATION')}
                       className="flex-1 py-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold text-xs transition border border-emerald-200 flex items-center justify-center gap-1.5 shadow-sm"
-                     type="button">
+                      type="button">
                       <Layers className="w-4 h-4" />
                       <span>Preparar Todos</span>
                     </button>
@@ -361,7 +357,7 @@ export const KitchenKDSView: React.FC = () => {
                     <button
                       onClick={() => updateOrderSectorItemsStatus(order.id, 'KITCHEN', 'READY')}
                       className="flex-1 py-3 rounded-2xl btn-success text-xs transition shadow-sm flex items-center justify-center gap-1.5"
-                     type="button">
+                      type="button">
                       <CheckCheck className="w-4 h-4" />
                       <span>Tudo Pronto!</span>
                     </button>

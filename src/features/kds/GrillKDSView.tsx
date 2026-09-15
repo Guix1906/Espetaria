@@ -8,11 +8,11 @@ import {
   Volume2,
   VolumeX
 } from 'lucide-react';
-import React,{ useState } from 'react';
+import React, { useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { audioService } from '../../lib/audio';
-import { formatDoneness,getOrderItemStatusConfig } from '../../lib/formatters';
+import { formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { GrillExhaustModal } from './GrillExhaustModal';
@@ -52,7 +52,7 @@ export const GrillKDSView: React.FC = () => {
 
   // Agrupa pedidos que possuem itens filtrados de churrasqueira
   const orderIdsWithItems = Array.from(new Set(filteredItems.map((i) => i.order_id)));
-  
+
   // Ordena os pedidos pelo mais antigo primeiro (prioridade FIFO de restaurante)
   const sortedOrders = orders
     .filter((o) => orderIdsWithItems.includes(o.id))
@@ -68,7 +68,7 @@ export const GrillKDSView: React.FC = () => {
 
   return (
     <div className="page-layout">
-      
+
       <PageHeader eyebrow="Produção" title="Churrasqueira" description="Pedidos em ordem de chegada. Confira o ponto da carne antes de enviar à brasa." icon={Flame} actions={<>
         <button type="button" onClick={handleToggleAudio} className="icon-button" aria-pressed={audioEnabled} aria-label={audioEnabled ? 'Desativar alertas sonoros' : 'Ativar alertas sonoros'} title={audioEnabled ? 'Som ativado' : 'Som desativado'}>{audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
         <button type="button" onClick={() => setIsExhaustModalOpen(true)} className="btn-secondary text-rose-700"><AlertCircle className="h-4 w-4" aria-hidden="true" />Disponibilidade dos espetos{countExhausted > 0 && <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs">{countExhausted}</span>}</button>
@@ -82,7 +82,7 @@ export const GrillKDSView: React.FC = () => {
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
           className={`filter-chip ${filter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'ALL_ACTIVE'}>
+          type="button" aria-pressed={filter === 'ALL_ACTIVE'}>
           <Filter className="w-3.5 h-3.5" />
           <span>Fila ativa ({countActive})</span>
         </button>
@@ -90,21 +90,21 @@ export const GrillKDSView: React.FC = () => {
         <button
           onClick={() => setFilter('RECEIVED')}
           className={`filter-chip ${filter === 'RECEIVED' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'RECEIVED'}>
+          type="button" aria-pressed={filter === 'RECEIVED'}>
           <span>Aguardando ({countReceived})</span>
         </button>
 
         <button
           onClick={() => setFilter('IN_PREPARATION')}
           className={`filter-chip ${filter === 'IN_PREPARATION' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'IN_PREPARATION'}>
+          type="button" aria-pressed={filter === 'IN_PREPARATION'}>
           <span>Na brasa ({countInPrep})</span>
         </button>
 
         <button
           onClick={() => setFilter('READY')}
           className={`filter-chip ${filter === 'READY' ? 'is-active' : ''}`}
-         type="button" aria-pressed={filter === 'READY'}>
+          type="button" aria-pressed={filter === 'READY'}>
           <span>Prontos ({countReady})</span>
         </button>
       </div>
@@ -163,13 +163,12 @@ export const GrillKDSView: React.FC = () => {
                       return (
                         <div
                           key={item.id}
-                          className={`p-3.5 rounded-2xl border transition flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3 shadow-sm ${
-                            isInPrep
+                          className={`p-3.5 rounded-2xl border transition flex flex-col 2xl:flex-row 2xl:items-center justify-between gap-3 shadow-sm ${isInPrep
                               ? 'bg-amber-50 border-amber-300'
                               : isReady
-                              ? 'bg-emerald-50 border-emerald-300'
-                              : 'bg-surface-muted border-line'
-                          }`}
+                                ? 'bg-emerald-50 border-emerald-300'
+                                : 'bg-surface-muted border-line'
+                            }`}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
@@ -212,7 +211,7 @@ export const GrillKDSView: React.FC = () => {
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'IN_PREPARATION')}
                                 className="w-full 2xl:w-auto px-4 py-2.5 rounded-xl btn-primary text-xs transition shadow-sm flex items-center justify-center gap-1.5"
-                               type="button">
+                                type="button">
                                 <Flame className="w-4 h-4 text-ink" />
                                 <span>Na Brasa</span>
                               </button>
@@ -222,7 +221,7 @@ export const GrillKDSView: React.FC = () => {
                               <button
                                 onClick={() => updateOrderItemStatus(item.id, 'READY')}
                                 className="w-full 2xl:w-auto px-4 py-2.5 rounded-xl btn-success text-xs transition shadow-sm flex items-center justify-center gap-1.5"
-                               type="button">
+                                type="button">
                                 <CheckCheck className="w-4 h-4" />
                                 <span>Pronto!</span>
                               </button>
@@ -247,7 +246,7 @@ export const GrillKDSView: React.FC = () => {
                     <button
                       onClick={() => updateOrderSectorItemsStatus(order.id, 'GRILL', 'IN_PREPARATION')}
                       className="flex-1 py-3 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs transition border border-amber-200 flex items-center justify-center gap-1.5 shadow-sm"
-                     type="button">
+                      type="button">
                       <Layers className="w-4 h-4" />
                       <span>Todos na Brasa</span>
                     </button>
@@ -257,7 +256,7 @@ export const GrillKDSView: React.FC = () => {
                     <button
                       onClick={() => updateOrderSectorItemsStatus(order.id, 'GRILL', 'READY')}
                       className="flex-1 py-3 rounded-2xl btn-success text-xs transition shadow-sm flex items-center justify-center gap-1.5"
-                     type="button">
+                      type="button">
                       <CheckCheck className="w-4 h-4" />
                       <span>Tudo Pronto!</span>
                     </button>
