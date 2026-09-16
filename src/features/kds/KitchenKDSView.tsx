@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Filter,
   Layers,
+  Printer,
   Soup,
   Sparkles,
   UtensilsCrossed,
@@ -16,6 +17,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { audioService } from '../../lib/audio';
 import { getOrderItemStatusConfig } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { usePrintStore } from '../../stores/usePrintStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
@@ -28,6 +30,9 @@ export const KitchenKDSView: React.FC = () => {
   const { products, dailyPrepStock, toggleExhaustProduct } = useStockStore();
   const { currentShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
+  const { jobs } = usePrintStore();
+
+  const kitchenPrintJobsCount = jobs.filter((j) => j.sector === 'KITCHEN' && j.status === 'PRINTED').length;
 
   const [filter, setFilter] = useState<KDSFilter>('ALL_ACTIVE');
   const [audioEnabled, setAudioEnabled] = useState<boolean>(audioService.getAudioEnabled());
@@ -81,10 +86,31 @@ export const KitchenKDSView: React.FC = () => {
   return (
     <div className="page-layout">
 
-      <PageHeader eyebrow="Produção" title="Cozinha" description="Organize o preparo das porções e acompanhe o saldo das cubas." icon={UtensilsCrossed} actions={<>
+      <PageHeader eyebrow="Produção" title="Cozinha" description="Produção conduzida por impressora térmica. Porções e acompanhamentos impressos na bobina." icon={UtensilsCrossed} actions={<>
         <button type="button" onClick={handleToggleAudio} className="icon-button" aria-pressed={audioEnabled} aria-label={audioEnabled ? 'Desativar alertas sonoros' : 'Ativar alertas sonoros'} title={audioEnabled ? 'Som ativado' : 'Som desativado'}>{audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
         <button type="button" aria-expanded={showCubasMonitor} onClick={() => setShowCubasMonitor(!showCubasMonitor)} className="btn-secondary"><Soup className="h-4 w-4" aria-hidden="true" />{showCubasMonitor ? 'Ocultar cubas' : 'Mostrar cubas'}</button>
       </>} />
+
+      {/* Indicador de Operação por Impressora Térmica (Sem Celulares) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-3.5 shadow-sm text-xs">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+            <Printer className="h-4 w-4" />
+          </span>
+          <div>
+            <span className="font-bold text-ink flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Impressora da Cozinha Ativa (Execução 100% no Papel)
+            </span>
+            <p className="text-ink-muted text-[11px]">
+              As porções e acompanhamentos saem impressos diretamente na bobina por ordem de chegada. Sem celulares na produção.
+            </p>
+          </div>
+        </div>
+        <span className="badge-brand text-xs font-semibold">
+          Comandas impressas: {kitchenPrintJobsCount}
+        </span>
+      </div>
 
       {/* MONITOR DE CUBAS GASTRONÔMICAS (GN) */}
       {showCubasMonitor && (

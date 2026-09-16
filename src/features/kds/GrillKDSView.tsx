@@ -4,6 +4,7 @@ import {
   Filter,
   Flame,
   Layers,
+  Printer,
   Sparkles,
   Volume2,
   VolumeX
@@ -13,6 +14,9 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { audioService } from '../../lib/audio';
 import { formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { usePrintStore } from '../../stores/usePrintStore';
+import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { GrillExhaustModal } from './GrillExhaustModal';
@@ -23,11 +27,24 @@ type KDSFilter = 'ALL_ACTIVE' | 'RECEIVED' | 'IN_PREPARATION' | 'READY';
 
 export const GrillKDSView: React.FC = () => {
   const { orders, orderItems, tables, updateOrderItemStatus, updateOrderSectorItemsStatus } = useTableStore();
-  const { dailyPrepStock } = useStockStore();
+  const { currentShift } = useShiftStore();
+  const { currentProfile } = useAuthStore();
+  const { products, dailyPrepStock, toggleExhaustProduct } = useStockStore();
+  const { jobs } = usePrintStore();
 
   const [filter, setFilter] = useState<KDSFilter>('ALL_ACTIVE');
   const [isExhaustModalOpen, setIsExhaustModalOpen] = useState<boolean>(false);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(audioService.getAudioEnabled());
+
+  const grillProducts = products.filter((p) => p.sector === 'GRILL');
+  const grillPrintJobsCount = jobs.filter((j) => j.sector === 'GRILL' && j.status === 'PRINTED').length;
+
+  const handleQuickToggleExhaust = (productId: string, isCurrentlyExhausted: boolean) => {
+    if (!currentShift) return;
+    const nextStatus = !isCurrentlyExhausted;
+    const reason = nextStatus ? 'Esgotado pelo churrasqueiro na brasa' : undefined;
+    toggleExhaustProduct(currentShift.id, productId, nextStatus, currentProfile.id, reason);
+  };
 
   const handleToggleAudio = () => {
     const next = !audioEnabled;
@@ -69,10 +86,76 @@ export const GrillKDSView: React.FC = () => {
   return (
     <div className="page-layout">
 
-      <PageHeader eyebrow="Produção" title="Churrasqueira" description="Pedidos em ordem de chegada. Confira o ponto da carne antes de enviar à brasa." icon={Flame} actions={<>
+      <PageHeader eyebrow="Produção" title="Churrasqueira" description="Produção conduzida por impressora térmica. Bloqueie qualquer corte esgotado com 1 toque." icon={Flame} actions={<>
         <button type="button" onClick={handleToggleAudio} className="icon-button" aria-pressed={audioEnabled} aria-label={audioEnabled ? 'Desativar alertas sonoros' : 'Ativar alertas sonoros'} title={audioEnabled ? 'Som ativado' : 'Som desativado'}>{audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
-        <button type="button" onClick={() => setIsExhaustModalOpen(true)} className="btn-secondary text-rose-700"><AlertCircle className="h-4 w-4" aria-hidden="true" />Disponibilidade dos espetos{countExhausted > 0 && <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs">{countExhausted}</span>}</button>
+        <button type="button" onClick={() => setIsExhaustModalOpen(true)} className="btn-secondary text-rose-700"><AlertCircle className="h-4 w-4" aria-hidden="true" />Detalhes de estoque{countExhausted > 0 && <span className="rounded-md bg-rose-50 px-2 py-0.5 text-xs">{countExhausted}</span>}</button>
       </>} />
+
+      {/* Indicador de Operação por Impressora Térmica (Sem Celulares) */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-3.5 shadow-sm text-xs">
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+            <Printer className="h-4 w-4" />
+          </span>
+          <div>
+            <span className="font-bold text-ink flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              Impressora da Brasa Ativa (Execução 100% no Papel)
+            </span>
+            <p className="text-ink-muted text-[11px]">
+              Os pedidos saem automaticamente impressos em bobina térmica por ordem de chegada. Sem celulares na produção.
+            </p>
+          </div>
+        </div>
+        <span className="badge-brand text-xs font-semibold">
+          Comandas impressas: {grillPrintJobsCount}
+        </span>
+      </div>
+
+      {/* Painel Tátil de Bloqueio de Espetos na Brasa (1 Toque) */}
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-4 shadow-sm space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-amber-200/60 pb-2.5">
+          <div className="flex items-center gap-2">
+            <Flame className="h-4 w-4 text-amber-700" />
+            <h3 className="font-bold text-ink text-sm">Bloquear Espeto se Acabar na Brasa (1 Toque)</h3>
+          </div>
+          <span className="text-xs font-semibold">
+            {countExhausted > 0 ? (
+              <span className="text-rose-700">⛔ {countExhausted} corte(s) esgotado(s)</span>
+            ) : (
+              <span className="text-emerald-700">🟢 Todos os espetos disponíveis</span>
+            )}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+          {grillProducts.map((product) => {
+            const stockItem = dailyPrepStock.find((s) => s.product_id === product.id);
+            const isExhausted = stockItem?.is_exhausted || !product.available;
+
+            return (
+              <button
+                key={product.id}
+                type="button"
+                onClick={() => handleQuickToggleExhaust(product.id, isExhausted)}
+                className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                  isExhausted
+                    ? 'border-rose-300 bg-rose-100 text-rose-950 shadow-inner'
+                    : 'border-emerald-200 bg-white text-ink hover:border-emerald-400 hover:bg-emerald-50/50 shadow-sm'
+                }`}
+                title={isExhausted ? 'Toque para DESBLOQUEAR' : 'Toque para BLOQUEAR (Esgotar)'}
+              >
+                <span className="font-bold text-xs leading-tight line-clamp-1">{product.name}</span>
+                <span className={`mt-1.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  isExhausted ? 'bg-rose-200 text-rose-950' : 'bg-emerald-100 text-emerald-900'
+                }`}>
+                  {isExhausted ? '⛔ BLOQUEADO' : '🟢 DISPONÍVEL'}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Resumo Agregado da Grelha */}
       <GrillLiveSummary orderItems={orderItems} />

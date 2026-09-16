@@ -10,6 +10,8 @@ import {
   TableStatus,
   PaymentMethod,
   PaymentStatus,
+  PixKeyType,
+  PrintJobStatus,
 } from './enums';
 
 export interface Profile {
@@ -239,4 +241,53 @@ export interface DeliveryOrder {
   dispatched_at: string | null;
   delivered_at: string | null;
   items: DeliveryOrderItem[];
+}
+
+export interface RestaurantSettings {
+  id: string;
+  name: string;
+  cnpj: string;
+  phone: string;
+  address: string;
+  service_fee_percent: number;
+  allow_custom_service_fee: boolean;
+  timezone: string;
+  pix_key: string;
+  pix_key_type: PixKeyType;
+  pix_merchant_name: string;
+  pix_merchant_city: string;
+  auto_print_orders: boolean;
+  print_paper_width: '80mm' | '58mm';
+  printer_grill_enabled: boolean;
+  printer_kitchen_enabled: boolean;
+  printer_cashier_enabled: boolean;
+  updated_at: string;
+}
+
+export interface PrintJobItem {
+  id?: string;
+  name: string;
+  quantity: number;
+  doneness?: MeatDoneness | null;
+  notes?: string | null;
+}
+
+export interface PrintJob {
+  id: string;
+  order_id: string;
+  order_number: number;
+  sector: ProductionSector;
+  origin: 'SALAO' | 'DELIVERY';
+  table_number?: number;
+  customer_name?: string;
+  items: PrintJobItem[];
+  status: PrintJobStatus;
+  idempotency_key: string;
+  is_reprint: boolean;
+  reprint_reason?: string;
+  attempts: number;
+  last_error?: string;
+  created_at: string;
+  updated_at: string;
+  printed_at?: string;
 }

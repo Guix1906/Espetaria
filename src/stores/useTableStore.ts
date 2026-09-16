@@ -7,6 +7,8 @@ import { useStockStore } from './useStockStore';
 import { realtimeService } from '../lib/realtime';
 import { audioService } from '../lib/audio';
 import { logger } from '../lib/logger';
+import { usePrintStore } from './usePrintStore';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface OrderItemInput {
   productId: string;
@@ -56,6 +58,12 @@ interface TableState {
   reopenTabAtomic: (tabId: string, userId: string, reason: string) => void;
   getTabByTableId: (tableId: string) => Tab | undefined;
   getTabOrderItems: (tabId: string) => OrderItem[];
+
+  // Sincronização em Tempo Real (Multi-dispositivos)
+  applyRemoteTableUpdate: (tableData: Partial<RestaurantTable> & { id: string; number?: number }) => void;
+  applyRemoteTabChange: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', tabData: Tab) => void;
+  applyRemoteOrderChange: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', orderData: Order) => void;
+  applyRemoteOrderItemChange: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', itemData: OrderItem) => void;
 }
 
 export const useTableStore = create<TableState>((set, get) => ({
@@ -95,6 +103,30 @@ export const useTableStore = create<TableState>((set, get) => ({
       tabs: [newTab, ...get().tabs],
       tables: get().tables.map((t) => (t.id === tableId ? { ...t, status: 'OCUPADA', current_tab: newTab } : t)),
     });
+
+    if (isSupabaseConfigured) {
+      supabase.from('tabs').insert({
+        id: newTab.id,
+        shift_id: newTab.shift_id,
+        table_id: newTab.table_id,
+        customer_name: newTab.customer_name,
+        people_count: newTab.people_count,
+        status: 'OPEN',
+        opened_by: newTab.opened_by,
+        subtotal: newTab.subtotal,
+        service_fee: newTab.service_fee,
+        discount: newTab.discount,
+        total: newTab.total,
+        notes: newTab.notes,
+        opened_at: newTab.opened_at,
+      }).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao persistir comanda no Supabase', error });
+      });
+
+      supabase.from('restaurant_tables').update({ status: 'OCUPADA' }).eq('id', tableId).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar mesa no Supabase', error });
+      });
+    }
 
     logger.info({
       context: 'TableStore',
@@ -180,6 +212,49 @@ export const useTableStore = create<TableState>((set, get) => ({
       tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
     });
 
+    if (isSupabaseConfigured) {
+      supabase.from('orders').insert({
+        id: newOrder.id,
+        shift_id: newOrder.shift_id,
+        tab_id: newOrder.tab_id,
+        table_id: newOrder.table_id,
+        order_number: newOrder.order_number,
+        status: 'CONFIRMED',
+        notes: newOrder.notes,
+        idempotency_key: newOrder.idempotency_key,
+        created_by: newOrder.created_by,
+        created_at: newOrder.created_at,
+      }).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao persistir pedido no Supabase', error });
+      });
+
+      const dbItems = newItems.map((item) => ({
+        id: item.id,
+        order_id: item.order_id,
+        shift_id: item.shift_id,
+        product_id: item.product_id,
+        product_name: item.product_name,
+        unit_price: item.unit_price,
+        quantity: item.quantity,
+        doneness: item.doneness,
+        notes: item.notes,
+        sector: item.sector,
+        status: item.status,
+        created_at: item.created_at,
+      }));
+      supabase.from('order_items').insert(dbItems).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao persistir itens no Supabase', error });
+      });
+
+      supabase.from('tabs').update({
+        subtotal: updatedTab.subtotal,
+        service_fee: updatedTab.service_fee,
+        total: updatedTab.total,
+      }).eq('id', tabId).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar comanda no Supabase', error });
+      });
+    }
+
     // Transmite via WebSocket para o KDS da Churrasqueira e Cozinha
     const grillItems = newItems.filter((i) => i.sector === 'GRILL');
     if (grillItems.length > 0) {
@@ -222,6 +297,59 @@ export const useTableStore = create<TableState>((set, get) => ({
         sector: 'BAR',
         items: barItems.map((i) => ({
           product_name: i.product_name,
+          quantity: i.quantity,
+          doneness: null,
+          notes: i.notes,
+        })),
+      });
+    }
+
+    // ENFILEIRA IMPRESSÃO AUTOMÁTICA SETORIZADA (Churrasqueira, Cozinha, Bar)
+    const printStore = usePrintStore.getState();
+    if (grillItems.length > 0) {
+      printStore.enqueuePrintJob({
+        order_id: newOrder.id,
+        order_number: newOrder.order_number,
+        sector: 'GRILL',
+        origin: 'SALAO',
+        table_number: table.number,
+        customer_name: tab.customer_name || undefined,
+        items: grillItems.map((i) => ({
+          name: i.product_name,
+          quantity: i.quantity,
+          doneness: i.doneness,
+          notes: i.notes,
+        })),
+      });
+    }
+
+    if (kitchenItems.length > 0) {
+      printStore.enqueuePrintJob({
+        order_id: newOrder.id,
+        order_number: newOrder.order_number,
+        sector: 'KITCHEN',
+        origin: 'SALAO',
+        table_number: table.number,
+        customer_name: tab.customer_name || undefined,
+        items: kitchenItems.map((i) => ({
+          name: i.product_name,
+          quantity: i.quantity,
+          doneness: null,
+          notes: i.notes,
+        })),
+      });
+    }
+
+    if (barItems.length > 0) {
+      printStore.enqueuePrintJob({
+        order_id: newOrder.id,
+        order_number: newOrder.order_number,
+        sector: 'BAR',
+        origin: 'SALAO',
+        table_number: table.number,
+        customer_name: tab.customer_name || undefined,
+        items: barItems.map((i) => ({
+          name: i.product_name,
           quantity: i.quantity,
           doneness: null,
           notes: i.notes,
@@ -275,11 +403,30 @@ export const useTableStore = create<TableState>((set, get) => ({
             t.id === tab.id ? { ...t, subtotal: newSubtotal, service_fee: newServiceFee, total: newTotal } : t
           ),
         });
+
+        if (isSupabaseConfigured) {
+          supabase.from('order_items').update({ status: 'CANCELLED' }).eq('id', orderItemId).then(({ error }) => {
+            if (error) logger.error({ context: 'TableStore', message: 'Erro ao cancelar item no Supabase', error });
+          });
+          supabase.from('tabs').update({
+            subtotal: newSubtotal,
+            service_fee: newServiceFee,
+            total: newTotal,
+          }).eq('id', tab.id).then(({ error }) => {
+            if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar totais da comanda no Supabase', error });
+          });
+        }
         return;
       }
     }
 
     set({ orderItems: updatedItems });
+
+    if (isSupabaseConfigured) {
+      supabase.from('order_items').update({ status: 'CANCELLED' }).eq('id', orderItemId).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao cancelar item no Supabase', error });
+      });
+    }
   },
 
   updateOrderItemStatus: (orderItemId, status) => {
@@ -322,6 +469,16 @@ export const useTableStore = create<TableState>((set, get) => ({
       orderItems: newOrderItems,
       orders: newOrders,
     });
+
+    if (isSupabaseConfigured) {
+      supabase.from('order_items').update({
+        status,
+        prepared_at: updatedItem.prepared_at,
+        delivered_at: updatedItem.delivered_at,
+      }).eq('id', orderItemId).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar status do item no Supabase', error });
+      });
+    }
 
     if (status === 'READY') {
       const table = get().tables.find((t) => t.id === order?.table_id);
@@ -367,6 +524,12 @@ export const useTableStore = create<TableState>((set, get) => ({
       ),
     });
 
+    if (isSupabaseConfigured) {
+      supabase.from('restaurant_tables').update({ status: 'AGUARDANDO_CONTA' }).eq('id', tableId).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao solicitar conta no Supabase', error });
+      });
+    }
+
     logger.info({
       context: 'TableStore',
       message: `Mesa ${table.number} solicitou a conta ao caixa.`,
@@ -392,6 +555,16 @@ export const useTableStore = create<TableState>((set, get) => ({
     set({
       tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
     });
+
+    if (isSupabaseConfigured) {
+      supabase.from('tabs').update({
+        service_fee: serviceFee,
+        discount,
+        total,
+      }).eq('id', tabId).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar ajuste da comanda no Supabase', error });
+      });
+    }
 
     logger.info({
       context: 'TableStore',
@@ -422,6 +595,22 @@ export const useTableStore = create<TableState>((set, get) => ({
     set({
       payments: [...get().payments, newPayment],
     });
+
+    if (isSupabaseConfigured) {
+      supabase.from('payments').insert({
+        id: newPayment.id,
+        shift_id: newPayment.shift_id,
+        tab_id: newPayment.tab_id,
+        amount: newPayment.amount,
+        method: newPayment.method,
+        status: newPayment.status,
+        received_by: newPayment.received_by,
+        notes: newPayment.notes,
+        paid_at: newPayment.paid_at,
+      }).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao registrar pagamento no Supabase', error });
+      });
+    }
 
     logger.info({
       context: 'TableStore',
@@ -494,6 +683,24 @@ export const useTableStore = create<TableState>((set, get) => ({
       orders: updatedOrders,
     });
 
+    if (isSupabaseConfigured) {
+      supabase.from('tabs').update({
+        status: 'CLOSED',
+        closed_by: userId,
+        closed_at: now,
+      }).eq('id', tabId).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao fechar comanda no Supabase', error });
+      });
+
+      supabase.from('restaurant_tables').update({ status: 'LIVRE' }).eq('id', tab.table_id).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao liberar mesa no Supabase', error });
+      });
+
+      supabase.from('orders').update({ status: 'CLOSED' }).eq('tab_id', tabId).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao fechar pedidos no Supabase', error });
+      });
+    }
+
     const items = get().getTabOrderItems(tabId);
 
     logger.info({
@@ -530,6 +737,20 @@ export const useTableStore = create<TableState>((set, get) => ({
       tables: updatedTables,
     });
 
+    if (isSupabaseConfigured) {
+      supabase.from('tabs').update({
+        status: 'OPEN',
+        closed_by: null,
+        closed_at: null,
+      }).eq('id', tabId).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao reabrir comanda no Supabase', error });
+      });
+
+      supabase.from('restaurant_tables').update({ status: 'OCUPADA' }).eq('id', tab.table_id).then(({ error }) => {
+        if (error) logger.error({ context: 'TableStore', message: 'Erro ao reocupar mesa no Supabase', error });
+      });
+    }
+
     logger.warn({
       context: 'TableStore',
       message: `Comanda da Mesa ${table?.number} reaberta por ${userId}. Motivo: ${reason}`,
@@ -544,5 +765,103 @@ export const useTableStore = create<TableState>((set, get) => ({
     const tabOrders = get().orders.filter((o) => o.tab_id === tabId);
     const orderIds = new Set(tabOrders.map((o) => o.id));
     return get().orderItems.filter((i) => orderIds.has(i.order_id));
+  },
+
+  // Sincronização em Tempo Real (Multi-dispositivos)
+  applyRemoteTableUpdate: (tableData) => {
+    set({
+      tables: get().tables.map((t) =>
+        t.id === tableData.id || (tableData.number !== undefined && t.number === tableData.number)
+          ? { ...t, ...tableData }
+          : t
+      ),
+    });
+  },
+
+  applyRemoteTabChange: (eventType, tabData) => {
+    const { tabs, tables } = get();
+    if (eventType === 'DELETE') {
+      set({
+        tabs: tabs.filter((t) => t.id !== tabData.id),
+        tables: tables.map((t) =>
+          t.id === tabData.table_id || t.current_tab?.id === tabData.id
+            ? { ...t, status: 'LIVRE' as const, current_tab: undefined }
+            : t
+        ),
+      });
+      return;
+    }
+
+    const existingIndex = tabs.findIndex((t) => t.id === tabData.id);
+    let newTabs: Tab[];
+    if (existingIndex >= 0) {
+      newTabs = tabs.map((t) => (t.id === tabData.id ? { ...t, ...tabData } : t));
+    } else {
+      newTabs = [tabData, ...tabs];
+    }
+
+    const newTables = tables.map((t) => {
+      if (t.id === tabData.table_id || `table-${t.number}` === tabData.table_id) {
+        if (tabData.status === 'CLOSED') {
+          return { ...t, status: 'LIVRE' as const, current_tab: undefined };
+        }
+        return {
+          ...t,
+          status: t.status === 'AGUARDANDO_CONTA' ? ('AGUARDANDO_CONTA' as const) : ('OCUPADA' as const),
+          current_tab: tabData,
+        };
+      }
+      return t;
+    });
+
+    set({ tabs: newTabs, tables: newTables });
+  },
+
+  applyRemoteOrderChange: (eventType, orderData) => {
+    const { orders } = get();
+    if (eventType === 'DELETE') {
+      set({ orders: orders.filter((o) => o.id !== orderData.id) });
+      return;
+    }
+    const exists = orders.some((o) => o.id === orderData.id);
+    if (exists) {
+      set({ orders: orders.map((o) => (o.id === orderData.id ? { ...o, ...orderData } : o)) });
+    } else {
+      set({ orders: [orderData, ...orders] });
+    }
+  },
+
+  applyRemoteOrderItemChange: (eventType, itemData) => {
+    const { orderItems, orders } = get();
+    if (eventType === 'DELETE') {
+      set({ orderItems: orderItems.filter((i) => i.id !== itemData.id) });
+      return;
+    }
+    const exists = orderItems.some((i) => i.id === itemData.id);
+    let newItems: OrderItem[];
+    if (exists) {
+      newItems = orderItems.map((i) => (i.id === itemData.id ? { ...i, ...itemData } : i));
+    } else {
+      newItems = [itemData, ...orderItems];
+    }
+
+    const order = orders.find((o) => o.id === itemData.order_id);
+    let newOrders = orders;
+    if (order) {
+      const siblings = newItems.filter((i) => i.order_id === order.id && i.status !== 'CANCELLED');
+      if (siblings.length > 0) {
+        let newOrderStatus = order.status;
+        if (siblings.every((i) => i.status === 'DELIVERED')) {
+          newOrderStatus = 'DELIVERED';
+        } else if (siblings.every((i) => i.status === 'READY' || i.status === 'DELIVERED')) {
+          newOrderStatus = 'READY';
+        } else if (siblings.some((i) => i.status === 'IN_PREPARATION' || i.status === 'READY')) {
+          newOrderStatus = 'IN_PREPARATION';
+        }
+        newOrders = orders.map((o) => (o.id === order.id ? { ...o, status: newOrderStatus } : o));
+      }
+    }
+
+    set({ orderItems: newItems, orders: newOrders });
   },
 }));

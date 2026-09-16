@@ -17,6 +17,7 @@ import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SearchField } from '../../components/ui/SearchField';
 import { StatCard } from '../../components/ui/StatCard';
+import { ActiveTab } from '../../components/layout/navigation';
 import { TableCard } from '../../components/ui/TableCard';
 import { formatBRL, formatDoneness, getOrderItemStatusConfig, getTableStatusConfig } from '../../lib/formatters';
 import { getProductAvailability } from '../../lib/productAvailability';
@@ -28,7 +29,12 @@ import { OrderItem, RestaurantTable, Tab } from '../../types/domain';
 import { MeatDoneness, TableStatus } from '../../types/enums';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
 
-export const TableGridView: React.FC = () => {
+interface TableGridViewProps {
+  onOpenShiftClick?: () => void;
+  onNavigateTab?: (tab: ActiveTab) => void;
+}
+
+export const TableGridView: React.FC<TableGridViewProps> = ({ onOpenShiftClick, onNavigateTab }) => {
   const { notify, requestText } = useFeedback();
   const { tables, tabs, openTab, addOrderAtomic, cancelOrderItemAtomic, getTabOrderItems } = useTableStore();
   const { products, dailyPrepStock } = useStockStore();
@@ -62,7 +68,13 @@ export const TableGridView: React.FC = () => {
 
   const handleOpenTabSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedTableForOpen || !currentShift) return;
+    if (!selectedTableForOpen) return;
+    if (!currentShift || currentShift.status !== 'ABERTO') {
+      notify('Abra um turno formal antes de iniciar comandas.', 'error');
+      setSelectedTableForOpen(null);
+      onOpenShiftClick?.();
+      return;
+    }
 
     try {
       openTab(
@@ -140,19 +152,77 @@ export const TableGridView: React.FC = () => {
   return (
     <div className="page-layout">
 
-      <PageHeader eyebrow="Operação do salão" title="Salão e mesas" description="Uma visão completa do atendimento, do primeiro pedido ao fechamento da conta." icon={Users} actions={<span className="status-badge border-line bg-surface text-ink-secondary">{tables.length} mesas no salão</span>} />
+      <PageHeader
+        eyebrow="Operação do salão"
+        title="Salão e mesas"
+        description="Uma visão completa do atendimento, do primeiro pedido ao fechamento da conta."
+        icon={Users}
+        actions={
+          <div className="flex items-center gap-2">
+            <span className="status-badge border-line bg-surface text-ink-secondary">
+              {tables.length} mesas no salão
+            </span>
+            {onNavigateTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateTab('waiter')}
+                className="btn-secondary py-1 px-2.5 text-xs text-brand-800 font-semibold"
+              >
+                Ir para Atendimento
+              </button>
+            )}
+          </div>
+        }
+      />
       <div className="stat-grid">
         <StatCard label="Mesas livres" value={tables.filter((table) => table.status === 'LIVRE').length} hint="Disponíveis para novos clientes" icon={CheckCircle2} tone="success" />
         <StatCard label="Em atendimento" value={tables.filter((table) => table.status === 'OCUPADA').length} hint="Comandas em andamento" icon={Users} tone="info" />
         <StatCard label="Conta solicitada" value={tables.filter((table) => table.status === 'AGUARDANDO_CONTA').length} hint="Prontas para o fechamento" icon={Receipt} tone="warning" />
         <StatCard label="Consumo em aberto" value={formatBRL(tabs.filter((tab) => tab.status === 'OPEN').reduce((sum, tab) => sum + tab.total, 0))} hint="Total das comandas abertas" icon={ShoppingBag} />
       </div>
-      {currentShift?.status !== 'ABERTO' && <div className="notice border-amber-200 bg-amber-50 text-amber-900" role="status"><AlertCircle className="h-5 w-5 shrink-0" />Abra um turno no topo para iniciar novas comandas.</div>}
+      {currentShift?.status !== 'ABERTO' && (
+        <div className="notice border-amber-200 bg-amber-50 text-amber-900 flex flex-wrap items-center justify-between gap-3" role="status">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5 shrink-0 text-amber-700" />
+            <span>O turno está fechado. Abra um turno para iniciar novas comandas e registrar movimentações.</span>
+          </div>
+          {onOpenShiftClick && (
+            <button
+              type="button"
+              onClick={onOpenShiftClick}
+              className="btn-primary py-1 px-3 text-xs font-bold shrink-0"
+            >
+              Abrir Turno Agora
+            </button>
+          )}
+        </div>
+      )}
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="filter-bar" aria-label="Situação das mesas">{(['ALL', 'LIVRE', 'OCUPADA', 'AGUARDANDO_CONTA', 'RESERVADA'] as const).map((status) => <FilterChip key={status} active={filter === status} onClick={() => setFilter(status)} count={status === 'ALL' ? tables.length : tables.filter((table) => table.status === status).length}>{status === 'ALL' ? 'Todas' : getTableStatusConfig(status).label}</FilterChip>)}</div>
         <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar mesa ou cliente" placeholder="Número da mesa ou cliente" className="w-full shrink-0 xl:w-64" />
       </div>
-      {filteredTables.length ? <div className="table-grid">{filteredTables.map((table) => <TableCard key={table.id} table={table} tab={getTableTab(table.id)} disabled={currentShift?.status !== 'ABERTO'} onOpen={() => setSelectedTableForOpen(table)} onOrder={() => setSelectedTableForOrder(table)} onBill={() => setSelectedTableForBill(table)} />)}</div> : <EmptyState title="Nenhuma mesa encontrada" description="Tente outra busca ou situação da mesa." action={<button type="button" className="btn-secondary" onClick={() => { setFilter('ALL'); setSearchTerm(''); }}>Limpar filtros</button>} />}
+      {filteredTables.length ? (
+        <div className="table-grid">
+          {filteredTables.map((table) => (
+            <TableCard
+              key={table.id}
+              table={table}
+              tab={getTableTab(table.id)}
+              disabled={currentShift?.status !== 'ABERTO'}
+              onOpen={() => {
+                if (currentShift?.status !== 'ABERTO') {
+                  notify('Abra um turno para iniciar o atendimento.', 'info');
+                  onOpenShiftClick?.();
+                  return;
+                }
+                setSelectedTableForOpen(table);
+              }}
+              onOrder={() => setSelectedTableForOrder(table)}
+              onBill={() => setSelectedTableForBill(table)}
+            />
+          ))}
+        </div>
+      ) : <EmptyState title="Nenhuma mesa encontrada" description="Tente outra busca ou situação da mesa." action={<button type="button" className="btn-secondary" onClick={() => { setFilter('ALL'); setSearchTerm(''); }}>Limpar filtros</button>} />}
 
       {/* ------------------------------------------------------------------ */}
       {/* MODAL: ABRIR COMANDA */}

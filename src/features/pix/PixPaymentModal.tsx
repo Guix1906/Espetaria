@@ -5,6 +5,7 @@ import { audioService } from '../../lib/audio';
 import { formatBRL } from '../../lib/formatters';
 import { generatePixPayload, generateQRCodeMatrix } from '../../lib/pix';
 import { buildTableBillWhatsAppMessage, buildWhatsAppLink } from '../../lib/whatsapp';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 
 interface PixPaymentModalProps {
   isOpen: boolean;
@@ -27,8 +28,16 @@ function PixPaymentContent({ onClose, amount, tableNumber, customerName, custome
   const [isConfirming, setIsConfirming] = useState(false);
   const [phoneForZap, setPhoneForZap] = useState(customerPhone || '');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const pixKey = 'contato@espetariasabor.com.br';
-  const pixPayload = generatePixPayload({ pixKey, merchantName: 'ESPETARIA SABOR DA CARNE', merchantCity: 'SAO PAULO', amount, txId: transactionId, description: tableNumber ? `Mesa ${tableNumber}` : 'Pedido Espetaria' });
+  const { settings } = useSettingsStore();
+  const pixKey = settings.pix_key || 'contato@espetariasabor.com.br';
+  const pixPayload = generatePixPayload({
+    pixKey,
+    merchantName: settings.pix_merchant_name || 'ESPETARIA SABOR DA CARNE',
+    merchantCity: settings.pix_merchant_city || 'SAO PAULO',
+    amount,
+    txId: transactionId,
+    description: tableNumber ? `Mesa ${tableNumber}` : 'Pedido Espetaria'
+  });
   const matrix = generateQRCodeMatrix(pixPayload);
   const amountIsValid = Number.isFinite(amount) && amount > 0;
 

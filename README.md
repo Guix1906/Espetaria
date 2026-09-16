@@ -1,5 +1,16 @@
 # 🥩 ESPETARIA SABOR DA CARNE — SISTEMA INTEGRADO DE GESTÃO OPERACIONAL E FINANCEIRA
 
+## Area dedicada do garcom no celular
+
+- Acesso direto: acrescente `#/garcom` ao endereco do sistema. A aba Atendimento do painel tambem oferece um link para essa area. O hash dispensa regras extras de redirecionamento no servidor.
+- Interface propria, sem menu administrativo, troca de cargo, cadastro de produtos, abertura de turno ou fechamento financeiro. O perfil GARCOM tambem e direcionado para essa interface.
+- Fluxo: identificacao, selecao/busca de mesa, abertura de comanda, categorias e busca de produtos, ponto da carne e observacoes, revisao da rodada, consumo, itens prontos para servir e solicitacao da conta. Rascunhos permanecem em memoria ao trocar de mesa ou quando a validacao do envio falha; recarregar a pagina encerra a sessao local e perde esses dados.
+- Sem Supabase configurado, a identificacao e demonstrativa, por nome, sem senha. Com Supabase configurado, o acesso usa e-mail/senha do Supabase Auth e exige registro ativo de papel GARCOM em `profiles`, com o mesmo ID do usuario autenticado. Nao ha criacao automatica de contas nem senhas padrao.
+- **Limite atual:** os stores operacionais de mesas, pedidos, estoque e turnos ainda executam a operacao em memoria. Login real e broadcasts existentes NAO tornam esses dados persistentes ou sincronizados entre aparelhos. A area exibe aviso de demonstracao mesmo com Supabase configurado. Nao utilizar em atendimento real antes de integrar leitura/escrita transacional, permissoes de backend e sincronizacao completa dos stores com o banco comum.
+- Para demonstrar o fluxo com os mesmos dados, abra o turno no painel e use o link da area do garcom na mesma aba, sem recarregar. No celular, use o endereco publicado ou o IP do computador na mesma rede (servidor Vite na porta 3000); `localhost` no celular aponta para o proprio celular. Acesso em rede nao significa compartilhamento de dados no modo local.
+- A separacao de interface nao substitui autorizacao no servidor; o painel legado ainda utiliza um seletor demonstrativo de perfis. A implantacao publica requer autenticar e autorizar tambem o painel.
+
+
 > **Sistema Completo de Gestão em Tempo Real para Espetaria, Salão, Churrasqueira KDS, Cozinha por Cubas, Bar, Caixa Térmico, Delivery Próprio, PIX Dinâmico BACEN, WhatsApp e DRE Executivo.**
 
 ---

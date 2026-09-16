@@ -50,7 +50,7 @@ export function DeliveryCatalogView() {
       setCartError({ productId: product.id, message: error instanceof Error ? error.message : 'Não foi possível adicionar o produto ao carrinho.' });
     }
   };
-  const handleConfirmDoneness = (doneness: MeatDoneness, notes: string, quantity: number) => {
+  const handleConfirmDoneness = (doneness: MeatDoneness | null, notes: string, quantity: number) => {
     if (productForDoneness) addToCart(productForDoneness, quantity, doneness, notes);
   };
 

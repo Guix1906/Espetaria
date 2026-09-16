@@ -1,6 +1,6 @@
-import { Bike, ClipboardList, LayoutDashboard, LayoutGrid, PackageCheck, PackagePlus, Receipt, ShieldCheck, Smartphone, UtensilsCrossed } from 'lucide-react';
+import { Bike, ClipboardList, LayoutDashboard, LayoutGrid, PackageCheck, PackagePlus, Receipt, Settings, ShieldCheck, Smartphone, UtensilsCrossed } from 'lucide-react';
 
-export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'products' | 'master' | 'stock' | 'audit';
+export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'products' | 'master' | 'stock' | 'audit' | 'settings';
 
 export const PAGE_TITLES: Record<ActiveTab, string> = {
   master: 'Visão geral',
@@ -13,6 +13,7 @@ export const PAGE_TITLES: Record<ActiveTab, string> = {
   products: 'Cadastro de produtos',
   stock: 'Estoque diário',
   audit: 'Auditoria',
+  settings: 'Configurações',
 };
 
 export const NAVIGATION_GROUPS = [
@@ -29,6 +30,7 @@ export const NAVIGATION_GROUPS = [
     { id: 'products', icon: PackagePlus },
     { id: 'stock', icon: PackageCheck },
     { id: 'audit', icon: ShieldCheck },
+    { id: 'settings', icon: Settings },
   ] },
 ] satisfies { label: string; items: { id: ActiveTab; icon: typeof LayoutGrid }[] }[];
 

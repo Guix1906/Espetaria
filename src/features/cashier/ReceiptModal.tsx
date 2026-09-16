@@ -9,8 +9,8 @@ interface ReceiptModalProps {
   onClose: () => void;
   tab: Tab;
   table?: RestaurantTable;
-  items: OrderItem[];
-  payments: Payment[];
+  items?: OrderItem[];
+  payments?: Payment[];
   cashChange?: number;
 }
 
@@ -19,8 +19,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
   onClose,
   tab,
   table,
-  items,
-  payments,
+  items = [],
+  payments = [],
   cashChange = 0,
 }) => {
   if (!isOpen) return null;

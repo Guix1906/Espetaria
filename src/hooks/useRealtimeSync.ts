@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { realtimeService } from '../lib/realtime';
+import { syncService } from '../lib/syncService';
 import { audioService } from '../lib/audio';
 import { useStockStore } from '../stores/useStockStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -10,6 +11,10 @@ export function useRealtimeSync() {
   const { currentProfile } = useAuthStore();
 
   useEffect(() => {
+    // 0. Hidratação inicial e sincronização bidirecional do Postgres
+    syncService.hydrateAll();
+    const unsubscribeDb = syncService.subscribeToDatabaseChanges();
+
     // 1. Escuta mudanças imediatas de disponibilidade de estoque
     const unsubscribeStock = realtimeService.onStockChange((payload) => {
       logger.info({
@@ -71,6 +76,7 @@ export function useRealtimeSync() {
     });
 
     return () => {
+      unsubscribeDb();
       unsubscribeStock();
       unsubscribeGrill();
       unsubscribeKitchen();

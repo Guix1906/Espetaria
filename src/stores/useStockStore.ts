@@ -6,6 +6,7 @@ import { generateId } from '../lib/utils';
 import { logger } from '../lib/logger';
 
 import { realtimeService } from '../lib/realtime';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 export interface PrepItemInput {
   productId: string;
@@ -105,6 +106,7 @@ interface StockState {
     reason: string
   ) => void;
   getProductDailyStock: (productId: string) => DailyPrepStock | undefined;
+  applyRemoteStockChange: (stock: DailyPrepStock) => void;
 }
 
 export const useStockStore = create<StockState>((set, get) => ({
@@ -448,6 +450,21 @@ export const useStockStore = create<StockState>((set, get) => ({
       products: updatedProducts,
     });
 
+    if (isSupabaseConfigured) {
+      supabase
+        .from('daily_prep_stock')
+        .update({
+          is_exhausted: isExhausted,
+          exhausted_at: isExhausted ? new Date().toISOString() : null,
+          exhausted_by: isExhausted ? userId : null,
+          exhaust_reason: isExhausted ? reason || null : null,
+        })
+        .match({ shift_id: shiftId, product_id: productId })
+        .then(({ error }) => {
+          if (error) logger.error({ context: 'StockStore', message: 'Erro ao atualizar esgotamento no Supabase', error });
+        });
+    }
+
     // Transmite via WebSocket em tempo real (< 100ms)
     realtimeService.broadcastExhaustion(shiftId, productId, isExhausted, reason);
 
@@ -600,5 +617,36 @@ export const useStockStore = create<StockState>((set, get) => ({
 
   getProductDailyStock: (productId: string) => {
     return get().dailyPrepStock.find((s) => s.product_id === productId);
+  },
+
+  applyRemoteStockChange: (stock: DailyPrepStock) => {
+    const { dailyPrepStock, products } = get();
+    const exists = dailyPrepStock.some(
+      (s) => s.id === stock.id || (s.shift_id === stock.shift_id && s.product_id === stock.product_id)
+    );
+
+    let nextStock: DailyPrepStock[];
+    if (exists) {
+      nextStock = dailyPrepStock.map((s) =>
+        s.id === stock.id || (s.shift_id === stock.shift_id && s.product_id === stock.product_id)
+          ? { ...s, ...stock }
+          : s
+      );
+    } else {
+      nextStock = [...dailyPrepStock, stock];
+    }
+
+    // Atualiza disponibilidade no cardápio de produtos
+    const updatedProducts = products.map((p) => {
+      if (p.id === stock.product_id) {
+        return {
+          ...p,
+          available: !stock.is_exhausted && stock.current_quantity > 0,
+        };
+      }
+      return p;
+    });
+
+    set({ dailyPrepStock: nextStock, products: updatedProducts });
   },
 }));

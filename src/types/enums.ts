@@ -59,3 +59,7 @@ export type PaymentStatus =
   | 'FAILED'
   | 'REFUNDED'
   | 'CANCELLED';
+
+export type PixKeyType = 'CNPJ' | 'CPF' | 'EMAIL' | 'TELEFONE' | 'ALEATORIA';
+
+export type PrintJobStatus = 'PENDING' | 'PRINTING' | 'PRINTED' | 'FAILED';

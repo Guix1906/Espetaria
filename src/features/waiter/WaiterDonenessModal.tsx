@@ -9,7 +9,7 @@ interface WaiterDonenessModalProps {
   product: Product | null;
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (doneness: MeatDoneness, notes: string, quantity: number) => void;
+  onConfirm: (doneness: MeatDoneness | null, notes: string, quantity: number) => void;
 }
 
 const DONENESS_OPTIONS: { value: MeatDoneness; label: string; description: string; swatch: string }[] = [
@@ -31,7 +31,7 @@ function DonenessForm({ product, onClose, onConfirm }: { product: Product; onClo
   const handleConfirm = () => {
     setErrorMessage(null);
     try {
-      onConfirm(selectedDoneness, notes.trim(), quantity);
+      onConfirm(product.allows_doneness ? selectedDoneness : null, product.allows_notes ? notes.trim() : '', quantity);
       onClose();
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : 'Não foi possível adicionar este produto. Tente novamente.');
@@ -52,10 +52,10 @@ function DonenessForm({ product, onClose, onConfirm }: { product: Product; onClo
         <div className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
           {errorMessage && <div className="notice border-rose-200 bg-rose-50 text-rose-800" role="alert">{errorMessage}</div>}
           <div className="flex items-center justify-between gap-3 rounded-xl bg-surface-soft p-3"><span className="text-sm font-semibold">Quantidade</span><div className="flex items-center gap-3"><button type="button" className="icon-button" aria-label="Diminuir quantidade" disabled={quantity <= 1} onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus className="h-4 w-4" /></button><output aria-live="polite" className="w-8 text-center text-xl font-bold tabular-nums">{quantity}</output><button type="button" className="icon-button border-brand-200 bg-brand-50 text-brand-800" aria-label="Aumentar quantidade" onClick={() => setQuantity(quantity + 1)}><Plus className="h-4 w-4" /></button></div></div>
-          <fieldset className="space-y-2.5"><legend className="mb-3 text-sm font-semibold text-ink">Como você prefere o ponto?</legend>
+          {product.allows_doneness && <fieldset className="space-y-2.5"><legend className="mb-3 text-sm font-semibold text-ink">Como você prefere o ponto?</legend>
             {DONENESS_OPTIONS.map((option) => <label key={option.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border p-3.5 transition-colors ${selectedDoneness === option.value ? 'border-brand-600 bg-brand-50' : 'border-line bg-surface hover:bg-surface-soft'}`}><input type="radio" name="meat-doneness" value={option.value} checked={selectedDoneness === option.value} onChange={() => setSelectedDoneness(option.value)} className="h-4 w-4 shrink-0" /><span className={`h-7 w-2 shrink-0 rounded-full ${option.swatch}`} aria-hidden="true" /><span className="flex-1"><span className="block text-sm font-semibold text-ink">{option.label}</span><span className="mt-0.5 block text-xs text-ink-muted">{option.description}</span></span>{selectedDoneness === option.value && <Check className="h-4 w-4 text-brand-700" aria-hidden="true" />}</label>)}
-          </fieldset>
-          <div><label htmlFor="doneness-notes" className="mb-2 block text-sm font-semibold">Alguma observação?</label><div className="mb-3 flex flex-wrap gap-2">{COMMON_NOTES.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`rounded-xl border px-3 py-2 text-xs font-medium ${noteTags.includes(tag) ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line bg-surface text-ink-secondary hover:bg-surface-muted'}`}>{noteTags.includes(tag) ? <Check className="mr-1 inline h-3 w-3" aria-hidden="true" /> : '+ '}{tag}</button>)}</div><textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ex.: Cortar em aperitivo, sem cebola..." className="w-full rounded-xl border border-line-strong p-3 text-sm" /></div>
+          </fieldset>}
+          {product.allows_notes && <div><label htmlFor="doneness-notes" className="mb-2 block text-sm font-semibold">Alguma observação?</label>{product.allows_doneness && <div className="mb-3 flex flex-wrap gap-2">{COMMON_NOTES.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`rounded-xl border px-3 py-2 text-xs font-medium ${noteTags.includes(tag) ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line bg-surface text-ink-secondary hover:bg-surface-muted'}`}>{noteTags.includes(tag) ? <Check className="mr-1 inline h-3 w-3" aria-hidden="true" /> : '+ '}{tag}</button>)}</div>}<textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ex.: Sem cebola, gelo à parte..." className="w-full rounded-xl border border-line-strong p-3 text-sm" /></div>}
         </div>
         <div className="border-t border-line p-5 sm:px-6"><button type="button" onClick={handleConfirm} className="btn-primary w-full flex-wrap justify-between gap-2 py-3.5"><span>Adicionar {quantity} {quantity === 1 ? 'item' : 'itens'}</span><span className="font-bold tabular-nums">{formatBRL(product.price * quantity)}</span></button></div>
       </div>

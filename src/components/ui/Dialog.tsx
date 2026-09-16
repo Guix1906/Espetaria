@@ -51,7 +51,7 @@ export function Dialog({ label, onClose, children, placement = 'center' }: Dialo
     else if (!event.shiftKey && active === last) { event.preventDefault(); first.focus(); }
   };
 
-  return createPortal(
+  const content = (
     <dialog
       ref={dialogRef}
       tabIndex={-1}
@@ -61,7 +61,8 @@ export function Dialog({ label, onClose, children, placement = 'center' }: Dialo
       onCancel={(event) => { event.preventDefault(); onCloseRef.current(); }}
     >
       {children}
-    </dialog>,
-    document.body,
+    </dialog>
   );
+
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
 }

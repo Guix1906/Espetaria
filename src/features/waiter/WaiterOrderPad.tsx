@@ -5,6 +5,7 @@ import { FilterChip } from '../../components/ui/FilterChip';
 import { SearchField } from '../../components/ui/SearchField';
 import { formatBRL } from '../../lib/formatters';
 import { getProductAvailability } from '../../lib/productAvailability';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { useCartStore } from '../../stores/useCartStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
@@ -15,10 +16,12 @@ import { WaiterCartDrawer } from './WaiterCartDrawer';
 import { WaiterDonenessModal } from './WaiterDonenessModal';
 import { WaiterViewTab } from './WaiterViewTab';
 
-interface WaiterOrderPadProps { table: RestaurantTable; onBackToTables: () => void; }
+interface WaiterOrderPadProps { table: RestaurantTable; onBackToTables: () => void; dedicated?: boolean; }
 const categories = [{ id: 'ALL', name: 'Todos' }, { id: 'cat-1', name: 'Espetos nobres' }, { id: 'cat-2', name: 'Tradicionais' }, { id: 'cat-3', name: 'Acompanhamentos' }, { id: 'cat-4', name: 'Bebidas' }, { id: 'cat-5', name: 'Sobremesas' }];
 
-export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
+export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: WaiterOrderPadProps) {
+  const { currentProfile } = useAuthStore();
+  const canManageProducts = !dedicated && ['MASTER', 'GERENTE'].includes(currentProfile.role);
   const { products, dailyPrepStock } = useStockStore();
   const { addItem, getCartItemsCount, getCartTotal } = useCartStore();
   const { tabs } = useTableStore();
@@ -29,6 +32,7 @@ export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [isViewTabOpen, setIsViewTabOpen] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
+  const [billRequested, setBillRequested] = useState(false);
   const activeTab = tabs.find((tab) => tab.table_id === table.id && tab.status === 'OPEN');
   const cartCount = getCartItemsCount(table.id);
   const cartTotal = getCartTotal(table.id);
@@ -37,10 +41,10 @@ export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
 
   const handleProductTap = (product: Product) => {
     setOrderSent(false);
-    if (product.allows_doneness) setModalProduct(product);
+    if (product.allows_doneness || product.allows_notes) setModalProduct(product);
     else addItem(table.id, product, 1);
   };
-  const handleDonenessConfirm = (doneness: MeatDoneness, notes: string, quantity: number) => {
+  const handleDonenessConfirm = (doneness: MeatDoneness | null, notes: string, quantity: number) => {
     if (modalProduct) addItem(table.id, modalProduct, quantity, doneness, notes);
   };
 
@@ -53,6 +57,8 @@ export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
         </div>
       </div>
       <div className="page-layout">
+        {!activeTab && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">Esta comanda foi encerrada. Volte às mesas para iniciar outro atendimento.</p>}
+        {(billRequested || table.status === 'AGUARDANDO_CONTA') && <p role="status" className="notice border-amber-200 bg-amber-50 text-amber-900">Conta solicitada. Aguarde o atendimento do caixa.</p>}
         {orderSent && <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção. Acompanhe em <strong>Ver consumo</strong>.</span></div><button type="button" className="icon-button border-emerald-200 bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -61,7 +67,7 @@ export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
           </div>
           <div className="flex items-center gap-2 w-full sm:w-auto">
             <SearchField value={searchQuery} onChange={setSearchQuery} label="Buscar produto no cardápio" placeholder="Buscar espeto, porção ou bebida" className="w-full sm:w-72" />
-            <button
+            {canManageProducts && <button
               type="button"
               onClick={() => setIsProductModalOpen(true)}
               className="btn-secondary shrink-0 text-xs py-2.5 px-3"
@@ -69,14 +75,14 @@ export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">Novo Produto</span>
-            </button>
+            </button>}
           </div>
         </div>
         <div className="filter-bar" aria-label="Categorias do cardápio">{categories.map((category) => <FilterChip key={category.id} active={selectedCategory === category.id} onClick={() => setSelectedCategory(category.id)}>{category.name}</FilterChip>)}</div>
         {filteredProducts.length ? <div className="grid grid-cols-1 gap-4 xs:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {filteredProducts.map((product) => {
             const { isAvailable, remaining } = getProductAvailability(product, dailyPrepStock.find((stock) => stock.product_id === product.id));
-            return <button key={product.id} type="button" disabled={!isAvailable} onClick={() => handleProductTap(product)} className={`product-card min-h-[176px] justify-between ${!isAvailable ? 'border-dashed bg-surface-soft' : ''}`} aria-label={`${product.name}, ${formatBRL(product.price)}. ${isAvailable ? 'Adicionar ao pedido' : 'Indisponível'}`}>
+            return <button key={product.id} type="button" disabled={!isAvailable || !activeTab} onClick={() => handleProductTap(product)} className={`product-card min-h-[176px] justify-between ${!isAvailable ? 'border-dashed bg-surface-soft' : ''}`} aria-label={`${product.name}, ${formatBRL(product.price)}. ${isAvailable ? 'Adicionar ao pedido' : 'Indisponível'}`}>
               <div><div className="mb-3 flex items-center justify-between gap-2"><span className={`flex h-9 w-9 items-center justify-center rounded-xl ${isAvailable ? 'bg-accent-50 text-accent-700' : 'bg-surface-muted text-ink-muted'}`}><Flame className="h-4 w-4" aria-hidden="true" /></span>{!isAvailable && <span className="status-badge border-rose-200 bg-rose-50 text-rose-700">Indisponível</span>}</div><h3 className="text-sm font-semibold leading-relaxed text-ink">{product.name}</h3><p className="mt-1 min-h-[18px] text-xs text-ink-muted">{product.allows_doneness ? 'Escolha o ponto da carne' : 'Adicionar com um toque'}</p></div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3"><div><span className="text-lg font-bold text-brand-800 tabular-nums">{formatBRL(product.price)}</span>{remaining !== null && <span className="mt-0.5 block text-xs text-ink-muted">{remaining} disponíveis</span>}</div>{isAvailable && <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-50 text-brand-800"><Plus className="h-5 w-5" aria-hidden="true" /></span>}</div>
             </button>;
@@ -86,8 +92,8 @@ export function WaiterOrderPad({ table, onBackToTables }: WaiterOrderPadProps) {
       {cartCount > 0 && <div className="floating-cart"><button type="button" onClick={() => setIsCartDrawerOpen(true)} className="btn-primary mx-auto flex w-full max-w-2xl flex-wrap justify-between gap-3 px-4 py-4 shadow-floating"><span className="flex items-center gap-3"><ShoppingBag className="h-5 w-5" aria-hidden="true" /><span className="text-left"><span className="block font-semibold">Revisar pedido</span><span className="block text-xs text-white">{cartCount} {cartCount === 1 ? 'item no rascunho' : 'itens no rascunho'}</span></span></span><span className="flex items-center gap-3"><span className="text-lg font-bold tabular-nums">{formatBRL(cartTotal)}</span><ArrowRight className="h-5 w-5" aria-hidden="true" /></span></button></div>}
       <WaiterDonenessModal product={modalProduct} isOpen={!!modalProduct} onClose={() => setModalProduct(null)} onConfirm={handleDonenessConfirm} />
       <WaiterCartDrawer table={table} isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} onSuccess={() => setOrderSent(true)} />
-      <WaiterViewTab table={table} isOpen={isViewTabOpen} onClose={() => setIsViewTabOpen(false)} onRequestBill={() => { useTableStore.getState().requestBill(table.id); setIsViewTabOpen(false); }} />
-      <ProductFormModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} />
+      <WaiterViewTab table={table} isOpen={isViewTabOpen} onClose={() => setIsViewTabOpen(false)} onRequestBill={() => { useTableStore.getState().requestBill(table.id); setBillRequested(true); setIsViewTabOpen(false); }} />
+      {canManageProducts && <ProductFormModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} />}
     </div>
   );
 }

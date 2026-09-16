@@ -42,3 +42,5 @@ coverage/
 # Local interface artifacts & temp browser profile
 .interface-work/
 
+# Large archives
+*.zip

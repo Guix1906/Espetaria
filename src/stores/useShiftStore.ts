@@ -3,6 +3,7 @@ import { Shift } from '../types/domain';
 import { generateId } from '../lib/utils';
 import { useStockStore, PrepItemInput } from './useStockStore';
 import { logger } from '../lib/logger';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 interface ShiftState {
   currentShift: Shift | null;
@@ -56,6 +57,21 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       shiftsHistory: [newShift, ...get().shiftsHistory],
     });
 
+    if (isSupabaseConfigured) {
+      supabase.from('shifts').insert({
+        id: newShift.id,
+        date: newShift.date,
+        name: newShift.name,
+        status: 'ABERTO',
+        opened_by: newShift.opened_by,
+        opened_at: newShift.opened_at,
+        initial_notes: newShift.initial_notes,
+        cash_drawer_start: newShift.cash_drawer_start,
+      }).then(({ error }) => {
+        if (error) logger.error({ context: 'ShiftStore', message: 'Erro ao persistir turno no Supabase', error });
+      });
+    }
+
     logger.info({
       context: 'ShiftStore',
       message: `Turno aberto com sucesso: ${newShift.name}`
@@ -84,6 +100,18 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       currentShift: null,
       shiftsHistory: get().shiftsHistory.map((s) => (s.id === current.id ? closedShift : s)),
     });
+
+    if (isSupabaseConfigured) {
+      supabase.from('shifts').update({
+        status: 'FECHADO',
+        closed_by: userId,
+        closed_at: closedShift.closed_at,
+        closing_notes: closedShift.closing_notes,
+        cash_drawer_end: closedShift.cash_drawer_end,
+      }).eq('id', current.id).then(({ error }) => {
+        if (error) logger.error({ context: 'ShiftStore', message: 'Erro ao fechar turno no Supabase', error });
+      });
+    }
 
     logger.info({
       context: 'ShiftStore',

@@ -10,10 +10,12 @@ import { DeliveryCatalogView } from './features/delivery/DeliveryCatalogView';
 import { DeliveryManagementView } from './features/delivery/DeliveryManagementView';
 import { KDSModule } from './features/kds/KDSModule';
 import { ProductCatalogManageView } from './features/products/ProductCatalogManageView';
+import { SettingsView } from './features/settings/SettingsView';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { DailyStockView } from './features/stock/DailyStockView';
 import { TableGridView } from './features/tables/TableGridView';
 import { WaiterModule } from './features/waiter/WaiterModule';
+import { WaiterPortal } from './features/waiter/WaiterPortal';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import { useAuthStore } from './stores/useAuthStore';
 import { useDeliveryStore } from './stores/useDeliveryStore';
@@ -22,6 +24,17 @@ import { useTableStore } from './stores/useTableStore';
 
 export function App() {
   useRealtimeSync();
+  const [hash, setHash] = useState(() => window.location.hash);
+  const { currentProfile } = useAuthStore();
+  useEffect(() => {
+    const change = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', change);
+    return () => window.removeEventListener('hashchange', change);
+  }, []);
+  return hash === '#/garcom' || currentProfile.role === 'GARCOM' ? <WaiterPortal /> : <AdminWorkspace />;
+}
+
+function AdminWorkspace() {
   const { currentProfile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<ActiveTab>('waiter');
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -30,8 +43,7 @@ export function App() {
   const previousTab = useRef(activeTab);
 
   useEffect(() => {
-    if (currentProfile.role === 'GARCOM') setActiveTab('waiter');
-    else if (['CHURRASQUEIRA', 'COZINHA', 'BAR'].includes(currentProfile.role)) setActiveTab('kds');
+    if (['CHURRASQUEIRA', 'COZINHA', 'BAR'].includes(currentProfile.role)) setActiveTab('kds');
     else if (currentProfile.role === 'CAIXA') setActiveTab('cashier');
     else if (currentProfile.role === 'MASTER' || currentProfile.role === 'GERENTE') setActiveTab('master');
   }, [currentProfile.role]);
@@ -62,16 +74,17 @@ export function App() {
         <PWAInstallBanner />
         <Header activeTab={activeTab} onOpenShiftClick={() => setIsShiftModalOpen(true)} onMenuClick={() => setIsMobileMenuOpen(true)} isMenuOpen={isMobileMenuOpen} />
         <main id="main-content" ref={mainRef} tabIndex={-1} aria-label={PAGE_TITLES[activeTab]} className="min-w-0 flex-1 pb-8 outline-none">
-          {activeTab === 'waiter' && <WaiterModule />}
-          {activeTab === 'tables' && <TableGridView />}
+          {activeTab === 'waiter' && <WaiterModule onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
+          {activeTab === 'tables' && <TableGridView onOpenShiftClick={() => setIsShiftModalOpen(true)} onNavigateTab={setActiveTab} />}
           {activeTab === 'kds' && <KDSModule />}
           {activeTab === 'cashier' && <CashierModule />}
           {activeTab === 'delivery' && <DeliveryManagementView />}
           {activeTab === 'menu' && <DeliveryCatalogView />}
           {activeTab === 'products' && <ProductCatalogManageView />}
-          {activeTab === 'master' && <MasterDashboardView />}
+          {activeTab === 'master' && <MasterDashboardView onOpenShiftClick={() => setIsShiftModalOpen(true)} onNavigateTab={setActiveTab} />}
           {activeTab === 'stock' && <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
           {activeTab === 'audit' && <AuditLogView />}
+          {activeTab === 'settings' && <SettingsView />}
         </main>
       </div>
       <ShiftOpenModal isOpen={isShiftModalOpen} onClose={() => setIsShiftModalOpen(false)} />

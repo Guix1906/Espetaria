@@ -6,6 +6,7 @@ import { useStockStore } from './useStockStore';
 import { realtimeService } from '../lib/realtime';
 import { logger } from '../lib/logger';
 import { formatBRL } from '../lib/formatters';
+import { usePrintStore } from './usePrintStore';
 
 export interface DeliveryCartItem {
   id: string;
@@ -228,6 +229,42 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
           quantity: i.quantity,
           doneness: null,
           notes: i.notes ? `${i.notes} (Cliente: ${newOrder.customer_name})` : `Cliente: ${newOrder.customer_name}`,
+        })),
+      });
+    }
+
+    // ENFILEIRA IMPRESSÃO AUTOMÁTICA SETORIZADA (Churrasqueira e Cozinha para Delivery)
+    const printStore = usePrintStore.getState();
+    if (grillItems.length > 0) {
+      printStore.enqueuePrintJob({
+        order_id: newOrder.id,
+        order_number: newOrder.order_number,
+        sector: 'GRILL',
+        origin: 'DELIVERY',
+        table_number: 99,
+        customer_name: newOrder.customer_name,
+        items: grillItems.map((i) => ({
+          name: i.product_name,
+          quantity: i.quantity,
+          doneness: i.doneness,
+          notes: i.notes ? `${i.notes} (DELIVERY)` : 'DELIVERY',
+        })),
+      });
+    }
+
+    if (kitchenItems.length > 0) {
+      printStore.enqueuePrintJob({
+        order_id: newOrder.id,
+        order_number: newOrder.order_number,
+        sector: 'KITCHEN',
+        origin: 'DELIVERY',
+        table_number: 99,
+        customer_name: newOrder.customer_name,
+        items: kitchenItems.map((i) => ({
+          name: i.product_name,
+          quantity: i.quantity,
+          doneness: null,
+          notes: i.notes ? `${i.notes} (DELIVERY)` : 'DELIVERY',
         })),
       });
     }
