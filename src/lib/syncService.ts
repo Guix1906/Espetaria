@@ -6,7 +6,9 @@ import { useTableStore } from '../stores/useTableStore';
 import { useShiftStore } from '../stores/useShiftStore';
 import { useStockStore } from '../stores/useStockStore';
 import { useAuthStore } from '../stores/useAuthStore';
-import type { RestaurantTable, Tab, Order, OrderItem, DailyPrepStock, Shift } from '../types/domain';
+import { usePrintStore } from '../stores/usePrintStore';
+import { useDeliveryStore } from '../stores/useDeliveryStore';
+import type { RestaurantTable, Tab, Order, OrderItem, DailyPrepStock, Shift, Payment, Product } from '../types/domain';
 
 class SyncService {
   private channel: RealtimeChannel | null = null;
@@ -26,8 +28,28 @@ class SyncService {
       return;
     }
 
+    // As políticas RLS exigem usuário autenticado; sem sessão não há o que carregar.
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      logger.debug({ context: 'SyncService', message: 'Sem sessão autenticada. Hidratação adiada até o login.' });
+      return;
+    }
+
     try {
       logger.info({ context: 'SyncService', message: 'Iniciando sincronização e hidratação de dados remotos...' });
+
+      // 0. Cardápio (IDs reais do banco; os IDs de demonstração não existem no Supabase)
+      const { data: dbProducts, error: productsError } = await supabase
+        .from('products')
+        .select('*')
+        .order('display_order', { ascending: true });
+      if (productsError) {
+        logger.warn({ context: 'SyncService', message: 'Aviso ao buscar produtos', error: productsError });
+      } else if (dbProducts && dbProducts.length > 0) {
+        useStockStore.setState({
+          products: dbProducts.map((p) => ({ ...p, price: Number(p.price) })) as Product[],
+        });
+      }
 
       // 1. Busca turno aberto
       const { data: shiftData, error: shiftError } = await supabase
@@ -40,8 +62,8 @@ class SyncService {
 
       if (shiftError) {
         logger.warn({ context: 'SyncService', message: 'Aviso ao buscar turno ativo', error: shiftError });
-      } else if (shiftData) {
-        useShiftStore.setState({ currentShift: shiftData as Shift });
+      } else {
+        useShiftStore.setState({ currentShift: (shiftData as Shift | null) ?? null });
       }
 
       // 2. Busca mesas cadastradas
@@ -65,60 +87,100 @@ class SyncService {
         logger.warn({ context: 'SyncService', message: 'Aviso ao buscar comandas', error: tabsError });
       }
 
-      const activeTabs = (dbTabs || []) as Tab[];
+      const activeTabs = ((dbTabs || []) as Tab[]).map((t) => ({
+        ...t,
+        subtotal: Number(t.subtotal),
+        service_fee: Number(t.service_fee),
+        discount: Number(t.discount),
+        total: Number(t.total),
+      }));
 
       // Atualiza mesas associando comanda atual
       if (dbTables && dbTables.length > 0) {
         const mergedTables: RestaurantTable[] = dbTables.map((tbl) => {
           const matchingTab = activeTabs.find((tab) => tab.table_id === tbl.id || tab.table_id === `table-${tbl.number}`);
           return {
-            id: tbl.id,
-            number: tbl.number,
-            capacity: tbl.capacity,
+            ...tbl,
+            updated_at: tbl.updated_at ?? new Date().toISOString(),
+            updated_by: tbl.updated_by ?? null,
+            version: tbl.version ?? 1,
             status: matchingTab ? (tbl.status === 'AGUARDANDO_CONTA' ? 'AGUARDANDO_CONTA' : 'OCUPADA') : 'LIVRE',
-            active: tbl.active,
-            created_at: tbl.created_at,
             current_tab: matchingTab,
           };
         });
         useTableStore.setState({ tables: mergedTables, tabs: activeTabs });
-      } else if (activeTabs.length > 0) {
+      } else {
         useTableStore.setState({ tabs: activeTabs });
       }
 
-      // 4. Busca pedidos e itens das comandas abertas
-      if (activeTabs.length > 0) {
+      // 4. Busca pedidos, itens e pagamentos das comandas abertas
+      if (activeTabs.length === 0) {
+        useTableStore.setState({ orders: [], orderItems: [], payments: [] });
+      } else {
         const tabIds = activeTabs.map((t) => t.id);
-        const { data: dbOrders } = await supabase
+
+        const { data: dbPayments, error: paymentsError } = await supabase
+          .from('payments')
+          .select('*')
+          .in('tab_id', tabIds)
+          .eq('status', 'PAID');
+        if (paymentsError) throw paymentsError;
+        useTableStore.setState({
+          payments: ((dbPayments || []) as Payment[]).map((p) => ({ ...p, amount: Number(p.amount) })),
+        });
+
+        const { data: dbOrders, error: ordersError } = await supabase
           .from('orders')
           .select('*')
           .in('tab_id', tabIds);
+        if (ordersError) throw ordersError;
 
-        const ordersList = (dbOrders || []) as Order[];
+        const ordersList = (dbOrders || []).map((o) => ({
+          ...o,
+          updated_at: o.updated_at ?? new Date().toISOString(),
+          updated_by: o.updated_by ?? null,
+          version: o.version ?? 1,
+        })) as Order[];
 
-        if (ordersList.length > 0) {
+        if (ordersList.length === 0) {
+          useTableStore.setState({ orders: [], orderItems: [] });
+        } else {
           const orderIds = ordersList.map((o) => o.id);
-          const { data: dbItems } = await supabase
+          const { data: dbItems, error: itemsError } = await supabase
             .from('order_items')
             .select('*')
             .in('order_id', orderIds);
+          if (itemsError) throw itemsError;
 
-          const itemsList = (dbItems || []) as OrderItem[];
+          const itemsList = (dbItems || []).map((item) => ({
+            ...item,
+            unit_price: Number(item.unit_price),
+            updated_at: item.updated_at ?? new Date().toISOString(),
+            updated_by: item.updated_by ?? null,
+            version: item.version ?? 1,
+          })) as OrderItem[];
           useTableStore.setState({ orders: ordersList, orderItems: itemsList });
         }
       }
 
       // 5. Busca estoque do turno se houver turno aberto
       if (shiftData) {
-        const { data: dbStock } = await supabase
+        const { data: dbStock, error: stockError } = await supabase
           .from('daily_prep_stock')
           .select('*')
           .eq('shift_id', shiftData.id);
+        if (stockError) throw stockError;
 
         if (dbStock && dbStock.length > 0) {
           useStockStore.setState({ dailyPrepStock: dbStock as DailyPrepStock[] });
         }
       }
+
+      // 6. Fila de impressão e pedidos de delivery (cardápio digital)
+      await Promise.all([
+        usePrintStore.getState().loadRemoteJobs(),
+        useDeliveryStore.getState().loadRemoteDeliveryOrders(),
+      ]);
 
       this.isHydrated = true;
       logger.info({ context: 'SyncService', message: 'Hidratação de dados remotos concluída com sucesso.' });
@@ -149,9 +211,16 @@ class SyncService {
           { event: '*', schema: 'public', table: 'restaurant_tables' },
           (payload) => {
             const tableStore = useTableStore.getState();
-            if (payload.eventType === 'UPDATE') {
+            if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
               const updated = payload.new as RestaurantTable;
-              tableStore.applyRemoteTableUpdate(updated);
+              if (payload.eventType === 'INSERT' && !tableStore.tables.some((t) => t.id === updated.id)) {
+                useTableStore.setState({ tables: [...tableStore.tables, updated].sort((a, b) => a.number - b.number) });
+              } else {
+                tableStore.applyRemoteTableUpdate(updated);
+              }
+            } else if (payload.eventType === 'DELETE') {
+              const removedId = (payload.old as Partial<RestaurantTable>).id;
+              useTableStore.setState({ tables: tableStore.tables.filter((t) => t.id !== removedId) });
             }
           }
         )
@@ -176,6 +245,37 @@ class SyncService {
             const tableStore = useTableStore.getState();
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               tableStore.applyRemoteOrderChange(payload.eventType, payload.new as Order);
+            } else if (payload.eventType === 'DELETE') {
+              tableStore.applyRemoteOrderChange('DELETE', payload.old as Order);
+            }
+          }
+        )
+        // 3a. Fila de impressão (status confirmado pelo printer-bridge)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'print_queue' },
+          (payload) => {
+            if (payload.eventType !== 'DELETE') usePrintStore.getState().applyRemoteJob(payload.new as Record<string, unknown>);
+          }
+        )
+        // 3c. Pedidos do cardápio digital
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'delivery_orders' },
+          (payload) => {
+            if (payload.eventType !== 'DELETE') void useDeliveryStore.getState().applyRemoteDeliveryOrder(payload.new as Record<string, unknown>);
+          }
+        )
+        // 3b. Pagamentos (caixas simultâneos)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'payments' },
+          (payload) => {
+            const tableStore = useTableStore.getState();
+            if (payload.eventType === 'DELETE') {
+              tableStore.applyRemotePaymentChange('DELETE', payload.old as Payment);
+            } else {
+              tableStore.applyRemotePaymentChange(payload.eventType, payload.new as Payment);
             }
           }
         )
@@ -199,6 +299,8 @@ class SyncService {
               ) {
                 audioService.playNewOrderSound();
               }
+            } else if (payload.eventType === 'DELETE') {
+              tableStore.applyRemoteOrderItemChange('DELETE', payload.old as OrderItem);
             } else if (payload.eventType === 'UPDATE') {
               const updatedItem = payload.new as OrderItem;
               const oldItem = payload.old as Partial<OrderItem>;

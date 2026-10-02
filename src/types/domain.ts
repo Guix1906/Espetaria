@@ -39,6 +39,8 @@ export interface Shift {
   cash_drawer_end: number | null;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
+  version: number;
 }
 
 export interface Category {
@@ -90,6 +92,8 @@ export interface DailyPrepStock {
   exhaust_reason: string | null;
   created_at: string;
   updated_at: string;
+  updated_by: string | null;
+  version: number;
   product?: Product;
 }
 
@@ -117,6 +121,9 @@ export interface RestaurantTable {
   status: TableStatus;
   active: boolean;
   created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+  version: number;
   current_tab?: Tab;
 }
 
@@ -131,11 +138,16 @@ export interface Tab {
   closed_by: string | null;
   subtotal: number;
   service_fee: number;
+  /** Se a taxa de serviço está ativa nesta comanda (padrão: true). */
+  service_fee_enabled?: boolean;
   discount: number;
   total: number;
   notes: string | null;
   opened_at: string;
   closed_at: string | null;
+  updated_at: string;
+  updated_by: string | null;
+  version: number;
 }
 
 export interface Order {
@@ -149,6 +161,9 @@ export interface Order {
   idempotency_key: string | null;
   created_by: string;
   created_at: string;
+  updated_at: string;
+  updated_by: string | null;
+  version: number;
   items?: OrderItem[];
 }
 
@@ -167,6 +182,9 @@ export interface OrderItem {
   created_at: string;
   prepared_at: string | null;
   delivered_at: string | null;
+  updated_at: string;
+  updated_by: string | null;
+  version: number;
 }
 
 export interface Payment {
@@ -277,7 +295,11 @@ export interface PrintJob {
   order_id: string;
   order_number: number;
   sector: ProductionSector;
-  origin: 'SALAO' | 'DELIVERY';
+  origin: 'SALAO' | 'DELIVERY' | 'SISTEMA';
+  /** Tipo do cupom (banco): pedido, cancelamento, expedição de delivery ou teste. */
+  kind?: 'ORDER' | 'CANCEL' | 'DELIVERY_SUMMARY' | 'TEST';
+  /** Impressora que confirmou a impressão (preenchido pelo printer-bridge). */
+  printer?: string | null;
   table_number?: number;
   customer_name?: string;
   items: PrintJobItem[];

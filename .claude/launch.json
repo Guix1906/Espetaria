@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "demo",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--mode", "demo", "--port", "3003", "--strictPort"],
+      "port": 3003
+    }
+  ]
+}

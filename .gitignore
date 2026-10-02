@@ -44,3 +44,6 @@ coverage/
 
 # Large archives
 *.zip
+
+# Estado local do Supabase CLI
+supabase/.temp/

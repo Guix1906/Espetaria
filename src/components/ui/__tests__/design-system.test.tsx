@@ -33,7 +33,7 @@ function contrast(first: number[], second: number[]): number {
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
-const table: RestaurantTable = { id: 'table-ui', number: 1, capacity: 4, status: 'LIVRE', active: true, created_at: '2026-01-01T12:00:00Z' };
+const table: RestaurantTable = { id: 'table-ui', number: 1, capacity: 4, status: 'LIVRE', active: true, created_at: '2026-01-01T12:00:00Z', updated_at: '2026-01-01T12:00:00Z', updated_by: null, version: 1 };
 afterEach(() => vi.useRealTimers());
 
 describe('Shared interface and accessibility', () => {

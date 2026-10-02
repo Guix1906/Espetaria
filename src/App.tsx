@@ -11,12 +11,16 @@ import { DeliveryManagementView } from './features/delivery/DeliveryManagementVi
 import { KDSModule } from './features/kds/KDSModule';
 import { ProductCatalogManageView } from './features/products/ProductCatalogManageView';
 import { SettingsView } from './features/settings/SettingsView';
+import { TeamManagementView } from './features/team/TeamManagementView';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { DailyStockView } from './features/stock/DailyStockView';
 import { TableGridView } from './features/tables/TableGridView';
 import { WaiterModule } from './features/waiter/WaiterModule';
 import { WaiterPortal } from './features/waiter/WaiterPortal';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
+import { LoginScreen } from './features/auth/LoginScreen';
+import { PublicMenuPage } from './features/delivery/PublicMenuPage';
+import { RemoteErrorBanner } from './components/ui/RemoteErrorBanner';
 import { useAuthStore } from './stores/useAuthStore';
 import { useDeliveryStore } from './stores/useDeliveryStore';
 import { useStockStore } from './stores/useStockStore';
@@ -25,13 +29,29 @@ import { useTableStore } from './stores/useTableStore';
 export function App() {
   useRealtimeSync();
   const [hash, setHash] = useState(() => window.location.hash);
-  const { currentProfile } = useAuthStore();
+  const { currentProfile, isAuthenticated, isInitializing, initialize } = useAuthStore();
+  useEffect(() => {
+    void initialize();
+  }, [initialize]);
   useEffect(() => {
     const change = () => setHash(window.location.hash);
     window.addEventListener('hashchange', change);
     return () => window.removeEventListener('hashchange', change);
   }, []);
-  return hash === '#/garcom' || currentProfile.role === 'GARCOM' ? <WaiterPortal /> : <AdminWorkspace />;
+
+  // Cardápio digital público: não depende de login nem da sessão da equipe
+  if (hash.startsWith('#/cardapio')) return <PublicMenuPage />;
+
+  if (isInitializing) {
+    return <div className="flex min-h-screen items-center justify-center bg-canvas text-ink-muted" role="status">Verificando sessão...</div>;
+  }
+
+  let screen;
+  if (hash === '#/garcom' || (isAuthenticated && currentProfile.role === 'GARCOM')) screen = <WaiterPortal />;
+  else if (!isAuthenticated) screen = <LoginScreen />;
+  else screen = <AdminWorkspace />;
+
+  return <>{screen}<RemoteErrorBanner /></>;
 }
 
 function AdminWorkspace() {
@@ -84,6 +104,7 @@ function AdminWorkspace() {
           {activeTab === 'master' && <MasterDashboardView onOpenShiftClick={() => setIsShiftModalOpen(true)} onNavigateTab={setActiveTab} />}
           {activeTab === 'stock' && <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
           {activeTab === 'audit' && <AuditLogView />}
+          {activeTab === 'team' && <TeamManagementView />}
           {activeTab === 'settings' && <SettingsView />}
         </main>
       </div>

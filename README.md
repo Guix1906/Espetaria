@@ -7,7 +7,7 @@
 - Fluxo: identificacao, selecao/busca de mesa, abertura de comanda, categorias e busca de produtos, ponto da carne e observacoes, revisao da rodada, consumo, itens prontos para servir e solicitacao da conta. Rascunhos permanecem em memoria ao trocar de mesa ou quando a validacao do envio falha; recarregar a pagina encerra a sessao local e perde esses dados.
 - Sem Supabase configurado, a identificacao e demonstrativa, por nome, sem senha. Com Supabase configurado, o acesso usa e-mail/senha do Supabase Auth e exige registro ativo de papel GARCOM em `profiles`, com o mesmo ID do usuario autenticado. Nao ha criacao automatica de contas nem senhas padrao.
 - **Limite atual:** os stores operacionais de mesas, pedidos, estoque e turnos ainda executam a operacao em memoria. Login real e broadcasts existentes NAO tornam esses dados persistentes ou sincronizados entre aparelhos. A area exibe aviso de demonstracao mesmo com Supabase configurado. Nao utilizar em atendimento real antes de integrar leitura/escrita transacional, permissoes de backend e sincronizacao completa dos stores com o banco comum.
-- Para demonstrar o fluxo com os mesmos dados, abra o turno no painel e use o link da area do garcom na mesma aba, sem recarregar. No celular, use o endereco publicado ou o IP do computador na mesma rede (servidor Vite na porta 3000); `localhost` no celular aponta para o proprio celular. Acesso em rede nao significa compartilhamento de dados no modo local.
+- Para demonstrar o fluxo com os mesmos dados, abra o turno no painel e use o link da area do garcom na mesma aba, sem recarregar. No celular, use o endereco publicado ou o IP do computador na mesma rede (servidor Vite na porta 3002); `localhost` no celular aponta para o proprio celular. Acesso em rede nao significa compartilhamento de dados no modo local.
 - A separacao de interface nao substitui autorizacao no servidor; o painel legado ainda utiliza um seletor demonstrativo de perfis. A implantacao publica requer autenticar e autorizar tambem o painel.
 
 
@@ -268,7 +268,7 @@ VITE_SUPABASE_ANON_KEY=sua-chave-publica-anon
 ```bash
 npm run dev
 ```
-O sistema estará rodando em `http://localhost:3000` (ou IP local para acesso via celular na mesma rede Wi-Fi).
+O sistema estará rodando em `http://localhost:3002` (ou IP local para acesso via celular na mesma rede Wi-Fi).
 
 ### 5. Executar os Testes Automatizados
 ```bash
@@ -292,10 +292,42 @@ Executa `tsc --noEmit` em modo estrito e compila os bundles minificados e Servic
    - Execute `supabase/migrations/00001_initial_schema.sql` (Criação de tipos ENUM, tabelas com constraints, chaves estrangeiras e índices otimizados).
    - Execute `supabase/migrations/00002_stock_atomic_functions.sql` (Funções PL/pgSQL com transações atômicas `SELECT ... FOR UPDATE`, procedure de inicialização de turno, baixa unificada de pedido e esgotamento imediato).
    - Execute `supabase/migrations/00003_rls_policies.sql` (Políticas de segurança Row Level Security para cada perfil).
-4. Carregue o seed inicial executando `supabase/seed/seed.sql` (Popula os espetos, cortes nobres, cubas de acompanhamentos, mesas 01 a 20 e os perfis operacionais).
+   - Execute `00004`, `00005`, `00006` e **`00007_secure_rpc_and_auth.sql`** (RPCs atômicas com `auth.uid()`, validação de perfil, RLS sem escrita direta, publicação Realtime).
+4. **Usuários da equipe:** crie cada colaborador em *Authentication → Users*. O perfil é criado automaticamente **inativo** com papel `GARCOM`; a gerência deve ativar e definir o papel:
+   ```sql
+   UPDATE profiles SET role = 'CAIXA', is_active = true WHERE email = 'caixa@exemplo.com';
+   ```
+   Com o Supabase configurado, o app exige login individual e não permite trocar de perfil livremente. Sem `.env`, roda em modo demonstração local (troca de perfil liberada, nada é sincronizado).
+5. Carregue o seed inicial executando `supabase/seed/seed.sql` (Popula os espetos, cortes nobres, cubas de acompanhamentos, mesas 01 a 20 e os perfis operacionais).
 
 ---
 
+## 🖨️ IMPRESSÃO NAS EPSON E CARDÁPIO DIGITAL
+
+**Fluxo:** garçom lança pedido / cliente pede pelo cardápio (`/#/cardapio`) → o banco gera os cupons por setor na mesma transação (`print_queue`) → o **printer-bridge** (PC da loja) busca a fila e envia ESC/POS às Epson pela rede (porta 9100).
+
+| Setor do produto | Impressora |
+|---|---|
+| `GRILL` (espetos) | Churrasqueira |
+| `KITCHEN` (acompanhamentos) | Cozinha |
+| `BAR` | Bar (ou cozinha, se não houver) |
+| Expedição do delivery (endereço, pagamento, troco) | Caixa (ou cozinha, se não houver) |
+
+Cancelamentos de itens já enviados saem como cupom **CANCELADO**; reimpressões saem como **2ª VIA**.
+
+### Instalação no PC da loja
+```bash
+cd printer-bridge && npm install && copy .env.example .env
+```
+1. No `.env`: `SUPABASE_SERVICE_ROLE_KEY` (Project Settings → API) e os IPs das impressoras (os mesmos do sistema atual).
+2. `npm run check` — testa a conexão com cada IP **sem imprimir nada**.
+3. `PRINT_MODE=simulate` + `npm start` — recebe pedidos reais e grava os cupons em `impressoes-simuladas/` (não toca nas impressoras).
+4. Fora do horário de pico: `npm run test-print -- GRILL` (imprime 1 cupom de teste).
+5. `PRINT_MODE=live` + `npm start` para produção.
+
+**Convivência com o sistema atual:** cada cupom abre a conexão, envia e fecha em milissegundos; se a impressora estiver ocupada, o cupom volta para a fila e é reenviado automaticamente (5s, 10s, 20s… até 6 tentativas). Nada fica conectado permanentemente.
+
+---
 ## 👨‍🍳 MANUAL DE OPERAÇÃO DA EQUIPE NOTURNA
 
 ### 👑 Perfil: Master / Gerente

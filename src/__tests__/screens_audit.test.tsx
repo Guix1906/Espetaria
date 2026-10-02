@@ -284,6 +284,8 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
           cash_drawer_end: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          updated_by: null,
+          version: 1,
         }
       });
       syncStores();
@@ -309,6 +311,9 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
         notes: null,
         opened_at: new Date().toISOString(),
         closed_at: null,
+        updated_at: new Date().toISOString(),
+        updated_by: 'usr-1',
+        version: 1,
       };
       useTableStore.setState({ tabs: [tab] });
       syncStores();
@@ -377,6 +382,9 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
         notes: null,
         opened_at: new Date().toISOString(),
         closed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updated_by: 'usr-1',
+        version: 1,
       };
       const html = renderWithFeedback(
         <ReceiptModal

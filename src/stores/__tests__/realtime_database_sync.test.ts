@@ -1,4 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('../../lib/supabase', () => ({
+  isSupabaseConfigured: false,
+  supabase: {},
+}));
+
 import { useTableStore } from '../useTableStore';
 import { useStockStore } from '../useStockStore';
 import { useShiftStore } from '../useShiftStore';
@@ -62,6 +68,9 @@ describe('Sincronização em Tempo Real e Banco Compartilhado (Multi-dispositivo
       notes: null,
       opened_at: new Date().toISOString(),
       closed_at: null,
+      updated_at: new Date().toISOString(),
+      updated_by: null,
+      version: 1,
     };
 
     tableStore.applyRemoteTabChange('INSERT', remoteTab);
@@ -95,6 +104,9 @@ describe('Sincronização em Tempo Real e Banco Compartilhado (Multi-dispositivo
       notes: null,
       opened_at: new Date().toISOString(),
       closed_at: null,
+      updated_at: new Date().toISOString(),
+      updated_by: null,
+      version: 1,
     };
 
     // Abre comanda
@@ -132,6 +144,9 @@ describe('Sincronização em Tempo Real e Banco Compartilhado (Multi-dispositivo
       idempotency_key: 'idem-300',
       created_by: 'garcom-phone',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      updated_by: null,
+      version: 1,
     };
 
     const remoteItem: OrderItem = {
@@ -147,6 +162,9 @@ describe('Sincronização em Tempo Real e Banco Compartilhado (Multi-dispositivo
       sector: 'GRILL',
       status: 'RECEIVED',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      updated_by: null,
+      version: 1,
       prepared_at: null,
       delivered_at: null,
     };
@@ -175,6 +193,9 @@ describe('Sincronização em Tempo Real e Banco Compartilhado (Multi-dispositivo
       idempotency_key: 'idem-400',
       created_by: 'garcom-id',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      updated_by: null,
+      version: 1,
     };
 
     const remoteItem: OrderItem = {
@@ -190,6 +211,9 @@ describe('Sincronização em Tempo Real e Banco Compartilhado (Multi-dispositivo
       sector: 'GRILL',
       status: 'IN_PREPARATION',
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      updated_by: null,
+      version: 1,
       prepared_at: null,
       delivered_at: null,
     };
@@ -235,6 +259,8 @@ describe('Sincronização em Tempo Real e Banco Compartilhado (Multi-dispositivo
       exhaust_reason: 'Acabou na brasa',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      updated_by: null,
+      version: 1,
     };
 
     stockStore.applyRemoteStockChange(remoteStock);

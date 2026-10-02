@@ -1247,12 +1247,7 @@ ON CONFLICT DO NOTHING;
 -- 2. Mock User Profiles for Development
 -- (In production, these UUIDs match Supabase auth.users)
 INSERT INTO profiles (id, name, email, role) VALUES
-    ('11111111-1111-1111-1111-111111111111', 'Carlos Master (Dono)', 'master@espetaria.com.br', 'MASTER'),
-    ('22222222-2222-2222-2222-222222222222', 'Renata Gerente', 'gerente@espetaria.com.br', 'GERENTE'),
-    ('33333333-3333-3333-3333-333333333333', 'Lucas Garçom', 'garcom1@espetaria.com.br', 'GARCOM'),
-    ('44444444-4444-4444-4444-444444444444', 'José Churrasqueiro', 'churrasqueira@espetaria.com.br', 'CHURRASQUEIRA'),
-    ('55555555-5555-5555-5555-555555555555', 'Maria Cozinheira', 'cozinha@espetaria.com.br', 'COZINHA'),
-    ('66666666-6666-6666-6666-666666666666', 'Ana Caixa', 'caixa@espetaria.com.br', 'CAIXA')
+    ('11111111-1111-1111-1111-111111111111', 'Carlos Master (Dono)', 'master@espetaria.com.br', 'MASTER')
 ON CONFLICT (id) DO NOTHING;
 
 -- 3. Categories

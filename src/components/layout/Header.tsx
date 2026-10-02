@@ -1,4 +1,4 @@
-import { CalendarDays, Check, ChevronDown, Clock3, Menu, UserRound, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, Clock3, LogOut, Menu, UserRound, Volume2, VolumeX, Wifi, WifiOff } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { audioService } from '../../lib/audio';
 import { formatRole } from '../../lib/formatters';
@@ -15,7 +15,7 @@ interface HeaderProps {
 }
 
 export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }: HeaderProps) {
-  const { currentProfile, availableProfiles, switchProfile } = useAuthStore();
+  const { currentProfile, availableProfiles, switchProfile, canSwitchProfile, signOut } = useAuthStore();
   const { currentShift } = useShiftStore();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
@@ -102,9 +102,16 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
           </button>
           {roleDropdownOpen && (
             <div id={profileId} className="absolute right-0 z-50 mt-3 w-[min(320px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-surface p-2 shadow-floating">
-              <p className="border-b border-line px-3 py-3 text-xs font-semibold uppercase tracking-wider text-ink-muted">Perfil operacional</p>
+              <p className="border-b border-line px-3 py-3 text-xs font-semibold uppercase tracking-wider text-ink-muted">{canSwitchProfile ? 'Perfil operacional (demonstração)' : 'Sessão'}</p>
+              {!canSwitchProfile && (
+                <div className="space-y-2 p-3">
+                  <p className="text-sm font-semibold">{currentProfile.name}</p>
+                  <p className="text-xs text-ink-muted">{currentProfile.email} · {formatRole(currentProfile.role)}</p>
+                  <button type="button" className="btn-secondary w-full" onClick={() => { setRoleDropdownOpen(false); void signOut(); }}><LogOut className="h-4 w-4" aria-hidden="true" />Sair</button>
+                </div>
+              )}
               <div className="max-h-[60dvh] space-y-1 overflow-y-auto pt-2">
-                {availableProfiles.map((profile) => (
+                {canSwitchProfile && availableProfiles.map((profile) => (
                   <button key={profile.id} type="button" aria-pressed={profile.id === currentProfile.id} onClick={() => { switchProfile(profile.role); setRoleDropdownOpen(false); }} className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left ${profile.id === currentProfile.id ? 'bg-brand-50 text-brand-800' : 'text-ink-secondary hover:bg-surface-muted'}`}>
                     <span><span className="block text-sm font-semibold">{profile.name}</span><span className="block text-xs text-ink-muted">{formatRole(profile.role)}</span></span>
                     {profile.id === currentProfile.id && <Check className="h-4 w-4" aria-hidden="true" />}

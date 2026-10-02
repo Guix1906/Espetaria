@@ -3,7 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { CartItemRow } from '../../components/ui/CartItemRow';
 import { Dialog } from '../../components/ui/Dialog';
 import { formatBRL } from '../../lib/formatters';
-import { NEIGHBORHOOD_FEES, useDeliveryStore } from '../../stores/useDeliveryStore';
+import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import type { DeliveryPaymentMethod } from '../../types/domain';
@@ -14,12 +14,12 @@ const inputClass = 'w-full rounded-xl border border-line-strong bg-surface px-3.
 const labelClass = 'mb-1.5 block text-sm font-medium text-ink-secondary';
 
 export function DeliveryCartDrawer({ isOpen, onClose, onOrderPlaced }: DeliveryCartDrawerProps) {
-  const { cart, removeFromCart, updateCartQuantity, placeDeliveryOrderAtomic } = useDeliveryStore();
+  const { cart, removeFromCart, updateCartQuantity, submitDeliveryOrder, zones } = useDeliveryStore();
   const { currentShift } = useShiftStore();
   const { settings } = useSettingsStore();
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
-  const [neighborhood, setNeighborhood] = useState(NEIGHBORHOOD_FEES[0]?.name || 'Centro');
+  const [neighborhood, setNeighborhood] = useState(zones[0]?.name || 'Centro');
   const [street, setStreet] = useState('');
   const [number, setNumber] = useState('');
   const [complement, setComplement] = useState('');
@@ -31,13 +31,14 @@ export function DeliveryCartDrawer({ isOpen, onClose, onOrderPlaced }: DeliveryC
   const [isSubmitting, setIsSubmitting] = useState(false);
   if (!isOpen) return null;
 
-  const currentFee = NEIGHBORHOOD_FEES.find((item) => item.name === neighborhood)?.fee ?? 5;
+  const currentFee = zones.find((item) => item.name === neighborhood)?.fee ?? zones[0]?.fee ?? 5;
   const subtotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
   const total = subtotal + currentFee;
   const count = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleSubmitOrder = (event: FormEvent) => {
+  const handleSubmitOrder = async (event: FormEvent) => {
     event.preventDefault();
+    if (isSubmitting) return;
     setErrorMessage(null);
     if (!cart.length) { setErrorMessage('Seu carrinho está vazio. Adicione um produto para continuar.'); return; }
     if (!customerName.trim() || !phone.trim() || !street.trim() || !number.trim()) { setErrorMessage('Preencha nome, WhatsApp, rua e número para a entrega.'); return; }
@@ -45,7 +46,7 @@ export function DeliveryCartDrawer({ isOpen, onClose, onOrderPlaced }: DeliveryC
     setIsSubmitting(true);
     try {
       const change = paymentMethod === 'DINHEIRO' && cashChangeFor ? parseFloat(cashChangeFor.replace(',', '.')) : undefined;
-      placeDeliveryOrderAtomic({ shiftId: currentShift.id, customerName: customerName.trim(), phone: phone.trim(), addressStreet: street.trim(), addressNumber: number.trim(), addressNeighborhood: neighborhood, addressComplement: complement.trim() || undefined, addressReference: reference.trim() || undefined, deliveryFee: currentFee, paymentMethod, cashChangeFor: change, notes: orderNotes.trim() || undefined });
+      await submitDeliveryOrder({ shiftId: currentShift.id, customerName: customerName.trim(), phone: phone.trim(), addressStreet: street.trim(), addressNumber: number.trim(), addressNeighborhood: neighborhood, addressComplement: complement.trim() || undefined, addressReference: reference.trim() || undefined, deliveryFee: currentFee, paymentMethod, cashChangeFor: change, notes: orderNotes.trim() || undefined });
       onOrderPlaced();
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : 'Não foi possível enviar o pedido. Tente novamente.');
@@ -65,7 +66,7 @@ export function DeliveryCartDrawer({ isOpen, onClose, onOrderPlaced }: DeliveryC
             <div className="border-t border-line pt-5"><h3 className="mb-4 flex items-center gap-2 text-base font-semibold"><MapPin className="h-4 w-4 text-brand-700" aria-hidden="true" />Onde vamos entregar?</h3><div className="space-y-4">
               <div><label htmlFor="delivery-name" className={labelClass}>Seu nome</label><input id="delivery-name" autoComplete="name" required value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Nome completo" className={inputClass} /></div>
               <div><label htmlFor="delivery-phone" className={labelClass}>WhatsApp com DDD</label><input id="delivery-phone" type="tel" autoComplete="tel" required value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="(11) 98765-4321" className={inputClass} /></div>
-              <div><label htmlFor="delivery-neighborhood" className={labelClass}>Bairro de entrega</label><select id="delivery-neighborhood" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} className={inputClass}>{NEIGHBORHOOD_FEES.map((item) => <option key={item.name} value={item.name}>{item.name} · Taxa {formatBRL(item.fee)}</option>)}</select></div>
+              <div><label htmlFor="delivery-neighborhood" className={labelClass}>Bairro de entrega</label><select id="delivery-neighborhood" value={neighborhood} onChange={(event) => setNeighborhood(event.target.value)} className={inputClass}>{zones.map((item) => <option key={item.name} value={item.name}>{item.name} · Taxa {formatBRL(item.fee)}</option>)}</select></div>
               <div className="grid grid-cols-3 gap-3"><div className="col-span-2"><label htmlFor="delivery-street" className={labelClass}>Rua ou avenida</label><input id="delivery-street" autoComplete="address-line1" required value={street} onChange={(event) => setStreet(event.target.value)} className={inputClass} /></div><div><label htmlFor="delivery-number" className={labelClass}>Número</label><input id="delivery-number" required value={number} onChange={(event) => setNumber(event.target.value)} className={inputClass} /></div></div>
               <div><label htmlFor="delivery-complement" className={labelClass}>Complemento <span className="font-normal text-ink-muted">(opcional)</span></label><input id="delivery-complement" autoComplete="address-line2" value={complement} onChange={(event) => setComplement(event.target.value)} placeholder="Apartamento, bloco..." className={inputClass} /></div>
               <div><label htmlFor="delivery-reference" className={labelClass}>Referência <span className="font-normal text-ink-muted">(opcional)</span></label><input id="delivery-reference" value={reference} onChange={(event) => setReference(event.target.value)} placeholder="Um ponto de referência para a entrega" className={inputClass} /></div>

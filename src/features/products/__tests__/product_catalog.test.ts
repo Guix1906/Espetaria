@@ -86,6 +86,8 @@ describe('Gestão e Cadastro de Produtos do Cardápio', () => {
         closing_notes: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        updated_by: null,
+        version: 1,
       },
     });
 

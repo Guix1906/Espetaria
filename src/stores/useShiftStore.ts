@@ -3,7 +3,7 @@ import { Shift } from '../types/domain';
 import { generateId } from '../lib/utils';
 import { useStockStore, PrepItemInput } from './useStockStore';
 import { logger } from '../lib/logger';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { callRpc } from '../lib/remote';
 
 interface ShiftState {
   currentShift: Shift | null;
@@ -47,6 +47,8 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       cash_drawer_end: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      updated_by: userId,
+      version: 1,
     };
 
     // Inicializa o estoque de mise en place do dia
@@ -57,20 +59,24 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       shiftsHistory: [newShift, ...get().shiftsHistory],
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('shifts').insert({
-        id: newShift.id,
-        date: newShift.date,
-        name: newShift.name,
-        status: 'ABERTO',
-        opened_by: newShift.opened_by,
-        opened_at: newShift.opened_at,
-        initial_notes: newShift.initial_notes,
-        cash_drawer_start: newShift.cash_drawer_start,
-      }).then(({ error }) => {
-        if (error) logger.error({ context: 'ShiftStore', message: 'Erro ao persistir turno no Supabase', error });
-      });
-    }
+    // Abertura atômica no banco (turno + estoque + auditoria). Em seguida re-hidrata
+    // para adotar o ID definitivo gerado pelo servidor.
+    void callRpc<string>('open_shift', {
+      p_shift_name: newShift.name,
+      p_initial_notes: newShift.initial_notes,
+      p_cash_start: newShift.cash_drawer_start,
+      p_stock_items: stockItems.map((item) => ({
+        product_id: item.productId,
+        cubas_count: item.cubasCount ?? 0,
+        portions_per_cuba: item.portionsPerCuba ?? 1,
+        quantity: item.quantity ?? 0,
+      })),
+    }, 'ShiftStore').then(async (serverShiftId) => {
+      if (serverShiftId) {
+        const { syncService } = await import('../lib/syncService');
+        await syncService.hydrateAll();
+      }
+    });
 
     logger.info({
       context: 'ShiftStore',
@@ -94,6 +100,8 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       closing_notes: closingNotes || null,
       cash_drawer_end: cashDrawerEnd,
       updated_at: new Date().toISOString(),
+      updated_by: userId,
+      version: (current.version || 0) + 1,
     };
 
     set({
@@ -101,17 +109,11 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       shiftsHistory: get().shiftsHistory.map((s) => (s.id === current.id ? closedShift : s)),
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('shifts').update({
-        status: 'FECHADO',
-        closed_by: userId,
-        closed_at: closedShift.closed_at,
-        closing_notes: closedShift.closing_notes,
-        cash_drawer_end: closedShift.cash_drawer_end,
-      }).eq('id', current.id).then(({ error }) => {
-        if (error) logger.error({ context: 'ShiftStore', message: 'Erro ao fechar turno no Supabase', error });
-      });
-    }
+    void callRpc('close_shift', {
+      p_shift_id: current.id,
+      p_closing_notes: closedShift.closing_notes,
+      p_cash_end: closedShift.cash_drawer_end,
+    }, 'ShiftStore');
 
     logger.info({
       context: 'ShiftStore',

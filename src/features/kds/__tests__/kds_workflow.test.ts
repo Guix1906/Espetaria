@@ -116,6 +116,8 @@ describe('ETAPA 4: Telas de Produção KDS (Churrasqueira, Cozinha, Bar)', () =>
         cash_drawer_end: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        updated_by: null,
+        version: 1,
       },
     });
 

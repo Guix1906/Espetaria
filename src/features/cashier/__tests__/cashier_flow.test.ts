@@ -94,6 +94,8 @@ describe('ETAPA 5: Módulo do Caixa & Fechamento de Mesas', () => {
         cash_drawer_end: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        updated_by: null,
+        version: 1,
       },
     });
 

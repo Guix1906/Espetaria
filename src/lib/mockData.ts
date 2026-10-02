@@ -298,5 +298,8 @@ export const INITIAL_TABLES: RestaurantTable[] = Array.from({ length: 20 }, (_, 
   capacity: (i + 1) % 4 === 0 ? 6 : 4,
   status: 'LIVRE',
   active: true,
-  created_at: new Date().toISOString()
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString(),
+  updated_by: null,
+  version: 1,
 }));

@@ -19,11 +19,11 @@ export function isWaiterProfile(value: unknown): value is Profile {
 }
 
 export function WaiterPortal() {
-  const { currentProfile, availableProfiles, setProfile } = useAuthStore();
+  const { currentProfile, availableProfiles, setProfile, signIn, signOut, isAuthenticated } = useAuthStore();
   const { currentShift } = useShiftStore();
   const previousProfile = useRef(currentProfile);
   const headerRef = useRef<HTMLElement>(null);
-  const [identified, setIdentified] = useState(false);
+  const [identified, setIdentified] = useState(() => isSupabaseConfigured && isAuthenticated && isWaiterProfile(currentProfile));
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [profileId, setProfileId] = useState('');
@@ -74,11 +74,9 @@ export function WaiterPortal() {
     try {
       let profile: unknown;
       if (isSupabaseConfigured) {
-        const { data, error: authError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        if (authError) throw authError;
-        const { data: staff, error: profileError } = await supabase.from('profiles').select('id,name,email,role,is_active,created_at,updated_at').eq('id', data.user.id).single();
-        if (profileError) throw profileError;
-        profile = staff;
+        await signIn(email, password);
+        profile = useAuthStore.getState().currentProfile;
+        if (!isWaiterProfile(profile)) await signOut();
       } else {
         profile = profiles.find((staff) => staff.id === profileId);
       }
@@ -97,9 +95,10 @@ export function WaiterPortal() {
     setBusy(true);
     setError(null);
     if (isSupabaseConfigured) {
-      const { error: signOutError } = await supabase.auth.signOut();
-      if (signOutError) {
-        setError(signOutError.message);
+      try {
+        await signOut();
+      } catch (failure: unknown) {
+        setError(failure instanceof Error ? failure.message : 'Não foi possível sair.');
         setBusy(false);
         return;
       }

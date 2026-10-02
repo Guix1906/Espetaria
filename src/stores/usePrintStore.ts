@@ -5,6 +5,8 @@ import { generateId } from '../lib/utils';
 import { logger } from '../lib/logger';
 import { useSettingsStore } from './useSettingsStore';
 import { appStorage } from '../lib/storage';
+import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { callRpc } from '../lib/remote';
 
 const STORAGE_KEY = 'espetaria_print_queue_v1';
 
@@ -18,8 +20,26 @@ export interface CreatePrintJobInput {
   items: PrintJobItem[];
 }
 
+/** Converte uma linha da tabela print_queue para o formato da interface. */
+function fromRow(row: Record<string, unknown>): PrintJob {
+  return {
+    ...(row as unknown as PrintJob),
+    table_number: (row.table_number as number | null) ?? undefined,
+    customer_name: (row.customer_name as string | null) ?? undefined,
+    reprint_reason: (row.reprint_reason as string | null) ?? undefined,
+    last_error: (row.last_error as string | null) ?? undefined,
+    printed_at: (row.printed_at as string | null) ?? undefined,
+  };
+}
+
 interface PrintState {
   jobs: PrintJob[];
+  /** Carrega os cupons recentes do banco (modo Supabase). */
+  loadRemoteJobs: () => Promise<void>;
+  /** Aplica INSERT/UPDATE vindo do Realtime (modo Supabase). */
+  applyRemoteJob: (row: Record<string, unknown>) => void;
+  /** Cupom de teste real para o setor (NONE = caixa/expedição). */
+  sendTestPrint: (sector: ProductionSector) => Promise<void>;
   enqueuePrintJob: (input: CreatePrintJobInput) => { job: PrintJob; isDuplicate: boolean };
   processJob: (jobId: string) => Promise<boolean>;
   reprintJob: (jobId: string, reason?: string) => PrintJob;
@@ -70,9 +90,55 @@ const saveQueue = (jobs: PrintJob[]) => {
 };
 
 export const usePrintStore = create<PrintState>((set, get) => ({
-  jobs: loadInitialQueue(),
+  // Com Supabase, a fila oficial é a tabela print_queue (gerada pelo banco)
+  jobs: isSupabaseConfigured ? [] : loadInitialQueue(),
+
+  loadRemoteJobs: async () => {
+    if (!isSupabaseConfigured) return;
+    const since = new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await supabase
+      .from('print_queue')
+      .select('*')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(200);
+    if (error) {
+      logger.warn({ context: 'PrintStore', message: 'Erro ao carregar fila de impressão', error });
+      return;
+    }
+    set({ jobs: (data || []).map(fromRow) });
+  },
+
+  applyRemoteJob: (row) => {
+    const job = fromRow(row);
+    const others = get().jobs.filter((j) => j.id !== job.id);
+    set({ jobs: [job, ...others].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 200) });
+  },
+
+  sendTestPrint: async (sector) => {
+    if (!isSupabaseConfigured) {
+      get().enqueuePrintJob({
+        order_id: generateId(), order_number: 0, sector, origin: 'SALAO', customer_name: 'Teste',
+        items: [{ name: 'Teste de impressão', quantity: 1, doneness: null, notes: null }],
+      });
+      return;
+    }
+    await callRpc('enqueue_test_print', { p_sector: sector }, 'PrintStore');
+  },
 
   enqueuePrintJob: (input) => {
+    // Com Supabase, o próprio banco gera os cupons na transação do pedido.
+    // Nada é enfileirado pelo navegador (evita cupom duplicado ou perdido).
+    if (isSupabaseConfigured) {
+      const placeholder: PrintJob = {
+        id: `server-${input.order_id}-${input.sector}`, ...input, status: 'PENDING',
+        idempotency_key: `ORD-${input.order_id}-${input.sector}`, is_reprint: false, attempts: 0,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      };
+      return { job: placeholder, isDuplicate: false };
+    }
+
+
     const idempotencyKey = `ORD-${input.order_id}-${input.sector}`;
     const existing = get().jobs.find((j) => j.idempotency_key === idempotencyKey);
 
@@ -136,6 +202,12 @@ export const usePrintStore = create<PrintState>((set, get) => ({
     const job = get().jobs.find((j) => j.id === jobId);
     if (!job || job.status === 'PRINTED') return false;
 
+    // Com Supabase quem imprime é o printer-bridge; aqui só pedimos novo envio
+    if (isSupabaseConfigured) {
+      if (job.status !== 'FAILED') return false;
+      return (await callRpc('retry_print_job', { p_job_id: jobId }, 'PrintStore')) !== null;
+    }
+
     // Marca como PRINTING
     const printingJobs = get().jobs.map((j) =>
       j.id === jobId ? { ...j, status: 'PRINTING' as const, attempts: j.attempts + 1, updated_at: new Date().toISOString() } : j
@@ -188,6 +260,11 @@ export const usePrintStore = create<PrintState>((set, get) => ({
   reprintJob: (jobId, reason = 'Reimpressão solicitada pelo operador') => {
     const target = get().jobs.find((j) => j.id === jobId);
     if (!target) throw new Error('Comanda não encontrada para reimpressão.');
+
+    if (isSupabaseConfigured) {
+      void callRpc('reprint_print_job', { p_job_id: jobId, p_reason: reason }, 'PrintStore');
+      return { ...target, is_reprint: true, reprint_reason: reason, status: 'PENDING' };
+    }
 
     // Cria nova comanda explicitamente marcada como 2ª VIA
     const reprintJob: PrintJob = {

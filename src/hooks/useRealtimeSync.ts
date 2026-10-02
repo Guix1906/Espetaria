@@ -8,12 +8,16 @@ import { logger } from '../lib/logger';
 
 export function useRealtimeSync() {
   const { toggleExhaustProduct } = useStockStore();
-  const { currentProfile } = useAuthStore();
+  const { currentProfile, isAuthenticated } = useAuthStore();
+
+  // 0. Hidratação e assinatura do Postgres só após login (o RLS exige usuário autenticado)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    void syncService.hydrateAll();
+    return syncService.subscribeToDatabaseChanges();
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    // 0. Hidratação inicial e sincronização bidirecional do Postgres
-    syncService.hydrateAll();
-    const unsubscribeDb = syncService.subscribeToDatabaseChanges();
 
     // 1. Escuta mudanças imediatas de disponibilidade de estoque
     const unsubscribeStock = realtimeService.onStockChange((payload) => {
@@ -27,7 +31,8 @@ export function useRealtimeSync() {
         payload.product_id,
         payload.is_exhausted,
         'remote-sync-user',
-        payload.reason
+        payload.reason,
+        true
       );
     });
 
@@ -76,7 +81,6 @@ export function useRealtimeSync() {
     });
 
     return () => {
-      unsubscribeDb();
       unsubscribeStock();
       unsubscribeGrill();
       unsubscribeKitchen();

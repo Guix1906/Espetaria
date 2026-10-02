@@ -21,6 +21,8 @@ import { usePrintStore } from '../../stores/usePrintStore';
 import { PixKeyType } from '../../types/enums';
 import { generatePixPayload, generateQRCodeMatrix } from '../../lib/pix';
 import { formatBRL } from '../../lib/formatters';
+import { isSupabaseConfigured } from '../../lib/supabase';
+import { PrintBridgeStatus, DigitalMenuLinkCard } from './PrintBridgeStatus';
 
 type SettingsTab = 'pix' | 'printers' | 'queue' | 'store';
 
@@ -34,6 +36,7 @@ export const SettingsView: React.FC = () => {
     simulateBlackoutRecovery,
     formatTicketText,
     enqueuePrintJob,
+    sendTestPrint,
   } = usePrintStore();
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('pix');
@@ -101,7 +104,14 @@ export const SettingsView: React.FC = () => {
     }
   };
 
+  const requestTestPrint = async (sector: 'GRILL' | 'KITCHEN' | 'NONE', label: string) => {
+    await sendTestPrint(sector);
+    setSaveFeedback(`Cupom de teste enviado para ${label}. Confira a impressora e o status na aba Fila.`);
+    setTimeout(() => setSaveFeedback(null), 5000);
+  };
+
   const handlePrintTestGrill = () => {
+    if (isSupabaseConfigured) { void requestTestPrint('GRILL', 'a churrasqueira'); return; }
     const { job } = enqueuePrintJob({
       order_id: 'test-grill-01',
       order_number: 901,
@@ -118,6 +128,7 @@ export const SettingsView: React.FC = () => {
   };
 
   const handlePrintTestKitchen = () => {
+    if (isSupabaseConfigured) { void requestTestPrint('KITCHEN', 'a cozinha'); return; }
     const { job } = enqueuePrintJob({
       order_id: 'test-kitchen-01',
       order_number: 902,
@@ -308,6 +319,8 @@ export const SettingsView: React.FC = () => {
       {/* ABA 2: IMPRESSORAS & SETORIZAÇÃO */}
       {activeTab === 'printers' && (
         <div className="space-y-6">
+          <PrintBridgeStatus jobs={jobs} />
+          <DigitalMenuLinkCard />
           <div className="card space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
               <div>
@@ -428,6 +441,7 @@ export const SettingsView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
+                    if (isSupabaseConfigured) { void requestTestPrint('NONE', 'o caixa/expedição'); return; }
                     const { job } = enqueuePrintJob({
                       order_id: 'test-cashier-01',
                       order_number: 903,
@@ -472,7 +486,7 @@ export const SettingsView: React.FC = () => {
               <span className="badge-success text-xs font-semibold">Impressos: {printedCount}</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
+              {!isSupabaseConfigured && <button
                 type="button"
                 onClick={simulateBlackoutRecovery}
                 className="btn-secondary text-xs text-rose-700"
@@ -480,7 +494,7 @@ export const SettingsView: React.FC = () => {
               >
                 <PowerOff className="h-3.5 w-3.5" />
                 Simular Queda de Energia
-              </button>
+              </button>}
               <button
                 type="button"
                 onClick={clearPrintedJobs}

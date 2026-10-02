@@ -8,7 +8,19 @@ import { realtimeService } from '../lib/realtime';
 import { audioService } from '../lib/audio';
 import { logger } from '../lib/logger';
 import { usePrintStore } from './usePrintStore';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { callRpc } from '../lib/remote';
+import { computeTabTotals, fromCents, sumMoney, toCents } from '../lib/utils';
+import { useAuthStore } from './useAuthStore';
+
+/**
+ * Decide se um evento remoto deve ser descartado por ser mais antigo que o
+ * estado local. Usa o contador `version` (incrementado pelo banco a cada
+ * UPDATE) em vez de relógios, que diferem entre aparelhos.
+ */
+function isStaleRemote(local: { version?: number } | undefined, remote: { version?: number }): boolean {
+  if (!local || local.version == null || remote.version == null) return false;
+  return local.version > remote.version;
+}
 
 interface OrderItemInput {
   productId: string;
@@ -23,6 +35,7 @@ interface TableState {
   orders: Order[];
   orderItems: OrderItem[];
   payments: Payment[];
+  conflictWarning?: string;
 
   // Ações de Negócio
   openTab: (
@@ -64,6 +77,7 @@ interface TableState {
   applyRemoteTabChange: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', tabData: Tab) => void;
   applyRemoteOrderChange: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', orderData: Order) => void;
   applyRemoteOrderItemChange: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', itemData: OrderItem) => void;
+  applyRemotePaymentChange: (eventType: 'INSERT' | 'UPDATE' | 'DELETE', paymentData: Payment) => void;
 }
 
 export const useTableStore = create<TableState>((set, get) => ({
@@ -72,6 +86,7 @@ export const useTableStore = create<TableState>((set, get) => ({
   orders: [],
   orderItems: [],
   payments: [],
+  conflictWarning: undefined,
 
   openTab: (tableId, customerName, peopleCount, notes, userId, shiftId) => {
     const table = get().tables.find((t) => t.id === tableId);
@@ -81,6 +96,7 @@ export const useTableStore = create<TableState>((set, get) => ({
     const existingTab = get().tabs.find((tab) => tab.table_id === tableId && tab.status === 'OPEN');
     if (existingTab) throw new Error(`A Mesa ${table.number} já possui uma comanda aberta.`);
 
+    const now = new Date().toISOString();
     const newTab: Tab = {
       id: generateId(),
       shift_id: shiftId,
@@ -92,11 +108,15 @@ export const useTableStore = create<TableState>((set, get) => ({
       closed_by: null,
       subtotal: 0,
       service_fee: 0,
+      service_fee_enabled: true,
       discount: 0,
       total: 0,
       notes: notes || null,
-      opened_at: new Date().toISOString(),
+      opened_at: now,
       closed_at: null,
+      updated_at: now,
+      updated_by: userId,
+      version: 1,
     };
 
     set({
@@ -104,29 +124,14 @@ export const useTableStore = create<TableState>((set, get) => ({
       tables: get().tables.map((t) => (t.id === tableId ? { ...t, status: 'OCUPADA', current_tab: newTab } : t)),
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('tabs').insert({
-        id: newTab.id,
-        shift_id: newTab.shift_id,
-        table_id: newTab.table_id,
-        customer_name: newTab.customer_name,
-        people_count: newTab.people_count,
-        status: 'OPEN',
-        opened_by: newTab.opened_by,
-        subtotal: newTab.subtotal,
-        service_fee: newTab.service_fee,
-        discount: newTab.discount,
-        total: newTab.total,
-        notes: newTab.notes,
-        opened_at: newTab.opened_at,
-      }).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao persistir comanda no Supabase', error });
-      });
-
-      supabase.from('restaurant_tables').update({ status: 'OCUPADA' }).eq('id', tableId).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar mesa no Supabase', error });
-      });
-    }
+    void callRpc('open_tab_atomic', {
+      p_tab_id: newTab.id,
+      p_shift_id: shiftId,
+      p_table_id: tableId,
+      p_customer_name: newTab.customer_name,
+      p_people_count: newTab.people_count,
+      p_notes: newTab.notes,
+    }, 'TableStore');
 
     logger.info({
       context: 'TableStore',
@@ -151,16 +156,17 @@ export const useTableStore = create<TableState>((set, get) => ({
       quantity: i.quantity,
     }));
 
+    const now = new Date().toISOString();
     const orderId = generateId();
 
     // EXECUTA BAIXA ATÔMICA NO ESTOQUE (Se faltar 1 item, falha tudo e não cria pedido!)
     useStockStore.getState().consumeStockAtomic(shiftId, itemsToConsume, userId, orderId);
 
     // Cria os OrderItems
-    let orderSubtotal = 0;
+    let orderSubtotalCents = 0;
     const newItems: OrderItem[] = items.map((i) => {
       const prod = products.find((p) => p.id === i.productId)!;
-      orderSubtotal += prod.price * i.quantity;
+      orderSubtotalCents += toCents(prod.price) * i.quantity;
 
       return {
         id: generateId(),
@@ -174,9 +180,12 @@ export const useTableStore = create<TableState>((set, get) => ({
         notes: i.notes ?? null,
         sector: prod.sector,
         status: 'RECEIVED',
-        created_at: new Date().toISOString(),
+        created_at: now,
         prepared_at: null,
         delivered_at: null,
+        updated_at: now,
+        updated_by: userId,
+        version: 1,
       };
     });
 
@@ -185,25 +194,32 @@ export const useTableStore = create<TableState>((set, get) => ({
       shift_id: shiftId,
       tab_id: tabId,
       table_id: table.id,
-      order_number: get().orders.length + 1,
+      // Número provisório; o definitivo vem da sequência do banco (retorno da RPC)
+      order_number: get().orders.reduce((max, o) => Math.max(max, o.order_number), 0) + 1,
       status: 'CONFIRMED',
       notes: notes ?? null,
       idempotency_key: generateId(),
       created_by: userId,
-      created_at: new Date().toISOString(),
+      created_at: now,
+      updated_at: now,
+      updated_by: userId,
+      version: 1,
       items: newItems,
     };
 
     // Atualiza saldo da comanda
-    const newSubtotal = tab.subtotal + orderSubtotal;
-    const newServiceFee = Math.round(newSubtotal * 0.1 * 100) / 100; // 10%
-    const newTotal = newSubtotal + newServiceFee - tab.discount;
+    const totals = computeTabTotals(
+      fromCents(toCents(tab.subtotal) + orderSubtotalCents),
+      tab.service_fee_enabled !== false,
+      tab.discount
+    );
 
     const updatedTab: Tab = {
       ...tab,
-      subtotal: newSubtotal,
-      service_fee: newServiceFee,
-      total: newTotal,
+      ...totals,
+      updated_at: now,
+      updated_by: userId,
+      version: (tab.version || 0) + 1,
     };
 
     set({
@@ -212,48 +228,27 @@ export const useTableStore = create<TableState>((set, get) => ({
       tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('orders').insert({
-        id: newOrder.id,
-        shift_id: newOrder.shift_id,
-        tab_id: newOrder.tab_id,
-        table_id: newOrder.table_id,
-        order_number: newOrder.order_number,
-        status: 'CONFIRMED',
-        notes: newOrder.notes,
-        idempotency_key: newOrder.idempotency_key,
-        created_by: newOrder.created_by,
-        created_at: newOrder.created_at,
-      }).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao persistir pedido no Supabase', error });
-      });
-
-      const dbItems = newItems.map((item) => ({
+    // Transação única no banco: pedido + itens + baixa de estoque com lock + totais
+    void callRpc<{ order_id: string; order_number: number }>('create_order_atomic', {
+      p_order_id: newOrder.id,
+      p_shift_id: shiftId,
+      p_tab_id: tabId,
+      p_items: newItems.map((item) => ({
         id: item.id,
-        order_id: item.order_id,
-        shift_id: item.shift_id,
         product_id: item.product_id,
-        product_name: item.product_name,
-        unit_price: item.unit_price,
         quantity: item.quantity,
         doneness: item.doneness,
         notes: item.notes,
-        sector: item.sector,
-        status: item.status,
-        created_at: item.created_at,
-      }));
-      supabase.from('order_items').insert(dbItems).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao persistir itens no Supabase', error });
-      });
-
-      supabase.from('tabs').update({
-        subtotal: updatedTab.subtotal,
-        service_fee: updatedTab.service_fee,
-        total: updatedTab.total,
-      }).eq('id', tabId).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar comanda no Supabase', error });
-      });
-    }
+      })),
+      p_idempotency_key: newOrder.idempotency_key,
+      p_notes: newOrder.notes,
+    }, 'TableStore').then((result) => {
+      if (result && result.order_number !== newOrder.order_number) {
+        set({
+          orders: get().orders.map((o) => (o.id === result.order_id ? { ...o, order_number: result.order_number } : o)),
+        });
+      }
+    });
 
     // Transmite via WebSocket para o KDS da Churrasqueira e Cozinha
     const grillItems = newItems.filter((i) => i.sector === 'GRILL');
@@ -370,6 +365,8 @@ export const useTableStore = create<TableState>((set, get) => ({
     if (!item) throw new Error('Item não encontrado.');
     if (item.status === 'CANCELLED') throw new Error('Item já cancelado.');
 
+    const now = new Date().toISOString();
+
     // Executa cancelamento com regra condicional de devolução
     useStockStore
       .getState()
@@ -384,49 +381,34 @@ export const useTableStore = create<TableState>((set, get) => ({
       );
 
     const updatedItems = get().orderItems.map((i) =>
-      i.id === orderItemId ? { ...i, status: 'CANCELLED' as const } : i
+      i.id === orderItemId ? { ...i, status: 'CANCELLED' as const, updated_at: now, updated_by: userId, version: (i.version || 0) + 1 } : i
     );
 
     // Recalcula totais da comanda
     const order = get().orders.find((o) => o.id === item.order_id);
+    void callRpc('cancel_order_item_atomic', { p_order_item_id: orderItemId, p_reason: reason }, 'TableStore');
+
     if (order) {
       const tab = get().tabs.find((t) => t.id === order.tab_id);
       if (tab) {
-        const itemDeduction = item.unit_price * item.quantity;
-        const newSubtotal = Math.max(0, tab.subtotal - itemDeduction);
-        const newServiceFee = Math.round(newSubtotal * 0.1 * 100) / 100;
-        const newTotal = Math.max(0, newSubtotal + newServiceFee - tab.discount);
+        const deductionCents = toCents(item.unit_price) * item.quantity;
+        const totals = computeTabTotals(
+          fromCents(Math.max(0, toCents(tab.subtotal) - deductionCents)),
+          tab.service_fee_enabled !== false,
+          tab.discount
+        );
 
         set({
           orderItems: updatedItems,
           tabs: get().tabs.map((t) =>
-            t.id === tab.id ? { ...t, subtotal: newSubtotal, service_fee: newServiceFee, total: newTotal } : t
+            t.id === tab.id ? { ...t, ...totals, updated_at: now, updated_by: userId, version: (t.version || 0) + 1 } : t
           ),
         });
-
-        if (isSupabaseConfigured) {
-          supabase.from('order_items').update({ status: 'CANCELLED' }).eq('id', orderItemId).then(({ error }) => {
-            if (error) logger.error({ context: 'TableStore', message: 'Erro ao cancelar item no Supabase', error });
-          });
-          supabase.from('tabs').update({
-            subtotal: newSubtotal,
-            service_fee: newServiceFee,
-            total: newTotal,
-          }).eq('id', tab.id).then(({ error }) => {
-            if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar totais da comanda no Supabase', error });
-          });
-        }
         return;
       }
     }
 
     set({ orderItems: updatedItems });
-
-    if (isSupabaseConfigured) {
-      supabase.from('order_items').update({ status: 'CANCELLED' }).eq('id', orderItemId).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao cancelar item no Supabase', error });
-      });
-    }
   },
 
   updateOrderItemStatus: (orderItemId, status) => {
@@ -439,6 +421,9 @@ export const useTableStore = create<TableState>((set, get) => ({
       status,
       prepared_at: status === 'READY' ? now : item.prepared_at,
       delivered_at: status === 'DELIVERED' ? now : item.delivered_at,
+      updated_at: now,
+      updated_by: item.updated_by,
+      version: (item.version || 0) + 1,
     };
 
     const newOrderItems = get().orderItems.map((i) => (i.id === orderItemId ? updatedItem : i));
@@ -470,15 +455,12 @@ export const useTableStore = create<TableState>((set, get) => ({
       orders: newOrders,
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('order_items').update({
-        status,
-        prepared_at: updatedItem.prepared_at,
-        delivered_at: updatedItem.delivered_at,
-      }).eq('id', orderItemId).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar status do item no Supabase', error });
-      });
-    }
+    // Controle otimista de concorrência: o banco recusa se a versão mudou em outro aparelho
+    void callRpc('update_order_item_status', {
+      p_order_item_id: orderItemId,
+      p_status: status,
+      p_expected_version: item.version || null,
+    }, 'TableStore');
 
     if (status === 'READY') {
       const table = get().tables.find((t) => t.id === order?.table_id);
@@ -518,17 +500,15 @@ export const useTableStore = create<TableState>((set, get) => ({
     const table = get().tables.find((t) => t.id === tableId);
     if (!table) return;
 
+    const now = new Date().toISOString();
+
     set({
       tables: get().tables.map((t) =>
-        t.id === tableId ? { ...t, status: 'AGUARDANDO_CONTA' as const } : t
+        t.id === tableId ? { ...t, status: 'AGUARDANDO_CONTA' as const, updated_at: now, updated_by: table.updated_by, version: (t.version || 0) + 1 } : t
       ),
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('restaurant_tables').update({ status: 'AGUARDANDO_CONTA' }).eq('id', tableId).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao solicitar conta no Supabase', error });
-      });
-    }
+    void callRpc('request_bill', { p_table_id: tableId }, 'TableStore');
 
     logger.info({
       context: 'TableStore',
@@ -540,31 +520,33 @@ export const useTableStore = create<TableState>((set, get) => ({
     const tab = get().tabs.find((t) => t.id === tabId);
     if (!tab) throw new Error('Comanda não encontrada.');
 
-    const subtotal = tab.subtotal;
-    const serviceFee = options.includeServiceFee ? Math.round(subtotal * 0.1 * 100) / 100 : 0;
-    const discount = Math.max(0, Math.min(subtotal + serviceFee, options.discountAmount ?? tab.discount));
-    const total = Math.max(0, subtotal + serviceFee - discount);
+    const now = new Date().toISOString();
+    const { service_fee: serviceFee, discount, total } = computeTabTotals(
+      tab.subtotal,
+      options.includeServiceFee,
+      options.discountAmount ?? tab.discount
+    );
 
     const updatedTab: Tab = {
       ...tab,
       service_fee: serviceFee,
+      service_fee_enabled: options.includeServiceFee,
       discount,
       total,
+      updated_at: now,
+      updated_by: tab.updated_by,
+      version: (tab.version || 0) + 1,
     };
 
     set({
       tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('tabs').update({
-        service_fee: serviceFee,
-        discount,
-        total,
-      }).eq('id', tabId).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao atualizar ajuste da comanda no Supabase', error });
-      });
-    }
+    void callRpc('update_tab_adjustments', {
+      p_tab_id: tabId,
+      p_service_fee_enabled: options.includeServiceFee,
+      p_discount: discount,
+    }, 'TableStore');
 
     logger.info({
       context: 'TableStore',
@@ -579,38 +561,39 @@ export const useTableStore = create<TableState>((set, get) => ({
     if (!tab) throw new Error('Comanda não encontrada.');
     if (tab.status === 'CLOSED') throw new Error('Comanda já encerrada.');
 
+    const now = new Date().toISOString();
     const newPayment: Payment = {
       id: generateId(),
       shift_id: shiftId,
       tab_id: tabId,
-      amount: Math.round(amount * 100) / 100,
+      amount: fromCents(toCents(amount)),
       method,
       status: 'PAID',
       external_reference: null,
       notes: notes ?? null,
       received_by: receivedBy,
-      paid_at: new Date().toISOString(),
+      paid_at: now,
+    };
+
+    const updatedTab: Tab = {
+      ...tab,
+      updated_at: now,
+      updated_by: receivedBy,
+      version: (tab.version || 0) + 1,
     };
 
     set({
       payments: [...get().payments, newPayment],
+      tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('payments').insert({
-        id: newPayment.id,
-        shift_id: newPayment.shift_id,
-        tab_id: newPayment.tab_id,
-        amount: newPayment.amount,
-        method: newPayment.method,
-        status: newPayment.status,
-        received_by: newPayment.received_by,
-        notes: newPayment.notes,
-        paid_at: newPayment.paid_at,
-      }).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao registrar pagamento no Supabase', error });
-      });
-    }
+    void callRpc('add_payment_atomic', {
+      p_payment_id: newPayment.id,
+      p_tab_id: tabId,
+      p_amount: newPayment.amount,
+      p_method: method,
+      p_notes: newPayment.notes,
+    }, 'TableStore');
 
     logger.info({
       context: 'TableStore',
@@ -633,6 +616,8 @@ export const useTableStore = create<TableState>((set, get) => ({
       payments: get().payments.filter((p) => p.id !== paymentId),
     });
 
+    void callRpc('cancel_payment', { p_payment_id: paymentId, p_reason: 'Removido pelo caixa' }, 'TableStore');
+
     logger.info({
       context: 'TableStore',
       message: `Pagamento #${paymentId} de R$ ${payment.amount.toFixed(2)} removido.`,
@@ -649,11 +634,11 @@ export const useTableStore = create<TableState>((set, get) => ({
     if (tab.status === 'CLOSED') throw new Error('Esta comanda já foi encerrada anteriormente.');
 
     const tabPayments = get().payments.filter((p) => p.tab_id === tabId && p.status === 'PAID');
-    const totalPaid = tabPayments.reduce((sum, p) => sum + p.amount, 0);
+    const totalPaid = sumMoney(tabPayments.map((p) => p.amount));
 
-    // Validação estrita: total pago deve ser maior ou igual ao total devido (tolerância 0.01 por centavos)
-    if (totalPaid < tab.total - 0.01) {
-      const missing = tab.total - totalPaid;
+    // Validação estrita em centavos: total pago deve ser maior ou igual ao total devido
+    if (toCents(totalPaid) < toCents(tab.total)) {
+      const missing = fromCents(toCents(tab.total) - toCents(totalPaid));
       throw new Error(
         `Pagamento insuficiente. Total devido: R$ ${tab.total.toFixed(2)}, Total pago: R$ ${totalPaid.toFixed(2)}. Faltam R$ ${missing.toFixed(2)}.`
       );
@@ -665,16 +650,19 @@ export const useTableStore = create<TableState>((set, get) => ({
       status: 'CLOSED',
       closed_by: userId,
       closed_at: now,
+      updated_at: now,
+      updated_by: userId,
+      version: (tab.version || 0) + 1,
     };
 
     // Atualiza comanda, desocupa mesa e fecha pedidos da comanda
     const table = get().tables.find((t) => t.id === tab.table_id);
     const updatedTables = get().tables.map((t) =>
-      t.id === tab.table_id ? { ...t, status: 'LIVRE' as const, current_tab: undefined } : t
+      t.id === tab.table_id ? { ...t, status: 'LIVRE' as const, current_tab: undefined, updated_at: now, updated_by: t.updated_by, version: (t.version || 0) + 1 } : t
     );
 
     const updatedOrders = get().orders.map((o) =>
-      o.tab_id === tabId ? { ...o, status: 'CLOSED' as const } : o
+      o.tab_id === tabId ? { ...o, status: 'CLOSED' as const, updated_at: now, updated_by: userId, version: (o.version || 0) + 1 } : o
     );
 
     set({
@@ -683,23 +671,7 @@ export const useTableStore = create<TableState>((set, get) => ({
       orders: updatedOrders,
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('tabs').update({
-        status: 'CLOSED',
-        closed_by: userId,
-        closed_at: now,
-      }).eq('id', tabId).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao fechar comanda no Supabase', error });
-      });
-
-      supabase.from('restaurant_tables').update({ status: 'LIVRE' }).eq('id', tab.table_id).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao liberar mesa no Supabase', error });
-      });
-
-      supabase.from('orders').update({ status: 'CLOSED' }).eq('tab_id', tabId).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao fechar pedidos no Supabase', error });
-      });
-    }
+    void callRpc('close_tab_atomic', { p_tab_id: tabId }, 'TableStore');
 
     const items = get().getTabOrderItems(tabId);
 
@@ -719,12 +691,24 @@ export const useTableStore = create<TableState>((set, get) => ({
     const tab = get().tabs.find((t) => t.id === tabId);
     if (!tab) throw new Error('Comanda não encontrada.');
     if (tab.status !== 'CLOSED') throw new Error('Apenas comandas fechadas podem ser reabertas.');
+    if (!reason.trim()) throw new Error('Informe o motivo da reabertura.');
+    const role = useAuthStore.getState().currentProfile.role;
+    if (role !== 'MASTER' && role !== 'GERENTE') {
+      throw new Error('Somente gerência pode reabrir comandas.');
+    }
+    if (get().tabs.some((t) => t.table_id === tab.table_id && t.status === 'OPEN')) {
+      throw new Error('A mesa já possui outra comanda aberta.');
+    }
 
+    const now = new Date().toISOString();
     const updatedTab: Tab = {
       ...tab,
       status: 'OPEN',
       closed_by: null,
       closed_at: null,
+      updated_at: now,
+      updated_by: userId,
+      version: (tab.version || 0) + 1,
     };
 
     const table = get().tables.find((t) => t.id === tab.table_id);
@@ -737,19 +721,7 @@ export const useTableStore = create<TableState>((set, get) => ({
       tables: updatedTables,
     });
 
-    if (isSupabaseConfigured) {
-      supabase.from('tabs').update({
-        status: 'OPEN',
-        closed_by: null,
-        closed_at: null,
-      }).eq('id', tabId).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao reabrir comanda no Supabase', error });
-      });
-
-      supabase.from('restaurant_tables').update({ status: 'OCUPADA' }).eq('id', tab.table_id).then(({ error }) => {
-        if (error) logger.error({ context: 'TableStore', message: 'Erro ao reocupar mesa no Supabase', error });
-      });
-    }
+    void callRpc('reopen_tab_atomic', { p_tab_id: tabId, p_reason: reason }, 'TableStore');
 
     logger.warn({
       context: 'TableStore',
@@ -769,6 +741,19 @@ export const useTableStore = create<TableState>((set, get) => ({
 
   // Sincronização em Tempo Real (Multi-dispositivos)
   applyRemoteTableUpdate: (tableData) => {
+    const localTable = get().tables.find((t) => t.id === tableData.id || (tableData.number !== undefined && t.number === tableData.number));
+    if (localTable) {
+      if (isStaleRemote(localTable, tableData)) {
+        const tableNumber = tableData.number ?? localTable.number;
+        logger.warn({
+          context: 'TableStore',
+          message: `Conflito detectado ao atualizar Mesa ${tableNumber}. Alteração local é mais recente; mantendo estado local.`,
+        });
+        set({ conflictWarning: `Conflito na Mesa ${tableNumber}: sua alteração foi mantida.` });
+        return;
+      }
+    }
+
     set({
       tables: get().tables.map((t) =>
         t.id === tableData.id || (tableData.number !== undefined && t.number === tableData.number)
@@ -790,6 +775,20 @@ export const useTableStore = create<TableState>((set, get) => ({
         ),
       });
       return;
+    }
+
+    const localTab = tabs.find((t) => t.id === tabData.id);
+    {
+      if (isStaleRemote(localTab, tabData)) {
+        const table = tables.find((t) => t.id === tabData.table_id || t.current_tab?.id === tabData.id);
+        const tableNumber = table?.number ?? '?';
+        logger.warn({
+          context: 'TableStore',
+          message: `Conflito detectado na Comanda da Mesa ${tableNumber}. Alteração local é mais recente; mantendo estado local.`,
+        });
+        set({ conflictWarning: `Conflito na Comanda da Mesa ${tableNumber}: sua alteração foi mantida.` });
+        return;
+      }
     }
 
     const existingIndex = tabs.findIndex((t) => t.id === tabData.id);
@@ -823,6 +822,19 @@ export const useTableStore = create<TableState>((set, get) => ({
       set({ orders: orders.filter((o) => o.id !== orderData.id) });
       return;
     }
+
+    const localOrder = orders.find((o) => o.id === orderData.id);
+    {
+      if (isStaleRemote(localOrder, orderData)) {
+        logger.warn({
+          context: 'TableStore',
+          message: `Conflito detectado no Pedido #${orderData.order_number}. Alteração local é mais recente; mantendo estado local.`,
+        });
+        set({ conflictWarning: `Conflito no Pedido #${orderData.order_number}: sua alteração foi mantida.` });
+        return;
+      }
+    }
+
     const exists = orders.some((o) => o.id === orderData.id);
     if (exists) {
       set({ orders: orders.map((o) => (o.id === orderData.id ? { ...o, ...orderData } : o)) });
@@ -837,6 +849,21 @@ export const useTableStore = create<TableState>((set, get) => ({
       set({ orderItems: orderItems.filter((i) => i.id !== itemData.id) });
       return;
     }
+
+    const localItem = orderItems.find((i) => i.id === itemData.id);
+    {
+      if (isStaleRemote(localItem, itemData)) {
+        const order = orders.find((o) => o.id === itemData.order_id);
+        const orderNumber = order?.order_number ?? '?';
+        logger.warn({
+          context: 'TableStore',
+          message: `Conflito detectado no Item do Pedido #${orderNumber}. Alteração local é mais recente; mantendo estado local.`,
+        });
+        set({ conflictWarning: `Conflito no Item do Pedido #${orderNumber}: sua alteração foi mantida.` });
+        return;
+      }
+    }
+
     const exists = orderItems.some((i) => i.id === itemData.id);
     let newItems: OrderItem[];
     if (exists) {
@@ -857,11 +884,26 @@ export const useTableStore = create<TableState>((set, get) => ({
           newOrderStatus = 'READY';
         } else if (siblings.some((i) => i.status === 'IN_PREPARATION' || i.status === 'READY')) {
           newOrderStatus = 'IN_PREPARATION';
+        } else if (siblings.some((i) => i.status === 'RECEIVED')) {
+          newOrderStatus = 'CONFIRMED';
         }
-        newOrders = orders.map((o) => (o.id === order.id ? { ...o, status: newOrderStatus } : o));
+
+        if (newOrderStatus !== order.status) {
+          newOrders = orders.map((o) => (o.id === order.id ? { ...o, status: newOrderStatus } : o));
+        }
       }
     }
 
     set({ orderItems: newItems, orders: newOrders });
+  },
+
+  applyRemotePaymentChange: (eventType, paymentData) => {
+    const others = get().payments.filter((p) => p.id !== paymentData.id);
+    // Pagamentos cancelados/estornados saem da lista local
+    if (eventType === 'DELETE' || paymentData.status !== 'PAID') {
+      set({ payments: others });
+      return;
+    }
+    set({ payments: [...others, { ...paymentData, amount: Number(paymentData.amount) }] });
   },
 }));

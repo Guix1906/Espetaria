@@ -13,7 +13,7 @@ const stock: DailyPrepStock = {
   id: 'stock-ui', shift_id: 'shift-ui', product_id: product.id, cubas_count: 0, portions_per_cuba: 1,
   initial_quantity: 10, current_quantity: 5, reserved_quantity: 0, consumed_quantity: 5, discarded_quantity: 0,
   adjusted_quantity: 0, last_counted_quantity: null, count_difference: null, is_exhausted: false,
-  exhausted_at: null, exhausted_by: null, exhaust_reason: null, created_at: product.created_at, updated_at: product.updated_at,
+  exhausted_at: null, exhausted_by: null, exhaust_reason: null, created_at: product.created_at, updated_at: product.updated_at, updated_by: null, version: 1,
 };
 
 describe('Consistent catalog availability', () => {

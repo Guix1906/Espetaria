@@ -24,7 +24,8 @@ const categories = [
   { id: 'SOBREMESA', label: 'Sobremesas', icon: CakeSlice },
 ] as const;
 
-export function DeliveryCatalogView() {
+/** publicMode: versão do cliente (link do WhatsApp), sem ações administrativas. */
+export function DeliveryCatalogView({ publicMode = false }: { publicMode?: boolean } = {}) {
   const { products, dailyPrepStock } = useStockStore();
   const { cart, addToCart, activeTrackingOrder } = useDeliveryStore();
   const { currentShift } = useShiftStore();
@@ -81,7 +82,7 @@ export function DeliveryCatalogView() {
         </div>
         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           <SearchField value={searchQuery} onChange={setSearchQuery} label="Buscar no cardápio digital" placeholder="O que você quer comer hoje?" className="w-full sm:w-72" />
-          <button
+          {!publicMode && <button
             type="button"
             onClick={() => setIsNewProductModalOpen(true)}
             className="btn-secondary shrink-0 text-xs py-2.5 px-3"
@@ -89,7 +90,7 @@ export function DeliveryCatalogView() {
           >
             <PackagePlus className="h-4 w-4 text-brand-700" />
             <span className="hidden sm:inline">Novo Produto</span>
-          </button>
+          </button>}
         </div>
       </div>
       <div className="filter-bar" aria-label="Categorias do cardápio digital">{categories.map(({ id, label, icon: Icon }) => <FilterChip key={id} active={selectedCategory === id} onClick={() => setSelectedCategory(id)}><Icon className="h-4 w-4" aria-hidden="true" />{label}</FilterChip>)}</div>
@@ -111,7 +112,7 @@ export function DeliveryCatalogView() {
       <WaiterDonenessModal product={productForDoneness} isOpen={!!productForDoneness} onClose={() => setProductForDoneness(null)} onConfirm={handleConfirmDoneness} />
       <DeliveryCartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} onOrderPlaced={() => { setIsCartOpen(false); setIsTrackingOpen(true); }} />
       {activeTrackingOrder && <DeliveryTrackingModal order={activeTrackingOrder} isOpen={isTrackingOpen} onClose={() => setIsTrackingOpen(false)} />}
-      <ProductFormModal isOpen={isNewProductModalOpen} onClose={() => setIsNewProductModalOpen(false)} />
+      {!publicMode && <ProductFormModal isOpen={isNewProductModalOpen} onClose={() => setIsNewProductModalOpen(false)} />}
     </div>
   );
 }

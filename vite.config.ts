@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -28,10 +29,23 @@ export default defineConfig({
   ],
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
   server: { 
-    port: 3000, 
+    port: 3002, 
+    strictPort: true,
     host: true,
     watch: {
       ignored: ['**/.interface-work/**', '**/browser-profile/**']
     }
+  },
+  test: {
+    // Nunca usar o Supabase real (.env) durante os testes
+    env: {
+      VITE_SUPABASE_URL: '',
+      VITE_SUPABASE_ANON_KEY: '',
+    },
+  },
+  preview: {
+    port: 3002,
+    strictPort: true,
+    host: true,
   },
 });

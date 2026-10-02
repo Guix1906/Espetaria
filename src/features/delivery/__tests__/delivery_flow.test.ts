@@ -94,6 +94,8 @@ describe('ETAPA 6: Delivery Próprio & Cardápio Digital', () => {
           exhaust_reason: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          updated_by: null,
+          version: 1,
         },
         {
           id: 'stock-coca-01',
@@ -115,6 +117,8 @@ describe('ETAPA 6: Delivery Próprio & Cardápio Digital', () => {
           exhaust_reason: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          updated_by: null,
+          version: 1,
         },
       ],
       stockMovements: [],
@@ -136,6 +140,8 @@ describe('ETAPA 6: Delivery Próprio & Cardápio Digital', () => {
         cash_drawer_end: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        updated_by: null,
+        version: 1,
       },
     });
 

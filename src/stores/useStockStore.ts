@@ -6,7 +6,7 @@ import { generateId } from '../lib/utils';
 import { logger } from '../lib/logger';
 
 import { realtimeService } from '../lib/realtime';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { callRpc } from '../lib/remote';
 
 export interface PrepItemInput {
   productId: string;
@@ -87,7 +87,8 @@ interface StockState {
     productId: string,
     isExhausted: boolean,
     userId: string,
-    reason?: string
+    reason?: string,
+    fromRemote?: boolean
   ) => void;
   cancelOrderItemStockAtomic: (
     shiftId: string,
@@ -171,6 +172,8 @@ export const useStockStore = create<StockState>((set, get) => ({
         exhaust_reason: null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        updated_by: resolvedOptions.userId || 'sistema',
+        version: 1,
         product: newProduct,
       };
 
@@ -297,6 +300,8 @@ export const useStockStore = create<StockState>((set, get) => ({
           exhaust_reason: null,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
+          updated_by: userId,
+          version: 1,
           product: product,
         };
 
@@ -421,7 +426,7 @@ export const useStockStore = create<StockState>((set, get) => ({
     });
   },
 
-  toggleExhaustProduct: (shiftId, productId, isExhausted, userId, reason) => {
+  toggleExhaustProduct: (shiftId, productId, isExhausted, userId, reason, fromRemote = false) => {
     const dailyPrepList = [...get().dailyPrepStock];
     const updatedProducts = [...get().products];
     const prod = updatedProducts.find((p) => p.id === productId);
@@ -450,20 +455,15 @@ export const useStockStore = create<StockState>((set, get) => ({
       products: updatedProducts,
     });
 
-    if (isSupabaseConfigured) {
-      supabase
-        .from('daily_prep_stock')
-        .update({
-          is_exhausted: isExhausted,
-          exhausted_at: isExhausted ? new Date().toISOString() : null,
-          exhausted_by: isExhausted ? userId : null,
-          exhaust_reason: isExhausted ? reason || null : null,
-        })
-        .match({ shift_id: shiftId, product_id: productId })
-        .then(({ error }) => {
-          if (error) logger.error({ context: 'StockStore', message: 'Erro ao atualizar esgotamento no Supabase', error });
-        });
-    }
+    // Evento recebido de outro aparelho: só aplica localmente (evita eco/loop)
+    if (fromRemote) return;
+
+    void callRpc('toggle_exhaustion', {
+      p_shift_id: shiftId,
+      p_product_id: productId,
+      p_is_exhausted: isExhausted,
+      p_reason: reason ?? null,
+    }, 'StockStore');
 
     // Transmite via WebSocket em tempo real (< 100ms)
     realtimeService.broadcastExhaustion(shiftId, productId, isExhausted, reason);
@@ -613,6 +613,13 @@ export const useStockStore = create<StockState>((set, get) => ({
       products: updatedProducts,
       stockMovements: [mov, ...get().stockMovements],
     });
+
+    void callRpc('adjust_stock', {
+      p_shift_id: shiftId,
+      p_product_id: productId,
+      p_physical_count: physicalCount,
+      p_reason: reason,
+    }, 'StockStore');
   },
 
   getProductDailyStock: (productId: string) => {
