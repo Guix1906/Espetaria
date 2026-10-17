@@ -111,7 +111,7 @@ function autoGrouping(data: FinanceDataset): CashFlowGrouping {
   const days = Math.round((new Date(data.to).getTime() - new Date(data.from).getTime()) / 86_400_000) + 1;
   return days > 400 ? 'year' : days > 62 ? 'month' : days > 31 ? 'week' : 'day';
 }
-function Overview({ data }: { data: FinanceDataset }) {
+export function Overview({ data }: { data: FinanceDataset }) {
   const [grouping, setGrouping] = useGrouping(data);
   const [showForecast, setShowForecast] = useState(false);
   const today = todayISO();
@@ -155,7 +155,7 @@ function Overview({ data }: { data: FinanceDataset }) {
   );
 }
 
-function CashFlow({ data, reload }: { data: FinanceDataset; reload: () => void }) {
+export function CashFlow({ data, reload }: { data: FinanceDataset; reload: () => void }) {
   const [grouping, setGrouping] = useGrouping(data);
   const [showForecast, setShowForecast] = useState(false);
   const [editingEntry, setEditingEntry] = useState<import('../../lib/financeData').FinanceEntry | null>(null);

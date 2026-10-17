@@ -1,8 +1,9 @@
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import type { ApexOptions } from 'apexcharts';
 
 // ApexCharts é pesado: só carrega quando uma tela com gráfico abre
-const ReactApexChart = lazy(() => import('react-apexcharts'));
+import { lazyWithReload } from '../../lib/lazyWithReload';
+const ReactApexChart = lazyWithReload(() => import('react-apexcharts'));
 
 /** Cores do financeiro: barras escuras = realizado, barras claras = previsto. */
 export const CHART_COLORS = {
