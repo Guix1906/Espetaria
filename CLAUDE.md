@@ -78,7 +78,8 @@ Antes de pedir qualquer chave, procurar nos lugares abaixo e verificar o login. 
   `PRINTER_KITCHEN`, `PRINTER_BAR`, `PRINTER_CASHIER`, `PAPER_COLUMNS`, `RESTAURANT_NAME`, `BEEP_ON_ORDER`,
   `PRINT_TIMEOUT_MS`, `POLL_INTERVAL_MS`, `OUTPUT_DIR`, `WORKER_NAME`, `PORT` (modelo em `printer-bridge/.env.example`).
 - **.env.demo** (raiz): `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — usado só pelo modo demonstração (`--mode demo`).
-- **GitHub**: `gh` logado na conta `Guix1906` (verificar `gh auth status`). A pasta não usa Git hoje.
+- **GitHub**: `gh` logado na conta `Guix1906` (verificar `gh auth status`). Repositório: **https://github.com/Guix1906/Espetaria**
+  (público, branch `main`, remoto `origin` em `Espetaria-main/`). Para subir: `git add -A; git commit -m "..."; git push`.
 - `.gitignore` cobre `.env*`, `.vercel` e `printer-bridge/.env`; `.vercelignore` impede enviar `.env*`, `supabase/` e `printer-bridge/`.
 
 ## Ferramentas
@@ -102,7 +103,7 @@ Vercel e Supabase CLI rodam via `npx` (`npx vercel@latest`, `npx supabase`).
 - Arquivos têm mistura de quebras de linha LF/CRLF; considerar isso em substituições de texto.
 
 ## Situação em 11/10/2026
-- Produção: projeto Vercel `espetaria`, endereço atual **https://sabordacarne.vercel.app** (o antigo espetaria-red também aponta para ele). A pasta NÃO tem Git: deploy é pela CLI.
+- Produção: projeto Vercel `espetaria`, endereço atual **https://sabordacarne.vercel.app** (o antigo espetaria-red também aponta para ele). Código no GitHub (https://github.com/Guix1906/Espetaria); deploy continua pela CLI da Vercel.
 - Migrações 00001–00025 aplicadas no banco de produção (00024 e 00025 rodadas pelo dono em 11/10).
   00028 (12/10, inclui o que 00026/00027 fazem) precisa ser rodada ANTES de publicar o site novo.
   00031 (15/10, espeto com acompanhamento baixa espeto + arroz) rodada pelo dono em 15/10.

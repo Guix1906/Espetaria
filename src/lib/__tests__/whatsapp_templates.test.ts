@@ -63,7 +63,7 @@ describe('Mensagens automáticas de WhatsApp', () => {
   });
 
   it('textos padrão do app e da função de envio são iguais', () => {
-    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/whatsapp-dispatch/templates.ts'), 'utf8');
+    const fn = readFileSync(resolve(__dirname, '../../../supabase/functions/whatsapp-dispatch/templates.ts'), 'utf8').replace(/\r\n/g, '\n');
     for (const [event, template] of Object.entries(DEFAULT_WHATSAPP_TEMPLATES)) {
       // No código-fonte as quebras de linha aparecem como \n, igual ao JSON
       expect(fn, event).toContain(`${event}: {\n    enabled: true,\n    text: '${JSON.stringify(template.text).slice(1, -1)}'`);
