@@ -150,7 +150,7 @@ export const DeliveryZonesView: React.FC = () => {
       </div>
 
       {isAdding && (
-        <form onSubmit={handleSave} className="card space-y-4 max-w-md">
+        <form onSubmit={handleSave} className="surface-card p-4 sm:p-5 space-y-4 max-w-md">
           <h4 className="text-sm font-bold text-ink">
             {editingId ? 'Editar bairro' : 'Adicionar novo bairro'}
           </h4>
@@ -191,7 +191,7 @@ export const DeliveryZonesView: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {activeZones.map((zone) => (
-          <div key={zone.id} className="card flex items-center justify-between gap-3 border-l-4 border-l-brand-500">
+          <div key={zone.id} className="surface-card p-4 sm:p-5 flex items-center justify-between gap-3 border-l-4 border-l-brand-500">
             <div className="flex items-center gap-3 min-w-0">
               <span className="icon-tile bg-brand-100 text-brand-700 shrink-0">
                 <MapPin className="h-4 w-4" />

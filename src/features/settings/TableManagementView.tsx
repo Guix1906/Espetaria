@@ -160,7 +160,7 @@ export const TableManagementView: React.FC = () => {
 
       {/* Form */}
       {isAdding && (
-        <form onSubmit={handleSave} className="card space-y-4 max-w-md">
+        <form onSubmit={handleSave} className="surface-card p-4 sm:p-5 space-y-4 max-w-md">
           <h4 className="text-sm font-bold text-ink">
             {editingId ? 'Editar mesa' : 'Adicionar nova mesa'}
           </h4>
@@ -208,7 +208,7 @@ export const TableManagementView: React.FC = () => {
         {activeTables.map((table) => (
           <div
             key={table.id}
-            className={`card relative space-y-2 border-l-4 ${
+            className={`surface-card p-4 sm:p-5 relative space-y-2 border-l-4 ${
               table.status === 'OCUPADA'
                 ? 'border-l-amber-500 bg-amber-50/30'
                 : table.status === 'AGUARDANDO_CONTA'

@@ -67,7 +67,7 @@ export function WhatsAppBotCard() {
   const inputClass = 'w-full rounded-sm border border-line bg-surface p-3 text-sm text-ink';
 
   return (
-    <div className="card space-y-5">
+    <div className="surface-card p-4 sm:p-5 space-y-5">
       <div className="flex items-start gap-3">
         <span className="icon-tile"><Bot className="h-5 w-5" aria-hidden="true" /></span>
         <div>

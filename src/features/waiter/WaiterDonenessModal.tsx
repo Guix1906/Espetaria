@@ -19,13 +19,13 @@ interface WaiterDonenessModalProps {
 /** Só 3 pontos (os intermediários saíram do atendimento; o banco ainda aceita os antigos). */
 export const DONENESS_OPTIONS: { value: MeatDoneness; label: string; description: string; swatch: string }[] = [
   { value: 'MAL_PASSADA', label: 'Mal passada', description: 'Selada por fora, centro vermelho.', swatch: '#A3282E' },
-  { value: 'AO_PONTO', label: 'Ao ponto', description: 'Centro rosado. O padrão da casa.', swatch: '#D0673F' },
+  { value: 'AO_PONTO', label: 'Ao ponto', description: 'Centro rosado. Padrão da casa.', swatch: '#D0673F' },
   { value: 'BEM_PASSADA', label: 'Bem passada', description: 'Totalmente cozida e bem tostada.', swatch: '#5A4A42' },
 ];
 const COMMON_NOTES = ['Sem sal grosso', 'Pouco sal', 'Mais torradinho', 'Cortar em aperitivo', 'Farofa à parte'];
 
 function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { product: Product; onClose: () => void; onConfirm: WaiterDonenessModalProps['onConfirm']; maxQuantity?: number; initial?: WaiterDonenessModalProps['initial'] }) {
-  const [selectedDoneness, setSelectedDoneness] = useState<MeatDoneness>(initial?.doneness ?? 'AO_PONTO');
+  const [selectedDoneness, setSelectedDoneness] = useState<MeatDoneness | null>(initial?.doneness ?? null);
   const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [showNotes, setShowNotes] = useState(!product.allows_doneness || !!initial?.notes);
@@ -33,10 +33,13 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const noteTags = notes.split(',').map((note) => note.trim()).filter(Boolean);
   // Item antigo com ponto intermediário continua visível ao alterar
-  const options = DONENESS_OPTIONS.some((o) => o.value === selectedDoneness) ? DONENESS_OPTIONS
+  const options = !selectedDoneness || DONENESS_OPTIONS.some((o) => o.value === selectedDoneness) ? DONENESS_OPTIONS
     : [...DONENESS_OPTIONS, { value: selectedDoneness, label: formatDoneness(selectedDoneness), description: 'Ponto escolhido antes.', swatch: '#C98A1B' }];
 
+  const needsDoneness = product.allows_doneness && !selectedDoneness;
+
   const handleConfirm = () => {
+    if (needsDoneness) return;
     setErrorMessage(null);
     try {
       onConfirm(product.allows_doneness ? selectedDoneness : null, product.allows_notes ? notes.trim() : '', quantity);
@@ -89,8 +92,8 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
         </div> : <button type="button" onClick={() => setShowNotes(true)} className="min-h-[44px] text-sm font-semibold text-[#B5502F]">+ Adicionar observação</button>)}
       </div>
       <div className="shrink-0 border-t border-[#E3D9CE] px-4 pt-3" style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom))' }}>
-        <button type="button" onClick={handleConfirm} className="flex h-14 w-full items-center justify-between gap-2 rounded-lg bg-[#B5502F] px-4 text-base font-semibold text-white active:bg-[#8E3B21]">
-          <span>{isEditing ? 'Salvar alteração' : `Adicionar ${quantity} ${quantity === 1 ? 'item' : 'itens'}`}</span>
+        <button type="button" onClick={handleConfirm} disabled={needsDoneness} className="flex h-14 w-full items-center justify-between gap-2 rounded-lg bg-[#B5502F] px-4 text-base font-semibold text-white active:bg-[#8E3B21] disabled:opacity-50">
+          <span>{needsDoneness ? 'Escolha o ponto' : isEditing ? 'Salvar alteração' : `Adicionar ${quantity} ${quantity === 1 ? 'item' : 'itens'}`}</span>
           <span className="font-mono font-bold">{formatBRL(product.price * quantity)}</span>
         </button>
       </div>

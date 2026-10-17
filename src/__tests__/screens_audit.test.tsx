@@ -1,4 +1,4 @@
-﻿import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MasterDashboardView } from '../features/admin/MasterDashboardView';
@@ -265,7 +265,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
     it('3.1 ShiftOpenModal abre e renderiza campos de abertura', () => {
       const html = renderWithFeedback(<ShiftOpenModal isOpen={true} onClose={vi.fn()} />);
       expect(html).toContain('Abrir turno');
-      expect(html).toContain('Fundo de Troco');
+      expect(html).toContain('Fundo de troco');
     });
 
     it('3.2 ShiftCloseModal abre e renderiza campos de fechamento', () => {
@@ -291,7 +291,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       });
       syncStores();
       const html = renderWithFeedback(<ShiftCloseModal isOpen={true} onClose={vi.fn()} />);
-      expect(html).toContain('Fechamento do Turno');
+      expect(html).toContain('Fechamento do turno');
     });
 
     it('3.3 TableSettlementModal abre para liquidação da comanda', () => {

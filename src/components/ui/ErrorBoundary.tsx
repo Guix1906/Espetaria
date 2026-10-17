@@ -32,7 +32,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.error) return this.props.children;
     const box = (
-      <div className="card mx-auto max-w-md space-y-3 text-center" role="alert">
+      <div className="surface-card p-4 sm:p-5 mx-auto max-w-md space-y-3 text-center" role="alert">
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-sm bg-rose-50 text-rose-700"><AlertCircle className="h-6 w-6" aria-hidden="true" /></span>
         <h2 className="text-lg font-bold text-ink">Esta tela teve um problema</h2>
         <p className="text-sm text-ink-muted">Nenhum dado foi perdido. Tente abrir de novo. Se continuar, recarregue a página.</p>

@@ -5,6 +5,33 @@ import type { PrintJob } from '../../types/domain';
 
 const STALE_AFTER_MS = 60_000;
 
+export type PrinterSector = PrintJob['sector'];
+export type PrinterHealth = 'ON' | 'NO_SIGNAL' | 'NOT_SET';
+
+/** Mesmo critério do quadro geral, por setor: cupom travado ou com falha = sem sinal; nunca imprimiu = sem configuração. */
+export function sectorPrinterHealth(jobs: PrintJob[], sector: PrinterSector, now: number): PrinterHealth {
+  const mine = jobs.filter((j) => j.sector === sector);
+  const stuck = mine.some((j) => j.status === 'FAILED' || ((j.status === 'PENDING' || j.status === 'PRINTING') && now - new Date(j.created_at).getTime() > STALE_AFTER_MS));
+  if (stuck) return 'NO_SIGNAL';
+  return mine.some((j) => j.status === 'PRINTED') ? 'ON' : 'NOT_SET';
+}
+
+const HEALTH_TAG: Record<PrinterHealth, { label: string; className: string }> = {
+  ON: { label: 'Ligada', className: 'bg-emerald-600 text-white' },
+  NO_SIGNAL: { label: 'Sem sinal', className: 'bg-rose-600 text-white' },
+  NOT_SET: { label: 'Sem configuração', className: 'bg-surface-muted text-ink-secondary' },
+};
+
+export function PrinterHealthTag({ jobs, sector }: { jobs: PrintJob[]; sector: PrinterSector }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 10_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const tag = HEALTH_TAG[sectorPrinterHealth(jobs, sector, now)];
+  return <span className={`status-badge whitespace-nowrap ${tag.className}`}>{tag.label}</span>;
+}
+
 /**
  * Saúde do printer-bridge deduzida da fila: se há cupom pendente há mais de
  * 1 minuto, o PC de impressão provavelmente está desligado ou sem internet.
@@ -37,7 +64,7 @@ export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
 
   const healthy = stuck.length === 0 && failed.length === 0;
   return (
-    <div className={`card space-y-3 ${healthy ? 'border-emerald-200' : 'border-rose-200 bg-rose-50/40'}`}>
+    <div className={`surface-card space-y-3 p-4 sm:p-5 ${healthy ? '' : 'border-rose-200'}`}>
       <div className="flex items-start gap-3">
         {healthy ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-700" /> : <AlertTriangle className="h-5 w-5 shrink-0 text-rose-700" />}
         <div className="text-sm">
@@ -76,7 +103,7 @@ export function DigitalMenuLinkCard() {
   };
 
   return (
-    <div className="card space-y-3">
+    <div className="surface-card space-y-3 p-4 sm:p-5">
       <div className="flex items-center gap-2"><Link2 className="h-5 w-5 text-brand-700" /><h3 className="font-bold text-ink">Link do cardápio digital (delivery)</h3></div>
       <p className="text-xs text-ink-muted">Envie este link aos clientes ou coloque na mensagem automática / catálogo do WhatsApp. Os pedidos caem direto na churrasqueira, cozinha e expedição.</p>
       <div className="flex flex-wrap items-center gap-2">

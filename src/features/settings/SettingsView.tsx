@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Building2,
   CheckCircle2,
@@ -28,7 +28,7 @@ import { WhatsAppAutoCard } from './WhatsAppAutoCard';
 import { WhatsAppBotCard } from './WhatsAppBotCard';
 import { formatBRL } from '../../lib/formatters';
 import { isSupabaseConfigured } from '../../lib/supabase';
-import { PrintBridgeStatus, DigitalMenuLinkCard } from './PrintBridgeStatus';
+import { PrintBridgeStatus, DigitalMenuLinkCard, PrinterHealthTag } from './PrintBridgeStatus';
 
 import { PrintTemplatesEditor } from './PrintTemplatesEditor';
 import { TableManagementView } from './TableManagementView';
@@ -65,7 +65,14 @@ export const SettingsView: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<SettingsTab>('pix');
   const [copied, setCopied] = useState(false);
-  const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
+  const [saveFeedback, setSaveFeedbackState] = useState<{ scope: 'pix' | 'store' | 'printers'; message: string } | null>(null);
+  const setSaveFeedback = (scope: 'pix' | 'store' | 'printers', message: string | null, ms = 4000) => {
+    setSaveFeedbackState(message ? { scope, message } : null);
+    if (message) setTimeout(() => setSaveFeedbackState((cur) => (cur?.message === message ? null : cur)), ms);
+  };
+  const feedbackFor = (scope: 'pix' | 'store' | 'printers') => saveFeedback?.scope === scope && (
+    <p className="flex items-center gap-2 text-sm font-medium text-emerald-800" role="status"><CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />{saveFeedback.message}</p>
+  );
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
 
   // Estados locais do PIX
@@ -100,8 +107,7 @@ export const SettingsView: React.FC = () => {
       pix_merchant_name: pixMerchantName,
       pix_merchant_city: pixMerchantCity,
     });
-    setSaveFeedback('Conta PIX atualizada com sucesso! O novo QR Code já está ativo no Salão e Delivery.');
-    setTimeout(() => setSaveFeedback(null), 4000);
+    setSaveFeedback('pix', 'PIX salvo. O novo QR Code já vale no salão e no delivery.');
   };
 
   const handleSaveStore = (e: React.FormEvent) => {
@@ -113,8 +119,7 @@ export const SettingsView: React.FC = () => {
       address,
       service_fee_percent: Number(serviceFee),
     });
-    setSaveFeedback('Dados do estabelecimento salvos com sucesso!');
-    setTimeout(() => setSaveFeedback(null), 4000);
+    setSaveFeedback('store', 'Dados da loja salvos.');
   };
 
   const handleCopyPayload = async () => {
@@ -129,8 +134,7 @@ export const SettingsView: React.FC = () => {
 
   const requestTestPrint = async (sector: 'GRILL' | 'KITCHEN' | 'NONE', label: string) => {
     await sendTestPrint(sector);
-    setSaveFeedback(`Cupom de teste enviado para ${label}. Confira a impressora e o status na aba Fila.`);
-    setTimeout(() => setSaveFeedback(null), 5000);
+    setSaveFeedback('printers', `Cupom de teste enviado para ${label}. Confira a impressora e a aba Fila.`, 5000);
   };
 
   const handlePrintTestGrill = () => {
@@ -175,18 +179,11 @@ export const SettingsView: React.FC = () => {
   return (
     <div className="page-layout pb-24">
       <PageHeader
-        eyebrow="Painel Administrativo"
+        eyebrow="Painel administrativo"
         title="Configurações"
         description="PIX, impressoras, modelos de cupom e dados da loja."
         icon={SettingsIcon}
       />
-
-      {saveFeedback && (
-        <div className="notice border-emerald-300 bg-emerald-50 text-emerald-900 shadow-sm" role="status">
-          <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
-          <p className="text-sm font-medium">{saveFeedback}</p>
-        </div>
-      )}
 
       {/* Navegação de Abas */}
       <div className="filter-bar border-b border-line pb-2" aria-label="Abas de configuração">
@@ -216,7 +213,7 @@ export const SettingsView: React.FC = () => {
         </FilterChip>
         <FilterChip active={activeTab === 'zones'} onClick={() => setActiveTab('zones')}>
           <MapPin className="h-4 w-4" />
-          Bairros / Taxas
+          Bairros e taxas
         </FilterChip>
         <FilterChip active={activeTab === 'whatsapp'} onClick={() => setActiveTab('whatsapp')}>
           <MessageCircle className="h-4 w-4" />
@@ -233,7 +230,7 @@ export const SettingsView: React.FC = () => {
       {activeTab === 'pix' && <PixAutoCard />}
       {activeTab === 'pix' && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-          <form onSubmit={handleSavePix} className="card space-y-4 lg:col-span-7">
+          <form onSubmit={handleSavePix} className="surface-card p-4 sm:p-5 space-y-4 lg:col-span-7">
             <div className="border-b border-line pb-3">
               <h3 className="text-base font-bold text-ink">Chave PIX da loja</h3>
               <p className="text-xs text-ink-muted">
@@ -258,7 +255,7 @@ export const SettingsView: React.FC = () => {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold text-ink-secondary">Chave PIX Oficial</label>
+                <label className="mb-1 block text-xs font-semibold text-ink-secondary">Chave PIX</label>
                 <input
                   type="text"
                   required
@@ -305,14 +302,15 @@ export const SettingsView: React.FC = () => {
                 <CheckCircle2 className="h-4 w-4" />
                 Salvar PIX
               </button>
+              <div className="mt-2">{feedbackFor('pix')}</div>
             </div>
           </form>
 
           {/* Simulador ao vivo do QR Code */}
-          <div className="card space-y-4 lg:col-span-5">
+          <div className="surface-card p-4 sm:p-5 space-y-4 lg:col-span-5">
             <div className="border-b border-line pb-3">
-              <span className="badge-brand text-[11px] font-semibold">Prévia</span>
-              <h4 className="mt-1 text-sm font-bold text-ink">Prévia do QR Code Dinâmico</h4>
+              
+              <h4 className="text-sm font-bold text-ink">Prévia do QR Code</h4>
               <p className="text-xs text-ink-muted">Simulação calculada com valor de teste de {formatBRL(previewAmount)}.</p>
             </div>
 
@@ -350,7 +348,7 @@ export const SettingsView: React.FC = () => {
           <PrintBridgeStatus jobs={jobs} />
           <DigitalMenuLinkCard />
 
-          <div className="card space-y-4">
+          <div className="surface-card p-4 sm:p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
               <div>
                 <h3 className="text-base font-bold text-ink">Imprimir pedidos automaticamente</h3>
@@ -377,24 +375,25 @@ export const SettingsView: React.FC = () => {
                   onClick={() => updateSettings({ print_paper_width: '80mm' })}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${settings.print_paper_width === '80mm' ? 'bg-brand-700 text-white' : 'bg-surface-soft text-ink-secondary'}`}
                 >
-                  80mm (Bobina Padrão Restaurante)
+                  80 mm (bobina padrão)
                 </button>
                 <button
                   type="button"
                   onClick={() => updateSettings({ print_paper_width: '58mm' })}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${settings.print_paper_width === '58mm' ? 'bg-brand-700 text-white' : 'bg-surface-soft text-ink-secondary'}`}
                 >
-                  58mm (Bobina Estreita / POS)
+                  58 mm (bobina estreita)
                 </button>
               </div>
             </div>
           </div>
 
+          {feedbackFor('printers')}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {/* Impressora Churrasqueira */}
-            <div className="card space-y-4 border-amber-200 bg-amber-50/20">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
+            <div className="surface-card p-4 sm:p-5 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex shrink-0 items-center gap-2.5">
                   <span className="icon-tile bg-amber-100 text-amber-800">
                     <Flame className="h-5 w-5" />
                   </span>
@@ -403,7 +402,7 @@ export const SettingsView: React.FC = () => {
                     <p className="text-xs text-ink-muted">Setor GRILL</p>
                   </div>
                 </div>
-                <span className="badge-success text-[10px]">Ativa</span>
+                <PrinterHealthTag jobs={jobs} sector="GRILL" />
               </div>
               <p className="text-xs text-ink-secondary">
                 Recebe exclusivamente espetos e cortes bovinos/suínos com especificação obrigatória de ponto da carne em destaque.
@@ -415,24 +414,24 @@ export const SettingsView: React.FC = () => {
                   className="btn-secondary w-full text-xs"
                 >
                   <Printer className="h-4 w-4 text-amber-700" />
-                  Imprimir Teste de Churrasqueira
+                  Imprimir teste da churrasqueira
                 </button>
               </div>
             </div>
 
             {/* Impressora Cozinha */}
-            <div className="card space-y-4 border-emerald-200 bg-emerald-50/20">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
+            <div className="surface-card p-4 sm:p-5 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex shrink-0 items-center gap-2.5">
                   <span className="icon-tile bg-emerald-100 text-emerald-800">
                     <UtensilsCrossed className="h-5 w-5" />
                   </span>
                   <div>
-                    <h4 className="font-bold text-ink">Cozinha & Cubas</h4>
+                    <h4 className="font-bold text-ink">Cozinha e cubas</h4>
                     <p className="text-xs text-ink-muted">Setor KITCHEN</p>
                   </div>
                 </div>
-                <span className="badge-success text-[10px]">Ativa</span>
+                <PrinterHealthTag jobs={jobs} sector="KITCHEN" />
               </div>
               <p className="text-xs text-ink-secondary">
                 Recebe porções, mandioca, feijão tropeiro, farofas e pratos de acompanhamento das cubas gastronômicas.
@@ -450,18 +449,18 @@ export const SettingsView: React.FC = () => {
             </div>
 
             {/* Impressora Caixa */}
-            <div className="card space-y-4 border-sky-200 bg-sky-50/20">
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2.5">
+            <div className="surface-card p-4 sm:p-5 space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="flex shrink-0 items-center gap-2.5">
                   <span className="icon-tile bg-sky-100 text-sky-800">
                     <Building2 className="h-5 w-5" />
                   </span>
                   <div>
-                    <h4 className="font-bold text-ink">Caixa / Balcão</h4>
-                    <p className="text-xs text-ink-muted">Conferência & Fiscal</p>
+                    <h4 className="font-bold text-ink">Caixa e balcão</h4>
+                    <p className="text-xs text-ink-muted">Conferência e recibo</p>
                   </div>
                 </div>
-                <span className="badge-success text-[10px]">Ativa</span>
+                <PrinterHealthTag jobs={jobs} sector="NONE" />
               </div>
               <p className="text-xs text-ink-secondary">
                 Emite a conferência detalhada da comanda com taxa de serviço e comprovante não-fiscal de pagamento.
@@ -511,8 +510,8 @@ export const SettingsView: React.FC = () => {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="badge-warning text-xs font-semibold">Pendentes: {pendingCount}</span>
-              <span className="badge-success text-xs font-semibold">Impressos: {printedCount}</span>
+              <span className={`status-badge ${pendingCount > 0 ? 'bg-amber-50 text-amber-800' : 'bg-surface-muted text-ink-secondary'}`}>Pendentes: <span className="font-mono">{pendingCount}</span></span>
+              <span className="status-badge bg-surface-muted text-ink">Impressos: <span className="font-mono">{printedCount}</span></span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button type="button" onClick={() => void confirmDelete(jobs.filter((j) => j.status === 'PRINTED').map((j) => j.id), 'todos os cupons impressos')} className="btn-secondary text-xs">
@@ -526,7 +525,7 @@ export const SettingsView: React.FC = () => {
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
             {/* Lista da Fila */}
-            <div className="card space-y-3 lg:col-span-7">
+            <div className="surface-card p-4 sm:p-5 space-y-3 lg:col-span-7">
               <h4 className="text-sm font-bold text-ink">Cupons recentes</h4>
               {jobs.length === 0 ? (
                 <div className="p-8 text-center text-xs text-ink-muted">
@@ -551,7 +550,7 @@ export const SettingsView: React.FC = () => {
                           </span>
                           <span className="font-mono text-xs font-semibold text-ink">#{job.order_number}</span>
                           {job.is_reprint && (
-                            <span className="badge-rose text-[10px] font-bold">2ª VIA</span>
+                            <span className="status-badge bg-rose-600 text-white">2ª via</span>
                           )}
                         </div>
                         <span className={`text-[11px] font-bold ${
@@ -573,7 +572,7 @@ export const SettingsView: React.FC = () => {
             </div>
 
             {/* Visualizador do Cupom ESC/POS */}
-            <div className="card space-y-4 lg:col-span-5">
+            <div className="surface-card p-4 sm:p-5 space-y-4 lg:col-span-5">
               <div className="flex items-center justify-between border-b border-line pb-3">
                 <h4 className="text-sm font-bold text-ink">Prévia do cupom</h4>
                 {selectedJob && (
@@ -583,7 +582,7 @@ export const SettingsView: React.FC = () => {
                       onClick={() => reprintJob(selectedJob.id, '2ª via solicitada via painel')}
                       className="btn-secondary py-1 px-2.5 text-xs text-rose-700"
                     >
-                      Reimprimir (2ª Via)
+                      Reimprimir (2ª via)
                     </button>
                     {selectedJob.status !== 'PRINTED' && (
                       <button
@@ -617,7 +616,7 @@ export const SettingsView: React.FC = () => {
 
       {/* ABA 4: DADOS DA ESPETARIA */}
       {activeTab === 'store' && (
-        <form onSubmit={handleSaveStore} className="card max-w-2xl space-y-4">
+        <form onSubmit={handleSaveStore} className="surface-card p-4 sm:p-5 max-w-2xl space-y-4">
           <div className="border-b border-line pb-3">
             <h3 className="text-base font-bold text-ink">Dados da loja</h3>
             <p className="text-xs text-ink-muted">
@@ -682,8 +681,9 @@ export const SettingsView: React.FC = () => {
 
           <div className="pt-2">
             <button type="submit" className="btn-primary w-full py-2.5">
-              Salvar Dados Cadastrais
+              Salvar dados da loja
             </button>
+            <div className="mt-2">{feedbackFor('store')}</div>
           </div>
         </form>
       )}

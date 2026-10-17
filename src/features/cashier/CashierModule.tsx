@@ -1,4 +1,4 @@
-﻿import {
+import {
   AlertTriangle,
   Banknote,
   CheckCircle2,
@@ -13,8 +13,8 @@ import React, { useEffect, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { StatCard } from '../../components/ui/StatCard';
 import { formatBRL } from '../../lib/formatters';
+import { METHOD_LABELS } from '../../lib/financeData';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
@@ -24,6 +24,19 @@ import { ReceiptModal } from './ReceiptModal';
 import { TableSettlementModal } from './TableSettlementModal';
 
 type CashierFilter = 'WAITING_BILL' | 'ALL_ACTIVE' | 'CLOSED_TODAY';
+
+const METHOD_BAR = [
+  { key: 'DINHEIRO', label: 'Dinheiro', icon: Banknote, bar: 'bg-amber-500' },
+  { key: 'PIX', label: 'PIX', icon: QrCode, bar: 'bg-emerald-600' },
+  { key: 'DEBITO', label: 'Débito', icon: CreditCard, bar: 'bg-ink-secondary' },
+  { key: 'CREDITO', label: 'Crédito', icon: CreditCard, bar: 'bg-brand-500' },
+] as const;
+
+/** Há quanto tempo a mesa pediu a conta (a mesa muda de status nesse momento). */
+function billMinutes(table: RestaurantTable): string {
+  const min = Math.max(0, Math.floor((Date.now() - new Date(table.updated_at).getTime()) / 60000));
+  return min < 1 ? 'agora' : `há ${min} min`;
+}
 
 export const CashierModule: React.FC = () => {
   const { notify, requestText } = useFeedback();
@@ -84,13 +97,31 @@ export const CashierModule: React.FC = () => {
   return (
     <div className="page-layout">
 
-      <PageHeader eyebrow="Recebimentos" title="Caixa" description="Feche contas, divida pagamentos e acompanhe os recebimentos do turno." icon={Receipt} actions={<div className="surface-card px-5 py-3"><p className="text-xs font-medium text-ink-muted">Recebido no turno</p><p className="text-2xl font-bold text-brand-800 tabular-nums">{formatBRL(totalShiftRevenue)}</p></div>} />
-      <div className="stat-grid">
-        <StatCard label="Dinheiro" value={formatBRL(revenueByMethod.DINHEIRO)} icon={Banknote} tone="success" />
-        <StatCard label="PIX" value={formatBRL(revenueByMethod.PIX)} icon={QrCode} />
-        <StatCard label="Débito" value={formatBRL(revenueByMethod.DEBITO)} icon={CreditCard} tone="info" />
-        <StatCard label="Crédito" value={formatBRL(revenueByMethod.CREDITO)} icon={CreditCard} tone="warning" />
-      </div>
+      <PageHeader eyebrow="Recebimentos" title="Caixa" description="Feche contas, divida pagamentos e acompanhe os recebimentos do turno." icon={Receipt} />
+      <section className="surface-card p-4 sm:p-5" aria-label="Recebido no turno">
+        <p className="text-sm font-medium text-ink-muted">Recebido no turno</p>
+        <p className="mt-0.5 font-mono text-3xl font-bold text-ink">{formatBRL(totalShiftRevenue)}</p>
+        <div className="mt-3 flex h-2.5 w-full overflow-hidden rounded-sm bg-surface-muted" aria-hidden="true">
+          {METHOD_BAR.map((m) => {
+            const value = revenueByMethod[m.key];
+            return value > 0 ? <span key={m.key} className={m.bar} style={{ width: `${(value / totalShiftRevenue) * 100}%` }} /> : null;
+          })}
+        </div>
+        <ul className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {METHOD_BAR.map((m) => {
+            const Icon = m.icon;
+            return (
+              <li key={m.key} className="flex items-start gap-2">
+                <span className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-sm ${m.bar}`} aria-hidden="true" />
+                <div>
+                  <p className="flex items-center gap-1 text-sm text-ink-secondary"><Icon className="h-3.5 w-3.5" aria-hidden="true" />{m.label}</p>
+                  <p className="font-mono text-base font-bold text-ink">{formatBRL(revenueByMethod[m.key])}</p>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       {/* Barra de Filtros */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
@@ -135,10 +166,7 @@ export const CashierModule: React.FC = () => {
                 return (
                   <div
                     key={table.id}
-                    className={`p-5 rounded-2xl border transition flex flex-col justify-between space-y-4 shadow-sm ${isWaitingBill
-                        ? 'bg-amber-50 border-2 border-amber-400 shadow-card ring-1 ring-amber-300'
-                        : 'bg-surface-muted border-line hover:border-brand-300'
-                      }`}
+                    className="p-5 rounded-2xl border border-line bg-surface transition flex flex-col justify-between space-y-4 hover:border-line-strong"
                   >
                     <div>
                       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -147,8 +175,8 @@ export const CashierModule: React.FC = () => {
                             Mesa {String(table.number).padStart(2, '0')}
                           </span>
                           {isWaitingBill && (
-                            <span className="text-xs px-2.5 py-0.5 rounded-sm bg-amber-100 text-amber-800 tabular-nums font-medium">
-                              Conta solicitada
+                            <span className="status-badge bg-brand-500 text-white">
+                              Conta pedida {billMinutes(table)}
                             </span>
                           )}
                         </div>
@@ -175,7 +203,7 @@ export const CashierModule: React.FC = () => {
                     {/* Botão de Fechamento */}
                     <button
                       onClick={() => setSelectedTableForCheckout(table)}
-                      className={`w-full py-3.5 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm ${isWaitingBill
+                      className={`w-full h-12 rounded-md font-semibold text-[15px] transition flex items-center justify-center gap-2 ${isWaitingBill
                           ? 'btn-primary'
                           : 'btn-secondary'
                         }`}
@@ -206,10 +234,10 @@ export const CashierModule: React.FC = () => {
                   <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
                     <div>
                       <div className="font-bold text-ink text-base tabular-nums">
-                        Mesa {table ? String(table.number).padStart(2, '0') : '??'} • #{tab.id.slice(0, 6)}
+                        Mesa {table ? String(table.number).padStart(2, '0') : '—'} · {new Date(tab.closed_at || tab.opened_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </div>
                       <p className="text-xs text-ink-muted mt-0.5">
-                        {tab.customer_name} • Fechada às {new Date(tab.closed_at || tab.opened_at).toLocaleTimeString('pt-BR')}
+                        {tab.customer_name || 'Sem nome'}
                       </p>
                     </div>
                     <span className="text-lg font-bold text-emerald-700 tabular-nums">
@@ -226,9 +254,9 @@ export const CashierModule: React.FC = () => {
                       {tabPayments.map((p) => (
                         <span
                           key={p.id}
-                          className="px-2.5 py-0.5 rounded-sm bg-surface-muted border-line text-ink tabular-nums text-xs"
+                          className="status-badge bg-surface-muted text-ink"
                         >
-                          {p.method}: {formatBRL(p.amount)}
+                          {METHOD_LABELS[p.method] ?? p.method}: <span className="font-mono">{formatBRL(p.amount)}</span>
                         </span>
                       ))}
                     </div>
@@ -241,7 +269,7 @@ export const CashierModule: React.FC = () => {
                       className="btn-secondary flex-1 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 font-bold"
                       type="button">
                       <Receipt className="w-3.5 h-3.5" />
-                      <span>Ver Cupom</span>
+                      <span>Ver cupom</span>
                     </button>
 
                     {['MASTER', 'GERENTE', 'CAIXA'].includes(currentProfile.role) && (

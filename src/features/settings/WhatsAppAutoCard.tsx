@@ -69,7 +69,7 @@ export function WhatsAppAutoCard() {
   };
 
   return (
-    <div className="card space-y-4">
+    <div className="surface-card p-4 sm:p-5 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-start gap-3">
           <span className="icon-tile"><MessageCircle className="h-5 w-5" aria-hidden="true" /></span>
