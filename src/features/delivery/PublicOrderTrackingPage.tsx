@@ -96,27 +96,27 @@ export function PublicOrderTrackingPage({ orderId }: { orderId: string }) {
   }, [orderId]);
 
   return (
-    <div className="min-h-screen bg-[#FBF8F3] text-[#2B211C]">
-      <header className="border-b border-[#E4DACB]">
+    <div className="min-h-screen bg-surface text-ink">
+      <header className="border-b border-line">
         <div className="mx-auto flex h-14 max-w-xl items-center justify-between gap-3 px-5">
           <span className="truncate text-[17px] font-semibold">{restaurant}</span>
-          <span className="text-[13px] text-[#6B5D53]">Acompanhar pedido</span>
+          <span className="text-[13px] text-ink-muted">Acompanhar pedido</span>
         </div>
       </header>
       <main className="mx-auto max-w-xl space-y-5 px-5 pb-10 pt-6">
-        {state === 'loading' && <p className="p-8 text-center text-[#6B5D53]" role="status">Carregando seu pedido...</p>}
-        {state === 'error' && <p role="alert" className="rounded-[10px] bg-[#FBEDED] p-3 text-[14px] text-[#9B2C2C]">Não foi possível carregar o pedido agora. Verifique sua internet e tente de novo.</p>}
+        {state === 'loading' && <p className="p-8 text-center text-ink-muted" role="status">Carregando seu pedido...</p>}
+        {state === 'error' && <p role="alert" className="rounded-md bg-rose-50 p-3 text-[14px] text-rose-600">Não foi possível carregar o pedido agora. Verifique sua internet e tente de novo.</p>}
         {state === 'not_found' && (
-          <div className="space-y-3 rounded-[12px] border border-[#E4DACB] bg-white p-6 text-center">
+          <div className="space-y-3 rounded-md border border-line bg-white p-6 text-center">
             <h1 className="text-[20px] font-semibold">Pedido não encontrado</h1>
-            <p className="text-[15px] text-[#6B5D53]">Confira se o link está completo ou fale com a gente pelo WhatsApp.</p>
-            <a href="/cardapio" className="inline-flex h-12 items-center rounded-[12px] bg-[#B5502E] px-5 text-[16px] font-semibold text-white">Ver cardápio</a>
+            <p className="text-[15px] text-ink-muted">Confira se o link está completo ou fale com a gente pelo WhatsApp.</p>
+            <a href="/cardapio" className="inline-flex h-12 items-center rounded-md bg-brand-500 px-5 text-[16px] font-semibold text-white">Ver cardápio</a>
           </div>
         )}
         {state !== 'not_found' && order && (
           <>
             <OrderStatusView order={order} />
-            <a href="/cardapio" className="flex h-[52px] w-full items-center justify-center rounded-[12px] text-[16px] font-semibold text-[#8E3C20]">Ver cardápio</a>
+            <a href="/cardapio" className="flex h-[52px] w-full items-center justify-center rounded-md text-[16px] font-semibold text-brand-700">Ver cardápio</a>
           </>
         )}
       </main>

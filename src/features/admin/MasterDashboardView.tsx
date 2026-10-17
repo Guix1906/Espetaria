@@ -1,3 +1,4 @@
+import { StatusTag } from '../../components/ui/StatusTag';
 import { VoidTabButton } from '../tables/VoidTabButton';
 import { StockSnapshot } from './StockSnapshot';
 import { AlertCircle, AlertTriangle, ArrowRight, Bike, Clock, Download, Flame, Lock, PackageCheck, PieChart, Plus, ShieldCheck, Store, TrendingUp, UtensilsCrossed } from 'lucide-react';
@@ -164,7 +165,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
               {activeDeliveries.slice(0, 8).map((o) => {
                 const late = lateIds.has(o.id);
                 return (
-                  <li key={o.id} className={`flex items-center gap-3 px-3 py-2 text-sm ${late ? 'bg-rose-50' : ''}`}>
+                  <li key={o.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                     <span className="w-12 shrink-0 font-mono font-bold text-ink">#{o.order_number}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate font-medium text-ink">{o.customer_name}</span>
@@ -172,7 +173,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                     </span>
                     <span className="shrink-0 text-right">
                       <span className="block font-mono text-sm font-bold text-ink">{formatBRL(o.total)}</span>
-                      <span className={`block text-xs ${late ? 'font-semibold text-rose-700' : 'text-ink-muted'}`}>{formatElapsedMinutes(o.created_at, now)}{late ? ' · atrasado' : ''}</span>
+                      <span className="flex items-center justify-end gap-1 text-xs text-ink-muted">{formatElapsedMinutes(o.created_at, now)}{late && <StatusTag kind="alert">Atrasado</StatusTag>}</span>
                     </span>
                   </li>
                 );
@@ -196,7 +197,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
               const info = d.tabInfo(tab);
               const waiting = table?.status === 'AGUARDANDO_CONTA';
               return (
-                <div key={tab.id} className={`space-y-2.5 rounded-md border p-3.5 ${waiting ? 'border-amber-300 bg-amber-50/50' : info.ready ? 'border-emerald-300' : 'border-line bg-surface'}`}>
+                <div key={tab.id} className="space-y-2.5 rounded-2xl border border-line bg-surface p-3.5">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-mono text-lg font-bold text-ink">Mesa {table ? pad2(table.number) : '—'}</p>
@@ -207,10 +208,10 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                       <p className="flex items-center justify-end gap-1 text-xs text-ink-muted"><Clock className="h-3 w-3" />{formatElapsedMinutes(tab.opened_at, now)}</p>
                     </div>
                   </div>
-                  <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-                    {waiting && <span className="font-semibold text-amber-900">Pediu a conta</span>}
-                    {info.ready > 0 && <span className="font-semibold text-emerald-800">{info.ready} pronto{info.ready > 1 ? 's' : ''} para servir</span>}
-                    {info.preparing > 0 && <span className="text-amber-900">{info.preparing} em preparo</span>}
+                  <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                    {waiting && <StatusTag kind="bill">Conta pedida</StatusTag>}
+                    {info.ready > 0 && <StatusTag kind="ready">{info.ready} pronto{info.ready > 1 ? 's' : ''} para servir</StatusTag>}
+                    {info.preparing > 0 && <StatusTag kind="preparing">{info.preparing} em preparo</StatusTag>}
                     <span className="text-ink-muted">{info.itemCount ? `${info.itemCount} ${info.itemCount === 1 ? 'item' : 'itens'}` : 'Sem pedido'}{info.minutesSinceLastOrder !== null ? ` · último pedido há ${info.minutesSinceLastOrder} min` : ''}</span>
                   </p>
                   {onNavigateTab && table && (

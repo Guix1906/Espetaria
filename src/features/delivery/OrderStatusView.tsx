@@ -51,7 +51,7 @@ export function OrderPixBlock({ order }: { order: DeliveryOrder }) {
   return (
     <div className="space-y-3">
       {order.status === 'AWAITING_PAYMENT' ? <AutoPixPanel order={order} /> : <DeliveryPixPanel order={order} />}
-      <p className="rounded-[10px] border border-[#EDD293] bg-[#FBF4E6] p-3 text-[14px] leading-snug text-[#5C3E0C]">A loja confere o pagamento e avisa no seu WhatsApp. Não precisa enviar comprovante.</p>
+      <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-[14px] leading-snug text-amber-900">A loja confere o pagamento e avisa no seu WhatsApp. Não precisa enviar comprovante.</p>
     </div>
   );
 }
@@ -64,16 +64,16 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
   const cancelled = order.status === 'CANCELLED';
   const done = order.status === 'DELIVERED';
   return (
-    <div className="space-y-6 text-[#2B211C]">
+    <div className="space-y-6 text-ink">
       <div>
-        <p className="font-mono text-[13px] text-[#857668]">Pedido #{order.order_number}</p>
-        <h2 className={`mt-1 text-[28px] font-semibold leading-tight ${cancelled ? 'text-[#9B2C2C]' : ''}`}>{statusTitle(order)}</h2>
+        <p className="font-mono text-[13px] text-ink-muted">Pedido #{order.order_number}</p>
+        <h2 className={`mt-1 text-[28px] font-semibold leading-tight ${cancelled ? 'text-rose-600' : ''}`}>{statusTitle(order)}</h2>
         {!cancelled && !done && (
-          <p className="mt-1 text-[15px] text-[#6B5D53]">
+          <p className="mt-1 text-[15px] text-ink-muted">
             {pickup ? `Pronto entre ${hhmm(addMin(order.created_at, 30))} e ${hhmm(addMin(order.created_at, 40))}` : `Chega entre ${hhmm(addMin(order.created_at, 40))} e ${hhmm(addMin(order.created_at, 55))}`}
           </p>
         )}
-        {cancelled && order.cancel_reason && <p className="mt-1 text-[15px] text-[#6B5D53]">Motivo: {order.cancel_reason}</p>}
+        {cancelled && order.cancel_reason && <p className="mt-1 text-[15px] text-ink-muted">Motivo: {order.cancel_reason}</p>}
       </div>
 
       {showPix && <OrderPixBlock order={order} />}
@@ -86,16 +86,16 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
             const last = i === steps.length - 1;
             return (
               <li key={step.title} aria-current={isCurrent ? 'step' : undefined} className="relative flex gap-3.5 pb-5 last:pb-0">
-                {!last && <span aria-hidden="true" className={`absolute left-[9px] top-6 h-[calc(100%-20px)] w-0.5 ${isDone ? 'bg-[#3F7A4E]' : 'bg-[#E4DACB]'}`} />}
-                <span aria-hidden="true" className={`relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isDone ? 'bg-[#3F7A4E] text-white' : isCurrent ? 'border-[6px] border-[#B5502E] bg-white' : 'border-2 border-[#CFC2B2] bg-white'}`}>
+                {!last && <span aria-hidden="true" className={`absolute left-[9px] top-6 h-[calc(100%-20px)] w-0.5 ${isDone ? 'bg-emerald-600' : 'bg-line'}`} />}
+                <span aria-hidden="true" className={`relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isDone ? 'bg-emerald-600 text-white' : isCurrent ? 'border-[6px] border-brand-500 bg-white' : 'border-2 border-line-strong bg-white'}`}>
                   {isDone && <Check className="h-3 w-3" strokeWidth={3} />}
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className={`text-[16px] ${isCurrent ? 'font-semibold' : isDone ? 'font-medium' : 'text-[#857668]'}`}>{step.title}</span>
-                    {isDone && hhmm(step.at) && <span className="font-mono text-[13px] text-[#857668]">{hhmm(step.at)}</span>}
+                    <span className={`text-[16px] ${isCurrent ? 'font-semibold' : isDone ? 'font-medium' : 'text-ink-muted'}`}>{step.title}</span>
+                    {isDone && hhmm(step.at) && <span className="font-mono text-[13px] text-ink-muted">{hhmm(step.at)}</span>}
                   </div>
-                  {isCurrent && <p className="mt-0.5 text-[14px] text-[#6B5D53]">{step.desc}</p>}
+                  {isCurrent && <p className="mt-0.5 text-[14px] text-ink-muted">{step.desc}</p>}
                 </div>
               </li>
             );
@@ -103,27 +103,27 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
         </ol>
       )}
 
-      <section className="rounded-[12px] border border-[#E4DACB] bg-white p-4">
+      <section className="rounded-md border border-line bg-white p-4">
         <ul className="space-y-2">
           {order.items.map((item) => (
             <li key={item.id} className="flex justify-between gap-3 text-[15px]">
-              <span>{item.quantity}× {item.product_name}{item.doneness && <span className="text-[#6B5D53]"> · {formatDoneness(item.doneness)}</span>}{item.notes && <span className="block text-[13px] text-[#6B5D53]">“{item.notes}”</span>}</span>
+              <span>{item.quantity}× {item.product_name}{item.doneness && <span className="text-ink-muted"> · {formatDoneness(item.doneness)}</span>}{item.notes && <span className="block text-[13px] text-ink-muted">“{item.notes}”</span>}</span>
               <span className="shrink-0 tabular-nums">{formatBRL(item.unit_price * item.quantity)}</span>
             </li>
           ))}
         </ul>
-        <div className="mt-3 space-y-1.5 border-t border-[#EFE8DD] pt-3 text-[14px] text-[#6B5D53]">
+        <div className="mt-3 space-y-1.5 border-t border-surface-muted pt-3 text-[14px] text-ink-muted">
           <div className="flex justify-between"><span>Subtotal</span><span className="tabular-nums">{formatBRL(order.subtotal)}</span></div>
           {!pickup && <div className="flex justify-between"><span>Entrega</span><span className="tabular-nums">{formatBRL(order.delivery_fee)}</span></div>}
-          <div className="flex justify-between pt-1 text-[17px] font-semibold text-[#2B211C]"><span>Total</span><span className="tabular-nums">{formatBRL(order.total)}</span></div>
+          <div className="flex justify-between pt-1 text-[17px] font-semibold text-ink"><span>Total</span><span className="tabular-nums">{formatBRL(order.total)}</span></div>
           <div className="flex justify-between pt-1"><span>Pagamento</span><span>{PAY_LABEL[order.payment_method] ?? order.payment_method}{order.paid_at ? ' · pago' : ''}</span></div>
         </div>
-        <p className="mt-3 border-t border-[#EFE8DD] pt-3 text-[14px] text-[#3D322B]">
+        <p className="mt-3 border-t border-surface-muted pt-3 text-[14px] text-ink-secondary">
           {pickup ? <>Retirada no local{restaurantAddress ? ` · ${restaurantAddress}` : ''}</> : <>{order.address_street}, {order.address_number} · {order.address_neighborhood}{order.address_complement ? ` · ${order.address_complement}` : ''}</>}
         </p>
       </section>
 
-      <button type="button" onClick={() => openRestaurantWhatsApp(order)} className="flex h-[52px] w-full items-center justify-center rounded-[12px] border border-[#CFC2B2] bg-white text-[16px] font-semibold text-[#2B211C] hover:bg-[#F5EFE6]">Falar com a loja no WhatsApp</button>
+      <button type="button" onClick={() => openRestaurantWhatsApp(order)} className="flex h-[52px] w-full items-center justify-center rounded-md border border-line-strong bg-white text-[16px] font-semibold text-ink hover:bg-canvas">Falar com a loja no WhatsApp</button>
     </div>
   );
 }

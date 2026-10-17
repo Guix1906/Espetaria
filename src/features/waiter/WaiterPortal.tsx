@@ -146,11 +146,11 @@ export function WaiterPortal() {
         <form onSubmit={enter} className="space-y-5" aria-labelledby="waiter-login-title">
           <AccessTabs active="waiter" />
           <div className="pt-2">
-            <h1 id="waiter-login-title" className="text-[30px] font-semibold leading-tight tracking-[-0.02em] text-[#2B211C]">Entrar</h1>
-            <p className="mt-1.5 text-sm text-[#6B5D53]">Atendimento no celular: mesas, pedidos e conta.</p>
+            <h1 id="waiter-login-title" className="text-[30px] font-semibold leading-tight tracking-[-0.02em] text-ink">Entrar</h1>
+            <p className="mt-1.5 text-sm text-ink-muted">Atendimento no celular: mesas, pedidos e conta.</p>
           </div>
-          {!isSupabaseConfigured && <p className="rounded-[10px] bg-[#FBF4E6] px-3.5 py-3 text-xs text-[#734E0F]">Demonstração local: pedidos não são sincronizados com outros aparelhos.</p>}
-          {!online && <p className="rounded-[10px] bg-[#F8ECEC] px-3.5 py-3 text-xs text-[#9B2C2C]">Sem conexão com a internet.</p>}
+          {!isSupabaseConfigured && <p className="rounded-[10px] bg-amber-50 px-3.5 py-3 text-xs text-amber-800">Demonstração local: pedidos não são sincronizados com outros aparelhos.</p>}
+          {!online && <p className="rounded-[10px] bg-rose-50 px-3.5 py-3 text-xs text-rose-600">Sem conexão com a internet.</p>}
           {error && <p role="alert" className={authError}>{error}</p>}
           {isSupabaseConfigured ? <>
             <div><label htmlFor="waiter-email" className={authLabel}>E-mail</label><input id="waiter-email" className={authInput} type="email" inputMode="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} /></div>
@@ -177,15 +177,15 @@ export function WaiterPortal() {
           </div>
           {identified && (
             <div className="relative shrink-0">
-              <button type="button" className="flex h-11 w-11 items-center justify-center rounded-lg bg-[#2A201B] text-lg font-semibold text-white" aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Menu do garçom: som e sair" onClick={() => setMenuOpen((open) => !open)}>
+              <button type="button" className="flex h-11 w-11 items-center justify-center rounded-lg bg-ink text-lg font-semibold text-white" aria-haspopup="menu" aria-expanded={menuOpen} aria-label="Menu do garçom: som e sair" onClick={() => setMenuOpen((open) => !open)}>
                 {(currentProfile.name.trim()[0] ?? 'G').toLocaleUpperCase('pt-BR')}
               </button>
               {menuOpen && <>
                 <button type="button" className="fixed inset-0 z-40 cursor-default" aria-label="Fechar menu" tabIndex={-1} onClick={() => setMenuOpen(false)} />
-                <div role="menu" className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-lg border border-[#E3D9CE] bg-[#FBF8F4] shadow-lg">
-                  <p className="truncate border-b border-[#E3D9CE] px-4 py-2.5 text-sm font-semibold text-[#2A201B]">{currentProfile.name}</p>
-                  <button type="button" role="menuitem" className="flex min-h-[48px] w-full items-center gap-3 px-4 text-left text-sm text-[#2A201B] active:bg-[#F4E6DE]" onClick={toggleAudio}>{audio ? <Volume2 className="h-5 w-5" aria-hidden="true" /> : <VolumeX className="h-5 w-5" aria-hidden="true" />}{audio ? 'Som ligado' : 'Som desligado'}</button>
-                  <button type="button" role="menuitem" className="flex min-h-[48px] w-full items-center gap-3 border-t border-[#E3D9CE] px-4 text-left text-sm text-[#2A201B] active:bg-[#F4E6DE]" disabled={busy} onClick={() => { setMenuOpen(false); void leave(); }}><LogOut className="h-5 w-5" aria-hidden="true" />{isManager ? 'Voltar ao painel' : 'Sair'}</button>
+                <div role="menu" className="absolute right-0 top-12 z-50 w-56 overflow-hidden rounded-lg border border-line bg-surface shadow-lg">
+                  <p className="truncate border-b border-line px-4 py-2.5 text-sm font-semibold text-ink">{currentProfile.name}</p>
+                  <button type="button" role="menuitem" className="flex min-h-[48px] w-full items-center gap-3 px-4 text-left text-sm text-ink active:bg-brand-50" onClick={toggleAudio}>{audio ? <Volume2 className="h-5 w-5" aria-hidden="true" /> : <VolumeX className="h-5 w-5" aria-hidden="true" />}{audio ? 'Som ligado' : 'Som desligado'}</button>
+                  <button type="button" role="menuitem" className="flex min-h-[48px] w-full items-center gap-3 border-t border-line px-4 text-left text-sm text-ink active:bg-brand-50" disabled={busy} onClick={() => { setMenuOpen(false); void leave(); }}><LogOut className="h-5 w-5" aria-hidden="true" />{isManager ? 'Voltar ao painel' : 'Sair'}</button>
                 </div>
               </>}
             </div>
@@ -201,9 +201,9 @@ export function WaiterPortal() {
         )}
         {error && <p role="alert" className="mx-3 mt-3 rounded bg-rose-50 px-3 py-2 text-sm text-rose-800 sm:mx-4">{error}</p>}
         <WaiterModule dedicated settings={
-          <div className="divide-y divide-[#E3D9CE] overflow-hidden rounded-xl border border-[#E3D9CE] bg-[#FBF8F4]">
-            <button type="button" className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left text-[15px] text-[#2A201B]" aria-pressed={audio} onClick={toggleAudio}>{audio ? <Volume2 className="h-5 w-5" aria-hidden="true" /> : <VolumeX className="h-5 w-5" aria-hidden="true" />}<span className="flex-1">Alertas sonoros</span><span className="text-sm text-[#7A6C62]">{audio ? 'Ligado' : 'Desligado'}</span></button>
-            <button type="button" className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left text-[15px] text-[#2A201B]" disabled={busy} onClick={() => void leave()}><LogOut className="h-5 w-5" aria-hidden="true" /><span className="flex-1">{isManager ? 'Voltar ao painel' : 'Sair da conta'}</span></button>
+          <div className="divide-y divide-line overflow-hidden rounded-xl border border-line bg-surface">
+            <button type="button" className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left text-[15px] text-ink" aria-pressed={audio} onClick={toggleAudio}>{audio ? <Volume2 className="h-5 w-5" aria-hidden="true" /> : <VolumeX className="h-5 w-5" aria-hidden="true" />}<span className="flex-1">Alertas sonoros</span><span className="text-sm text-ink-muted">{audio ? 'Ligado' : 'Desligado'}</span></button>
+            <button type="button" className="flex min-h-[56px] w-full items-center gap-3 px-4 text-left text-[15px] text-ink" disabled={busy} onClick={() => void leave()}><LogOut className="h-5 w-5" aria-hidden="true" /><span className="flex-1">{isManager ? 'Voltar ao painel' : 'Sair da conta'}</span></button>
           </div>
         } />
       </main>

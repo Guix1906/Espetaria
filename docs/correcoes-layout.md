@@ -120,7 +120,7 @@ Arquivo: `src/features/cashier/CashierModule.tsx`
 ### 2.1 Área do garçom: trocar cores escritas à mão
 Arquivos: `src/features/waiter/WaiterOrderPad.tsx`, `WaiterDonenessModal.tsx`, `WaiterCartDrawer.tsx`,
 `WaiterOpenTabSheet.tsx`, `WaiterModule.tsx`, `WaiterPortal.tsx`, `WaiterSheet.tsx`
-- [ ] Substitua (cerca de 80 ocorrências):
+- [x] Substitua (cerca de 80 ocorrências):
 
 | Hoje | Trocar por |
 | --- | --- |
@@ -138,33 +138,33 @@ Arquivos: `src/features/waiter/WaiterOrderPad.tsx`, `WaiterDonenessModal.tsx`, `
 | `#A06A10` | `amber-700` |
 | `#3E7A4E` | `emerald-600` |
 
-- [ ] Ao final, `grep -rn "#[0-9A-Fa-f]\{6\}" src/features/waiter` não pode retornar nada além das cores dos pontos da carne
+- [x] Ao final, `grep -rn "#[0-9A-Fa-f]\{6\}" src/features/waiter` não pode retornar nada além das cores dos pontos da carne
       (`DONENESS_OPTIONS.swatch`).
 
 ### 2.2 Cardápio digital: trocar hex pelos tokens
 Arquivo: `src/features/delivery/PublicMenuApp.tsx` (e `OrderStatusView.tsx` / `PublicOrderTrackingPage.tsx`, se tiverem hex)
-- [ ] Mesma troca da 2.1. As cores já estão certas, só precisam virar token (`#2B211C` → `ink`, `#6B5D53` → `ink-muted`,
+- [x] Mesma troca da 2.1. As cores já estão certas, só precisam virar token (`#2B211C` → `ink`, `#6B5D53` → `ink-muted`,
       `#B5502E` → `brand-500`, `#8E3C20` → `brand-700`, `#E4DACB` → `line`, `#CFC2B2` → `line-strong`, `#FBF8F3` → `surface`,
       `#F5EFE6` → `canvas`, `#EFE8DD` → `surface-muted`, `#9B2C2C` → `rose-600`, `#3F7A4E` → `emerald-600`).
-- [ ] Raios: `rounded-[12px]`/`rounded-[10px]` passam para `rounded-md`, e a folha de produto usa `rounded-t-[12px]`.
+- [x] Raios: `rounded-[12px]`/`rounded-[10px]` passam para `rounded-md`, e a folha de produto usa `rounded-t-[12px]`.
 
 ### 2.3 Mapa único de status
-- [ ] Crie `src/lib/statusStyles.ts` com as classes do mapa da referência (livre, ocupada, em preparo, pronto,
+- [x] Crie `src/lib/statusStyles.ts` com as classes do mapa da referência (livre, ocupada, em preparo, pronto,
       conta pedida, reservada, atrasado/esgotado) e um componente `src/components/ui/StatusTag.tsx`.
-- [ ] Use nos dois lados: `src/components/ui/TableCard.tsx` (`borderByStatus` e etiqueta) e `src/features/waiter/WaiterModule.tsx` (`statusChip`).
+- [x] Use nos dois lados: `src/components/ui/TableCard.tsx` (`borderByStatus` e etiqueta) e `src/features/waiter/WaiterModule.tsx` (`statusChip`).
       Reservada deixa de ser `sky`, que vira cinza pelo remapeamento, e passa a ser tracejado. Conta pedida deixa de ser vermelho e passa a ser terracota.
-- [ ] Use também nos cartões de `src/features/delivery/DeliveryManagementView.tsx` (ver 4.5) e em `src/features/admin/MasterDashboardView.tsx`.
+- [x] Use também nos cartões de `src/features/delivery/DeliveryManagementView.tsx` (ver 4.5) e em `src/features/admin/MasterDashboardView.tsx`.
 
 ### 2.4 Raios e botões
-- [ ] Folhas do garçom (`WaiterSheet.tsx` e `index.css` → `.waiter-sheet`): 22px vira 12px, só nos cantos de cima.
-- [ ] Barra flutuante "Revisar e enviar" (`WaiterOrderPad.tsx`): `rounded-[14px]` vira `rounded-2xl` (6px).
-- [ ] Crie `src/components/ui/Button.tsx` com `variant` (primary, secondary, ghost, danger) e `size` (`md` = 44px / 15px,
+- [x] Folhas do garçom (`WaiterSheet.tsx` e `index.css` → `.waiter-sheet`): 22px vira 12px, só nos cantos de cima.
+- [x] Barra flutuante "Revisar e enviar" (`WaiterOrderPad.tsx`): `rounded-[14px]` vira `rounded-2xl` (6px).
+- [x] Crie `src/components/ui/Button.tsx` com `variant` (primary, secondary, ghost, danger) e `size` (`md` = 44px / 15px,
       `lg` = 56px / 17px), usando as classes `btn-*` existentes. Use nos botões principais do garçom e do cardápio
       (enviar à produção, adicionar, abrir comanda, continuar, enviar pedido).
 
 ### 2.5 Produto esgotado legível
 Arquivos: `WaiterOrderPad.tsx`, `PublicMenuApp.tsx`
-- [ ] Tire a `opacity` da linha inteira e o `line-through` do nome. O nome fica na cor normal, a foto e o preço ficam esmaecidos
+- [x] Tire a `opacity` da linha inteira e o `line-through` do nome. O nome fica na cor normal, a foto e o preço ficam esmaecidos
       e aparece a etiqueta "Esgotado" (vermelho sólido, mapa de status).
 
 ---

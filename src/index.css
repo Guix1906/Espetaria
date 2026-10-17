@@ -107,6 +107,8 @@
   .btn-success:hover:not(:disabled) { @apply border-emerald-800 bg-emerald-800; }
   .btn-secondary { @apply border-line-strong bg-surface text-ink-secondary; }
   .btn-secondary:hover:not(:disabled) { @apply border-brand-600 bg-brand-50 text-brand-800; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-md border border-transparent bg-transparent px-4 py-2.5 text-sm font-semibold text-ink-secondary; }
+  .btn-ghost:hover:not(:disabled) { @apply bg-surface-muted text-ink; }
   .btn-danger { @apply border-rose-700 bg-rose-700 text-white; }
   .btn-danger:hover:not(:disabled) { @apply border-rose-800 bg-rose-800; }
   .icon-button { @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink; }
@@ -116,7 +118,7 @@
   .filter-chip.is-active { @apply border-brand-950 bg-brand-950 text-white; }
   .filter-chip .filter-count { @apply rounded-md bg-surface-muted px-1.5 py-0.5 text-xs text-ink-secondary tabular-nums; }
   .filter-chip.is-active .filter-count { @apply bg-white/15 text-white; }
-  .status-badge { @apply inline-flex w-fit items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-xs font-medium leading-tight; border: 0 !important; }
+  .status-badge { @apply inline-flex w-fit items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-xs font-medium leading-tight; border-width: 0; }
   .notice { @apply flex items-start gap-3 rounded-xl border p-4 text-sm leading-relaxed; }
   .empty-state { @apply surface-card flex flex-col items-center justify-center gap-3 px-5 py-14 text-center; }
   .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 1rem; }
@@ -164,7 +166,7 @@
 @media (max-width: 639px) {
   .dialog-root { padding: 0.75rem; }
   .dialog-root--sheet, .dialog-root--sheet[open] { align-items: flex-end; padding: 0; }
-  .dialog-root--sheet > .dialog-panel.waiter-sheet { border-radius: 22px 22px 0 0; }
+  .dialog-root--sheet > .dialog-panel.waiter-sheet { border-radius: 12px 12px 0 0; }
   .dialog-root--sheet > .dialog-panel { max-height: calc(100% - env(safe-area-inset-top, 0px) - 12px); border-radius: 6px 6px 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
   .dialog-root--navigation { padding: 0; }
   .table-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
@@ -184,7 +186,6 @@
   border-color: rgb(var(--color-line-strong));
   font-size: 0.875rem;
 }
-.btn-primary, .btn-secondary, .btn-success, .btn-danger { font-size: 0.875rem; }
 .dialog-root input[type='number'] { min-width: 4rem; }
 @media (max-width: 639px) {
   .app-shell :is(input:not([type='checkbox']):not([type='radio']), select, textarea),

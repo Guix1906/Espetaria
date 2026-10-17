@@ -1,3 +1,5 @@
+import { StatusTag } from '../../components/ui/StatusTag';
+import type { StatusKind } from '../../lib/statusStyles';
 import { ArrowRight, CheckCheck, Info, LayoutGrid, Search, Settings2, Smartphone, Users, BellRing } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -113,11 +115,11 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
 
   const statusChip = (table: RestaurantTable) => {
     const items = itemsOfTable(table.id).filter((item) => item.status !== 'CANCELLED');
-    if (readyTableIds.has(table.id)) return { label: 'Pronto', cls: 'bg-sucesso/15 text-sucesso' };
-    if (table.status === 'AGUARDANDO_CONTA') return { label: 'Conta pedida', cls: 'bg-alerta/15 text-alerta' };
-    if (items.some((item) => item.status === 'RECEIVED' || item.status === 'IN_PREPARATION')) return { label: 'Em preparo', cls: 'bg-alerta/15 text-alerta' };
-    if (!items.length) return { label: 'Sem pedido', cls: 'bg-surface-muted text-ink-secondary' };
-    return { label: 'Servido', cls: 'bg-surface-muted text-ink-secondary' };
+    if (readyTableIds.has(table.id)) return { label: 'Pronto', kind: 'ready' as StatusKind };
+    if (table.status === 'AGUARDANDO_CONTA') return { label: 'Conta pedida', kind: 'bill' as StatusKind };
+    if (items.some((item) => item.status === 'RECEIVED' || item.status === 'IN_PREPARATION')) return { label: 'Em preparo', kind: 'preparing' as StatusKind };
+    if (!items.length) return { label: 'Sem pedido', kind: 'occupied' as StatusKind };
+    return { label: 'Servido', kind: 'occupied' as StatusKind };
   };
   const tabSubtitle = (tab: Tab | undefined) => [tab?.people_count ? `${tab.people_count} ${tab.people_count === 1 ? 'pessoa' : 'pessoas'}` : null, tab ? formatElapsedMinutes(tab.opened_at, now) : null].filter(Boolean).join(' · ');
   const tabName = (table: RestaurantTable, tab: Tab | undefined) => (tab?.customer_name && tab.customer_name !== `Mesa ${table.number}` ? tab.customer_name : 'Sem nome');
@@ -167,7 +169,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1">
                     <span className="font-mono text-base font-bold text-ink">{formatBRL(tab?.total)}</span>
-                    <span className={`rounded px-2 py-0.5 text-xs font-semibold ${chip.cls}`}>{chip.label}</span>
+                    <StatusTag kind={chip.kind} className="font-semibold">{chip.label}</StatusTag>
                   </span>
                 </button>
               </li>
@@ -181,7 +183,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
           <div className="grid grid-cols-3 xs:grid-cols-4 gap-2">
             {showFree.map((table) => (
               <button key={table.id} type="button" disabled={!isShiftOpen} onClick={() => askOpen(table)}
-                className={`flex h-[50px] items-center justify-center rounded-lg border border-t-[3px] border-line bg-surface font-mono text-xl font-bold text-ink disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-t-alerta' : 'border-t-sucesso'}`}
+                className={`flex h-[50px] items-center justify-center rounded-lg border bg-surface font-mono text-xl font-bold disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-dashed border-line-strong text-ink-secondary' : 'border-emerald-600 text-emerald-800'}`}
                 aria-label={`Mesa ${pad2(table.number)}${table.status === 'RESERVADA' ? ' (reservada)' : ''}. Abrir comanda`}>
                 {pad2(table.number)}
               </button>
@@ -198,25 +200,25 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
 
   const readySection = (
     <div className="space-y-3">
-      <h1 className="text-xl font-semibold text-[#2A201B]">Prontos para servir</h1>
+      <h1 className="text-xl font-semibold text-ink">Prontos para servir</h1>
       {readyTables.length === 0 ? <EmptyState title="Nada pronto agora" description="Quando a churrasqueira, a cozinha ou o bar terminarem um item, ele aparece aqui." /> : readyTables.map((table) => {
         const items = readyItemsOf(table.id);
         const tab = getTableTab(table.id);
         return (
-          <section key={table.id} className="rounded-xl border border-[#E3D9CE] bg-[#FBF8F4] p-3.5">
+          <section key={table.id} className="rounded-xl border border-line bg-surface p-3.5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <button type="button" onClick={() => setSelectedTableId(table.id)} className="min-h-[44px] min-w-0 text-left">
-                <span className="font-mono text-xl font-bold text-[#2A201B]">Mesa {pad2(table.number)}</span>
-                <span className="ml-2 truncate text-sm text-[#7A6C62]">{tabName(table, tab)}</span>
+                <span className="font-mono text-xl font-bold text-ink">Mesa {pad2(table.number)}</span>
+                <span className="ml-2 truncate text-sm text-ink-muted">{tabName(table, tab)}</span>
               </button>
-              {items.length > 1 && <button type="button" className="h-11 shrink-0 rounded-lg bg-[#3E7A4E] px-3 text-sm font-semibold text-white" onClick={() => items.forEach((item) => markDelivered(item.id))}>Servir todos</button>}
+              {items.length > 1 && <button type="button" className="h-11 shrink-0 rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white" onClick={() => items.forEach((item) => markDelivered(item.id))}>Servir todos</button>}
             </div>
-            <ul className="divide-y divide-[#E3D9CE]">
+            <ul className="divide-y divide-line">
               {items.map((item) => (
                 <li key={item.id} className="flex items-center gap-3 py-2">
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold text-[#2A201B]">{item.quantity}x {item.product_name}</span>
-                    {(item.doneness || item.notes) && <span className="block text-xs text-[#7A6C62]">{[item.doneness ? formatDoneness(item.doneness) : null, item.notes].filter(Boolean).join(' · ')}</span>}
+                    <span className="block text-[15px] font-semibold text-ink">{item.quantity}x {item.product_name}</span>
+                    {(item.doneness || item.notes) && <span className="block text-xs text-ink-muted">{[item.doneness ? formatDoneness(item.doneness) : null, item.notes].filter(Boolean).join(' · ')}</span>}
                   </span>
                   <button type="button" className="flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-sucesso px-3 text-sm font-semibold text-sucesso" onClick={() => markDelivered(item.id)}>
                     <CheckCheck className="h-4 w-4" aria-hidden="true" />Servir

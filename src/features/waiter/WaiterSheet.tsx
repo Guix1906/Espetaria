@@ -18,12 +18,12 @@ export function WaiterSheet({ label, onClose, children, className = '' }: { labe
   };
   return (
     <Dialog label={label} onClose={onClose} placement="sheet">
-      <div ref={panel} className={`dialog-panel waiter-sheet flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-[22px] bg-[#FBF8F4] transition-transform sm:rounded-[22px] ${className}`}>
+      <div ref={panel} className={`dialog-panel waiter-sheet flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-[12px] bg-surface transition-transform sm:rounded-2xl ${className}`}>
         <div className="flex shrink-0 cursor-grab touch-none justify-center pb-1 pt-2.5" aria-hidden="true"
           onTouchStart={(e) => { startY.current = e.touches[0]?.clientY ?? null; }}
           onTouchMove={(e) => move(e.touches[0]?.clientY ?? 0)}
           onTouchEnd={(e) => end(e.changedTouches[0]?.clientY ?? 0)}>
-          <span className="h-[5px] w-10 rounded-[3px] bg-[#D9CEC2]" />
+          <span className="h-[5px] w-10 rounded-[3px] bg-line-strong" />
         </div>
         {children}
       </div>

@@ -1,16 +1,17 @@
+import { STATUS_STYLES, type StatusKind } from './statusStyles';
 import type { DeliveryOrder, DeliveryOrderType, DeliveryPaymentMethod, DeliveryStatus } from '../types/domain';
 
-type StatusConfig = { label: string; description: string; classes: string };
+type StatusConfig = { label: string; description: string; kind: StatusKind; classes: string };
 
 const statuses: Record<DeliveryStatus, StatusConfig> = {
-  AWAITING_PAYMENT: { label: 'Aguardando PIX', description: 'Pague o PIX abaixo. Assim que o pagamento for confirmado, seu pedido vai para a brasa.', classes: 'border-amber-200 bg-amber-50 text-amber-800' },
-  PENDING: { label: 'Aguardando confirmação', description: 'O pedido está aguardando confirmação da espetaria.', classes: 'border-amber-200 bg-amber-50 text-amber-800' },
-  CONFIRMED: { label: 'Confirmado', description: 'Recebemos seu pedido. Ele entrará na fila de preparo.', classes: 'border-sky-200 bg-sky-50 text-sky-800' },
-  PREPARING: { label: 'Na brasa', description: 'Seu pedido já está sendo preparado.', classes: 'border-amber-200 bg-amber-50 text-amber-800' },
-  READY: { label: 'Pronto', description: 'Seu pedido está pronto e sai para entrega em instantes.', classes: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  OUT_FOR_DELIVERY: { label: 'A caminho', description: 'Seu pedido saiu para entrega.', classes: 'border-sky-200 bg-sky-50 text-sky-800' },
-  DELIVERED: { label: 'Entregue', description: 'Entrega concluída. Bom apetite!', classes: 'border-emerald-200 bg-emerald-50 text-emerald-800' },
-  CANCELLED: { label: 'Cancelado', description: 'Este pedido foi cancelado. Entre em contato se precisar de ajuda.', classes: 'border-rose-200 bg-rose-50 text-rose-800' },
+  AWAITING_PAYMENT: { label: 'Aguardando PIX', description: 'Pague o PIX abaixo. Assim que o pagamento for confirmado, seu pedido vai para a brasa.', kind: 'preparing', classes: STATUS_STYLES.preparing },
+  PENDING: { label: 'Aguardando confirmação', description: 'O pedido está aguardando confirmação da espetaria.', kind: 'bill', classes: STATUS_STYLES.bill },
+  CONFIRMED: { label: 'Confirmado', description: 'Recebemos seu pedido. Ele entrará na fila de preparo.', kind: 'occupied', classes: STATUS_STYLES.occupied },
+  PREPARING: { label: 'Na brasa', description: 'Seu pedido já está sendo preparado.', kind: 'preparing', classes: STATUS_STYLES.preparing },
+  READY: { label: 'Pronto', description: 'Seu pedido está pronto e sai para entrega em instantes.', kind: 'ready', classes: STATUS_STYLES.ready },
+  OUT_FOR_DELIVERY: { label: 'A caminho', description: 'Seu pedido saiu para entrega.', kind: 'occupied', classes: STATUS_STYLES.occupied },
+  DELIVERED: { label: 'Entregue', description: 'Entrega concluída. Bom apetite!', kind: 'occupied', classes: STATUS_STYLES.occupied },
+  CANCELLED: { label: 'Cancelado', description: 'Este pedido foi cancelado. Entre em contato se precisar de ajuda.', kind: 'alert', classes: STATUS_STYLES.alert },
 };
 
 // Retirada no local: muda só o texto das etapas finais

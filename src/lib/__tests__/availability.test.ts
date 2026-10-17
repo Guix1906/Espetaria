@@ -1,3 +1,4 @@
+import { STATUS_STYLES } from '../statusStyles';
 import { describe, expect, it } from 'vitest';
 import { getProductAvailability } from '../productAvailability';
 import { getDeliveryStatusConfig } from '../deliveryStatus';
@@ -30,7 +31,7 @@ describe('Delivery status presentation', () => {
     const config = getDeliveryStatusConfig(status);
     expect(config.label.length).toBeGreaterThan(0);
     expect(config.description.length).toBeGreaterThan(0);
-    expect(config.classes).toContain('border-');
+    expect(config.classes).toBe(STATUS_STYLES[config.kind]);
   });
   it('does not describe cancelled or delivered orders as still being prepared', () => {
     expect(getDeliveryStatusConfig('CANCELLED').label).toBe('Cancelado');

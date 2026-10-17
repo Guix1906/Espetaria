@@ -1,4 +1,5 @@
-﻿import { MeatDoneness, TableStatus, OrderItemStatus, AppRole } from '../types/enums';
+import { STATUS_STYLES } from './statusStyles';
+import { MeatDoneness, TableStatus, OrderItemStatus, AppRole } from '../types/enums';
 
 /**
  * Formata valores monetários no padrão Real Brasileiro (BRL)
@@ -74,13 +75,13 @@ export function formatDoneness(doneness: MeatDoneness | null | undefined): strin
 export function getTableStatusConfig(status: TableStatus): { label: string; color: string; badgeBg: string } {
   switch (status) {
     case 'LIVRE':
-      return { label: 'Livre', color: 'text-emerald-700', badgeBg: 'bg-emerald-50 text-emerald-800' };
+      return { label: 'Livre', color: 'text-emerald-700', badgeBg: STATUS_STYLES.free };
     case 'OCUPADA':
-      return { label: 'Ocupada', color: 'text-amber-800', badgeBg: 'bg-amber-50 text-amber-800' };
+      return { label: 'Ocupada', color: 'text-ink', badgeBg: STATUS_STYLES.occupied };
     case 'AGUARDANDO_CONTA':
-      return { label: 'Conta solicitada', color: 'text-rose-700', badgeBg: 'bg-rose-50 text-rose-800' };
+      return { label: 'Conta pedida', color: 'text-brand-700', badgeBg: STATUS_STYLES.bill };
     case 'RESERVADA':
-      return { label: 'Reservada', color: 'text-sky-700', badgeBg: 'bg-sky-50 text-sky-800' };
+      return { label: 'Reservada', color: 'text-ink-secondary', badgeBg: STATUS_STYLES.reserved };
   }
 }
 
