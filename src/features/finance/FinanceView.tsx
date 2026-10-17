@@ -1,11 +1,10 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { ArrowDownRight, ArrowUpRight, CalendarClock, ChevronDown, Download, Eye, Landmark, Pencil, Scale, Trash2, Wallet, X } from 'lucide-react';
+import { CalendarClock, ChevronDown, Download, Eye, Landmark, Pencil, Trash2, X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { FilterChip } from '../../components/ui/FilterChip';
-import { StatCard } from '../../components/ui/StatCard';
 import { PeriodPicker, defaultPeriod, type Period } from '../../components/ui/PeriodPicker';
 import { Chart, CHART_COLORS, baseOptions } from '../../components/charts/Chart';
 import { formatBRL } from '../../lib/formatters';
@@ -126,29 +125,86 @@ export function Overview({ data }: { data: FinanceDataset }) {
   const expenses = sumBy(data.entries.filter((e) => e.kind === 'PAGAR'), (e) => e.category, (e) => e.amount);
   const pendingDelivery = data.deliveries.filter((d) => !d.paid && d.status !== 'CANCELLED').reduce((s, d) => s + d.total, 0);
 
+  const toReceiveTotal = toReceive.reduce((s, e) => s + e.amount, 0) + pendingDelivery + data.openTabsTotal;
+  const toPayTotal = toPay.reduce((s, e) => s + e.amount, 0);
+  const result = inflow - outflow;
+  const methods = [...byMethod].sort((a, b) => b.total - a.total);
+  const methodsTotal = methods.reduce((s, m) => s + m.total, 0);
+  const topExpenses = [...expenses].sort((a, b) => b.total - a.total).slice(0, 5);
+  const expensesTotal = expenses.reduce((s, e) => s + e.total, 0);
+
   return (
-    <div className="space-y-6">
-      <div className="stat-grid">
-        <StatCard label="Entradas no período" value={formatBRL(inflow)} hint={<>Salão {formatBRL(salon)} · Delivery {formatBRL(delivery)}</>} icon={ArrowUpRight} />
-        <StatCard label="Saídas no período" value={formatBRL(outflow)} hint="Contas pagas" icon={ArrowDownRight} />
-        <StatCard label="Resultado" value={<span className={inflow - outflow < 0 ? 'text-rose-700' : ''}>{formatBRL(inflow - outflow)}</span>} hint="Entradas menos saídas" icon={Scale} />
-        <StatCard label="A receber" value={formatBRL(toReceive.reduce((s, e) => s + e.amount, 0) + pendingDelivery + data.openTabsTotal)} hint="Contas, delivery a receber e comandas abertas" icon={Wallet} tone="success" />
-        <StatCard label="A pagar" value={formatBRL(toPay.reduce((s, e) => s + e.amount, 0))} hint="Contas ainda não pagas" icon={Wallet} tone="danger" />
-      </div>
+    <div className="space-y-8">
+      {/* Resumo: 3 números numa faixa só, sem um quadro para cada */}
+      <section aria-label="Resumo do período" className="surface-card">
+        <div className="grid grid-cols-1 divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+          <div className="p-4 sm:p-5">
+            <p className="text-sm text-ink-muted">Entradas</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-ink">{formatBRL(inflow)}</p>
+            <p className="mt-0.5 text-[13px] text-ink-muted">Salão {formatBRL(salon)} · Delivery {formatBRL(delivery)}</p>
+          </div>
+          <div className="p-4 sm:p-5">
+            <p className="text-sm text-ink-muted">Saídas</p>
+            <p className="mt-1 font-mono text-2xl font-bold text-ink">{formatBRL(outflow)}</p>
+            <p className="mt-0.5 text-[13px] text-ink-muted">Contas pagas</p>
+          </div>
+          <div className="p-4 sm:p-5">
+            <p className="text-sm text-ink-muted">Resultado</p>
+            <p className={`mt-1 font-mono text-2xl font-bold ${result < 0 ? 'text-rose-700' : 'text-ink'}`}>{formatBRL(result)}</p>
+            <p className="mt-0.5 text-[13px] text-ink-muted">Entradas menos saídas</p>
+          </div>
+        </div>
+        <p className="border-t border-line px-4 py-3 text-sm text-ink-secondary sm:px-5">
+          A receber <strong className="font-mono text-ink">{formatBRL(toReceiveTotal)}</strong>
+          <span className="mx-2 text-ink-muted" aria-hidden="true">·</span>
+          A pagar <strong className="font-mono text-ink">{formatBRL(toPayTotal)}</strong>
+        </p>
+      </section>
+
       {overdue.length > 0 && <p className="notice border-amber-200 bg-amber-50 text-amber-900"><CalendarClock className="h-5 w-5 shrink-0" aria-hidden="true" />{overdue.length} {overdue.length === 1 ? 'conta vencida' : 'contas vencidas'} em aberto, somando {formatBRL(overdue.reduce((s, e) => s + e.amount, 0))}. Veja em Contas a pagar / a receber.</p>}
-      <section className="surface-card p-4 sm:p-5">
-        <div className="mb-1 flex flex-wrap items-center justify-between gap-2"><h2 className="text-base font-semibold">Fluxo de caixa</h2><div className="flex flex-wrap items-center gap-2"><ForecastToggle value={showForecast} onChange={setShowForecast} /><GroupingPicker value={grouping} onChange={setGrouping} /></div></div>
+
+      {/* Um gráfico só */}
+      <section>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h2 className="text-base font-semibold">Fluxo de caixa</h2><div className="flex flex-wrap items-center gap-2"><ForecastToggle value={showForecast} onChange={setShowForecast} /><GroupingPicker value={grouping} onChange={setGrouping} /></div></div>
         <p className="mb-2 text-[13px] text-ink-muted">{showForecast ? 'Barras claras: previsto (contas em aberto, delivery a receber e comandas abertas). Linha tracejada: saldo projetado.' : 'Barras: entradas e saídas realizadas. Linha: saldo.'}</p>
         <CashFlowChart data={data} grouping={grouping} showForecast={showForecast} />
       </section>
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section className="surface-card p-4 sm:p-5">
-          <h2 className="mb-2 text-base font-semibold">Recebido por forma de pagamento</h2>
-          {byMethod.length ? <Chart type="donut" height={280} series={byMethod.map((m) => +m.total.toFixed(2))} options={baseOptions({ labels: byMethod.map((m) => m.name), colors: CHART_COLORS.palette, legend: { position: 'bottom' }, plotOptions: { pie: { donut: { size: '62%', labels: { show: true, total: { show: true, label: 'Total', formatter: () => formatBRL(byMethod.reduce((s, m) => s + m.total, 0)) } } } } } })} /> : <Empty />}
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        {/* Forma de pagamento: barra dividida, sem rosca */}
+        <section>
+          <h2 className="mb-3 text-base font-semibold">Recebido por forma de pagamento</h2>
+          {methods.length ? (
+            <>
+              <div className="flex h-3 w-full overflow-hidden rounded-sm bg-surface-muted" aria-hidden="true">
+                {methods.map((m, i) => <span key={m.name} style={{ width: `${(m.total / methodsTotal) * 100}%`, background: CHART_COLORS.palette[i % CHART_COLORS.palette.length] }} />)}
+              </div>
+              <ul className="mt-3 divide-y divide-line">
+                {methods.map((m, i) => (
+                  <li key={m.name} className="flex items-center justify-between gap-3 py-2 text-sm">
+                    <span className="flex items-center gap-2 text-ink"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: CHART_COLORS.palette[i % CHART_COLORS.palette.length] }} aria-hidden="true" />{m.name}</span>
+                    <span className="font-mono font-semibold text-ink">{formatBRL(m.total)} <span className="font-normal text-ink-muted">{((m.total / methodsTotal) * 100).toFixed(0)}%</span></span>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : <Empty />}
         </section>
-        <section className="surface-card p-4 sm:p-5">
-          <h2 className="mb-2 text-base font-semibold">Despesas por categoria</h2>
-          {expenses.length ? <Chart type="bar" height={280} series={[{ name: 'Despesas', data: expenses.map((e) => +e.total.toFixed(2)) }]} options={baseOptions({ colors: [CHART_COLORS.outflow], plotOptions: { bar: { horizontal: true, borderRadius: 2, barHeight: '60%' } }, xaxis: { categories: expenses.map((e) => e.name) } })} /> : <Empty text="Nenhuma conta a pagar lançada no período." />}
+
+        {/* Despesas: as 5 maiores */}
+        <section>
+          <h2 className="mb-3 text-base font-semibold">Maiores despesas</h2>
+          {topExpenses.length ? (
+            <ul className="divide-y divide-line">
+              {topExpenses.map((e) => (
+                <li key={e.name} className="py-2 text-sm">
+                  <div className="flex items-center justify-between gap-3"><span className="text-ink">{e.name}</span><span className="font-mono font-semibold text-ink">{formatBRL(e.total)}</span></div>
+                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-sm bg-surface-muted"><div className="h-full bg-rose-600/70" style={{ width: `${(e.total / (topExpenses[0]?.total || 1)) * 100}%` }} /></div>
+                </li>
+              ))}
+              {expenses.length > 5 && <li className="py-2 text-[13px] text-ink-muted">Mais {expenses.length - 5} categorias · total {formatBRL(expensesTotal)}</li>}
+            </ul>
+          ) : <Empty text="Nenhuma conta a pagar lançada no período." />}
         </section>
       </div>
     </div>
