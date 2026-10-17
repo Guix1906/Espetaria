@@ -1,0 +1,693 @@
+import { ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { formatBRL, formatDoneness } from '../../lib/formatters';
+import { getProductAvailability } from '../../lib/productAvailability';
+import { useDeliveryStore } from '../../stores/useDeliveryStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useStockStore } from '../../stores/useStockStore';
+import type { DeliveryOrderType, DeliveryPaymentMethod, Product } from '../../types/domain';
+import type { MeatDoneness } from '../../types/enums';
+import { OrderPixBlock, OrderStatusView } from './OrderStatusView';
+
+/*
+ * Cardápio digital do cliente (/cardapio). Celular: telas por etapa
+ * (cardápio → pedido → entrega → pagamento → revisão → acompanhamento), e o
+ * botão voltar do navegador volta uma etapa. Notebook (≥1024px): cardápio com
+ * painel do pedido ao lado e finalização em uma página só.
+ */
+
+type Step = 'menu' | 'cart' | 'delivery' | 'payment' | 'review' | 'checkout' | 'sent';
+const DONENESS: { id: MeatDoneness; label: string }[] = [
+  { id: 'MAL_PASSADA', label: 'Mal passada' },
+  { id: 'AO_PONTO', label: 'Ao ponto' },
+  { id: 'BEM_PASSADA', label: 'Bem passada' },
+];
+const PAYMENTS: { id: DeliveryPaymentMethod; label: string; hint: string }[] = [
+  { id: 'PIX', label: 'PIX', hint: 'Código gerado após enviar o pedido' },
+  { id: 'CARTAO_ENTREGA', label: 'Cartão na entrega', hint: 'Débito ou crédito na maquininha' },
+  { id: 'DINHEIRO', label: 'Dinheiro', hint: 'Pague ao entregador' },
+];
+const CATEGORY_ORDER = ['Espetos com acompanhamento', 'Espetos', 'Porções', 'Bebidas', 'Sobremesas', 'Outros'];
+const SAVED_KEY = 'ponto.cardapio.cliente';
+
+function categoryOf(p: Product) {
+  if (p.type === 'ESPETO') return /acompanhamento/i.test(p.name) ? 'Espetos com acompanhamento' : 'Espetos';
+  if (p.type === 'PORCAO') return 'Porções';
+  if (p.type === 'BEBIDA') return 'Bebidas';
+  if (p.type === 'SOBREMESA') return 'Sobremesas';
+  return 'Outros';
+}
+const slug = (s: string) => 'cat-' + s.normalize('NFD').replace(/[^\w]+/g, '-').toLowerCase();
+const parseMoney = (s: string) => { const n = parseFloat(s.replace(/\./g, '').replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
+
+function useIsDesktop() {
+  const [is, setIs] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const on = () => setIs(mq.matches);
+    mq.addEventListener('change', on);
+    return () => mq.removeEventListener('change', on);
+  }, []);
+  return is;
+}
+
+interface Customer { name: string; phone: string; neighborhood: string; street: string; number: string; complement: string }
+function loadCustomer(): Customer {
+  try { return { name: '', phone: '', neighborhood: '', street: '', number: '', complement: '', ...JSON.parse(localStorage.getItem(SAVED_KEY) || '{}') }; }
+  catch { return { name: '', phone: '', neighborhood: '', street: '', number: '', complement: '' }; }
+}
+
+/* ---------- peças visuais ---------- */
+const primaryBtn = 'flex h-14 w-full items-center justify-center gap-2 rounded-[12px] bg-[#B5502E] px-5 text-[17px] font-semibold text-white transition hover:bg-[#8E3C20] disabled:cursor-not-allowed disabled:bg-[#A89A8C] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2B211C]';
+const inputCls = 'h-12 w-full rounded-[10px] border border-[#E4DACB] bg-white px-3.5 text-[16px] text-[#2B211C] placeholder:text-[#A89A8C] focus:border-[#B5502E] focus:outline-none focus:ring-2 focus:ring-[#F9F0EA]';
+const labelCls = 'mb-1.5 block text-[14px] font-medium text-[#3D322B]';
+
+function Photo({ product, className }: { product: Product; className: string }) {
+  if (product.image_url) return <img src={product.image_url} alt="" loading="lazy" className={`${className} object-cover`} />;
+  return <div aria-hidden="true" className={`${className} flex items-center justify-center bg-[repeating-linear-gradient(135deg,#EFE8DD_0_8px,#F5EFE6_8px_16px)] text-[22px] font-semibold text-[#A89A8C]`}>{product.name.replace(/^espeto (de )?/i, '').charAt(0).toUpperCase()}</div>;
+}
+
+function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { id: T; label: ReactNode }[]; onChange: (v: T) => void; label: string }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex rounded-[10px] bg-[#EFE8DD] p-1">
+      {options.map((o) => (
+        <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}
+          className={`min-h-[40px] flex-1 rounded-[8px] px-2 text-[15px] ${value === o.id ? 'bg-white font-semibold text-[#2B211C] shadow-[0_1px_2px_rgba(43,33,28,.08)]' : 'font-medium text-[#6B5D53]'}`}>{o.label}</button>
+      ))}
+    </div>
+  );
+}
+
+function Stepper({ qty, onMinus, onPlus, size = 40 }: { qty: number; onMinus: () => void; onPlus: () => void; size?: number }) {
+  return (
+    <div className="flex items-center rounded-[10px] border border-[#CFC2B2] bg-white" style={{ height: size }}>
+      <button type="button" onClick={onMinus} aria-label="Diminuir" className="flex h-full w-10 items-center justify-center text-[#6B5D53]"><Minus className="h-4 w-4" /></button>
+      <span className="min-w-[20px] text-center text-[15px] font-semibold tabular-nums">{qty}</span>
+      <button type="button" onClick={onPlus} aria-label="Aumentar" className="flex h-full w-10 items-center justify-center text-[#B5502E]"><Plus className="h-4 w-4" /></button>
+    </div>
+  );
+}
+
+function Radio({ on }: { on: boolean }) {
+  return <span aria-hidden="true" className={`block h-[22px] w-[22px] shrink-0 rounded-full bg-white ${on ? 'border-[7px] border-[#B5502E]' : 'border-2 border-[#CFC2B2]'}`} />;
+}
+
+function TopBar({ title, onBack }: { title: string; onBack: () => void }) {
+  return (
+    <div className="sticky top-0 z-20 grid h-14 grid-cols-[44px_1fr_44px] items-center border-b border-[#E4DACB] bg-[#FBF8F3] px-2">
+      <button type="button" onClick={onBack} aria-label="Voltar" className="flex h-11 w-11 items-center justify-center rounded-[10px] text-[#2B211C] hover:bg-[#EFE8DD]"><ChevronLeft className="h-6 w-6" /></button>
+      <h1 className="text-center text-[17px] font-semibold">{title}</h1>
+    </div>
+  );
+}
+
+function Progress({ n }: { n: 1 | 2 | 3 }) {
+  return (
+    <div className="px-5 pt-4">
+      <div className="flex gap-1.5">{[1, 2, 3].map((i) => <span key={i} className={`h-1 flex-1 rounded-sm ${i <= n ? 'bg-[#B5502E]' : 'bg-[#E4DACB]'}`} />)}</div>
+      <p className="mt-2 text-[13px] text-[#6B5D53]">Etapa {n} de 3</p>
+    </div>
+  );
+}
+
+function Footer({ children }: { children: ReactNode }) {
+  return <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#E4DACB] bg-[#FBF8F3] px-5 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}><div className="mx-auto max-w-xl">{children}</div></div>;
+}
+
+function Alert({ children }: { children: ReactNode }) {
+  return <p role="alert" className="rounded-[10px] border border-[#E9C4C4] bg-[#FBEDED] p-3 text-[14px] text-[#9B2C2C]">{children}</p>;
+}
+
+/* ---------- produto (folha no celular, modal no notebook) ---------- */
+function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: () => void; onAdd: (qty: number, doneness: MeatDoneness | null, notes: string) => string | null }) {
+  const [qty, setQty] = useState(1);
+  const [doneness, setDoneness] = useState<MeatDoneness | null>(null);
+  const [notes, setNotes] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const needsDoneness = product.allows_doneness;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    document.body.style.overflow = 'hidden';
+    return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
+  }, [onClose]);
+  const submit = () => { const e = onAdd(qty, doneness, notes); if (e) setErr(e); };
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(43,33,28,.5)] lg:items-center lg:p-6" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={product.name} onClick={(e) => e.stopPropagation()}
+        className="pm-sheet flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[20px] bg-[#FBF8F3] lg:grid lg:h-[560px] lg:max-h-[90vh] lg:max-w-[860px] lg:grid-cols-[400px_1fr] lg:rounded-[16px]">
+        <div className="relative shrink-0">
+          <Photo product={product} className="h-[200px] w-full lg:h-full" />
+          <button type="button" onClick={onClose} aria-label="Fechar" className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-[#FBF8F3] text-[#2B211C] shadow lg:hidden"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="relative flex-1 space-y-5 overflow-y-auto px-5 pb-4 pt-5 lg:px-7 lg:pt-7">
+            <button type="button" onClick={onClose} aria-label="Fechar" className="absolute right-5 top-5 hidden h-10 w-10 items-center justify-center rounded-full bg-[#EFE8DD] text-[#2B211C] lg:flex"><X className="h-5 w-5" /></button>
+            <div>
+              <div className="flex items-start justify-between gap-4 lg:pr-[72px]"><h2 className="text-[24px] font-semibold leading-tight">{product.name}</h2><span className="shrink-0 pt-1 text-[20px] font-semibold tabular-nums">{formatBRL(product.price)}</span></div>
+              {product.description && <p className="mt-2 text-[15px] leading-snug text-[#6B5D53]">{product.description}</p>}
+            </div>
+            {needsDoneness && (
+              <fieldset>
+                <legend className="mb-2 flex items-center gap-2 text-[17px] font-semibold">Ponto da carne <span className="rounded-[4px] bg-[#2B211C] px-1.5 py-0.5 text-[12px] font-semibold text-[#FBF8F3]">Obrigatório</span></legend>
+                <div className="divide-y divide-[#EFE8DD] lg:grid lg:grid-cols-3 lg:gap-2 lg:divide-y-0">
+                  {DONENESS.map((d) => (
+                    <button key={d.id} type="button" role="radio" aria-checked={doneness === d.id} onClick={() => setDoneness(d.id)}
+                      className={`flex h-12 w-full items-center gap-3 text-left text-[16px] lg:justify-center lg:rounded-[10px] lg:border lg:text-[15px] ${doneness === d.id ? 'lg:border-2 lg:border-[#B5502E] lg:bg-[#F9F0EA] lg:font-semibold' : 'lg:border-[#CFC2B2] lg:bg-white'}`}>
+                      <span className="shrink-0 lg:hidden"><Radio on={doneness === d.id} /></span>{d.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+            <div><label htmlFor="pm-notes" className="mb-2 block text-[17px] font-semibold">Observação</label><input id="pm-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex.: pouco sal" className={inputCls} /></div>
+            {err && <Alert>{err}</Alert>}
+          </div>
+          <div className="flex gap-3 border-t border-[#E4DACB] px-5 pt-3 lg:px-7 lg:pb-5" style={{ paddingBottom: 'max(calc(env(safe-area-inset-bottom) + 16px), 20px)' }}>
+            <div className="flex h-14 items-center rounded-[12px] border border-[#CFC2B2] bg-white">
+              <button type="button" aria-label="Diminuir" onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex h-full w-11 items-center justify-center text-[#6B5D53]"><Minus className="h-5 w-5" /></button>
+              <span className="w-6 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
+              <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-full w-11 items-center justify-center text-[#B5502E]"><Plus className="h-5 w-5" /></button>
+            </div>
+            <button type="button" disabled={needsDoneness && !doneness} onClick={submit} className={primaryBtn}>{needsDoneness && !doneness ? 'Escolha o ponto' : `Adicionar · ${formatBRL(product.price * qty)}`}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- app ---------- */
+export function PublicMenuApp() {
+  const { products, dailyPrepStock } = useStockStore();
+  const { cart, addToCart, updateCartQuantity, submitDeliveryOrder, zones, activeTrackingOrder } = useDeliveryStore();
+  const { currentShift } = useShiftStore();
+  const settings = useSettingsStore((s) => s.settings);
+  const isDesktop = useIsDesktop();
+  const isOpen = currentShift?.status === 'ABERTO';
+
+  const [step, setStep] = useState<Step>('menu');
+  const [orderType, setOrderType] = useState<DeliveryOrderType>('DELIVERY');
+  const [query, setQuery] = useState('');
+  const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const [activeCat, setActiveCat] = useState<string>('');
+  const [customer, setCustomer] = useState<Customer>(loadCustomer);
+  const [payment, setPayment] = useState<DeliveryPaymentMethod>('PIX');
+  const [changeFor, setChangeFor] = useState('');
+  const [noChange, setNoChange] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [cartError, setCartError] = useState<string | null>(null);
+  const [sending, setSending] = useState(false);
+
+  /* navegação por etapa com o botão voltar do navegador */
+  useEffect(() => {
+    window.history.replaceState({ ...(window.history.state || {}), pmStep: 'menu' }, '');
+    const onPop = (e: PopStateEvent) => { setStep((e.state?.pmStep as Step) || 'menu'); window.scrollTo(0, 0); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const go = useCallback((next: Step, replace = false) => {
+    if (replace) window.history.replaceState({ ...(window.history.state || {}), pmStep: next }, '');
+    else window.history.pushState({ pmStep: next }, '');
+    setStep(next);
+    window.scrollTo(0, 0);
+  }, []);
+  const back = () => window.history.back();
+  // Notebook: etapas do celular viram a página única de finalização
+  useEffect(() => { if (isDesktop && (step === 'cart' || step === 'delivery' || step === 'payment' || step === 'review')) setStep('checkout'); if (!isDesktop && step === 'checkout') setStep('cart'); }, [isDesktop, step]);
+
+  const stockOf = (p: Product) => getProductAvailability(p, dailyPrepStock.find((s) => s.product_id === p.id));
+  const visible = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase('pt-BR');
+    return products.filter((p) => p.active && (!q || `${p.name} ${p.description || ''}`.toLocaleLowerCase('pt-BR').includes(q)));
+  }, [products, query]);
+  const groups = useMemo(() => CATEGORY_ORDER.map((c) => ({ name: c, items: visible.filter((p) => categoryOf(p) === c) })).filter((g) => g.items.length), [visible]);
+  const qtyInCart = (id: string) => cart.filter((c) => c.productId === id).reduce((s, c) => s + c.quantity, 0);
+  const count = cart.reduce((s, c) => s + c.quantity, 0);
+  const subtotal = cart.reduce((s, c) => s + c.product.price * c.quantity, 0);
+  const isPickup = orderType === 'PICKUP';
+  const zone = zones.find((z) => z.name === customer.neighborhood);
+  const minFee = zones.length ? Math.min(...zones.map((z) => z.fee)) : 0;
+  const minFeeShort = Number.isInteger(minFee) ? `R$ ${minFee}` : formatBRL(minFee);
+  const fee = isPickup ? 0 : zone?.fee ?? 0;
+  const total = subtotal + fee;
+  const drinks = products.filter((p) => p.active && p.type === 'BEBIDA' && stockOf(p).isAvailable).slice(0, 3);
+
+  /* scroll-spy das categorias */
+  const sectionsRef = useRef<Record<string, HTMLElement | null>>({});
+  useEffect(() => {
+    if (step !== 'menu') return;
+    const io = new IntersectionObserver((entries) => {
+      const vis = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (vis) setActiveCat(vis.target.getAttribute('data-cat') || '');
+    }, { rootMargin: '-140px 0px -60% 0px' });
+    Object.values(sectionsRef.current).forEach((el) => el && io.observe(el));
+    return () => io.disconnect();
+  }, [groups, step]);
+  useEffect(() => { if (!activeCat && groups[0]) setActiveCat(groups[0].name); }, [groups, activeCat]);
+  useEffect(() => { document.getElementById(`chip-${slug(activeCat)}`)?.scrollIntoView({ block: 'nearest', inline: 'center' }); }, [activeCat]);
+  const jumpTo = (cat: string) => {
+    setActiveCat(cat);
+    const el = sectionsRef.current[cat];
+    if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - (isDesktop ? 96 : 128), behavior: 'smooth' });
+  };
+
+  const tryAdd = (p: Product, qty: number, doneness: MeatDoneness | null = null, notes = '') => {
+    try { addToCart(p, qty, doneness, notes); return null; }
+    catch (e) { return e instanceof Error ? e.message.replace('não possui quantidade suficiente em estoque', 'não tem mais unidades disponíveis hoje') : 'Não foi possível adicionar.'; }
+  };
+  const onPlus = (p: Product) => {
+    setMenuError(null);
+    if (p.allows_doneness) { setSheetProduct(p); return; }
+    const e = tryAdd(p, 1); if (e) setMenuError(e);
+  };
+
+  const saveCustomer = (patch: Partial<Customer>) => setCustomer((c) => { const n = { ...c, ...patch }; try { localStorage.setItem(SAVED_KEY, JSON.stringify(n)); } catch { /* sem armazenamento */ } return n; });
+
+  const validateDelivery = () => {
+    if (!customer.name.trim()) return 'Informe o seu nome.';
+    if (customer.phone.replace(/\D/g, '').length < 10) return 'Informe o WhatsApp com DDD.';
+    if (!isPickup) {
+      if (!zone) return 'Escolha o bairro de entrega.';
+      if (!customer.street.trim() || !customer.number.trim()) return 'Preencha rua e número.';
+    }
+    return null;
+  };
+  const validatePayment = () => {
+    if (payment === 'DINHEIRO' && !noChange) {
+      const v = parseMoney(changeFor);
+      if (!changeFor.trim() || Number.isNaN(v)) return 'Informe o troco ou marque "Não preciso de troco".';
+      if (v < total) return `O troco precisa ser de pelo menos ${formatBRL(total)}.`;
+    }
+    return null;
+  };
+
+  const send = async () => {
+    if (sending) return;
+    setFormError(null);
+    const err = validateDelivery() || validatePayment();
+    if (err) { setFormError(err); return; }
+    if (!currentShift || !isOpen) { setFormError('A loja está fechada no momento. Aguarde a abertura para enviar o pedido.'); return; }
+    setSending(true);
+    try {
+      await submitDeliveryOrder({
+        shiftId: currentShift.id, orderType, customerName: customer.name.trim(), phone: customer.phone.trim(),
+        addressStreet: isPickup ? '' : customer.street.trim(), addressNumber: isPickup ? '' : customer.number.trim(), addressNeighborhood: isPickup ? '' : customer.neighborhood,
+        addressComplement: isPickup ? undefined : customer.complement.trim() || undefined,
+        deliveryFee: fee, paymentMethod: payment,
+        cashChangeFor: payment === 'DINHEIRO' && !noChange ? parseMoney(changeFor) : undefined,
+      });
+      go('sent', true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Não foi possível enviar o pedido. Tente novamente.';
+      if (/estoque|esgot|dispon/i.test(msg)) { setCartError(`Um item acabou enquanto você pedia: ${msg} Ajuste o pedido e envie de novo.`); go(isDesktop ? 'checkout' : 'cart'); }
+      else setFormError(msg);
+    } finally { setSending(false); }
+  };
+
+  const tracking = activeTrackingOrder && !['CANCELLED', 'DELIVERED'].includes(activeTrackingOrder.status) ? activeTrackingOrder : null;
+  const initials = settings.name.replace(/^espetaria\s+/i, '').split(/\s+/).filter((w) => w.length > 2).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'SC';
+
+  /* ---------- telas ---------- */
+  const typeOptions = [
+    { id: 'DELIVERY' as const, label: <>Entrega{zones.length > 0 && <span className="font-normal text-[#6B5D53]"> · <span className="hidden min-[400px]:inline">a partir de </span>{minFeeShort}</span>}</> },
+    { id: 'PICKUP' as const, label: 'Retirada' },
+  ];
+
+  const statusLine = (
+    <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-[#6B5D53]">
+      <span aria-hidden="true" className={`h-[7px] w-[7px] rounded-full ${isOpen ? 'bg-[#3F7A4E]' : 'bg-[#9B2C2C]'}`} />
+      {isOpen ? `Aberto agora · ${isPickup ? '30–40 min' : '40–55 min'}` : 'Fechado no momento'}
+    </p>
+  );
+  const logo = <div aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#2B211C] text-[17px] font-bold text-[#F5EFE6] lg:h-11 lg:w-11">{initials}</div>;
+  const searchBox = (
+    <label className="relative block">
+      <span className="sr-only">Buscar no cardápio</span>
+      <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-[#857668]" />
+      <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar no cardápio" className="h-11 w-full rounded-[10px] border border-[#E4DACB] bg-white pl-10 pr-3 text-[16px] placeholder:text-[#857668] focus:border-[#B5502E] focus:outline-none" />
+    </label>
+  );
+
+  const productRow = (p: Product) => {
+    const { isAvailable } = stockOf(p);
+    const q = qtyInCart(p.id);
+    return (
+      <li key={p.id} className={`border-b border-[#EFE8DD] last:border-b-0 ${isAvailable ? '' : 'opacity-55'}`}>
+        <button type="button" disabled={!isAvailable} onClick={() => (p.allows_doneness ? setSheetProduct(p) : onPlus(p))} className="flex w-full gap-3.5 py-3.5 text-left disabled:cursor-not-allowed">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[17px] font-semibold leading-snug">{p.name}</h3>
+            {p.description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-[#6B5D53]">{p.description}</p>}
+            {isAvailable ? <p className="mt-1.5 text-[16px] font-semibold tabular-nums">{formatBRL(p.price)}</p> : <p className="mt-1.5 text-[14px] font-semibold text-[#9B2C2C]">Esgotado hoje</p>}
+          </div>
+          <div className="relative shrink-0">
+            <Photo product={p} className="h-24 w-24 rounded-[10px]" />
+            {isAvailable && (q > 0
+              ? <span aria-label={`${q} no pedido`} className="absolute -bottom-1.5 -right-1.5 flex h-9 min-w-[36px] items-center justify-center rounded-full bg-[#2B211C] px-2 text-[15px] font-semibold text-white shadow-[0_2px_6px_rgba(43,33,28,.2)]">{q}</span>
+              : <span aria-hidden="true" className="absolute -bottom-1.5 -right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#B5502E] text-white shadow-[0_2px_6px_rgba(43,33,28,.2)]"><Plus className="h-5 w-5" /></span>)}
+          </div>
+        </button>
+      </li>
+    );
+  };
+
+  const productCard = (p: Product) => {
+    const { isAvailable } = stockOf(p);
+    const q = qtyInCart(p.id);
+    return (
+      <button key={p.id} type="button" disabled={!isAvailable} onClick={() => (p.allows_doneness ? setSheetProduct(p) : onPlus(p))}
+        className={`relative flex gap-3.5 rounded-[12px] bg-white p-3.5 text-left transition hover:shadow-[0_2px_8px_rgba(43,33,28,.08)] disabled:cursor-not-allowed ${q > 0 ? 'border-2 border-[#2B211C]' : 'border border-[#E4DACB]'} ${isAvailable ? '' : 'opacity-55'}`}>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <h3 className="text-[17px] font-semibold leading-snug">{p.name}</h3>
+          {p.description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-[#6B5D53]">{p.description}</p>}
+          <div className="mt-auto flex items-center gap-2 pt-2">
+            {isAvailable ? <span className="text-[16px] font-semibold tabular-nums">{formatBRL(p.price)}</span> : <span className="text-[14px] font-semibold text-[#9B2C2C]">Esgotado hoje</span>}
+            {q > 0 && <span className="rounded-[6px] bg-[#2B211C] px-2 py-0.5 text-[12px] font-semibold text-[#FBF8F3]">{q} no pedido</span>}
+          </div>
+        </div>
+        <div className="relative shrink-0">
+          <Photo product={p} className="h-[96px] w-[96px] rounded-[10px] xl:h-[110px] xl:w-[110px]" />
+          {isAvailable && <span aria-hidden="true" className="absolute -bottom-1.5 -right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-[#B5502E] text-white shadow-[0_2px_6px_rgba(43,33,28,.2)]"><Plus className="h-5 w-5" /></span>}
+        </div>
+      </button>
+    );
+  };
+
+  const cartLines = (compact = false) => (
+    <ul className="divide-y divide-[#EFE8DD]">
+      {cart.map((item) => (
+        <li key={item.id} className={`flex items-center gap-3 ${compact ? 'py-3' : 'py-4'}`}>
+          <div className="min-w-0 flex-1">
+            <p className={`${compact ? 'text-[15px]' : 'text-[16px]'} font-semibold leading-snug`}>{item.product.name}</p>
+            {(item.doneness || item.notes) && <p className="mt-0.5 text-[14px] text-[#6B5D53]">{[item.doneness && formatDoneness(item.doneness), item.notes && `“${item.notes}”`].filter(Boolean).join(' · ')}</p>}
+            <p className="mt-0.5 text-[15px] font-semibold tabular-nums">{formatBRL(item.product.price * item.quantity)}</p>
+          </div>
+          <Stepper size={compact ? 36 : 40} qty={item.quantity} onMinus={() => updateCartQuantity(item.id, -1)} onPlus={() => { setCartError(null); const e = tryAdd(item.product, 1, item.doneness ?? null, item.notes || ''); if (e) setCartError(e); }} />
+        </li>
+      ))}
+    </ul>
+  );
+
+  const deliveryFields = (twoCols = false) => (
+    <div className={`grid gap-4 ${twoCols ? 'grid-cols-2' : ''}`}>
+      <div><label htmlFor="pm-name" className={labelCls}>Seu nome</label><input id="pm-name" autoComplete="name" value={customer.name} onChange={(e) => saveCustomer({ name: e.target.value })} className={inputCls} /></div>
+      <div>
+        <label htmlFor="pm-phone" className={labelCls}>WhatsApp</label>
+        <input id="pm-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" value={customer.phone} onChange={(e) => saveCustomer({ phone: e.target.value })} className={inputCls} />
+        <p className="mt-1.5 text-[13px] text-[#6B5D53]">Enviamos a confirmação e o link de acompanhamento.</p>
+      </div>
+      {isPickup ? (
+        <p className={`rounded-[6px] border border-[#E4DACB] bg-[#F5EFE6] px-3 py-2.5 text-[14px] text-[#3D322B] ${twoCols ? 'col-span-2' : ''}`}>Avisamos no WhatsApp quando estiver pronto para buscar.{settings.address && <> Retire em: <strong className="font-semibold">{settings.address}</strong></>}</p>
+      ) : (
+        <>
+          <div className={twoCols ? 'col-span-2' : ''}>
+            <div className="mb-1.5 flex items-baseline justify-between"><label htmlFor="pm-hood" className="text-[14px] font-medium text-[#3D322B]">Bairro</label>{zone && <span className="text-[14px] text-[#6B5D53]">Taxa {formatBRL(zone.fee)}</span>}</div>
+            <select id="pm-hood" value={customer.neighborhood} onChange={(e) => saveCustomer({ neighborhood: e.target.value })} className={`${inputCls} appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%236B5D53%22 stroke-width=%221.6%22 fill=%22none%22/></svg>')] bg-[right_14px_center] bg-no-repeat pr-10`}>
+              <option value="">Escolha o bairro</option>
+              {zones.map((z) => <option key={z.name} value={z.name}>{z.name} · {formatBRL(z.fee)}</option>)}
+            </select>
+          </div>
+          <div className={`grid grid-cols-[1fr_96px] gap-3 ${twoCols ? 'col-span-2' : ''}`}>
+            <div><label htmlFor="pm-street" className={labelCls}>Rua</label><input id="pm-street" autoComplete="address-line1" value={customer.street} onChange={(e) => saveCustomer({ street: e.target.value })} className={inputCls} /></div>
+            <div><label htmlFor="pm-number" className={labelCls}>Nº</label><input id="pm-number" inputMode="numeric" value={customer.number} onChange={(e) => saveCustomer({ number: e.target.value })} className={inputCls} /></div>
+          </div>
+          <div className={twoCols ? 'col-span-2' : ''}><label htmlFor="pm-comp" className={labelCls}>Complemento ou referência <span className="font-normal text-[#857668]">(opcional)</span></label><input id="pm-comp" autoComplete="address-line2" value={customer.complement} onChange={(e) => saveCustomer({ complement: e.target.value })} className={inputCls} /></div>
+        </>
+      )}
+    </div>
+  );
+
+  const paymentOptions = (inRow = false) => (
+    <div role="radiogroup" aria-label="Forma de pagamento" className={inRow ? 'grid grid-cols-3 gap-3' : 'space-y-3'}>
+      {PAYMENTS.map((m) => {
+        const on = payment === m.id;
+        return (
+          <div key={m.id} className={`rounded-[12px] bg-white ${on ? 'border-2 border-[#B5502E] p-[15px]' : 'border border-[#E4DACB] p-4'}`}>
+            <button type="button" role="radio" aria-checked={on} onClick={() => { setPayment(m.id); setFormError(null); }} className="flex w-full items-start gap-3 text-left">
+              <Radio on={on} />
+              <span><span className="block text-[16px] font-semibold">{m.id === 'CARTAO_ENTREGA' && isPickup ? 'Cartão na retirada' : m.label}</span><span className="mt-0.5 block text-[14px] text-[#6B5D53]">{m.id === 'DINHEIRO' && isPickup ? 'Pague no balcão' : m.hint}</span></span>
+            </button>
+            {on && m.id === 'DINHEIRO' && !inRow && cashFields}
+          </div>
+        );
+      })}
+      {inRow && payment === 'DINHEIRO' && <div className="col-span-3">{cashFields}</div>}
+    </div>
+  );
+  const cashFields = (
+    <div className="mt-4 space-y-3 border-t border-[#EFE8DD] pt-4">
+      <div><label htmlFor="pm-change" className={labelCls}>Troco para quanto?</label>
+        <div className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[16px] text-[#6B5D53]">R$</span><input id="pm-change" inputMode="decimal" disabled={noChange} value={changeFor} onChange={(e) => setChangeFor(e.target.value.replace(/[^\d,.]/g, ''))} placeholder="0,00" className={`${inputCls} pl-10 disabled:bg-[#F5EFE6]`} /></div>
+      </div>
+      <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-[15px]"><input type="checkbox" checked={noChange} onChange={(e) => setNoChange(e.target.checked)} className="h-5 w-5 accent-[#B5502E]" />Não preciso de troco</label>
+    </div>
+  );
+  const paymentSummary = payment === 'DINHEIRO' ? `Dinheiro · ${noChange || !changeFor ? 'sem troco' : `troco para ${formatBRL(parseMoney(changeFor) || 0)}`}` : PAYMENTS.find((p) => p.id === payment)!.label;
+
+  const totals = (big = 20) => (
+    <div className="space-y-2 text-[15px]">
+      <div className="flex justify-between text-[#54473F]"><span>Subtotal</span><span className="tabular-nums">{formatBRL(subtotal)}</span></div>
+      <div className="flex justify-between text-[#54473F]"><span>{isPickup ? 'Retirada no local' : zone ? `Entrega · ${zone.name}` : 'Entrega'}</span><span className="tabular-nums">{isPickup ? 'Grátis' : zone ? formatBRL(fee) : 'escolha o bairro'}</span></div>
+      <div className="flex justify-between border-t border-[#E4DACB] pt-3 font-semibold" style={{ fontSize: big }}><span>Total</span><span className="tabular-nums">{formatBRL(total)}</span></div>
+    </div>
+  );
+
+  const closedNotice = !isOpen && <p className="rounded-[10px] border border-[#EDD293] bg-[#FBF4E6] p-3 text-[14px] text-[#5C3E0C]">A loja está fechada agora. Você pode olhar o cardápio, mas os pedidos só são aceitos no horário de funcionamento.</p>;
+
+  const trackingBanner = tracking && (
+    <button type="button" onClick={() => go('sent')} className="flex w-full items-center justify-between gap-3 rounded-[10px] border border-[#E4DACB] bg-white px-4 py-3 text-left">
+      <span><span className="block font-mono text-[12px] text-[#857668]">Pedido #{tracking.order_number}</span><span className="block text-[15px] font-semibold">Acompanhar o seu pedido</span></span>
+      <span className="text-[14px] font-semibold text-[#8E3C20]">Ver</span>
+    </button>
+  );
+
+  let screen: ReactNode;
+
+  if (step === 'sent' && activeTrackingOrder) {
+    const o = activeTrackingOrder;
+    const showPixColumn = o.payment_method === 'PIX' && !o.paid_at && !['DELIVERED', 'CANCELLED'].includes(o.status);
+    screen = isDesktop ? (
+      <div className="min-h-screen px-12 py-10">
+        <div className={`mx-auto grid max-w-[1000px] gap-10 rounded-[16px] border border-[#E4DACB] bg-white p-8 ${showPixColumn ? 'grid-cols-[420px_1fr]' : 'max-w-[620px]'}`}>
+          {showPixColumn && <div className="space-y-4 border-r border-[#EFE8DD] pr-10"><h2 className="text-[24px] font-semibold">Falta só o pagamento</h2><p className="text-[15px] text-[#6B5D53]">Pague pelo app do seu banco. A brasa começa assim que a loja confirmar o PIX.</p><OrderPixBlock order={o} /></div>}
+          <div>
+            <OrderStatusView order={o} showPix={false} />
+            <button type="button" onClick={() => go('menu', true)} className="mt-3 h-[52px] w-full rounded-[12px] text-[16px] font-semibold text-[#8E3C20] hover:bg-[#F5EFE6]">Fazer novo pedido</button>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <div className="mx-auto max-w-xl px-5 pb-10">
+        <TopBar title="Seu pedido" onBack={() => go('menu', true)} />
+        {showPixColumn && (
+          <div className="pb-6 pt-6 text-center">
+            <p className="font-mono text-[13px] text-[#857668]">Pedido #{o.order_number}</p>
+            <h2 className="mt-1 text-[26px] font-semibold">Falta só o pagamento</h2>
+            <p className="mx-auto mt-2 max-w-sm text-[15px] text-[#6B5D53]">Pague pelo app do seu banco. A brasa começa assim que a loja confirmar o PIX.</p>
+            <div className="mt-5 text-left"><OrderPixBlock order={o} /></div>
+            <div className="mt-6 border-t border-[#E4DACB]" />
+          </div>
+        )}
+        <div className="pt-6"><OrderStatusView order={o} showPix={false} /></div>
+        <button type="button" onClick={() => go('menu', true)} className="mt-3 h-[52px] w-full rounded-[12px] text-[16px] font-semibold text-[#8E3C20]">Fazer novo pedido</button>
+      </div>
+    );
+  } else if (step === 'cart') {
+    screen = (
+      <div className="mx-auto max-w-xl pb-44">
+        <TopBar title="Seu pedido" onBack={back} />
+        <div className="space-y-5 px-5 pt-2">
+          {cartError && <div className="pt-3"><Alert>{cartError}</Alert></div>}
+          {cart.length ? cartLines() : <p className="py-10 text-center text-[15px] text-[#6B5D53]">Seu pedido está vazio.</p>}
+          <button type="button" onClick={back} className="flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-[#8E3C20]"><Plus className="h-4 w-4" />Adicionar mais itens</button>
+          <p className="rounded-[6px] border border-[#E4DACB] bg-[#F5EFE6] px-3 py-2.5 text-[14px] text-[#3D322B]">Os acompanhamentos da casa já vão junto com o pedido.</p>
+          {drinks.length > 0 && (
+            <div>
+              <h2 className="mb-3 text-[15px] font-semibold">Para beber</h2>
+              <div className="grid grid-cols-3 gap-2.5">
+                {drinks.map((d) => <button key={d.id} type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} className="rounded-[10px] border border-[#E4DACB] bg-white p-3 text-left"><span className="line-clamp-2 block text-[14px] font-semibold leading-snug">{d.name}</span><span className="mt-1 block whitespace-nowrap text-[13px] tabular-nums text-[#6B5D53]">+ {formatBRL(d.price)}</span></button>)}
+              </div>
+            </div>
+          )}
+        </div>
+        <Footer>
+          <div className="mb-3 flex justify-between text-[15px]"><span className="text-[#54473F]">Subtotal · {count} {count === 1 ? 'item' : 'itens'}</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
+          <button type="button" disabled={!cart.length} onClick={() => { setCartError(null); go('delivery'); }} className={primaryBtn}>Continuar</button>
+        </Footer>
+      </div>
+    );
+  } else if (step === 'delivery') {
+    screen = (
+      <div className="mx-auto max-w-xl pb-44">
+        <TopBar title={isPickup ? 'Retirada' : 'Entrega'} onBack={back} />
+        <Progress n={1} />
+        <div className="space-y-5 px-5 pt-5">
+          <Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={[{ id: 'DELIVERY', label: 'Entregar' }, { id: 'PICKUP', label: 'Retirar no local' }]} />
+          {deliveryFields()}
+          {formError && <Alert>{formError}</Alert>}
+        </div>
+        <Footer>
+          <div className="mb-3 flex justify-between text-[15px]"><span className="text-[#54473F]">{isPickup ? 'Subtotal' : 'Subtotal + entrega'}</span><span className="font-semibold tabular-nums">{!isPickup && !zone ? `${formatBRL(subtotal)} + taxa` : formatBRL(total)}</span></div>
+          <button type="button" onClick={() => { const e = validateDelivery(); setFormError(e); if (!e) go('payment'); }} className={primaryBtn}>Ir para pagamento</button>
+        </Footer>
+      </div>
+    );
+  } else if (step === 'payment') {
+    screen = (
+      <div className="mx-auto max-w-xl pb-44">
+        <TopBar title="Pagamento" onBack={back} />
+        <Progress n={2} />
+        <div className="space-y-4 px-5 pt-5">{paymentOptions()}{formError && <Alert>{formError}</Alert>}</div>
+        <Footer>
+          <div className="mb-3 flex justify-between text-[15px]"><span className="text-[#54473F]">Total</span><span className="font-semibold tabular-nums">{formatBRL(total)}</span></div>
+          <button type="button" onClick={() => { const e = validatePayment(); setFormError(e); if (!e) go('review'); }} className={primaryBtn}>Revisar pedido</button>
+        </Footer>
+      </div>
+    );
+  } else if (step === 'review') {
+    const block = (label: string, onEdit: () => void, children: ReactNode) => (
+      <section className="border-b border-[#EFE8DD] py-4">
+        <div className="mb-1.5 flex items-center justify-between"><h2 className="text-[13px] text-[#857668]">{label}</h2><button type="button" onClick={onEdit} className="min-h-[44px] px-1 text-[14px] font-semibold text-[#8E3C20]">Alterar</button></div>
+        {children}
+      </section>
+    );
+    screen = (
+      <div className="mx-auto max-w-xl pb-52">
+        <TopBar title="Revisão" onBack={back} />
+        <Progress n={3} />
+        <div className="px-5 pt-1">
+          {block(isPickup ? 'Retirar em' : 'Entregar em', () => window.history.go(-2), isPickup
+            ? <p className="text-[16px]">{settings.address || 'Na loja'}<span className="block text-[14px] text-[#6B5D53]">Pronto em 30–40 min · {customer.name}</span></p>
+            : <p className="text-[16px]">{customer.street}, {customer.number}{customer.complement ? ` · ${customer.complement}` : ''}<span className="block text-[14px] text-[#6B5D53]">{customer.neighborhood} · 40–55 min · {customer.name}</span></p>)}
+          {block('Pagamento', back, <p className="text-[16px]">{paymentSummary}</p>)}
+          {block('Itens', () => window.history.go(-3), <ul className="space-y-1.5">{cart.map((c) => <li key={c.id} className="flex justify-between gap-3 text-[15px]"><span>{c.quantity}× {c.product.name}{c.doneness && <span className="text-[#6B5D53]"> · {formatDoneness(c.doneness)}</span>}</span><span className="shrink-0 tabular-nums">{formatBRL(c.product.price * c.quantity)}</span></li>)}</ul>)}
+          <div className="pt-4">{totals()}</div>
+          {closedNotice && <div className="pt-4">{closedNotice}</div>}
+          {formError && <div className="pt-4"><Alert>{formError}</Alert></div>}
+        </div>
+        <Footer>
+          <button type="button" disabled={sending || !cart.length} onClick={() => void send()} className={primaryBtn}>{sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</button>
+          <p className="mt-2 text-center text-[13px] text-[#6B5D53]">A confirmação chega no seu WhatsApp.</p>
+        </Footer>
+      </div>
+    );
+  } else if (step === 'checkout') {
+    const num = (n: number) => <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-[#2B211C] text-[14px] font-semibold text-[#FBF8F3]">{n}</span>;
+    screen = (
+      <div className="min-h-screen">
+        <header className="border-b border-[#E4DACB] bg-[#FBF8F3]"><div className="mx-auto flex h-[76px] max-w-[1366px] items-center gap-4 px-12"><button type="button" onClick={back} aria-label="Voltar ao cardápio" className="flex h-11 w-11 items-center justify-center rounded-[10px] hover:bg-[#EFE8DD]"><ChevronLeft className="h-6 w-6" /></button><h1 className="text-[22px] font-semibold">Finalizar pedido</h1></div></header>
+        <div className="mx-auto grid max-w-[1366px] grid-cols-[1fr_400px] gap-12 px-12 py-7">
+          <div className="space-y-10">
+            <section>
+              <h2 className="mb-4 flex items-center gap-3 text-[20px] font-semibold">{num(1)}Como você quer receber?</h2>
+              <div className="mb-5 grid grid-cols-2 gap-3">
+                {(['DELIVERY', 'PICKUP'] as const).map((t) => <button key={t} type="button" role="radio" aria-checked={orderType === t} onClick={() => setOrderType(t)} className={`flex items-center gap-3 rounded-[12px] bg-white text-left ${orderType === t ? 'border-2 border-[#B5502E] p-[15px]' : 'border border-[#E4DACB] p-4'}`}><Radio on={orderType === t} /><span><span className="block text-[16px] font-semibold">{t === 'DELIVERY' ? 'Entrega' : 'Retirar no local'}</span><span className="block text-[14px] text-[#6B5D53]">{t === 'DELIVERY' ? `40–55 min${zones.length ? ` · a partir de ${formatBRL(minFee)}` : ''}` : '30–40 min · sem taxa'}</span></span></button>)}
+              </div>
+              {deliveryFields(true)}
+            </section>
+            <section><h2 className="mb-4 flex items-center gap-3 text-[20px] font-semibold">{num(2)}Pagamento</h2>{paymentOptions(true)}</section>
+          </div>
+          <aside className="sticky top-6 h-fit space-y-4 rounded-[12px] border border-[#E4DACB] bg-white p-5">
+            <h2 className="text-[19px] font-semibold">Resumo do pedido</h2>
+            {cartError && <Alert>{cartError}</Alert>}
+            {cartLines(true)}
+            <p className="rounded-[6px] border border-[#E4DACB] bg-[#F5EFE6] px-3 py-2 text-[13px] text-[#3D322B]">Os acompanhamentos da casa já vão junto com o pedido.</p>
+            {totals(22)}
+            {closedNotice}
+            {formError && <Alert>{formError}</Alert>}
+            <button type="button" disabled={sending || !cart.length} onClick={() => void send()} className={primaryBtn}>{sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</button>
+            <p className="text-center text-[13px] text-[#6B5D53]">A confirmação chega no seu WhatsApp.</p>
+          </aside>
+        </div>
+      </div>
+    );
+  } else if (isDesktop) {
+    screen = (
+      <div className="min-h-screen">
+        <header className="sticky top-0 z-30 border-b border-[#E4DACB] bg-[#FBF8F3]">
+          <div className="mx-auto flex h-[76px] max-w-[1366px] items-center gap-4 px-8">
+            {logo}
+            <div className="min-w-0 flex-1"><p className="truncate text-[19px] font-semibold">{settings.name}</p>{statusLine}</div>
+            <div className="w-[320px]">{searchBox}</div>
+            <div className="w-[300px]"><Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={[{ id: 'DELIVERY', label: 'Entrega' }, { id: 'PICKUP', label: 'Retirada' }]} /></div>
+          </div>
+        </header>
+        <div className="mx-auto grid max-w-[1366px] grid-cols-[180px_1fr_320px] xl:grid-cols-[200px_1fr_360px]">
+          <nav aria-label="Categorias" className="sticky top-[76px] h-[calc(100vh-76px)] space-y-1 overflow-y-auto px-4 py-6">
+            {groups.map((g) => <button key={g.name} type="button" onClick={() => jumpTo(g.name)} aria-current={activeCat === g.name ? 'true' : undefined} className={`block w-full rounded-[6px] px-3 py-2.5 text-left text-[15px] ${activeCat === g.name ? 'bg-[#2B211C] font-semibold text-[#FBF8F3]' : 'text-[#3D322B] hover:bg-[#EFE8DD]'}`}>{g.name}</button>)}
+          </nav>
+          <main className="min-w-0 space-y-8 border-l border-[#E4DACB] px-8 py-6">
+            {trackingBanner}
+            {closedNotice}
+            {menuError && <Alert>{menuError}</Alert>}
+            {groups.length === 0 && <p className="py-16 text-center text-[16px] text-[#6B5D53]">Nada encontrado para “{query}”.</p>}
+            {groups.map((g) => (
+              <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
+                <h2 className="mb-4 text-[24px] font-semibold">{g.name}</h2>
+                <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">{g.items.map(productCard)}</div>
+              </section>
+            ))}
+          </main>
+          <aside className="sticky top-[76px] flex h-[calc(100vh-76px)] flex-col border-l border-[#E4DACB] bg-white">
+            <h2 className="px-5 pb-2 pt-6 text-[19px] font-semibold">Seu pedido</h2>
+            <div className="flex-1 overflow-y-auto px-5">
+              {cartError && <Alert>{cartError}</Alert>}
+              {cart.length ? cartLines(true) : <p className="py-10 text-center text-[15px] text-[#857668]">Escolha os itens no cardápio.</p>}
+            </div>
+            <div className="space-y-2 border-t border-[#E4DACB] p-5 text-[15px]">
+              <div className="flex justify-between"><span className="text-[#54473F]">Subtotal</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
+              <p className="text-[14px] text-[#6B5D53]">{isPickup ? 'Retirada no local: sem taxa' : 'Entrega: calculada no bairro'}</p>
+              <button type="button" disabled={!cart.length} onClick={() => go('checkout')} className={`${primaryBtn} mt-2`}>Finalizar pedido · {formatBRL(subtotal)}</button>
+            </div>
+          </aside>
+        </div>
+      </div>
+    );
+  } else {
+    screen = (
+      <div className="mx-auto max-w-xl pb-32">
+        <header className="border-b border-[#E4DACB] px-5 pb-4 pt-2">
+          <div className="flex items-center gap-3 pt-2">{logo}<div className="min-w-0"><p className="truncate text-[19px] font-semibold leading-tight">{settings.name}</p>{statusLine}</div></div>
+          <div className="mt-4 space-y-3">
+            <Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={typeOptions} />
+            {searchBox}
+          </div>
+        </header>
+        <nav aria-label="Categorias" className="no-scrollbar sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-[#EFE8DD] bg-[#FBF8F3] px-5 py-3">
+          {groups.map((g) => <button id={`chip-${slug(g.name)}`} key={g.name} type="button" onClick={() => jumpTo(g.name)} aria-current={activeCat === g.name ? 'true' : undefined} className={`h-9 shrink-0 rounded-[6px] border px-3.5 text-[14px] ${activeCat === g.name ? 'border-[#2B211C] bg-[#2B211C] font-semibold text-[#FBF8F3]' : 'border-[#CFC2B2] bg-white font-medium text-[#3D322B]'}`}>{g.name}</button>)}
+        </nav>
+        <main className="space-y-6 px-5 pt-4">
+          {trackingBanner}
+          {closedNotice}
+          {menuError && <Alert>{menuError}</Alert>}
+          {groups.length === 0 && <p className="py-16 text-center text-[16px] text-[#6B5D53]">Nada encontrado para “{query}”.</p>}
+          {groups.map((g) => (
+            <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
+              <h2 className="font-mono text-[13px] uppercase tracking-wide text-[#857668]">{g.name} · {g.items.length} {g.items.length === 1 ? 'item' : 'itens'}</h2>
+              <ul>{g.items.map(productRow)}</ul>
+            </section>
+          ))}
+        </main>
+        {count > 0 && (
+          <Footer>
+            <button type="button" onClick={() => { setCartError(null); go('cart'); }} className={`${primaryBtn} justify-between`}>
+              <span className="flex items-center gap-3"><span className="flex h-7 min-w-[28px] items-center justify-center rounded-[6px] bg-[#8E3C20] px-1.5 text-[15px] tabular-nums">{count}</span>Ver pedido</span>
+              <span className="tabular-nums">{formatBRL(subtotal)}</span>
+            </button>
+          </Footer>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FBF8F3] font-sans text-[#2B211C]">
+      {screen}
+      {sheetProduct && (
+        <ProductSheet product={sheetProduct} onClose={() => setSheetProduct(null)} onAdd={(q, d, n) => { const e = tryAdd(sheetProduct, q, d, n); if (!e) setSheetProduct(null); return e; }} />
+      )}
+    </div>
+  );
+}

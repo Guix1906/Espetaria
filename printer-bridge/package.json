@@ -1,0 +1,26 @@
+{
+  "name": "espetaria-printer-bridge",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Consome a fila de impressão do Supabase e envia ESC/POS às impressoras térmicas Epson via rede (porta 9100)",
+  "main": "src/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "configurar": "node src/setup.js",
+    "check": "node src/cli.js check",
+    "preview": "node src/cli.js preview",
+    "test-print": "node src/cli.js test-print",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.10",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.8"
+  }
+}

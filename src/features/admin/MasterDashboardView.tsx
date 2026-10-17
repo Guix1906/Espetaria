@@ -1,0 +1,377 @@
+import { VoidTabButton } from '../tables/VoidTabButton';
+import { StockSnapshot } from './StockSnapshot';
+import { AlertCircle, AlertTriangle, ArrowRight, Bike, Clock, Download, Flame, Lock, PackageCheck, PieChart, Plus, ShieldCheck, Store, TrendingUp, UtensilsCrossed } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import type { ActiveTab } from '../../components/layout/navigation';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { formatBRL, formatElapsedMinutes } from '../../lib/formatters';
+import { isSupabaseConfigured } from '../../lib/supabase';
+import { useDeliveryStore } from '../../stores/useDeliveryStore';
+import { useNavFocusStore } from '../../stores/useNavFocusStore';
+import { usePrintStore } from '../../stores/usePrintStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useStockStore } from '../../stores/useStockStore';
+import { useTableStore } from '../../stores/useTableStore';
+import type { DeliveryOrder } from '../../types/domain';
+import { ALERT_LIMITS, computeDashboard, stageOf, type ActivityEvent, type DeliveryStage } from './dashboardMetrics';
+import { ShiftCloseModal } from './ShiftCloseModal';
+
+interface MasterDashboardViewProps {
+  onNavigateTab?: (tab: ActiveTab) => void;
+  onOpenShiftClick?: () => void;
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const STAGES: { key: DeliveryStage; label: string }[] = [
+  { key: 'AWAITING_PAYMENT', label: 'Aguardando PIX' },
+  { key: 'IN_PRODUCTION', label: 'Em preparo' },
+  { key: 'READY', label: 'Pronto' },
+  { key: 'OUT_FOR_DELIVERY', label: 'Saiu para entrega' },
+];
+const STAGE_LABEL: Record<DeliveryStage, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label])) as Record<DeliveryStage, string>;
+const TONE: Record<ActivityEvent['tone'], string> = {
+  success: 'bg-emerald-50 text-emerald-800',
+  warning: 'bg-amber-50 text-amber-900',
+  info: 'bg-sky-50 text-ink',
+  danger: 'bg-rose-50 text-rose-800',
+  neutral: 'bg-surface-muted text-ink',
+};
+const card = 'rounded-lg border border-line bg-surface p-4 sm:p-5';
+const sectionTitle = 'flex items-center gap-2 text-base font-semibold text-ink';
+
+export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavigateTab, onOpenShiftClick }) => {
+  const { currentShift, shiftsHistory } = useShiftStore();
+  const { tables, tabs, orders, orderItems, payments } = useTableStore();
+  const { deliveryOrders } = useDeliveryStore();
+  const { dailyPrepStock, stockMovements, products } = useStockStore();
+  const { jobs } = usePrintStore();
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [feedFilter, setFeedFilter] = useState<'Tudo' | 'Casa' | 'Delivery'>('Tudo');
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
+
+  const d = computeDashboard({ shiftId: currentShift?.id ?? null, tables, tabs, orders, orderItems, payments, deliveryOrders, stockMovements, jobs, printerMonitored: isSupabaseConfigured, now });
+  const go = (tab: ActiveTab) => onNavigateTab?.(tab);
+  const goTable = (tableId: string, tab: ActiveTab) => { useNavFocusStore.getState().focusTable(tableId); go(tab); };
+  const activeDeliveries = (Object.values(d.stages).flat() as DeliveryOrder[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const lateIds = new Set(d.lateDeliveries.map((o) => o.id));
+  const feed = d.feed.filter((e) => feedFilter === 'Tudo' || (feedFilter === 'Casa' ? e.channel === 'Casa' : e.channel === 'Delivery' || e.channel === 'Retirada'));
+
+  // Exportação do turno (Excel abre com acentos: BOM + ponto e vírgula)
+  const handleExportCSV = () => {
+    if (!currentShift) return;
+    const money = (n: number) => n.toFixed(2).replace('.', ',');
+    const rows: (string | number)[][] = [
+      ['Fechamento do turno', currentShift.name, 'Data', currentShift.date],
+      [],
+      ['Faturamento (produtos)', 'Realizado', 'Em andamento', 'Projetado'],
+      ['Total', money(d.revenue.realized), money(d.revenue.inProgress), money(d.revenue.projected)],
+      ['Salão', money(d.salon.closed), money(d.salon.open), money(d.salon.closed + d.salon.open)],
+      ['Delivery', money(d.delivery.realized), money(d.delivery.pending), money(d.delivery.gross)],
+      ['Retirada', money(d.pickup.realized), money(d.pickup.pending), money(d.pickup.gross)],
+      [],
+      ['Taxa de serviço', money(d.salon.serviceFee), 'Taxas de entrega', money(d.delivery.fees), 'Descontos', money(d.salon.discounts)],
+      [],
+      ['Recebido', 'PIX', 'Crédito', 'Débito', 'Dinheiro', 'Cartão na entrega', 'Total'],
+      ['', money(d.received.PIX), money(d.received.CREDITO), money(d.received.DEBITO), money(d.received.DINHEIRO), money(d.received.CARTAO_ENTREGA), money(d.receivedTotal)],
+      [],
+      ['Produto', 'Canais', 'Quantidade', 'Faturamento'],
+      ...d.topProducts.map((p) => [p.name, p.channels, p.qty, money(p.total)]),
+      [],
+      ['Estoque', 'Inicial', 'Atual', 'Ajustes', 'Contagem física', 'Diferença'],
+      ...dailyPrepStock.map((s) => [products.find((p) => p.id === s.product_id)?.name || s.product_id, s.initial_quantity, s.current_quantity, s.adjusted_quantity, s.last_counted_quantity ?? '-', s.count_difference ?? '-']),
+    ];
+    const csv = '﻿' + rows.map((r) => r.map((c) => { const v = String(c); return /[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }).join(';')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Turno_${currentShift.date}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const Metric = ({ label, value, hint, warn }: { label: string; value: React.ReactNode; hint?: React.ReactNode; warn?: boolean }) => (
+    <div className={`rounded-md border px-3 py-2.5 ${warn ? 'border-amber-300 bg-amber-50' : 'border-line bg-surface-soft'}`}>
+      <p className="text-xs text-ink-muted">{label}</p>
+      <p className={`mt-0.5 font-mono text-xl font-bold ${warn ? 'text-amber-900' : 'text-ink'}`}>{value}</p>
+      {hint && <p className="mt-0.5 text-xs text-ink-muted">{hint}</p>}
+    </div>
+  );
+
+  return (
+    <div className="page-layout">
+      <PageHeader
+        eyebrow="Gestão da espetaria"
+        title="Visão geral"
+        description={<>O que está acontecendo agora na casa e no delivery.<span className="mt-1 block font-medium text-ink-secondary">{currentShift ? currentShift.name : 'Turno fechado'}</span></>}
+        icon={ShieldCheck}
+        actions={<>
+          <button type="button" onClick={handleExportCSV} disabled={!currentShift} className="btn-secondary"><Download className="h-4 w-4" aria-hidden="true" />Exportar</button>
+          {currentShift?.status === 'ABERTO' && <button type="button" onClick={() => setIsCloseModalOpen(true)} className="btn-secondary text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Lock className="h-4 w-4" aria-hidden="true" />Fechar turno</button>}
+        </>}
+      />
+
+      {!currentShift && (
+        <div className="notice flex flex-wrap items-center justify-between gap-3 border-amber-200 bg-amber-50 text-amber-900" role="status">
+          <div className="flex items-center gap-2.5"><AlertCircle className="h-5 w-5 shrink-0 text-amber-700" /><span>Turno fechado. Abra o turno para lançar pedidos e conferir o caixa no fechamento.</span></div>
+          {onOpenShiftClick && <button type="button" onClick={onOpenShiftClick} className="btn-primary shrink-0 px-3.5 py-1.5 text-xs font-bold"><Plus className="h-4 w-4" />Abrir turno</button>}
+        </div>
+      )}
+
+      {/* ALERTAS: só aparecem quando há algo para resolver */}
+      {d.alerts.length > 0 && (
+        <section aria-label="Alertas" className="space-y-2">
+          {d.alerts.map((alert) => (
+            <button key={alert.id} type="button" onClick={() => go(alert.target)}
+              className={`flex w-full items-center gap-3 rounded-md border px-3.5 py-2.5 text-left text-sm font-medium ${alert.tone === 'danger' ? 'border-rose-300 bg-rose-50 text-rose-900' : 'border-amber-300 bg-amber-50 text-amber-950'}`}>
+              <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <span className="flex-1">{alert.text}</span>
+              <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+            </button>
+          ))}
+        </section>
+      )}
+
+      {/* AGORA: CASA × DELIVERY */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <section className={`${card} space-y-3`} aria-labelledby="now-salon">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="now-salon" className={sectionTitle}><UtensilsCrossed className="h-5 w-5 text-brand-700" />Casa agora</h2>
+            {onNavigateTab && <button type="button" className="btn-secondary px-2.5 py-1 text-xs" onClick={() => go('tables')}>Ver mesas</button>}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            <Metric label="Mesas ocupadas" value={d.salon.openTabs.length} hint={`${d.salon.people} ${d.salon.people === 1 ? 'pessoa' : 'pessoas'}`} />
+            <Metric label="Pediram a conta" value={d.salon.waitingBill.length} warn={d.salon.waitingBill.length > 0} hint={d.salon.waitingBill.map((t) => pad2(t.number)).join(', ') || '—'} />
+            <Metric label="Em consumo" value={formatBRL(d.salon.open)} />
+            <Metric label="Prontos para servir" value={d.salon.readyCount} warn={d.salon.readyOldest >= ALERT_LIMITS.readyNotServed} hint={d.salon.readyCount ? `mais antigo: ${d.salon.readyOldest} min` : 'nada esperando'} />
+            <Metric label="Na brasa (salão)" value={d.salon.grillCount} warn={d.salon.grillOldest >= ALERT_LIMITS.grillTooLong} hint={d.salon.grillCount ? `mais antigo: ${d.salon.grillOldest} min` : '—'} />
+            <Metric label="Ticket médio" value={formatBRL(d.salon.avgTicket)} hint={`${formatBRL(d.salon.avgPerPerson)} por pessoa`} />
+          </div>
+        </section>
+
+        <section className={`${card} space-y-3`} aria-labelledby="now-delivery">
+          <div className="flex items-center justify-between gap-2">
+            <h2 id="now-delivery" className={sectionTitle}><Bike className="h-5 w-5 text-brand-700" />Delivery e retirada agora</h2>
+            {onNavigateTab && <button type="button" className="btn-secondary px-2.5 py-1 text-xs" onClick={() => go('delivery')}>Abrir delivery</button>}
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {STAGES.map((s) => <Metric key={s.key} label={s.label} value={d.stages[s.key].length} warn={s.key === 'READY' && d.pickupsWaiting.length > 0} />)}
+          </div>
+          {activeDeliveries.length === 0 ? <p className="py-3 text-center text-sm text-ink-muted">Nenhum pedido de delivery ou retirada em andamento.</p> : (
+            <ul className="divide-y divide-line rounded-md border border-line">
+              {activeDeliveries.slice(0, 8).map((o) => {
+                const late = lateIds.has(o.id);
+                return (
+                  <li key={o.id} className={`flex items-center gap-3 px-3 py-2 text-sm ${late ? 'bg-rose-50' : ''}`}>
+                    <span className="w-12 shrink-0 font-mono font-bold text-ink">#{o.order_number}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium text-ink">{o.customer_name}</span>
+                      <span className="block text-xs text-ink-muted">{o.order_type === 'PICKUP' ? 'Retirada' : `Entrega · ${o.address_neighborhood || 'sem bairro'}`} · {STAGE_LABEL[stageOf(o)!]}</span>
+                    </span>
+                    <span className="shrink-0 text-right">
+                      <span className="block font-mono text-sm font-bold text-ink">{formatBRL(o.total)}</span>
+                      <span className={`block text-xs ${late ? 'font-semibold text-rose-700' : 'text-ink-muted'}`}>{formatElapsedMinutes(o.created_at, now)}{late ? ' · atrasado' : ''}</span>
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {activeDeliveries.length > 8 && <p className="text-xs text-ink-muted">E mais {activeDeliveries.length - 8} na tela de delivery.</p>}
+        </section>
+      </div>
+
+      {/* MESAS EM ATENDIMENTO */}
+      <section className={`${card} space-y-3`} aria-labelledby="tabs-title">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="tabs-title" className={sectionTitle}><UtensilsCrossed className="h-5 w-5 text-brand-700" />Mesas em atendimento ({d.salon.openTabs.length})</h2>
+          {onNavigateTab && <button type="button" onClick={() => go('waiter')} className="btn-secondary px-2.5 py-1 text-xs"><Plus className="h-3.5 w-3.5" />Novo atendimento</button>}
+        </div>
+        {d.salon.openTabs.length === 0 ? <p className="py-6 text-center text-sm text-ink-muted">Nenhuma comanda aberta no momento.</p> : (
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {[...d.salon.openTabs].sort((a, b) => a.opened_at.localeCompare(b.opened_at)).map((tab) => {
+              const table = tables.find((t) => t.id === tab.table_id);
+              const info = d.tabInfo(tab);
+              const waiting = table?.status === 'AGUARDANDO_CONTA';
+              return (
+                <div key={tab.id} className={`space-y-2.5 rounded-md border p-3.5 ${waiting ? 'border-amber-300 bg-amber-50/50' : info.ready ? 'border-emerald-300' : 'border-line bg-surface'}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-mono text-lg font-bold text-ink">Mesa {table ? pad2(table.number) : '—'}</p>
+                      <p className="truncate text-sm text-ink-secondary">{tab.customer_name && tab.customer_name !== `Mesa ${table?.number}` ? tab.customer_name : 'Sem nome'} · {tab.people_count} {tab.people_count === 1 ? 'pessoa' : 'pessoas'}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-mono text-lg font-bold text-brand-800">{formatBRL(tab.total || tab.subtotal)}</p>
+                      <p className="flex items-center justify-end gap-1 text-xs text-ink-muted"><Clock className="h-3 w-3" />{formatElapsedMinutes(tab.opened_at, now)}</p>
+                    </div>
+                  </div>
+                  <p className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                    {waiting && <span className="font-semibold text-amber-900">Pediu a conta</span>}
+                    {info.ready > 0 && <span className="font-semibold text-emerald-800">{info.ready} pronto{info.ready > 1 ? 's' : ''} para servir</span>}
+                    {info.preparing > 0 && <span className="text-amber-900">{info.preparing} em preparo</span>}
+                    <span className="text-ink-muted">{info.itemCount ? `${info.itemCount} ${info.itemCount === 1 ? 'item' : 'itens'}` : 'Sem pedido'}{info.minutesSinceLastOrder !== null ? ` · último pedido há ${info.minutesSinceLastOrder} min` : ''}</span>
+                  </p>
+                  {onNavigateTab && table && (
+                    <div className="flex items-center gap-2 border-t border-line pt-2.5">
+                      <button type="button" onClick={() => goTable(table.id, 'waiter')} className="btn-secondary flex-1 justify-center px-2 py-1.5 text-xs font-semibold">Lançar pedido</button>
+                      <button type="button" onClick={() => goTable(table.id, 'cashier')} className="btn-primary flex-1 justify-center px-2 py-1.5 text-xs font-semibold">Cobrar</button>
+                      <VoidTabButton tab={tab} tableNumber={table.number} compact />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* FATURAMENTO POR CANAL */}
+      <section className={`${card} space-y-3`} aria-labelledby="revenue-title">
+        <h2 id="revenue-title" className={sectionTitle}><TrendingUp className="h-5 w-5 text-brand-700" />Faturamento do turno</h2>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          <Metric label="Realizado" value={formatBRL(d.revenue.realized)} hint="Mesas fechadas + delivery entregue ou pago" />
+          <Metric label="Em andamento" value={formatBRL(d.revenue.inProgress)} hint="Mesas abertas + delivery a receber" />
+          <Metric label="Projetado" value={formatBRL(d.revenue.projected)} hint="Realizado + em andamento" />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="data-table w-full text-left text-sm">
+            <thead><tr><th>Canal</th><th className="text-right">Pedidos</th><th className="text-right">Realizado</th><th className="text-right">Em andamento</th><th className="text-right">Ticket médio</th></tr></thead>
+            <tbody>
+              <tr><td className="font-medium"><Store className="mr-1.5 inline h-4 w-4 text-ink-muted" />Salão</td><td className="text-right font-mono">{d.salon.openTabs.length + d.salon.closedTabs.length}</td><td className="text-right font-mono">{formatBRL(d.salon.closed)}</td><td className="text-right font-mono">{formatBRL(d.salon.open)}</td><td className="text-right font-mono">{formatBRL(d.salon.avgTicket)}</td></tr>
+              <tr><td className="font-medium"><Bike className="mr-1.5 inline h-4 w-4 text-ink-muted" />Delivery</td><td className="text-right font-mono">{d.delivery.count}</td><td className="text-right font-mono">{formatBRL(d.delivery.realized)}</td><td className="text-right font-mono">{formatBRL(d.delivery.pending)}</td><td className="text-right font-mono">{formatBRL(d.delivery.avgTicket)}</td></tr>
+              <tr><td className="font-medium"><PackageCheck className="mr-1.5 inline h-4 w-4 text-ink-muted" />Retirada</td><td className="text-right font-mono">{d.pickup.count}</td><td className="text-right font-mono">{formatBRL(d.pickup.realized)}</td><td className="text-right font-mono">{formatBRL(d.pickup.pending)}</td><td className="text-right font-mono">{formatBRL(d.pickup.avgTicket)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-ink-muted">Valores dos produtos, sem taxas. Taxa de serviço: <strong className="font-mono">{formatBRL(d.salon.serviceFee)}</strong> · Taxas de entrega: <strong className="font-mono">{formatBRL(d.delivery.fees)}</strong> · Descontos: <strong className="font-mono">{formatBRL(d.salon.discounts)}</strong></p>
+      </section>
+
+      {/* PRODUÇÃO E IMPRESSORA */}
+      <section className={`${card} space-y-3`} aria-labelledby="prod-title">
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="prod-title" className={sectionTitle}><Flame className="h-5 w-5 text-brand-700" />Produção agora ({d.productionTotal} un)</h2>
+          {onNavigateTab && <button type="button" className="btn-secondary px-2.5 py-1 text-xs" onClick={() => go('kds')}>Abrir produção</button>}
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+          {([['GRILL', 'Churrasqueira'], ['KITCHEN', 'Cozinha'], ['BAR', 'Bar']] as const).map(([key, label]) => (
+            <Metric key={key} label={label} value={d.production[key].salon + d.production[key].delivery} hint={`salão ${d.production[key].salon} · delivery ${d.production[key].delivery}`} />
+          ))}
+          <Metric label="Impressora da loja" value={!isSupabaseConfigured ? '—' : d.stuckJobs.length || d.failedJobs.length ? 'Atenção' : 'Ok'} warn={isSupabaseConfigured && (d.stuckJobs.length > 0 || d.failedJobs.length > 0)}
+            hint={!isSupabaseConfigured ? 'demonstração' : `${jobs.filter((j) => j.status === 'PENDING' || j.status === 'PRINTING').length} na fila · ${d.failedJobs.length} com falha`} />
+        </div>
+      </section>
+
+      {/* RECEBIDO + MAIS VENDIDOS */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <section className={`${card} space-y-3`} aria-labelledby="pay-title">
+          <div className="flex items-center justify-between gap-2"><h2 id="pay-title" className={sectionTitle}><PieChart className="h-5 w-5 text-emerald-700" />Recebido</h2><span className="font-mono text-sm font-bold">{formatBRL(d.receivedTotal)}</span></div>
+          <div className="space-y-3">
+            {([['PIX', 'PIX', 'bg-emerald-700'], ['CREDITO', 'Cartão de crédito', 'bg-stone-700'], ['DEBITO', 'Cartão de débito', 'bg-sky-700'], ['DINHEIRO', 'Dinheiro', 'bg-amber-700'], ['CARTAO_ENTREGA', 'Cartão na entrega', 'bg-brand-600']] as const).map(([key, label, color]) => {
+              const amount = d.received[key];
+              const pct = d.receivedTotal > 0 ? (amount / d.receivedTotal) * 100 : 0;
+              return (
+                <div key={key} className="space-y-1">
+                  <div className="flex justify-between text-xs"><span className="font-medium text-ink">{label}</span><span className="font-mono font-semibold text-ink">{formatBRL(amount)} <span className="text-ink-muted">({pct.toFixed(0)}%)</span></span></div>
+                  <div className="h-2 w-full overflow-hidden rounded-sm bg-surface-muted"><div className={`h-full ${color}`} style={{ width: `${pct}%` }} /></div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-xs text-ink-muted">Dinheiro que já entrou: mesas pagas e delivery entregue ou com PIX confirmado (com taxas).</p>
+        </section>
+
+        <section className={`${card} space-y-3 xl:col-span-2`} aria-labelledby="top-title">
+          <div className="flex items-center justify-between gap-2"><h2 id="top-title" className={sectionTitle}><Flame className="h-5 w-5 text-brand-700" />Mais vendidos no turno</h2><span className="text-xs text-ink-muted">Casa, delivery e retirada</span></div>
+          <div className="overflow-x-auto">
+            <table className="data-table w-full text-left text-sm">
+              <thead><tr><th>#</th><th>Produto</th><th className="text-right">Un</th><th className="text-right">Faturamento</th><th className="text-right">%</th></tr></thead>
+              <tbody>
+                {d.topProducts.length === 0 ? <tr><td colSpan={5} className="py-6 text-center text-ink-muted">Nenhum item vendido até agora.</td></tr> : d.topProducts.slice(0, 8).map((p, idx) => (
+                  <tr key={p.name}>
+                    <td className="font-mono text-ink-muted">{idx + 1}</td>
+                    <td><span className="font-medium text-ink">{p.name}</span><span className="block text-xs text-ink-muted">{p.channels}</span></td>
+                    <td className="text-right font-mono">{p.qty}</td>
+                    <td className="text-right font-mono font-semibold">{formatBRL(p.total)}</td>
+                    <td className="text-right font-mono text-ink-muted">{p.share.toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <StockSnapshot onOpenStock={onNavigateTab ? () => onNavigateTab('stock') : undefined} />
+
+      {/* MOVIMENTAÇÕES DO TURNO */}
+      <section className={`${card} space-y-3`} aria-labelledby="feed-title">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="feed-title" className={sectionTitle}><Clock className="h-5 w-5 text-brand-700" />Movimentações do turno</h2>
+          <div className="flex gap-1" role="group" aria-label="Filtrar movimentações">
+            {(['Tudo', 'Casa', 'Delivery'] as const).map((f) => <button key={f} type="button" aria-pressed={feedFilter === f} onClick={() => setFeedFilter(f)} className={`h-9 rounded-md border px-3 text-xs font-semibold ${feedFilter === f ? 'border-ink bg-ink text-white' : 'border-line bg-surface text-ink'}`}>{f}</button>)}
+          </div>
+        </div>
+        {feed.length === 0 ? <p className="py-4 text-center text-sm text-ink-muted">Nenhuma movimentação neste turno.</p> : (
+          <ul className="max-h-[28rem] space-y-1.5 overflow-y-auto pr-1">
+            {feed.slice(0, 40).map((ev) => (
+              <li key={ev.id} className="flex items-start gap-3 rounded-md border border-line bg-surface px-3 py-2 text-sm">
+                <span className="w-12 shrink-0 pt-0.5 font-mono text-xs text-ink-muted">{new Date(ev.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex flex-wrap items-center gap-1.5"><span className={`rounded-sm px-1.5 py-0.5 text-xs font-medium ${TONE[ev.tone]}`}>{ev.channel}</span><span className="font-medium text-ink">{ev.title}</span></span>
+                  <span className="mt-0.5 block truncate text-xs text-ink-muted">{ev.description}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* PERDAS */}
+      <section className={`${card} space-y-3`} aria-labelledby="loss-title">
+        <div className="flex items-center justify-between gap-2"><h2 id="loss-title" className={sectionTitle}><PackageCheck className="h-5 w-5 text-rose-700" />Perdas e descartes</h2><span className="text-xs text-ink-muted">{d.losses.length} {d.losses.length === 1 ? 'ocorrência' : 'ocorrências'}</span></div>
+        {d.losses.length === 0 ? <p className="py-3 text-center text-sm text-ink-muted">Nenhuma perda ou descarte neste turno.</p> : (
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+            {d.losses.map((m) => (
+              <li key={m.id} className="space-y-1 rounded-md border border-rose-200 bg-surface p-3 text-xs">
+                <div className="flex justify-between font-medium text-ink"><span>{m.product_name || 'Produto'}</span><span className="font-mono font-bold text-rose-700">{m.quantity} un</span></div>
+                <p className="text-ink-muted">Motivo: {m.reason || 'Sem motivo'}</p>
+                <p className="font-mono text-ink-muted">{new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* TURNOS ANTERIORES */}
+      <section className={`${card} space-y-3`} aria-labelledby="hist-title">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 id="hist-title" className={sectionTitle}><Clock className="h-5 w-5 text-amber-800" />Turnos anteriores</h2>
+          {onNavigateTab && <button type="button" className="btn-secondary px-2.5 py-1 text-xs" onClick={() => go('reports')}>Faturamento por período nos relatórios</button>}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="data-table w-full text-left text-sm">
+            <thead><tr><th>Turno</th><th>Data</th><th>Situação</th><th className="text-right">Duração</th><th className="text-right">Caixa inicial</th><th className="text-right">Caixa final</th><th>Observações</th></tr></thead>
+            <tbody>
+              {shiftsHistory.length === 0 && <tr><td colSpan={7} className="py-6 text-center text-ink-muted">Nenhum turno registrado.</td></tr>}
+              {shiftsHistory.map((shift) => (
+                <tr key={shift.id}>
+                  <td className="font-medium text-ink">{shift.name}</td>
+                  <td className="font-mono text-ink-muted">{shift.date}</td>
+                  <td><span className={`rounded-sm px-2 py-0.5 text-xs font-medium ${shift.status === 'ABERTO' ? 'bg-emerald-50 text-emerald-800' : 'bg-surface-muted text-ink-muted'}`}>{shift.status === 'ABERTO' ? 'Aberto' : 'Fechado'}</span></td>
+                  <td className="text-right font-mono text-ink-muted">{shift.closed_at ? formatElapsedMinutes(shift.opened_at, new Date(shift.closed_at).getTime()) : '—'}</td>
+                  <td className="text-right font-mono text-ink-muted">{formatBRL(shift.cash_drawer_start)}</td>
+                  <td className="text-right font-mono font-semibold text-ink">{shift.cash_drawer_end !== null ? formatBRL(shift.cash_drawer_end) : '—'}</td>
+                  <td className="max-w-xs truncate text-ink-muted">{shift.closing_notes || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <ShiftCloseModal isOpen={isCloseModalOpen} onClose={() => setIsCloseModalOpen(false)} />
+    </div>
+  );
+};

@@ -1,0 +1,261 @@
+import { ArrowRight, CheckCheck, Info, LayoutGrid, Search, Settings2, Smartphone, Users, BellRing } from 'lucide-react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { FilterChip } from '../../components/ui/FilterChip';
+import { PageHeader } from '../../components/ui/PageHeader';
+import { SearchField } from '../../components/ui/SearchField';
+import { TableCard } from '../../components/ui/TableCard';
+import { formatBRL, formatDoneness, formatElapsedMinutes, getTableStatusConfig } from '../../lib/formatters';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useTableStore } from '../../stores/useTableStore';
+import { useNavFocusStore } from '../../stores/useNavFocusStore';
+import type { OrderItem, RestaurantTable, Tab } from '../../types/domain';
+import type { TableStatus } from '../../types/enums';
+import { WaiterOpenTabSheet } from './WaiterOpenTabSheet';
+import { WaiterOrderPad } from './WaiterOrderPad';
+
+interface WaiterModuleProps {
+  onOpenShiftClick?: () => void;
+  dedicated?: boolean;
+  /** Conteúdo da aba "Ajustes" na área do garçom (som, sair...). */
+  settings?: ReactNode;
+}
+
+type Section = 'tables' | 'ready' | 'settings';
+type TableFilter = 'occupied' | 'free' | 'all';
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const isOccupied = (table: RestaurantTable) => table.status === 'OCUPADA' || table.status === 'AGUARDANDO_CONTA';
+
+export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: WaiterModuleProps = {}) {
+  const { tables, tabs, openTab, orders, orderItems, markDelivered } = useTableStore();
+  const { currentShift } = useShiftStore();
+  const { currentProfile } = useAuthStore();
+  // Vindo da Visão geral com uma mesa escolhida, já abre nela
+  const [selectedTableId, setSelectedTableId] = useState<string | null>(() => useNavFocusStore.getState().tableId);
+  useEffect(() => { useNavFocusStore.getState().clear(); }, []);
+  const [filter, setFilter] = useState<'ALL' | 'READY' | TableStatus>('ALL');
+  const [chosenFilter, setTableFilter] = useState<TableFilter | null>(null);
+  const [section, setSection] = useState<Section>('tables');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [tableToOpen, setTableToOpen] = useState<RestaurantTable | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
+
+  const isShiftOpen = currentShift?.status === 'ABERTO';
+  const query = searchTerm.trim().toLocaleLowerCase('pt-BR');
+  const selectedTable = tables.find((table) => table.id === selectedTableId);
+  const activeTables = tables.filter((table) => table.active).sort((a, b) => a.number - b.number);
+  const getTableTab = (tableId: string) => tabs.find((tab) => tab.table_id === tableId && tab.status === 'OPEN');
+  const itemsOfTable = (tableId: string): OrderItem[] => {
+    const tab = getTableTab(tableId);
+    if (!tab) return [];
+    const orderIds = new Set(orders.filter((order) => order.tab_id === tab.id).map((order) => order.id));
+    return orderItems.filter((item) => orderIds.has(item.order_id));
+  };
+  const readyItemsOf = (tableId: string) => itemsOfTable(tableId).filter((item) => item.status === 'READY');
+  const readyTables = activeTables.filter((table) => readyItemsOf(table.id).length > 0);
+  const readyTableIds = new Set(readyTables.map((table) => table.id));
+
+  if (selectedTable) return <WaiterOrderPad table={selectedTable} dedicated={dedicated} onBackToTables={() => setSelectedTableId(null)} />;
+
+  const matches = (table: RestaurantTable) => {
+    if (!query) return true;
+    const tab = getTableTab(table.id);
+    return String(table.number).padStart(2, '0').includes(query) || (tab?.customer_name?.toLocaleLowerCase('pt-BR').includes(query) ?? false);
+  };
+
+  const handleOpenTab = ({ people, name, notes }: { people: number; name: string; notes: string }) => {
+    if (!tableToOpen || !currentShift || !isShiftOpen) { setErrorMessage('Solicite a abertura do turno antes de iniciar o atendimento.'); return; }
+    if (!Number.isInteger(people) || people < 1 || people > 30) { setErrorMessage('Informe de 1 a 30 pessoas.'); return; }
+    try {
+      openTab(tableToOpen.id, name, people, notes, currentProfile.id, currentShift.id);
+      setSelectedTableId(tableToOpen.id);
+      setTableToOpen(null);
+      setErrorMessage(null);
+    } catch (error: unknown) {
+      setErrorMessage(error instanceof Error ? error.message : 'Não foi possível abrir a comanda.');
+    }
+  };
+  const askOpen = (table: RestaurantTable) => { if (!isShiftOpen) return; setErrorMessage(null); setTableToOpen(table); };
+  const openSheet = tableToOpen && <WaiterOpenTabSheet key={tableToOpen.id} table={tableToOpen} error={errorMessage} onClose={() => setTableToOpen(null)} onSubmit={handleOpenTab} />;
+  const shiftNotice = !isShiftOpen && <div className="notice flex flex-wrap items-center justify-between gap-3 border-amber-200 bg-amber-50 text-amber-900" role="status"><div className="flex items-center gap-2"><Info className="h-5 w-5 shrink-0" /><span>O turno está fechado. {dedicated ? 'Solicite a abertura ao gerente.' : 'Abra um turno para iniciar novos atendimentos.'}</span></div>{!dedicated && onOpenShiftClick && <button type="button" onClick={onOpenShiftClick} className="btn-primary">Abrir turno</button>}</div>;
+
+  // ---------------- Painel administrativo (tela larga) ----------------
+  if (!dedicated) {
+    const filteredTables = activeTables.filter((table) => (filter === 'ALL' || (filter === 'READY' ? readyTableIds.has(table.id) : table.status === filter)) && matches(table));
+    return (
+      <div className="page-layout">
+        <PageHeader eyebrow="Atendimento" title="Atendimento" description="Escolha uma mesa para abrir uma comanda ou continuar um pedido." icon={Smartphone} actions={<span className="status-badge bg-brand-50 text-brand-800"><Users className="h-4 w-4" aria-hidden="true" />{activeTables.filter((table) => table.status === 'LIVRE').length} mesas livres</span>} />
+        <a className="btn-secondary" href="#/garcom"><Smartphone className="h-4 w-4" />Abrir área do garçom no celular</a>
+        {shiftNotice}
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="filter-bar" aria-label="Filtrar mesas por situação">
+            {(['ALL', 'READY', 'LIVRE', 'OCUPADA', 'AGUARDANDO_CONTA', 'RESERVADA'] as const).map((status) => <FilterChip key={status} active={filter === status} onClick={() => setFilter(status)} count={status === 'ALL' ? activeTables.length : status === 'READY' ? readyTables.length : activeTables.filter((table) => table.status === status).length}>{status === 'ALL' ? 'Todas' : status === 'READY' ? 'Para servir' : getTableStatusConfig(status).label}</FilterChip>)}
+          </div>
+          <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar mesa ou cliente" placeholder="Número da mesa ou cliente" className="w-full shrink-0 xl:w-64" />
+        </div>
+        {filteredTables.length ? <div className="table-grid">{filteredTables.map((table) => <TableCard key={table.id} table={table} tab={getTableTab(table.id)} disabled={!isShiftOpen} onOpen={() => askOpen(table)} onOrder={() => setSelectedTableId(table.id)} />)}</div> : <EmptyState title="Nenhuma mesa encontrada" description="Tente outro número, nome de cliente ou situação da mesa." action={<button type="button" className="btn-secondary" onClick={() => { setFilter('ALL'); setSearchTerm(''); }}>Limpar filtros</button>} />}
+        {openSheet}
+      </div>
+    );
+  }
+
+  // ---------------- Área do garçom (celular) ----------------
+  const occupied = activeTables.filter(isOccupied);
+  const free = activeTables.filter((table) => !isOccupied(table));
+  // Sem mesa ocupada, começa mostrando todas (não abre numa lista vazia)
+  const tableFilter: TableFilter = chosenFilter ?? (occupied.length ? 'occupied' : 'all');
+  const readyCount = readyTables.reduce((sum, table) => sum + readyItemsOf(table.id).length, 0);
+  const showOccupied = tableFilter !== 'free' ? occupied.filter(matches) : [];
+  const showFree = tableFilter !== 'occupied' ? free.filter(matches) : [];
+
+  const statusChip = (table: RestaurantTable) => {
+    const items = itemsOfTable(table.id).filter((item) => item.status !== 'CANCELLED');
+    if (readyTableIds.has(table.id)) return { label: 'Pronto', cls: 'bg-sucesso/15 text-sucesso' };
+    if (table.status === 'AGUARDANDO_CONTA') return { label: 'Conta pedida', cls: 'bg-alerta/15 text-alerta' };
+    if (items.some((item) => item.status === 'RECEIVED' || item.status === 'IN_PREPARATION')) return { label: 'Em preparo', cls: 'bg-alerta/15 text-alerta' };
+    if (!items.length) return { label: 'Sem pedido', cls: 'bg-surface-muted text-ink-secondary' };
+    return { label: 'Servido', cls: 'bg-surface-muted text-ink-secondary' };
+  };
+  const tabSubtitle = (tab: Tab | undefined) => [tab?.people_count ? `${tab.people_count} ${tab.people_count === 1 ? 'pessoa' : 'pessoas'}` : null, tab ? formatElapsedMinutes(tab.opened_at, now) : null].filter(Boolean).join(' · ');
+  const tabName = (table: RestaurantTable, tab: Tab | undefined) => (tab?.customer_name && tab.customer_name !== `Mesa ${table.number}` ? tab.customer_name : 'Sem nome');
+
+  const readyBanner = readyTables.length > 0 && (
+    <button type="button" onClick={() => setSection('ready')} className="flex min-h-[64px] w-full items-center justify-between gap-3 rounded-xl bg-sucesso px-3.5 py-3 text-left text-white">
+      <span className="min-w-0">
+        <span className="block text-[17px] font-semibold">{readyCount} {readyCount === 1 ? 'item pronto' : 'itens prontos'}</span>
+        <span className="block truncate text-sm text-white/90">{readyTables.map((table) => `Mesa ${pad2(table.number)}`).join(' · ')} — levar agora</span>
+      </span>
+      <ArrowRight className="h-6 w-6 shrink-0" aria-hidden="true" />
+    </button>
+  );
+
+  const tablesSection = (
+    <div className="space-y-3.5">
+      {readyBanner}
+      <div className="grid grid-cols-3 gap-1 rounded-[10px] bg-line p-1" role="tablist" aria-label="Filtrar mesas">
+        {([['occupied', 'Ocupadas', occupied.length], ['free', 'Livres', free.length], ['all', 'Todas', activeTables.length]] as const).map(([key, label, count]) => (
+          <button key={key} type="button" role="tab" aria-selected={tableFilter === key} aria-controls="tables-panel" onClick={() => setTableFilter(key)}
+            className={`flex h-10 items-center justify-center gap-1.5 rounded-lg text-[15px] font-semibold ${tableFilter === key ? 'bg-ink text-white' : 'text-ink'}`}>
+            {label}<span className={`font-mono text-xs ${tableFilter === key ? 'text-white/80' : 'text-ink-muted'}`}>{count}</span>
+          </button>
+        ))}
+      </div>
+      <label className="relative block">
+        <span className="sr-only">Buscar mesa ou cliente</span>
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+        <input type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Nº da mesa ou cliente" aria-describedby="tables-search-hint"
+          className="h-11 w-full rounded-lg border border-line bg-surface pl-10 pr-3 text-base placeholder:text-ink-muted" />
+        <span id="tables-search-hint" className="sr-only">{showOccupied.length + showFree.length} mesas encontradas</span>
+      </label>
+      {shiftNotice}
+      {showOccupied.length > 0 && (
+        <ul className="space-y-2" aria-label="Mesas ocupadas">
+          {showOccupied.map((table) => {
+            const tab = getTableTab(table.id);
+            const chip = statusChip(table);
+            return (
+              <li key={table.id}>
+                <button type="button" onClick={() => setSelectedTableId(table.id)} className="flex min-h-[72px] w-full items-center gap-3 rounded-xl border border-line bg-surface px-3.5 py-3 text-left active:bg-accent/10"
+                  aria-label={`Mesa ${pad2(table.number)}, ${tabName(table, tab)}, ${chip.label}. Lançar itens`}>
+                  <span className="w-11 shrink-0 font-mono text-[26px] font-bold text-ink">{pad2(table.number)}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-base font-semibold text-ink">{tabName(table, tab)}</span>
+                    <span className="block truncate text-[13px] text-ink-muted">{tabSubtitle(tab)}</span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="font-mono text-base font-bold text-ink">{formatBRL(tab?.total)}</span>
+                    <span className={`rounded px-2 py-0.5 text-xs font-semibold ${chip.cls}`}>{chip.label}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {showFree.length > 0 && (
+        <section aria-label="Mesas livres">
+          <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Livres <span className="normal-case tracking-normal">· toque para abrir</span></h2>
+          <div className="grid grid-cols-3 xs:grid-cols-4 gap-2">
+            {showFree.map((table) => (
+              <button key={table.id} type="button" disabled={!isShiftOpen} onClick={() => askOpen(table)}
+                className={`flex h-[50px] items-center justify-center rounded-lg border border-t-[3px] border-line bg-surface font-mono text-xl font-bold text-ink disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-t-alerta' : 'border-t-sucesso'}`}
+                aria-label={`Mesa ${pad2(table.number)}${table.status === 'RESERVADA' ? ' (reservada)' : ''}. Abrir comanda`}>
+                {pad2(table.number)}
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+      {!showOccupied.length && !showFree.length && (
+        <EmptyState title="Nenhuma mesa encontrada" description={query ? 'Tente outro número ou nome de cliente.' : tableFilter === 'occupied' ? 'Nenhuma mesa ocupada agora.' : 'Nenhuma mesa livre agora.'}
+          action={<button type="button" className="btn-secondary" onClick={() => { setTableFilter('all'); setSearchTerm(''); }}>Ver todas</button>} />
+      )}
+    </div>
+  );
+
+  const readySection = (
+    <div className="space-y-3">
+      <h1 className="text-xl font-semibold text-[#2A201B]">Prontos para servir</h1>
+      {readyTables.length === 0 ? <EmptyState title="Nada pronto agora" description="Quando a churrasqueira, a cozinha ou o bar terminarem um item, ele aparece aqui." /> : readyTables.map((table) => {
+        const items = readyItemsOf(table.id);
+        const tab = getTableTab(table.id);
+        return (
+          <section key={table.id} className="rounded-xl border border-[#E3D9CE] bg-[#FBF8F4] p-3.5">
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <button type="button" onClick={() => setSelectedTableId(table.id)} className="min-h-[44px] min-w-0 text-left">
+                <span className="font-mono text-xl font-bold text-[#2A201B]">Mesa {pad2(table.number)}</span>
+                <span className="ml-2 truncate text-sm text-[#7A6C62]">{tabName(table, tab)}</span>
+              </button>
+              {items.length > 1 && <button type="button" className="h-11 shrink-0 rounded-lg bg-[#3E7A4E] px-3 text-sm font-semibold text-white" onClick={() => items.forEach((item) => markDelivered(item.id))}>Servir todos</button>}
+            </div>
+            <ul className="divide-y divide-[#E3D9CE]">
+              {items.map((item) => (
+                <li key={item.id} className="flex items-center gap-3 py-2">
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-semibold text-[#2A201B]">{item.quantity}x {item.product_name}</span>
+                    {(item.doneness || item.notes) && <span className="block text-xs text-[#7A6C62]">{[item.doneness ? formatDoneness(item.doneness) : null, item.notes].filter(Boolean).join(' · ')}</span>}
+                  </span>
+                  <button type="button" className="flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-sucesso px-3 text-sm font-semibold text-sucesso" onClick={() => markDelivered(item.id)}>
+                    <CheckCheck className="h-4 w-4" aria-hidden="true" />Servir
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      })}
+    </div>
+  );
+
+  const navItems: { key: Section; label: string; icon: typeof LayoutGrid; badge?: number }[] = [
+    { key: 'tables', label: 'Mesas', icon: LayoutGrid },
+    { key: 'ready', label: 'Prontos', icon: BellRing, badge: readyCount },
+    { key: 'settings', label: 'Ajustes', icon: Settings2 },
+  ];
+
+  return (
+    <div className="px-4 pb-28 pt-3">
+      {section === 'tables' && tablesSection}
+      {section === 'ready' && readySection}
+      {section === 'settings' && <div className="space-y-3"><h1 className="text-xl font-semibold text-ink">Ajustes</h1>{settings}</div>}
+      <nav aria-label="Área do garçom" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+        <div className="mx-auto grid max-w-5xl grid-cols-3">
+          {navItems.map(({ key, label, icon: Icon, badge }) => (
+            <button key={key} type="button" onClick={() => setSection(key)} aria-current={section === key ? 'page' : undefined}
+              className={`flex h-[62px] flex-col items-center justify-center gap-1 text-[13px] ${section === key ? 'font-semibold text-brand-500' : 'text-ink-secondary'}`}>
+              <span className="relative">
+                <Icon className="h-6 w-6" aria-hidden="true" />
+                {!!badge && <span className="absolute -right-3 -top-2 min-w-[20px] rounded bg-sucesso px-1 text-center font-mono text-[11px] font-bold leading-5 text-white">{badge}</span>}
+              </span>
+              {label}{!!badge && <span className="sr-only">: {badge}</span>}
+            </button>
+          ))}
+        </div>
+      </nav>
+      {openSheet}
+    </div>
+  );
+}

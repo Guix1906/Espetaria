@@ -1,0 +1,11 @@
+# Nunca enviar para a Vercel: segredos e programas locais
+printer-bridge/
+supabase/
+.env
+.env.*
+!.env.example
+node_modules/
+dist/
+coverage/
+.claude/
+*.zip
