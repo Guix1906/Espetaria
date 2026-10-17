@@ -91,7 +91,7 @@ function FirstAdminSetup({ onDone }: { onDone: () => void }) {
     <AuthShell>
       <form onSubmit={submit} className="space-y-4" aria-labelledby="setup-title">
         <div>
-          <p className="font-mono text-xs tracking-[0.12em] text-[#B5502E]">PRIMEIRO ACESSO</p>
+          <p className="text-sm font-semibold text-brand-500">Primeiro acesso</p>
           <h1 id="setup-title" className="mt-1 text-[30px] font-semibold leading-tight tracking-[-0.02em] text-[#2B211C]">Criar administrador</h1>
           <p className="mt-1.5 text-sm text-[#6B5D53]">Cadastre o responsável pelo sistema. Depois, ele cadastra gerentes, garçons e demais colaboradores em <strong className="font-medium text-[#2B211C]">Equipe</strong>. Esta tela aparece só uma vez.</p>
         </div>

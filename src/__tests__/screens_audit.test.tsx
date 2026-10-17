@@ -117,14 +117,14 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
 
     it('1.2 WaiterModule (Atendimento) deve abrir e renderizar sem erros', () => {
       const html = renderWithFeedback(<WaiterModule />);
-      expect(html).toContain('Atendimento');
+      expect(html).toContain('Salão');
       expect(html).toContain('O turno está fechado');
       expect(html).toContain('Mesa 01');
     });
 
     it('1.3 TableGridView (Salão e Mesas) deve abrir e renderizar sem erros', () => {
       const html = renderWithFeedback(<TableGridView />);
-      expect(html).toContain('Salão e mesas');
+      expect(html).toContain('Salão');
       expect(html).toContain('Mesas livres');
       expect(html).toContain('Consumo em aberto');
     });
@@ -256,7 +256,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       const html = renderWithFeedback(<DailyStockView onOpenShiftClick={vi.fn()} />);
       expect(html).toContain('Estoque diário');
       expect(html).toContain('Espeto de Picanha Grill');
-      expect(html).toContain('Restante:');
+      expect(html).toContain('Restante');
       expect(html).toContain('Esgotar');
     });
   });
@@ -325,7 +325,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
           onClose={vi.fn()}
         />
       );
-      expect(html).toContain('Fechamento de Conta');
+      expect(html).toContain('Fechamento de conta');
       expect(html).toContain('Aguardando Quitação Total');
     });
 
@@ -363,7 +363,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
         />
       );
       expect(html).toContain('Novo produto');
-      expect(html).toContain('Nome do Prato / Produto');
+      expect(html).toContain('Nome do produto');
     });
 
     it('3.7 ReceiptModal abre e exibe comprovante formatado', () => {

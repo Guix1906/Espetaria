@@ -186,6 +186,8 @@ export function PublicMenuApp() {
   const { cart, addToCart, updateCartQuantity, submitDeliveryOrder, zones, activeTrackingOrder } = useDeliveryStore();
   const { currentShift } = useShiftStore();
   const settings = useSettingsStore((s) => s.settings);
+  const deliveryEta = settings.delivery_eta?.trim() || '40–55 min';
+  const pickupEta = settings.pickup_eta?.trim() || '30–40 min';
   const isDesktop = useIsDesktop();
   const isOpen = currentShift?.status === 'ABERTO';
 
@@ -249,7 +251,11 @@ export function PublicMenuApp() {
     return () => io.disconnect();
   }, [groups, step]);
   useEffect(() => { if (!activeCat && groups[0]) setActiveCat(groups[0].name); }, [groups, activeCat]);
-  useEffect(() => { document.getElementById(`chip-${slug(activeCat)}`)?.scrollIntoView({ block: 'nearest', inline: 'center' }); }, [activeCat]);
+  useEffect(() => {
+    const chip = document.getElementById(`chip-${slug(activeCat)}`);
+    const bar = chip?.parentElement;
+    if (chip && bar) bar.scrollTo({ left: chip.offsetLeft - bar.clientWidth / 2 + chip.clientWidth / 2, behavior: 'smooth' });
+  }, [activeCat]);
   const jumpTo = (cat: string) => {
     setActiveCat(cat);
     const el = sectionsRef.current[cat];
@@ -321,7 +327,7 @@ export function PublicMenuApp() {
   const statusLine = (
     <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-muted">
       <span aria-hidden="true" className={`h-[7px] w-[7px] rounded-full ${isOpen ? 'bg-emerald-600' : 'bg-rose-600'}`} />
-      {isOpen ? `Aberto agora · ${isPickup ? '30–40 min' : '40–55 min'}` : 'Fechado no momento'}
+      {isOpen ? `Aberto agora · ${isPickup ? pickupEta : deliveryEta}` : 'Fechado no momento'}
     </p>
   );
   const logo = <div aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-ink text-[17px] font-bold text-canvas lg:h-11 lg:w-11">{initials}</div>;
@@ -561,8 +567,8 @@ export function PublicMenuApp() {
         <Progress n={3} />
         <div className="px-5 pt-1">
           {block(isPickup ? 'Retirar em' : 'Entregar em', () => window.history.go(-2), isPickup
-            ? <p className="text-[16px]">{settings.address || 'Na loja'}<span className="block text-[14px] text-ink-muted">Pronto em 30–40 min · {customer.name}</span></p>
-            : <p className="text-[16px]">{customer.street}, {customer.number}{customer.complement ? ` · ${customer.complement}` : ''}<span className="block text-[14px] text-ink-muted">{customer.neighborhood} · 40–55 min · {customer.name}</span></p>)}
+            ? <p className="text-[16px]">{settings.address || 'Na loja'}<span className="block text-[14px] text-ink-muted">Pronto em {pickupEta} · {customer.name}</span></p>
+            : <p className="text-[16px]">{customer.street}, {customer.number}{customer.complement ? ` · ${customer.complement}` : ''}<span className="block text-[14px] text-ink-muted">{customer.neighborhood} · {deliveryEta} · {customer.name}</span></p>)}
           {block('Pagamento', back, <p className="text-[16px]">{paymentSummary}</p>)}
           {block('Itens', () => window.history.go(-3), <ul className="space-y-1.5">{cart.map((c) => <li key={c.id} className="flex justify-between gap-3 text-[15px]"><span>{c.quantity}× {c.product.name}{c.doneness && <span className="text-ink-muted"> · {formatDoneness(c.doneness)}</span>}</span><span className="shrink-0 tabular-nums">{formatBRL(c.product.price * c.quantity)}</span></li>)}</ul>)}
           <div className="pt-4">{totals()}</div>
@@ -585,7 +591,7 @@ export function PublicMenuApp() {
             <section>
               <h2 className="mb-4 flex items-center gap-3 text-[20px] font-semibold">{num(1)}Como você quer receber?</h2>
               <div className="mb-5 grid grid-cols-2 gap-3">
-                {(['DELIVERY', 'PICKUP'] as const).map((t) => <button key={t} type="button" role="radio" aria-checked={orderType === t} onClick={() => setOrderType(t)} className={`flex items-center gap-3 rounded-md bg-white text-left ${orderType === t ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}><Radio on={orderType === t} /><span><span className="block text-[16px] font-semibold">{t === 'DELIVERY' ? 'Entrega' : 'Retirar no local'}</span><span className="block text-[14px] text-ink-muted">{t === 'DELIVERY' ? `40–55 min${zones.length ? ` · a partir de ${formatBRL(minFee)}` : ''}` : '30–40 min · sem taxa'}</span></span></button>)}
+                {(['DELIVERY', 'PICKUP'] as const).map((t) => <button key={t} type="button" role="radio" aria-checked={orderType === t} onClick={() => setOrderType(t)} className={`flex items-center gap-3 rounded-md bg-white text-left ${orderType === t ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}><Radio on={orderType === t} /><span><span className="block text-[16px] font-semibold">{t === 'DELIVERY' ? 'Entrega' : 'Retirar no local'}</span><span className="block text-[14px] text-ink-muted">{t === 'DELIVERY' ? `${deliveryEta}${zones.length ? ` · a partir de ${formatBRL(minFee)}` : ''}` : `${pickupEta} · sem taxa`}</span></span></button>)}
               </div>
               {deliveryFields(true)}
             </section>
@@ -667,7 +673,7 @@ export function PublicMenuApp() {
           {groups.length === 0 && <p className="py-16 text-center text-[16px] text-ink-muted">Nada encontrado para “{query}”.</p>}
           {groups.map((g) => (
             <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
-              <h2 className="font-mono text-[13px] uppercase tracking-wide text-ink-muted">{g.name} · {g.items.length} {g.items.length === 1 ? 'item' : 'itens'}</h2>
+              <h2 className="text-sm font-semibold text-ink-secondary">{g.name} · {g.items.length} {g.items.length === 1 ? 'item' : 'itens'}</h2>
               <ul>{g.items.map(productRow)}</ul>
             </section>
           ))}

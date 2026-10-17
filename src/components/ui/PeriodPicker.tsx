@@ -30,16 +30,16 @@ export function defaultPeriod(id = 'month'): Period {
 export function PeriodPicker({ value, onChange, presets }: { value: Period; onChange: (p: Period) => void; presets?: string[] }) {
   const list = PERIOD_PRESETS.filter((p) => !presets || presets.includes(p.id));
   return (
-    <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex flex-col gap-2 2xl:flex-row 2xl:items-center 2xl:justify-between">
       <div className="filter-bar" aria-label="Período">
         {list.map((p) => <FilterChip key={p.id} active={value.preset === p.id} onClick={() => onChange({ ...p.make(), preset: p.id })}>{p.label}</FilterChip>)}
       </div>
       <div className="flex items-center gap-2 text-sm">
         <label className="sr-only" htmlFor="period-from">De</label>
-        <input id="period-from" type="date" className="h-11 min-w-0 flex-1 rounded-xl border px-2.5 lg:w-40 lg:flex-none" value={value.from} max={value.to} onChange={(e) => e.target.value && onChange({ from: e.target.value, to: value.to, preset: 'custom' })} />
+        <input id="period-from" type="date" className="h-11 min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-2.5 sm:w-40 sm:flex-none" value={value.from} max={value.to} onChange={(e) => e.target.value && onChange({ from: e.target.value, to: value.to, preset: 'custom' })} />
         <span className="text-ink-muted">até</span>
         <label className="sr-only" htmlFor="period-to">Até</label>
-        <input id="period-to" type="date" className="h-11 min-w-0 flex-1 rounded-xl border px-2.5 lg:w-40 lg:flex-none" value={value.to} min={value.from} onChange={(e) => e.target.value && onChange({ from: value.from, to: e.target.value, preset: 'custom' })} />
+        <input id="period-to" type="date" className="h-11 min-w-0 flex-1 rounded-md border border-line-strong bg-surface px-2.5 sm:w-40 sm:flex-none" value={value.to} min={value.from} onChange={(e) => e.target.value && onChange({ from: value.from, to: e.target.value, preset: 'custom' })} />
       </div>
     </div>
   );

@@ -83,6 +83,13 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
       : categories.filter((c) => c.id === selectedCategory).map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }));
 
   const { notify } = useFeedback();
+  /** Rola até a busca do cardápio, descontando o cabeçalho fixo (sem scrollIntoView). */
+  const scrollToCatalog = () => {
+    const el = document.getElementById('waiter-catalog');
+    if (!el) return;
+    const header = (document.querySelector('.subnav-sticky') as HTMLElement | null)?.offsetHeight ?? 0;
+    window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - header - 8), behavior: 'smooth' });
+  };
   const tryAdd = (action: () => void) => {
     try { action(); } catch (error: unknown) { notify(error instanceof Error ? error.message : 'Estoque insuficiente.', 'error'); }
   };
@@ -119,37 +126,39 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
               {subtitle && <p className="truncate text-[13px] text-ink-muted">{subtitle}</p>}
             </div>
           </div>
-          <button type="button" onClick={() => setIsViewTabOpen(true)} className="flex min-h-[44px] shrink-0 flex-col items-end justify-center px-1 text-right" aria-label={`Ver consumo e conta: ${formatBRL(activeTab?.total)}`}>
-            <span className="text-xs text-ink-muted">Conta</span>
+          <button type="button" onClick={() => setIsViewTabOpen(true)} className="flex min-h-[44px] shrink-0 flex-col items-end justify-center rounded-md border border-line-strong bg-surface px-2.5 py-1 text-right active:bg-surface-muted" aria-label={`Ver consumo e conta: ${formatBRL(activeTab?.total)}`}>
+            <span className="text-[13px] font-semibold text-brand-700">Ver conta ›</span>
             <span className="font-mono text-[15px] font-bold text-ink">{formatBRL(activeTab?.total)}</span>
           </button>
         </div>
+        <div className="mx-auto mt-2 flex max-w-5xl flex-nowrap gap-1.5 overflow-x-auto pb-0.5" aria-label="Categorias do cardápio">
+          {[{ id: TOP, name: 'Mais pedidos' }, ...categories].map((category) => (
+            <button key={category.id} type="button" aria-pressed={selectedCategory === category.id && !query} onClick={() => { setSelectedCategory(category.id); setSearchQuery(''); scrollToCatalog(); }}
+              className={`h-[38px] shrink-0 whitespace-nowrap rounded-md border px-3 text-sm font-semibold ${selectedCategory === category.id && !query ? 'border-ink bg-ink text-white' : 'border-line bg-surface text-ink'}`}>
+              {category.id === TOP ? category.name : shortCategoryName(category.name)}
+            </button>
+          ))}
+        </div>
       </div>
       <div className="mx-auto max-w-5xl space-y-3 px-3 pt-3 sm:px-6">
-        {!activeTab && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">Esta comanda foi encerrada. Volte às mesas para iniciar outro atendimento.</p>}
-        {(billRequested || table.status === 'AGUARDANDO_CONTA') && <p role="status" className="notice border-amber-200 bg-amber-50 text-amber-900">Conta solicitada. Aguarde o atendimento do caixa.</p>}
-        {orderSent && <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção.</span></div><button type="button" className="icon-button bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>}
-        {activeTab && <TabItemsPanel table={table} onSwap={(item) => { setSwapping(item.product_name); setSearchQuery(''); setSelectedCategory(TOP); document.getElementById('waiter-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} />}
-        {swapping && <p role="status" className="notice border-brand-200 bg-brand-50 text-brand-900">Trocando <strong>{swapping}</strong>: escolha o item substituto e envie o pedido.</p>}
+        {/* Um aviso só, o mais importante: encerrada > trocando > enviado > conta pedida */}
+        {!activeTab ? <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">Esta comanda foi encerrada. Volte às mesas para iniciar outro atendimento.</p>
+          : swapping ? <p role="status" className="notice border-brand-200 bg-brand-50 text-brand-900">Trocando <strong>{swapping}</strong>: escolha o item substituto e envie o pedido.</p>
+          : orderSent ? <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção.</span></div><button type="button" className="icon-button bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>
+          : (billRequested || table.status === 'AGUARDANDO_CONTA') ? <p role="status" className="notice border-brand-200 bg-brand-50 text-brand-900">Conta pedida. Aguarde o atendimento do caixa.</p>
+          : null}
+        {activeTab && <TabItemsPanel table={table} onSwap={(item) => { setSwapping(item.product_name); setSearchQuery(''); setSelectedCategory(TOP); scrollToCatalog(); }} />}
         <div id="waiter-catalog" className="flex scroll-mt-32 items-center gap-2">
           <label className="relative block flex-1">
             <span className="sr-only">Buscar produto no cardápio</span>
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
             <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar item" className="h-11 w-full rounded-lg border border-line-strong bg-surface pl-10 pr-3 text-base placeholder:text-ink-muted" />
           </label>
-          {canManageProducts && <button type="button" onClick={() => setIsProductModalOpen(true)} className="btn-secondary h-11 shrink-0 px-3 text-xs" title="Cadastrar novo produto no cardápio"><Plus className="h-4 w-4" /><span className="hidden sm:inline">Novo Produto</span></button>}
-        </div>
-        <div className="flex flex-wrap gap-1.5" aria-label="Categorias do cardápio">
-          {[{ id: TOP, name: 'Mais pedidos' }, ...categories].map((category) => (
-            <button key={category.id} type="button" aria-pressed={selectedCategory === category.id && !query} onClick={() => { setSelectedCategory(category.id); setSearchQuery(''); }}
-              className={`h-[38px] rounded-md border px-3 text-sm font-semibold ${selectedCategory === category.id && !query ? 'border-ink bg-ink text-white' : 'border-line bg-surface text-ink'}`}>
-              {category.id === TOP ? category.name : shortCategoryName(category.name)}
-            </button>
-          ))}
+          {canManageProducts && <button type="button" onClick={() => setIsProductModalOpen(true)} className="btn-secondary h-11 shrink-0 px-3 text-xs" title="Cadastrar novo produto no cardápio"><Plus className="h-4 w-4" /><span className="hidden sm:inline">Novo produto</span></button>}
         </div>
         {sections.every((s) => !s.rows.length) ? <EmptyState title="Nenhum produto encontrado" description="Tente outro nome ou escolha uma categoria diferente." action={<button type="button" className="btn-secondary" onClick={() => { setSelectedCategory(TOP); setSearchQuery(''); }}>Limpar busca</button>} /> : sections.filter((s) => s.rows.length).map((section) => (
           <section key={section.id} aria-label={section.title} className="space-y-2">
-            <h2 className="pt-1 text-[13px] font-semibold uppercase tracking-[0.06em] text-ink-muted">{section.title}</h2>
+            <h2 className="pt-1 text-sm font-semibold text-ink-secondary">{section.title}</h2>
             <ul className="waiter-products grid grid-cols-1 gap-2 sm:grid-cols-2">
               {section.rows.map(({ product, level, left, inCart }) => {
                 const out = level === 'out';

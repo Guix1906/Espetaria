@@ -87,6 +87,8 @@ export const SettingsView: React.FC = () => {
   const [phone, setPhone] = useState(settings.phone);
   const [address, setAddress] = useState(settings.address);
   const [serviceFee, setServiceFee] = useState(settings.service_fee_percent);
+  const [deliveryEta, setDeliveryEta] = useState(settings.delivery_eta ?? '40–55 min');
+  const [pickupEta, setPickupEta] = useState(settings.pickup_eta ?? '30–40 min');
 
   // Preview de PIX
   const previewAmount = 45.0;
@@ -118,6 +120,8 @@ export const SettingsView: React.FC = () => {
       phone,
       address,
       service_fee_percent: Number(serviceFee),
+      delivery_eta: deliveryEta.trim() || '40–55 min',
+      pickup_eta: pickupEta.trim() || '30–40 min',
     });
     setSaveFeedback('store', 'Dados da loja salvos.');
   };
@@ -646,7 +650,7 @@ export const SettingsView: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-secondary">Telefone / WhatsApp</label>
+              <label className="mb-1 block text-xs font-semibold text-ink-secondary">Telefone e WhatsApp</label>
               <input
                 type="text"
                 value={phone}
@@ -664,6 +668,17 @@ export const SettingsView: React.FC = () => {
               onChange={(e) => setAddress(e.target.value)}
               className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm"
             />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="store-delivery-eta" className="mb-1 block text-sm font-semibold text-ink-secondary">Tempo de entrega (cardápio)</label>
+              <input id="store-delivery-eta" type="text" value={deliveryEta} onChange={(e) => setDeliveryEta(e.target.value)} placeholder="40–55 min" className="h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-sm" />
+            </div>
+            <div>
+              <label htmlFor="store-pickup-eta" className="mb-1 block text-sm font-semibold text-ink-secondary">Tempo de retirada (cardápio)</label>
+              <input id="store-pickup-eta" type="text" value={pickupEta} onChange={(e) => setPickupEta(e.target.value)} placeholder="30–40 min" className="h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-sm" />
+            </div>
           </div>
 
           <div>

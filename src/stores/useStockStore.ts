@@ -19,6 +19,7 @@ export interface PrepItemInput {
 }
 
 export type ProductInput = {
+  low_stock_threshold?: number | null;
   name: string;
   price: number;
   type: ProductType;

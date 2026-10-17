@@ -44,6 +44,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const [isCubas, setIsCubas] = useState(false);
   const [portionsPerCuba, setPortionsPerCuba] = useState<number>(15);
   const [tracksStock, setTracksStock] = useState(true);
+  const [lowStock, setLowStock] = useState('');
   const [active, setActive] = useState(true);
   
   // Quantidade inicial para injetar no turno caso já esteja aberto
@@ -67,6 +68,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setIsCubas(productToEdit.is_cubas);
       setPortionsPerCuba(productToEdit.portions_per_cuba || 15);
       setTracksStock(productToEdit.tracks_stock);
+      setLowStock(productToEdit.low_stock_threshold != null ? String(productToEdit.low_stock_threshold) : '');
       setActive(productToEdit.active);
     } else {
       setName('');
@@ -127,6 +129,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       return;
     }
 
+    const lowStockValue = lowStock.trim() === '' ? null : Math.max(0, parseInt(lowStock, 10) || 0);
     try {
       if (isEditing && productToEdit) {
         updateProduct(productToEdit.id, {
@@ -141,6 +144,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           is_cubas: isCubas,
           portions_per_cuba: isCubas ? portionsPerCuba : 1,
           tracks_stock: tracksStock,
+          low_stock_threshold: lowStockValue,
           active,
         });
         onSaved?.({
@@ -156,6 +160,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           is_cubas: isCubas,
           portions_per_cuba: isCubas ? portionsPerCuba : 1,
           tracks_stock: tracksStock,
+          low_stock_threshold: lowStockValue,
           active,
         });
       } else {
@@ -174,6 +179,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             is_cubas: isCubas,
             portions_per_cuba: isCubas ? portionsPerCuba : 1,
             tracks_stock: tracksStock,
+            low_stock_threshold: lowStockValue,
             active,
             available: true,
             display_order: 99,
@@ -207,7 +213,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-semibold text-stone-900 tracking-tight">
-                {isEditing ? 'Editar Produto do Cardápio' : 'Novo produto'}
+                {isEditing ? 'Editar produto do Cardápio' : 'Novo produto'}
               </h2>
               <p className="text-xs text-stone-500">
                 Disponibilize itens para venda nos celulares dos garçons e no delivery
@@ -236,7 +242,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           {/* 1. SELEÇÃO RÁPIDA DE SETOR DE PRODUÇÃO */}
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-              Setor de Preparo / Produção (KDS) *
+              Setor de preparo / Produção (KDS) *
             </label>
             <div className="grid grid-cols-3 gap-2">
               <button
@@ -250,7 +256,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               >
                 <Flame className="w-5 h-5 text-brand-600" />
                 <span className="text-xs">Churrasqueira</span>
-                <span className="text-[10px] text-stone-400">Grelha & Espetos</span>
+                <span className="text-[10px] text-stone-400">Grelha e espetos</span>
               </button>
 
               <button
@@ -277,8 +283,8 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                 }`}
               >
                 <Beer className="w-5 h-5 text-sky-600" />
-                <span className="text-xs">Bar / Copa</span>
-                <span className="text-[10px] text-stone-400">Bebidas & Chopp</span>
+                <span className="text-xs">Bar e copa</span>
+                <span className="text-[10px] text-stone-400">Bebidas e chopp</span>
               </button>
             </div>
           </div>
@@ -287,7 +293,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
               <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-                Nome do Prato / Produto *
+                Nome do produto *
               </label>
               <input
                 type="text"
@@ -338,7 +344,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-                Tipo do Item
+                Tipo do item
               </label>
               <select
                 value={type}
@@ -369,7 +375,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-              URL da Foto / Imagem do Prato (Opcional para o Delivery)
+              URL da Foto do Prato (Opcional para o Delivery)
             </label>
             <input
               type="url"
@@ -403,7 +409,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               />
             </label>
 
-            {/* Toggle: Controle por Cubas Gastronômicas */}
+            {/* Toggle: Controle por cubas Gastronômicas */}
             <label className="flex items-center justify-between cursor-pointer py-1.5 border-t border-stone-200">
               <div>
                 <div className="font-semibold text-stone-900 text-xs flex items-center gap-1.5">
@@ -437,7 +443,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               </div>
             )}
 
-            {/* Toggle: Controla Estoque Diário */}
+            {/* Toggle: Controla estoque Diário */}
             <label className="flex items-center justify-between cursor-pointer py-1.5 border-t border-stone-200">
               <div>
                 <div className="font-semibold text-stone-900 text-xs">Controla estoque operacional diário?</div>
@@ -453,7 +459,26 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               />
             </label>
 
-            {/* Toggle: Ativo para Venda */}
+            {tracksStock && (
+              <label className="flex items-center justify-between gap-3 py-1.5" htmlFor="product-low-stock">
+                <div>
+                  <div className="font-semibold text-ink text-sm">Avisar estoque baixo a partir de</div>
+                  <div className="text-[13px] text-ink-muted">Vazio usa o padrão de 5 unidades</div>
+                </div>
+                <input
+                  id="product-low-stock"
+                  type="number"
+                  min="0"
+                  inputMode="numeric"
+                  value={lowStock}
+                  placeholder="5"
+                  onChange={(e) => setLowStock(e.target.value)}
+                  className="h-11 w-24 rounded-md border border-line-strong bg-surface px-3 text-center font-mono text-base text-ink"
+                />
+              </label>
+            )}
+
+            {/* Toggle: Ativo para venda */}
             <label className="flex items-center justify-between cursor-pointer py-1.5 border-t border-stone-200">
               <div>
                 <div className="font-semibold text-stone-900 text-xs">Ativo no cardápio</div>
@@ -476,7 +501,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               <div className="flex items-center gap-2">
                 <Flame className="w-4 h-4 text-brand-600" />
                 <span className="font-bold text-brand-900 text-xs">
-                  Turno Atual Aberto ({currentShift.name})
+                  Turno atual Aberto ({currentShift.name})
                 </span>
               </div>
               <p className="text-[11px] text-brand-800 leading-snug">
@@ -509,7 +534,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               className="btn-primary py-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-sm text-white"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{isEditing ? 'Salvar Alterações' : 'Cadastrar Produto'}</span>
+              <span>{isEditing ? 'Salvar Alterações' : 'Cadastrar produto'}</span>
             </button>
           </div>
 

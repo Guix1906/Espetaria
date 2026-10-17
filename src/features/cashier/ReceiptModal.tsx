@@ -1,4 +1,4 @@
-﻿import { CheckCircle2, Printer, X } from 'lucide-react';
+import { CheckCircle2, Printer, X } from 'lucide-react';
 import React from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
@@ -58,7 +58,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           {/* Cabeçalho do Cupom */}
           <div className="text-center space-y-0.5 border-b border-dashed border-stone-400 pb-3">
             {/* Dados da loja: Configurações → Dados da loja */}
-            <h2 className="font-semibold text-base tracking-wider uppercase font-sans text-stone-950">
+            <h2 className="font-semibold text-base font-sans text-stone-950">
               {store.name}
             </h2>
             {store.cnpj && <p className="text-[10px] text-stone-500">CNPJ: {store.cnpj}</p>}
@@ -137,7 +137,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
 
           {/* Formas de Pagamento Registradas */}
           <div className="border-b border-dashed border-stone-400 pb-2 space-y-1 text-[11px]">
-            <div className="font-bold text-[10px] uppercase text-stone-700">
+            <div className="font-bold text-[11px] text-stone-700">
               Formas de Pagamento Recebidas:
             </div>
             {payments.map((p) => (

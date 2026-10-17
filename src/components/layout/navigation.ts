@@ -1,5 +1,5 @@
 import type { AppRole } from '../../types/enums';
-import { BarChart3, Bike, ClipboardList, Landmark, LayoutDashboard, LayoutGrid, PackageCheck, PackagePlus, Receipt, Settings, ShieldCheck, Smartphone, Users, UtensilsCrossed } from 'lucide-react';
+import { BarChart3, Bike, ClipboardList, Landmark, LayoutDashboard, LayoutGrid, PackageCheck, PackagePlus, Receipt, Settings, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
 
 export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'products' | 'master' | 'finance' | 'reports' | 'stock' | 'audit' | 'team' | 'settings';
 
@@ -7,8 +7,8 @@ export const PAGE_TITLES: Record<ActiveTab, string> = {
   master: 'Visão geral',
   finance: 'Financeiro',
   reports: 'Relatórios',
-  waiter: 'Atendimento',
-  tables: 'Salão e mesas',
+  waiter: 'Salão',
+  tables: 'Salão',
   kds: 'Produção',
   cashier: 'Caixa',
   delivery: 'Delivery',
@@ -23,8 +23,7 @@ export const PAGE_TITLES: Record<ActiveTab, string> = {
 export const NAVIGATION_GROUPS = [
   { label: 'Principal', items: [{ id: 'master', icon: LayoutDashboard }, { id: 'finance', icon: Landmark }, { id: 'reports', icon: BarChart3 }] },
   { label: 'Operação', items: [
-    { id: 'waiter', icon: Smartphone },
-    { id: 'tables', icon: LayoutGrid },
+    { id: 'waiter', icon: LayoutGrid },
     { id: 'kds', icon: UtensilsCrossed },
     { id: 'cashier', icon: Receipt },
     { id: 'delivery', icon: Bike },
@@ -45,7 +44,7 @@ const ALL_TABS = Object.keys(PAGE_TITLES) as ActiveTab[];
 export const ROLE_TABS: Record<AppRole, ActiveTab[]> = {
   MASTER: ['master', ...ALL_TABS.filter((t) => t !== 'master')],
   GERENTE: ['master', 'finance', 'reports', 'waiter', 'tables', 'kds', 'cashier', 'delivery', 'menu', 'products', 'stock', 'audit', 'team', 'settings'],
-  CAIXA: ['cashier', 'tables', 'delivery', 'menu'],
+  CAIXA: ['cashier', 'waiter', 'tables', 'delivery', 'menu'],
   CHURRASQUEIRA: ['kds', 'stock'],
   COZINHA: ['kds', 'stock'],
   BAR: ['kds', 'stock'],

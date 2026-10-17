@@ -173,43 +173,43 @@ Arquivos: `WaiterOrderPad.tsx`, `PublicMenuApp.tsx`
 
 ### 3.1 Tela de pedido do garçom
 Arquivo: `src/features/waiter/WaiterOrderPad.tsx` (+ `TabItemsPanel.tsx`)
-- [ ] **Um espaço de aviso só**: em vez de empilhar comanda encerrada, conta pedida, pedido enviado e trocando item,
+- [x] **Um espaço de aviso só**: em vez de empilhar comanda encerrada, conta pedida, pedido enviado e trocando item,
       mostre só o mais recente e importante (prioridade: encerrada > trocando > enviado > conta pedida).
-- [ ] O `TabItemsPanel` começa **recolhido** numa linha ("6 na mesa · 2 em preparo · 1 pronto — Ver") e expande ao tocar.
-- [ ] Categorias em **uma linha só, com rolagem lateral** (`flex-nowrap overflow-x-auto`), fixas logo abaixo do cabeçalho.
-- [ ] O "Conta R$ …" do topo vira um botão visível: borda, rótulo "Ver conta ›" e o valor embaixo.
-- [ ] Troque os `scrollIntoView` (trocar item e categorias do cardápio) por `window.scrollTo` / `element.scrollTo`.
-- [ ] Títulos de seção sem maiúsculas: tire o `uppercase tracking-[0.06em]` de "Mais pedidos", das categorias e de "Livres" em `WaiterModule.tsx`.
+- [x] O `TabItemsPanel` começa **recolhido** numa linha ("6 na mesa · 2 em preparo · 1 pronto — Ver") e expande ao tocar.
+- [x] Categorias em **uma linha só, com rolagem lateral** (`flex-nowrap overflow-x-auto`), fixas logo abaixo do cabeçalho.
+- [x] O "Conta R$ …" do topo vira um botão visível: borda, rótulo "Ver conta ›" e o valor embaixo.
+- [x] Troque os `scrollIntoView` (trocar item e categorias do cardápio) por `window.scrollTo` / `element.scrollTo`.
+- [x] Títulos de seção sem maiúsculas: tire o `uppercase tracking-[0.06em]` de "Mais pedidos", das categorias e de "Livres" em `WaiterModule.tsx`.
 
 ### 3.2 Auditoria completa
 Arquivo: `src/features/audit/AuditLogView.tsx`
-- [ ] Hoje a tela mostra só `stockMovements`. Ela passa a mostrar também: comanda anulada (`void_tab_atomic`), comanda reaberta,
+- [x] Hoje a tela mostra só `stockMovements`. Ela passa a mostrar também: comanda anulada (`void_tab_atomic`), comanda reaberta,
       item cancelado, venda estornada e forma de pagamento corrigida (Financeiro), pedido de delivery cancelado e ajuste de contagem.
-- [ ] Toda linha mostra **quem fez** (nome do funcionário), quando, o tipo e o motivo.
-- [ ] Filtros: período (use `PeriodPicker`), funcionário e tipo. Anulações, estornos e cancelamentos com etiqueta vermelha.
-- [ ] Se os dados de autoria (`updated_by` / `created_by`) não estiverem nos stores, crie uma RPC de leitura nova (migração),
+- [x] Toda linha mostra **quem fez** (nome do funcionário), quando, o tipo e o motivo.
+- [x] Filtros: período (use `PeriodPicker`), funcionário e tipo. Anulações, estornos e cancelamentos com etiqueta vermelha.
+- [x] Se os dados de autoria (`updated_by` / `created_by`) não estiverem nos stores, crie uma RPC de leitura nova (migração),
       **pare** e explique ao dono antes de publicar (regra 3).
 
 ### 3.3 Cadastro de produtos no padrão do painel
 Arquivo: `src/features/products/ProductCatalogManageView.tsx`
-- [ ] Use `page-layout`, `PageHeader` (título, descrição e ações) e `FilterChip`/`SearchField` para setores e busca.
-- [ ] Tire `bg-white`, `stone-*`, `rounded-3xl`/`rounded-2xl` customizados e os rótulos `uppercase` de 10–11px.
-- [ ] Lista em tabela padrão: foto, nome, setor (nome em português, sem "GRILL" de 8px sobre a foto), preço, status ("Ativo" / "Pausado"
+- [x] Use `page-layout`, `PageHeader` (título, descrição e ações) e `FilterChip`/`SearchField` para setores e busca.
+- [x] Tire `bg-white`, `stone-*`, `rounded-3xl`/`rounded-2xl` customizados e os rótulos `uppercase` de 10–11px.
+- [x] Lista em tabela padrão: foto, nome, setor (nome em português, sem "GRILL" de 8px sobre a foto), preço, status ("Ativo" / "Pausado"
       pelo `StatusTag`) e ações **com texto** ("Pausar", "Editar"). "Excluir" vai para um menu "mais" com confirmação.
-- [ ] Tire o "ID: prod-…" da tela.
-- [ ] Botões só com ícone ganham `aria-label`.
-- [ ] Junte os 5 cartões de contagem numa linha de filtros com contador (`FilterChip count`).
+- [x] Tire o "ID: prod-…" da tela.
+- [x] Botões só com ícone ganham `aria-label`.
+- [x] Junte os 5 cartões de contagem numa linha de filtros com contador (`FilterChip count`).
 
 ### 3.4 Estoque diário em tabela
 Arquivo: `src/features/stock/DailyStockView.tsx`
-- [ ] Troque os cartões por uma tabela compacta: produto, barra do restante (com o número em 15px), vendido, perda, ajuste e
+- [x] Troque os cartões por uma tabela compacta: produto, barra do restante (com o número em 15px), vendido, perda, ajuste e
       as ações "Esgotar"/"Reativar" e "Contagem" (44px).
-- [ ] Selos sem maiúsculas ("Esgotado", "Disponível", "3 cubas").
-- [ ] O cartão "Produtos esgotados" usa o tom de erro, não `info`.
-- [ ] "Estoque baixo": em vez de 5 fixo, use um limite por produto se existir no cadastro. Se não existir, crie o campo
+- [x] Selos sem maiúsculas ("Esgotado", "Disponível", "3 cubas").
+- [x] O cartão "Produtos esgotados" usa o tom de erro, não `info`.
+- [x] "Estoque baixo": em vez de 5 fixo, use um limite por produto se existir no cadastro. Se não existir, crie o campo
       `low_stock_threshold` (migração, regra 3) e um campo no `ProductFormModal`.
-- [ ] Tire `bg-surface-muted` sobre `bg-surface-muted`: o cartão é `bg-surface` e as caixas internas são `bg-surface-soft`.
-- [ ] Corrija o Title Case no modal: "Contagem física: …", "Nova quantidade contada", "Motivo da diferença", "Confirmar ajuste".
+- [x] Tire `bg-surface-muted` sobre `bg-surface-muted`: o cartão é `bg-surface` e as caixas internas são `bg-surface-soft`.
+- [x] Corrija o Title Case no modal: "Contagem física: …", "Nova quantidade contada", "Motivo da diferença", "Confirmar ajuste".
 
 ---
 
@@ -217,55 +217,55 @@ Arquivo: `src/features/stock/DailyStockView.tsx`
 
 ### 4.1 Visão geral
 Arquivo: `src/features/admin/MasterDashboardView.tsx`
-- [ ] No topo ficam só os alertas, 3 números grandes (faturamento realizado, mesas abertas, delivery em andamento) e as mesas em atendimento.
-- [ ] Faturamento por canal, produção e impressora, recebido, mais vendidos, movimentações e perdas vão para abas
+- [x] No topo ficam só os alertas, 3 números grandes (faturamento realizado, mesas abertas, delivery em andamento) e as mesas em atendimento.
+- [x] Faturamento por canal, produção e impressora, recebido, mais vendidos, movimentações e perdas vão para abas
       (`FilterChip`) ou blocos `details` recolhidos.
-- [ ] Remova "Turnos anteriores" e deixe o link para Relatórios → Turnos.
-- [ ] Gráfico "Recebido": cada forma de pagamento com uma cor diferente da paleta. Hoje `stone-700` (Crédito) e `sky-700` (Débito)
+- [x] Remova "Turnos anteriores" e deixe o link para Relatórios → Turnos.
+- [x] Gráfico "Recebido": cada forma de pagamento com uma cor diferente da paleta. Hoje `stone-700` (Crédito) e `sky-700` (Débito)
       viram a mesma cor. Sugestão: PIX `emerald-600`, Crédito `brand-500`, Débito `tinta-700`, Dinheiro `amber-500`, Cartão na entrega `brand-300`.
-- [ ] Os botões "Abrir turno", "Lançar pedido" e "Cobrar" deixam de ser `text-xs` e passam a ter 44px e 14–15px.
+- [x] Os botões "Abrir turno", "Lançar pedido" e "Cobrar" deixam de ser `text-xs` e passam a ter 44px e 14–15px.
 
 ### 4.2 Salão e mesas sem janela paralela
 Arquivos: `src/features/tables/TableGridView.tsx`, `src/components/layout/navigation.ts`
-- [ ] Apague o modal próprio de "Lançar pedido", que tem 5 pontos e "Ao ponto" pré-marcado, e o modal próprio de "Abrir comanda".
+- [x] Apague o modal próprio de "Lançar pedido", que tem 5 pontos e "Ao ponto" pré-marcado, e o modal próprio de "Abrir comanda".
       Use o `WaiterOrderPad` e o `WaiterOpenTabSheet` (mesmo fluxo do garçom).
-- [ ] Junte "Atendimento" e "Salão e mesas" numa tela só, "Salão", e tire a entrada duplicada do menu (`NAVIGATION_GROUPS`, `ROLE_TABS`, `PAGE_TITLES`).
-- [ ] "Cardápio digital" no menu passa a abrir `/cardapio` numa aba nova e a mostrar o QR Code para imprimir, em vez de renderizar a visão do cliente no painel.
-- [ ] O extrato mostra o setor em português ("Churrasqueira", "Cozinha", "Bar"), não `GRILL`. Sem "ESGOTADO" em maiúsculas.
+- [x] Junte "Atendimento" e "Salão e mesas" numa tela só, "Salão", e tire a entrada duplicada do menu (`NAVIGATION_GROUPS`, `ROLE_TABS`, `PAGE_TITLES`).
+- [x] "Cardápio digital" no menu passa a abrir `/cardapio` numa aba nova e a mostrar o QR Code para imprimir, em vez de renderizar a visão do cliente no painel.
+- [x] O extrato mostra o setor em português ("Churrasqueira", "Cozinha", "Bar"), não `GRILL`. Sem "ESGOTADO" em maiúsculas.
 
 ### 4.3 Financeiro
 Arquivo: `src/features/finance/FinanceView.tsx`
-- [ ] Troque `window.confirm` por `useFeedback` (`requestChoice` ou equivalente).
-- [ ] A janela "Detalhes do lançamento", hoje uma `div fixed` feita à mão, passa a usar o `Dialog`.
-- [ ] Em "Lançamentos do período", agrupe as vendas por dia e canal ("Vendas do salão · 12/10 · R$ 3.840"), com opção de abrir o detalhe.
+- [x] Troque `window.confirm` por `useFeedback` (`requestChoice` ou equivalente).
+- [x] A janela "Detalhes do lançamento", hoje uma `div fixed` feita à mão, passa a usar o `Dialog`.
+- [x] Em "Lançamentos do período", agrupe as vendas por dia e canal ("Vendas do salão · 12/10 · R$ 3.840"), com opção de abrir o detalhe.
       Contas a pagar/receber continuam individuais.
-- [ ] Gráfico principal com 3 séries: entradas, saídas e saldo. As previsões ficam num botão "mostrar previsto".
-- [ ] "Em aberto" vira dois números separados, "A receber" e "A pagar".
-- [ ] Período padrão igual ao de Relatórios.
+- [x] Gráfico principal com 3 séries: entradas, saídas e saldo. As previsões ficam num botão "mostrar previsto".
+- [x] "Em aberto" vira dois números separados, "A receber" e "A pagar".
+- [x] Período padrão igual ao de Relatórios.
 
 ### 4.4 Cabeçalho do painel em uma linha no celular
 Arquivo: `src/components/layout/Header.tsx`
-- [ ] No celular, uma linha de 56px: menu, logo e perfil. Turno e som vão para o menu do perfil.
-- [ ] O status "On-line" some. Quando estiver offline, aparece uma faixa vermelha "Sem conexão" abaixo do cabeçalho.
-- [ ] O botão "Área do garçom" vai para o menu do perfil no celular.
+- [x] No celular, uma linha de 56px: menu, logo e perfil. Turno e som vão para o menu do perfil.
+- [x] O status "On-line" some. Quando estiver offline, aparece uma faixa vermelha "Sem conexão" abaixo do cabeçalho.
+- [x] O botão "Área do garçom" vai para o menu do perfil no celular.
 
 ### 4.5 Delivery (painel)
 Arquivo: `src/features/delivery/DeliveryManagementView.tsx`
-- [ ] Cartão neutro (`bg-surface`), sem fundo colorido por status e sem anel. Uma etiqueta só, pelo `StatusTag`. Entrega/Retirada vira texto simples.
-- [ ] Endereço, itens e pagamento em 15px. Hora sem segundos (`hour: '2-digit', minute: '2-digit'`).
-- [ ] Ação principal com 48px. Corrija o Title Case: "Itens para embalar", "Pagamentos dos entregadores".
+- [x] Cartão neutro (`bg-surface`), sem fundo colorido por status e sem anel. Uma etiqueta só, pelo `StatusTag`. Entrega/Retirada vira texto simples.
+- [x] Endereço, itens e pagamento em 15px. Hora sem segundos (`hour: '2-digit', minute: '2-digit'`).
+- [x] Ação principal com 48px. Corrija o Title Case: "Itens para embalar", "Pagamentos dos entregadores".
 
 ### 4.6 Maiúsculas e Title Case no sistema todo
-- [ ] Busque `uppercase` em `src/` e remova onde for rótulo ou título, incluindo `.nav-group-label` em `src/index.css`.
-- [ ] Busque textos em Title Case nos botões e títulos ("Novo Produto", "Ver Cupom", "Abrir Comanda", "Fechamento do Turno", "Nome do Cliente") e passe para frase normal.
+- [x] Busque `uppercase` em `src/` e remova onde for rótulo ou título, incluindo `.nav-group-label` em `src/index.css`.
+- [x] Busque textos em Title Case nos botões e títulos ("Novo Produto", "Ver Cupom", "Abrir Comanda", "Fechamento do Turno", "Nome do Cliente") e passe para frase normal.
 
 ### 4.7 Limpezas
-- [ ] `src/index.css`: remova as sobrescritas frágeis em `.waiter-portal` (`.table-card .py-4`, `min-height: 0 !important` etc.).
+- [x] `src/index.css`: remova as sobrescritas frágeis em `.waiter-portal` (`.table-card .py-4`, `min-height: 0 !important` etc.).
       Se ainda forem necessárias, passe a regra para o componente.
-- [ ] `src/components/ui/StatCard.tsx`: implemente o `tone` (ícone colorido conforme o tom) ou remova a prop de todas as chamadas.
-- [ ] `src/features/delivery/PublicMenuApp.tsx`: o tempo de entrega e de retirada ("40–55 min", "30–40 min") passa a vir de
+- [x] `src/components/ui/StatCard.tsx`: implemente o `tone` (ícone colorido conforme o tom) ou remova a prop de todas as chamadas.
+- [x] `src/features/delivery/PublicMenuApp.tsx`: o tempo de entrega e de retirada ("40–55 min", "30–40 min") passa a vir de
       `restaurant_settings` (campo novo, migração, regra 3), editável em Configurações → Dados da loja.
-- [ ] `src/features/team/TeamManagementView.tsx`: no celular, "Editar" fica visível e "Senha", "Desativar" e "Excluir" vão para um menu "mais".
+- [x] `src/features/team/TeamManagementView.tsx`: no celular, "Editar" fica visível e "Senha", "Desativar" e "Excluir" vão para um menu "mais".
       Os campos usam `border-line-strong`.
 
 ---

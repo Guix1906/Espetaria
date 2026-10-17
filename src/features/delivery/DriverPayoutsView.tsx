@@ -91,7 +91,7 @@ export function DriverPayoutsView() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Pagamentos de Entregadores"
+        title="Pagamentos dos entregadores"
         description={`R$ 5,00 por entrega + R$ 10,00 fixo combustível · Turno: ${currentShift?.status === 'ABERTO' ? 'Aberto' : 'Fechado'}`}
         icon={Bike}
       />

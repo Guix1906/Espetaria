@@ -1,6 +1,8 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import type { StatusKind } from '../../lib/statusStyles';
-import { ArrowRight, CheckCheck, Info, LayoutGrid, Search, Settings2, Smartphone, Users, BellRing } from 'lucide-react';
+import { ArrowRight, CheckCheck, Info, LayoutGrid, Receipt, Search, Settings2, ShoppingBag, Smartphone, Users, BellRing } from 'lucide-react';
+import { StatCard } from '../../components/ui/StatCard';
+import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { useEffect, useState, type ReactNode } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FilterChip } from '../../components/ui/FilterChip';
@@ -41,6 +43,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const [section, setSection] = useState<Section>('tables');
   const [searchTerm, setSearchTerm] = useState('');
   const [tableToOpen, setTableToOpen] = useState<RestaurantTable | null>(null);
+  const [tableForBill, setTableForBill] = useState<RestaurantTable | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
@@ -89,8 +92,13 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
     const filteredTables = activeTables.filter((table) => (filter === 'ALL' || (filter === 'READY' ? readyTableIds.has(table.id) : table.status === filter)) && matches(table));
     return (
       <div className="page-layout">
-        <PageHeader eyebrow="Atendimento" title="Atendimento" description="Escolha uma mesa para abrir uma comanda ou continuar um pedido." icon={Smartphone} actions={<span className="status-badge bg-brand-50 text-brand-800"><Users className="h-4 w-4" aria-hidden="true" />{activeTables.filter((table) => table.status === 'LIVRE').length} mesas livres</span>} />
-        <a className="btn-secondary" href="#/garcom"><Smartphone className="h-4 w-4" />Abrir área do garçom no celular</a>
+        <PageHeader eyebrow="Operação do salão" title="Salão" description="Escolha uma mesa para abrir a comanda, lançar pedidos ou fechar a conta." icon={Smartphone} actions={<a className="btn-secondary min-h-[44px]" href="#/garcom"><Smartphone className="h-4 w-4" />Área do garçom no celular</a>} />
+        <div className="stat-grid">
+          <StatCard label="Mesas livres" value={activeTables.filter((table) => table.status === 'LIVRE').length} hint="Disponíveis para novos clientes" icon={CheckCheck} tone="success" />
+          <StatCard label="Em atendimento" value={activeTables.filter((table) => table.status === 'OCUPADA').length} hint="Comandas em andamento" icon={Users} />
+          <StatCard label="Conta pedida" value={activeTables.filter((table) => table.status === 'AGUARDANDO_CONTA').length} hint="Prontas para o fechamento" icon={Receipt} tone="brand" />
+          <StatCard label="Consumo em aberto" value={formatBRL(tabs.filter((tab) => tab.status === 'OPEN').reduce((sum, tab) => sum + tab.total, 0))} hint="Total das comandas abertas" icon={ShoppingBag} />
+        </div>
         {shiftNotice}
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="filter-bar" aria-label="Filtrar mesas por situação">
@@ -98,8 +106,9 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
           </div>
           <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar mesa ou cliente" placeholder="Número da mesa ou cliente" className="w-full shrink-0 xl:w-64" />
         </div>
-        {filteredTables.length ? <div className="table-grid">{filteredTables.map((table) => <TableCard key={table.id} table={table} tab={getTableTab(table.id)} disabled={!isShiftOpen} onOpen={() => askOpen(table)} onOrder={() => setSelectedTableId(table.id)} />)}</div> : <EmptyState title="Nenhuma mesa encontrada" description="Tente outro número, nome de cliente ou situação da mesa." action={<button type="button" className="btn-secondary" onClick={() => { setFilter('ALL'); setSearchTerm(''); }}>Limpar filtros</button>} />}
+        {filteredTables.length ? <div className="table-grid">{filteredTables.map((table) => <TableCard key={table.id} table={table} tab={getTableTab(table.id)} disabled={!isShiftOpen} onOpen={() => askOpen(table)} onOrder={() => setSelectedTableId(table.id)} onBill={() => setTableForBill(table)} />)}</div> : <EmptyState title="Nenhuma mesa encontrada" description="Tente outro número, nome de cliente ou situação da mesa." action={<button type="button" className="btn-secondary" onClick={() => { setFilter('ALL'); setSearchTerm(''); }}>Limpar filtros</button>} />}
         {openSheet}
+        {tableForBill && <TableSettlementModal table={tableForBill} isOpen onClose={() => setTableForBill(null)} />}
       </div>
     );
   }
@@ -179,7 +188,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
       )}
       {showFree.length > 0 && (
         <section aria-label="Mesas livres">
-          <h2 className="mb-2 text-[13px] font-semibold uppercase tracking-[0.06em] text-ink-muted">Livres <span className="normal-case tracking-normal">· toque para abrir</span></h2>
+          <h2 className="mb-2 text-sm font-semibold text-ink-secondary">Livres <span className="font-normal text-ink-muted">· toque para abrir</span></h2>
           <div className="grid grid-cols-3 xs:grid-cols-4 gap-2">
             {showFree.map((table) => (
               <button key={table.id} type="button" disabled={!isShiftOpen} onClick={() => askOpen(table)}

@@ -72,13 +72,13 @@ describe('Area dedicada do garcom', () => {
 
   it('remove cadastro de produtos do celular mesmo com perfil administrativo', () => {
     const html = pad({ table, dedicated: true, onBackToTables: vi.fn() });
-    expect(html).not.toContain('Novo Produto');
+    expect(html).not.toContain('Novo produto');
     expect(html).toContain('Ver consumo');
     expect(html).toContain('Esta comanda foi encerrada');
     const admin = pad({ table, onBackToTables: vi.fn() });
-    expect(admin).toContain('Novo Produto');
+    expect(admin).toContain('Novo produto');
     useAuthStore.setState({ currentProfile: waiter });
-    expect(pad({ table, onBackToTables: vi.fn() })).not.toContain('Novo Produto');
+    expect(pad({ table, onBackToTables: vi.fn() })).not.toContain('Novo produto');
   });
 
   it('permite observacoes sem oferecer ponto da carne para outros produtos', () => {

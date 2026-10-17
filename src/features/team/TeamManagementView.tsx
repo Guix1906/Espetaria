@@ -1,5 +1,5 @@
-﻿import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { KeyRound, Lock, Pencil, RefreshCw, Trash2, UserPlus, Users, X } from 'lucide-react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { KeyRound, Lock, MoreHorizontal, Pencil, RefreshCw, Trash2, UserPlus, Users, X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -111,10 +111,23 @@ export function TeamManagementView() {
                     </div>
                     {canEdit(member) ? (
                       <div className="flex flex-wrap gap-2">
-                        <button type="button" className="btn-secondary" onClick={() => setModal({ kind: 'edit', member })}><Pencil className="h-4 w-4" aria-hidden="true" />Editar</button>
-                        {isSupabaseConfigured && <button type="button" className="btn-secondary" onClick={() => setModal({ kind: 'password', member })}><KeyRound className="h-4 w-4" aria-hidden="true" />Senha</button>}
-                        {!isSelf && !isRemoved(member) && <button type="button" className="btn-secondary" onClick={() => void toggleActive(member)}>{member.is_active ? 'Desativar' : 'Ativar'}</button>}
-                        {!isSelf && !isRemoved(member) && <button type="button" className="btn-secondary text-rose-700 hover:bg-rose-50" onClick={() => setModal({ kind: 'delete', member })}><Trash2 className="h-4 w-4" aria-hidden="true" />Excluir</button>}
+                        <button type="button" className="btn-secondary min-h-[44px]" onClick={() => setModal({ kind: 'edit', member })}><Pencil className="h-4 w-4" aria-hidden="true" />Editar</button>
+                        {/* No notebook as ações ficam à vista; no celular vão para o menu "mais" */}
+                        <span className="hidden flex-wrap gap-2 sm:flex">
+                          {isSupabaseConfigured && <button type="button" className="btn-secondary min-h-[44px]" onClick={() => setModal({ kind: 'password', member })}><KeyRound className="h-4 w-4" aria-hidden="true" />Senha</button>}
+                          {!isSelf && !isRemoved(member) && <button type="button" className="btn-secondary min-h-[44px]" onClick={() => void toggleActive(member)}>{member.is_active ? 'Desativar' : 'Ativar'}</button>}
+                          {!isSelf && !isRemoved(member) && <button type="button" className="btn-secondary min-h-[44px] text-rose-700 hover:bg-rose-50" onClick={() => setModal({ kind: 'delete', member })}><Trash2 className="h-4 w-4" aria-hidden="true" />Excluir</button>}
+                        </span>
+                        {(isSupabaseConfigured || (!isSelf && !isRemoved(member))) && (
+                          <details className="relative sm:hidden">
+                            <summary className="btn-secondary min-h-[44px] w-11 list-none px-0 [&::-webkit-details-marker]:hidden" aria-label={`Mais ações para ${member.name}`}><MoreHorizontal className="h-4 w-4" /></summary>
+                            <div className="absolute right-0 z-20 mt-1 w-44 rounded-2xl border border-line bg-surface p-1 shadow-floating">
+                              {isSupabaseConfigured && <button type="button" className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-ink hover:bg-surface-muted" onClick={() => setModal({ kind: 'password', member })}><KeyRound className="h-4 w-4" aria-hidden="true" />Senha</button>}
+                              {!isSelf && !isRemoved(member) && <button type="button" className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-medium text-ink hover:bg-surface-muted" onClick={() => void toggleActive(member)}>{member.is_active ? 'Desativar' : 'Ativar'}</button>}
+                              {!isSelf && !isRemoved(member) && <button type="button" className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={() => setModal({ kind: 'delete', member })}><Trash2 className="h-4 w-4" aria-hidden="true" />Excluir</button>}
+                            </div>
+                          </details>
+                        )}
                       </div>
                     ) : <span className="flex items-center gap-1 text-xs text-ink-muted"><Lock className="h-3.5 w-3.5" aria-hidden="true" />{isRemoved(member) ? 'Sem acesso ao sistema' : 'Apenas o Master altera'}</span>}
                   </li>
@@ -228,11 +241,11 @@ function StaffFormModal({ title, roles, initial, lockRole, onClose, onSubmit }: 
           <button type="button" onClick={onClose} className="icon-button" aria-label="Fechar"><X className="h-5 w-5" /></button>
         </div>
         {error && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">{error}</p>}
-        <div><label htmlFor="staff-name">Nome</label><input id="staff-name" className="mt-1 w-full rounded-xl border p-3" required value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div><label htmlFor="staff-email">E-mail (login)</label><input id="staff-email" className="mt-1 w-full rounded-xl border p-3" type="email" required disabled={!isCreate} value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+        <div><label htmlFor="staff-name">Nome</label><input id="staff-name" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" required value={name} onChange={(e) => setName(e.target.value)} /></div>
+        <div><label htmlFor="staff-email">E-mail (login)</label><input id="staff-email" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" type="email" required disabled={!isCreate} value={email} onChange={(e) => setEmail(e.target.value)} /></div>
         <div>
           <label htmlFor="staff-role">Papel</label>
-          <select id="staff-role" className="mt-1 w-full rounded-xl border p-3" value={role} disabled={lockRole} onChange={(e) => setRole(e.target.value as AppRole)}>
+          <select id="staff-role" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" value={role} disabled={lockRole} onChange={(e) => setRole(e.target.value as AppRole)}>
             {(roles.includes(role) ? roles : [role, ...roles]).map((r) => <option key={r} value={r}>{formatRole(r)}</option>)}
           </select>
           {lockRole && <p className="mt-1 text-xs text-ink-muted">Você não pode alterar o próprio papel.</p>}
@@ -240,7 +253,7 @@ function StaffFormModal({ title, roles, initial, lockRole, onClose, onSubmit }: 
         {isCreate && (
           <div>
             <label htmlFor="staff-password">Senha inicial</label>
-            <input id="staff-password" className="mt-1 w-full rounded-xl border p-3" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
+            <input id="staff-password" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
             <p className="mt-1 text-xs text-ink-muted">Mínimo de 8 caracteres. Entregue ao colaborador pessoalmente.</p>
           </div>
         )}
@@ -320,8 +333,8 @@ function PasswordModal({ member, onClose, onSubmit }: { member: StaffMember; onC
           <button type="button" onClick={onClose} className="icon-button" aria-label="Fechar"><X className="h-5 w-5" /></button>
         </div>
         {error && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">{error}</p>}
-        <div><label htmlFor="new-password">Nova senha</label><input id="new-password" className="mt-1 w-full rounded-xl border p-3" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} /></div>
-        <div><label htmlFor="confirm-password">Confirmar senha</label><input id="confirm-password" className="mt-1 w-full rounded-xl border p-3" type="password" autoComplete="new-password" minLength={8} required value={confirm} onChange={(e) => setConfirm(e.target.value)} /></div>
+        <div><label htmlFor="new-password">Nova senha</label><input id="new-password" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} /></div>
+        <div><label htmlFor="confirm-password">Confirmar senha</label><input id="confirm-password" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" type="password" autoComplete="new-password" minLength={8} required value={confirm} onChange={(e) => setConfirm(e.target.value)} /></div>
         <button type="submit" disabled={busy} className="btn-primary w-full">{busy ? 'Salvando...' : 'Redefinir senha'}</button>
       </form>
     </Dialog>

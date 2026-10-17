@@ -44,8 +44,10 @@ describe('Shared interface and accessibility', () => {
   it('keeps input borders distinguishable from the field surface', () => expect(contrast(color('line-strong'), color('surface'))).toBeGreaterThanOrEqual(3));
   it('retains every system screen in navigation without duplicate entries', () => {
     const entries = NAVIGATION_GROUPS.flatMap((group) => group.items.map((item) => item.id));
-    expect(new Set(entries).size).toBe(Object.keys(PAGE_TITLES).length);
-    expect([...entries].sort()).toEqual(Object.keys(PAGE_TITLES).sort());
+    // 'tables' é atalho antigo da tela Salão ('waiter'), sem entrada própria no menu
+    const screens = Object.keys(PAGE_TITLES).filter((id) => id !== 'tables');
+    expect(new Set(entries).size).toBe(entries.length);
+    expect([...entries].sort()).toEqual(screens.sort());
   });
   it('announces selected filters and preserves zero counters', () => {
     const html = renderToStaticMarkup(<FilterChip active onClick={() => { }} count={0}>Todas</FilterChip>);

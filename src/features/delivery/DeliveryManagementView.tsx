@@ -1,3 +1,4 @@
+import { StatusTag } from '../../components/ui/StatusTag';
 import {
   BadgeCheck,
   Bike,
@@ -177,7 +178,7 @@ export const DeliveryManagementView: React.FC = () => {
       <PageHeader eyebrow="Pedidos e entregas" title="Delivery" description="Acompanhe cada pedido, organize as saídas e mantenha o cliente informado." icon={Bike} />
 
       {/* Abas de navegação */}
-      <div className="flex gap-2 border-b border-line pb-1">
+      <div className="flex gap-2 overflow-x-auto border-b border-line pb-1">
         <button
           type="button"
           onClick={() => setActiveTab('orders')}
@@ -195,7 +196,7 @@ export const DeliveryManagementView: React.FC = () => {
             aria-pressed={activeTab === 'payouts'}
           >
             <DollarSign className="h-4 w-4" />
-            <span>Pagamentos Entregadores</span>
+            <span>Pagamentos dos entregadores</span>
           </button>
         )}
       </div>
@@ -272,14 +273,7 @@ export const DeliveryManagementView: React.FC = () => {
             return (
               <div
                 key={order.id}
-                className={`p-5 rounded-2xl border transition flex flex-col justify-between space-y-4 shadow-sm ${isDispatched
-                    ? 'bg-sky-50 border-sky-300 ring-1 ring-sky-300'
-                    : isReady
-                      ? 'bg-emerald-50 border-emerald-300'
-                      : isPreparing
-                        ? 'bg-brand-50'
-                        : 'bg-surface-muted border-line hover:border-brand-300'
-                  }`}
+                className="p-5 rounded-2xl border border-line bg-surface flex flex-col justify-between space-y-4"
               >
                 <div>
                   <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
@@ -293,49 +287,49 @@ export const DeliveryManagementView: React.FC = () => {
                     </div>
 
                     <div className="text-right">
-                      <span className="text-sm tabular-nums font-bold text-brand-700 block">
+                      <span className="block font-mono text-[15px] font-bold text-ink">
                         {formatBRL(order.total)}
                       </span>
                       <span className="text-xs text-ink-muted tabular-nums">
-                        {new Date(order.created_at).toLocaleTimeString('pt-BR')}
+                        {new Date(order.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className={`rounded-sm px-2 py-0.5 text-xs font-semibold ${isPickup ? 'bg-sky-800 text-white' : 'bg-brand-100 text-brand-900'}`}>{isPickup ? 'Retirada no local' : 'Entrega'}</span>
-                    <span className={`status-badge ${status.classes}`}>{status.label}</span>
+                    <StatusTag kind={status.kind} className="font-semibold">{status.label}</StatusTag>
+                    <span className="text-sm text-ink-secondary">{isPickup ? 'Retirada no local' : 'Entrega'}</span>
                   </div>
                   <StatusTimeline order={order} />
 
                   {isPickup ? (
-                    <div className="mt-3.5 p-3.5 rounded-2xl bg-surface-muted border border-line space-y-1.5 text-xs">
+                    <div className="mt-3.5 p-3.5 rounded-md bg-surface-soft space-y-1.5 text-[15px]">
                       <div className="flex items-center gap-2 text-ink font-bold">
-                        <Store className="w-3.5 h-3.5 text-sky-700 shrink-0" />
+                        <Store className="w-4 h-4 text-ink-muted shrink-0" />
                         <span>Cliente vem buscar no balcão</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-ink-muted pl-5 text-xs">
+                      <div className="flex items-center gap-1.5 text-ink-muted pl-5 text-sm">
                         <Phone className="w-3 h-3" />
                         <span>{order.phone}</span>
                       </div>
                     </div>
                   ) : (
                   /* Endereço Completo de Entrega */
-                  <div className="mt-3.5 p-3.5 rounded-2xl bg-surface-muted border border-line space-y-1.5 text-xs">
+                  <div className="mt-3.5 p-3.5 rounded-md bg-surface-soft space-y-1.5 text-[15px]">
                     <div className="flex items-center gap-2 text-ink font-bold">
                       <MapPin className="w-3.5 h-3.5 text-rose-700 shrink-0" />
                       <span>{order.address_street}, {order.address_number}</span>
                     </div>
-                    <p className="text-ink-muted pl-5 text-xs">
+                    <p className="text-ink-muted pl-5 text-sm">
                       Bairro: <strong className="text-ink">{order.address_neighborhood}</strong>
                       {order.address_complement && ` • Comp: ${order.address_complement}`}
                     </p>
                     {order.address_reference && (
-                      <p className="text-amber-800 pl-5 text-xs italic">
+                      <p className="text-amber-800 pl-5 text-sm">
                         Ref: {order.address_reference}
                       </p>
                     )}
-                    <div className="flex items-center gap-1.5 text-ink-muted pl-5 text-xs">
+                    <div className="flex items-center gap-1.5 text-ink-muted pl-5 text-sm">
                       <Phone className="w-3 h-3" />
                       <span>{order.phone}</span>
                     </div>
@@ -343,12 +337,12 @@ export const DeliveryManagementView: React.FC = () => {
                   )}
 
                   {/* Itens do Pedido */}
-                  <div className="mt-3.5 space-y-1.5 text-xs">
+                  <div className="mt-3.5 space-y-1.5 text-[15px]">
                     <span className="text-xs font-bold text-ink-muted">
-                      Itens para Embalar:
+                      Itens para embalar
                     </span>
                     {order.items.map((item) => (
-                      <div key={item.id} className="flex justify-between items-start text-xs">
+                      <div key={item.id} className="flex justify-between items-start text-[15px]">
                         <div className="flex items-center gap-1.5">
                           <span className="tabular-nums font-bold text-ink">{item.quantity}x</span>
                           <span className="text-ink font-medium">{item.product_name}</span>
@@ -366,7 +360,7 @@ export const DeliveryManagementView: React.FC = () => {
                   </div>
 
                   {/* Pagamento e Troco */}
-                  <div className="mt-3.5 p-3 rounded-2xl bg-surface-muted border border-line flex items-center justify-between text-xs">
+                  <div className="mt-3.5 p-3 rounded-md bg-surface-soft flex items-center justify-between text-[15px]">
                     <div>
                       <span className="text-xs text-ink-muted font-semibold">Forma:</span>
                       <div className="font-bold text-ink">
@@ -404,12 +398,12 @@ export const DeliveryManagementView: React.FC = () => {
                     {!isDelivered && order.status !== 'AWAITING_PAYMENT' && (
                       <button
                         onClick={() => handleAdvanceStatus(order)}
-                        className={`flex-1 py-3 rounded-2xl font-bold text-xs transition flex items-center justify-center gap-2 shadow-sm ${isConfirmed
+                        className={`flex-1 min-h-[48px] rounded-md font-semibold text-[15px] transition flex items-center justify-center gap-2 ${isConfirmed
                             ? 'btn-primary text-white'
                             : isPreparing
                               ? 'btn-success'
                               : isReady
-                                ? 'bg-sky-700 hover:bg-sky-800 text-white'
+                                ? 'btn-primary'
                                 : 'btn-success'
                           }`}
                         type="button">
@@ -444,7 +438,7 @@ export const DeliveryManagementView: React.FC = () => {
                     {/* Botão de WhatsApp para Avisar Cliente */}
                     <button
                       onClick={() => sendWhatsAppUpdate(order)}
-                      className="px-3.5 py-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs transition flex items-center gap-1.5 shadow-sm"
+                      className="btn-secondary min-h-[48px] px-3.5"
                       title="Enviar atualização de status no WhatsApp do cliente"
                       type="button" aria-label="Enviar atualização de status no WhatsApp do cliente">
                       <MessageCircle className="w-4 h-4 text-emerald-700" />
@@ -455,7 +449,7 @@ export const DeliveryManagementView: React.FC = () => {
                     {!isDelivered && canCancel && (
                       <button
                         onClick={() => void handleCancelOrder(order)}
-                        className="flex items-center gap-1.5 rounded-md border border-line px-3 py-3 text-xs font-semibold text-rose-700 transition hover:bg-rose-50"
+                        className="btn-secondary min-h-[48px] px-3 text-rose-700 hover:bg-rose-50"
                         title="Cancelar pedido"
                         type="button" aria-label={`Cancelar pedido #${order.order_number}`}>
                         <Trash2 className="h-4 w-4" />
@@ -465,7 +459,7 @@ export const DeliveryManagementView: React.FC = () => {
                   </div>
 
                   {order.driver_name && (
-                    <div className="text-center text-xs text-sky-800 tabular-nums pt-1">
+                    <div className="text-center text-sm text-ink-secondary pt-1">
                       Motoboy: <strong>{order.driver_name}</strong>
                     </div>
                   )}

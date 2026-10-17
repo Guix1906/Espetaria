@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Eye, EyeOff, ShieldCheck, UserRound } from 'lucide-react';
 import { PontoLogo, PontoSymbol } from '../../components/layout/BrandMark';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 
 /**
  * Moldura das telas de acesso (layout "2d" da marca Ponto):
@@ -9,13 +10,15 @@ import { PontoLogo, PontoSymbol } from '../../components/layout/BrandMark';
  * caber na tela mesmo com o teclado aberto.
  */
 export function AuthShell({ children }: { children: ReactNode }) {
+  // Nome da loja vem de restaurant_settings (sem valor fixo no código)
+  const storeLabel = useSettingsStore((s) => s.settings.name);
   return (
     <div className="flex min-h-[100dvh] items-stretch justify-center bg-[#EFE7DB] lg:items-center lg:p-10">
       <div className="flex w-full flex-col overflow-hidden bg-white lg:min-h-[600px] lg:max-w-[1040px] lg:flex-row lg:rounded-[20px] lg:shadow-[0_30px_80px_-30px_rgba(43,33,28,0.35)]">
         <aside className="relative flex shrink-0 flex-col justify-end gap-3 overflow-hidden bg-[#B5502E] px-5 py-4 text-[#F5EFE6] lg:w-[44%] lg:gap-4 lg:p-12" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
           {/* Alvo da marca em grande escala, como textura do painel */}
           <PontoSymbol className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 opacity-[0.1] lg:-right-32 lg:-top-20 lg:h-[560px] lg:w-[560px] lg:opacity-[0.09]" color="#F5EFE6" />
-          <span className="relative hidden font-mono text-xs tracking-[0.12em] text-[#FBE9DF]/80 lg:absolute lg:left-12 lg:top-12 lg:block">ESPETARIA SABOR DA CARNE</span>
+          <span className="relative hidden text-sm text-[#FBE9DF]/80 lg:absolute lg:left-12 lg:top-12 lg:block">{storeLabel}</span>
           <div className="relative">
             <span className="lg:hidden"><PontoLogo size={30} inverted /></span>
             <span className="hidden lg:inline"><PontoLogo size={64} inverted /></span>

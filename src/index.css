@@ -2,21 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-.waiter-portal .floating-cart { left: 0; }
 .waiter-portal .page-layout { max-width: 64rem; }
 @media (max-width: 639px) {
   .waiter-portal .page-layout { padding: 0.75rem; gap: 0.75rem; }
   .waiter-portal .page-layout > * + * { margin-top: 0.75rem; }
-  .waiter-portal .table-card { min-height: 0 !important; }
-  .waiter-portal .table-card > div { padding: 0.75rem; }
-  .waiter-portal .table-card h2 { font-size: 1.125rem; }
-  .waiter-portal .table-card .py-4 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
 }
-.waiter-portal .product-card { min-height: 156px; }
+/* 16px nos campos: o iPhone não dá zoom ao tocar */
 .waiter-portal input, .waiter-portal select { font-size: 16px; }
-@media (min-width: 360px) and (max-width: 639px) {
-  .waiter-portal .product-card { padding: 0.75rem; }
-}
 
 :root {
   color-scheme: light;
@@ -130,7 +122,7 @@
   .floating-cart { @apply fixed inset-x-0 bottom-0 z-20 p-3 sm:p-4; padding-bottom: max(12px, env(safe-area-inset-bottom)); background: linear-gradient(0deg, rgb(var(--color-canvas)) 65%, transparent); }
   .skip-link { @apply fixed left-4 top-4 z-50 -translate-y-24 rounded-xl bg-brand-800 px-5 py-3 font-semibold text-white focus:translate-y-0; }
   .app-sidebar { background: rgb(43 33 28); color: rgb(228 218 203); }
-  .nav-group-label { @apply mb-1.5 px-3 text-[11px] font-medium uppercase tracking-wider text-stone-500; }
+  .nav-group-label { @apply mb-1.5 px-3 text-[13px] font-medium text-stone-500; }
   .nav-item { @apply relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-stone-300; min-height: 40px; }
   .nav-item:hover { @apply bg-white/5 text-white; }
   .nav-item[aria-current='page'] { @apply bg-white/10 text-white; }

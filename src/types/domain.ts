@@ -65,6 +65,8 @@ export interface Product {
   tracks_stock: boolean;
   is_cubas: boolean;
   portions_per_cuba: number;
+  /** Abaixo disso o produto aparece como estoque baixo (padrão 5). Coluna da migração 00033. */
+  low_stock_threshold?: number | null;
   allows_doneness: boolean;
   allows_notes: boolean;
   display_order: number;
@@ -317,6 +319,9 @@ export interface RestaurantSettings {
   pix_auto_enabled?: boolean;
   /** Minutos para pagar o PIX antes do cancelamento automático. */
   pix_auto_minutes?: number;
+  /** Texto do tempo de entrega e de retirada no cardápio digital (migração 00033). */
+  delivery_eta?: string;
+  pickup_eta?: string;
   /** URL da Edge Function whatsapp-dispatch. */
   whatsapp_dispatch_url?: string | null;
   /** Chave pública (anon) enviada pelo banco ao chamar a função. */

@@ -24,6 +24,19 @@ async function failed(action: string, message: string) {
 }
 
 /**
+ * Limite de estoque baixo vai numa chamada separada: se a migração 00033 ainda não rodou,
+ * só esse campo fica sem salvar e o resto do produto é gravado normalmente.
+ */
+async function saveLowStock(id: string, value: number | null | undefined) {
+  if (value === undefined) return;
+  const { error } = await supabase.rpc('update_product', { p_id: id, p_updates: { low_stock_threshold: value } });
+  if (error) {
+    logger.warn({ context: 'ProductSync', message: 'Limite de estoque baixo não salvo', data: { message: error.message } });
+    useRemoteErrorStore.setState({ lastError: 'O limite de estoque baixo não foi salvo: falta rodar a migração 00033 no Supabase.' });
+  }
+}
+
+/**
  * Grava no banco as mudanças do cadastro de produtos, para todos os aparelhos
  * (celulares dos garçons, caixa, cardápio digital) receberem o cardápio atualizado.
  * Sem Supabase (demonstração), não faz nada.
@@ -48,16 +61,19 @@ export const productSync = {
       // Mesmo ID do aparelho: edição logo após o cadastro e o Realtime acham o produto
       p_id: product.id,
     });
-    if (error) await failed('cadastrar', error.message);
+    if (error) { await failed('cadastrar', error.message); return; }
+    if (product.low_stock_threshold != null) await saveLowStock(product.id, product.low_stock_threshold);
   },
 
   async update(id: string, updates: Partial<Product>) {
     if (!isSupabaseConfigured) return;
     const row = toRow(updates);
     delete (row as Record<string, unknown>).id;
-    if (Object.keys(row).length === 0) return;
-    const { error } = await supabase.rpc('update_product', { p_id: id, p_updates: row });
-    if (error) await failed('atualizar', error.message);
+    if (Object.keys(row).length > 0) {
+      const { error } = await supabase.rpc('update_product', { p_id: id, p_updates: row });
+      if (error) { await failed('atualizar', error.message); return; }
+    }
+    if ('low_stock_threshold' in updates) await saveLowStock(id, updates.low_stock_threshold ?? null);
   },
 
   /** Produto já vendido não pode sumir do histórico: nesse caso ele é só desativado. */

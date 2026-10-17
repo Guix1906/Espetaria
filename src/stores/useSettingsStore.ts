@@ -59,10 +59,24 @@ const REMOTE_COLUMNS = [
   'whatsapp_bot', 'pix_auto_enabled', 'pix_auto_minutes',
 ] as const;
 
+/** Colunas da migração 00033: gravadas à parte para não travar o resto se o SQL ainda não rodou. */
+const ETA_COLUMNS = ['delivery_eta', 'pickup_eta'] as const;
+
 let remoteSettingsId: string | null = null;
+
+async function persistEta(partial: Partial<RestaurantSettings>) {
+  const changes = Object.fromEntries(Object.entries(partial).filter(([key]) => (ETA_COLUMNS as readonly string[]).includes(key)));
+  if (Object.keys(changes).length === 0) return;
+  const { error } = await supabase.from('restaurant_settings').update(changes).eq('id', remoteSettingsId!);
+  if (error) {
+    logger.warn({ context: 'SettingsStore', message: 'Tempo de entrega não salvo', error });
+    useRemoteErrorStore.setState({ lastError: 'Tempo de entrega/retirada salvo só neste aparelho: falta rodar a migração 00033 no Supabase.' });
+  }
+}
 
 async function persistRemote(partial: Partial<RestaurantSettings>) {
   if (!isSupabaseConfigured || !remoteSettingsId) return;
+  await persistEta(partial);
   const changes = Object.fromEntries(
     Object.entries(partial).filter(([key]) => (REMOTE_COLUMNS as readonly string[]).includes(key))
   );

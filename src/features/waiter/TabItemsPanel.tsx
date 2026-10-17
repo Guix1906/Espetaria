@@ -1,5 +1,6 @@
 import { VoidTabButton } from '../tables/VoidTabButton';
-import { ArrowLeftRight, CheckCheck, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, CheckCheck, ChevronDown, Trash2 } from 'lucide-react';
+import { useState } from 'react';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { formatBRL, formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -28,6 +29,10 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
   const isManager = ['MASTER', 'GERENTE'].includes(currentProfile.role);
   const active = items.filter((item) => item.status !== 'CANCELLED');
   const cancelled = items.filter((item) => item.status === 'CANCELLED');
+  const [expanded, setExpanded] = useState(false);
+  const preparingCount = active.filter((i) => i.status === 'RECEIVED' || i.status === 'IN_PREPARATION').reduce((s, i) => s + i.quantity, 0);
+  const readyCount = active.filter((i) => i.status === 'READY').reduce((s, i) => s + i.quantity, 0);
+  const totalCount = active.reduce((s, i) => s + i.quantity, 0);
 
   const cancel = async (item: OrderItem, swap: boolean) => {
     if (!currentShift) { notify('Turno fechado: não é possível alterar a comanda.', 'error'); return; }
@@ -63,11 +68,22 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
   // Mesa recém-aberta: sem quadro vazio, o cardápio aparece logo
   if (!compact && items.length === 0) return null;
 
+  // Na tela de pedido começa recolhido numa linha; toca para ver os itens
+  if (!compact && !expanded) {
+    const summary = [`${totalCount} na mesa`, preparingCount ? `${preparingCount} em preparo` : null, readyCount ? `${readyCount} ${readyCount === 1 ? 'pronto' : 'prontos'}` : null].filter(Boolean).join(' · ');
+    return (
+      <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-3.5 py-2.5 text-left">
+        <span className="min-w-0 truncate text-[15px] text-ink"><span className="font-semibold">{summary}</span></span>
+        <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-700">Ver<ChevronDown className="h-4 w-4" aria-hidden="true" /></span>
+      </button>
+    );
+  }
+
   return (
     <section aria-labelledby={`tab-items-${table.id}`} className={compact ? 'space-y-2' : 'surface-card space-y-3 p-4'}>
       {!compact && (
         <div className="flex items-baseline justify-between gap-3">
-          <h2 id={`tab-items-${table.id}`} className="text-base font-semibold">Já lançado nesta mesa</h2>
+          <button type="button" onClick={() => setExpanded(false)} aria-expanded={true} className="flex items-center gap-1 text-left"><h2 id={`tab-items-${table.id}`} className="text-base font-semibold">Já lançado nesta mesa</h2><ChevronDown className="h-4 w-4 rotate-180 text-ink-muted" aria-hidden="true" /></button>
           <span className="flex items-center gap-2 text-sm text-ink-muted tabular-nums">{active.length} {active.length === 1 ? 'item' : 'itens'} · {formatBRL(tab.subtotal)}<VoidTabButton tab={tab} tableNumber={table.number} compact /></span>
         </div>
       )}

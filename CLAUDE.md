@@ -7,7 +7,7 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
 
 ## Stack
 - React 18 + TypeScript + Vite + Tailwind + Zustand (stores em `src/stores`). PWA.
-- Supabase (Postgres + RLS + Realtime + Edge Function `manage-staff`). Migrações em `supabase/migrations` (00001 a 00032).
+- Supabase (Postgres + RLS + Realtime + Edge Function `manage-staff`). Migrações em `supabase/migrations` (00001 a 00033).
   `supabase/setup_complete.sql` acumula todas — ao criar migração nova, anexar o conteúdo nele também.
 - Gráficos: ApexCharts (`src/components/charts/Chart.tsx`, carregado sob demanda).
 - `printer-bridge/`: programa Node que roda no PC da loja, lê `print_queue` do Supabase e imprime ESC/POS nas térmicas Epson (porta 9100).
@@ -27,6 +27,9 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
 - Nunca apagar venda/comanda: "excluir comanda" = anular (`void_tab_atomic`), fica na auditoria.
 - Espeto "X com acompanhamento" usa o estoque do espeto "X" + 1 "Arroz" (regra pelo nome; 00031, gatilhos em
   `daily_prep_stock` repassam qualquer baixa/devolução do combo; saldo do combo = min(espeto, arroz)). No app: `src/lib/comboStock.ts`.
+- Painel: `Atendimento` e `Salão e mesas` viraram uma tela só, `Salão` (`WaiterModule`; `TableGridView` é só atalho). Cardápio digital no menu = QR Code + link (`DigitalMenuQrView`).
+  Status com cor única em `src/lib/statusStyles.ts` + `StatusTag`; botão padrão `src/components/ui/Button.tsx`. Auditoria lê `audit_logs` (`src/lib/auditData.ts`).
+  Plano de layout em `docs/correcoes-layout.md` (etapas 1–4 concluídas em 17/10).
 - Área do garçom (celular): Mesas (lista de ocupadas + grade de livres) / Prontos / Ajustes na barra inferior; avatar com Som e Sair;
   folhas `WaiterSheet` (abrir comanda, ponto da carne só com 3 pontos, revisar pedido). Painel admin continua com `TableCard`.
 - Visão geral: cálculos puros em `src/features/admin/dashboardMetrics.ts` (testados): alertas, casa × delivery agora, faturamento
@@ -108,6 +111,8 @@ Vercel e Supabase CLI rodam via `npx` (`npx vercel@latest`, `npx supabase`).
   00028 (12/10, inclui o que 00026/00027 fazem) precisa ser rodada ANTES de publicar o site novo.
   00031 (15/10, espeto com acompanhamento baixa espeto + arroz) rodada pelo dono em 15/10.
   00032 (15/10, `delete_print_jobs`: excluir cupons em Configurações → Fila de impressão) rodada pelo dono e publicada em 15/10.
+  00033 (17/10, `products.low_stock_threshold` + `restaurant_settings.delivery_eta/pickup_eta` e view pública) PRECISA ser rodada pelo dono.
+  O site já funciona sem ela: só o limite de estoque baixo e os tempos de entrega não salvam no banco (aparece aviso).
   Arquivo único para aplicar: `supabase/APLICAR_00017_a_00023.sql` (tudo idempotente).
 - A 00019 ORIGINAL (de outra sessão) convertia `updated_by` para UUID e status/forma de pagamento do delivery para ENUM, e tirava `delivery_orders` do Realtime — isso quebraria 12 funções (abrir mesa, pedido, cancelar, conta, turno, excluir comanda, delivery). Foi reescrita mantendo só o seguro; a 00023 desfaz caso a antiga tenha rodado. NÃO reintroduzir essas conversões sem reescrever todas as funções que gravam `updated_by = v_uid::TEXT`.
 - O código depende das RPCs da 00017 (financeiro e produtos), da 00020 (`driver_payouts`), 00021 (mesas) e 00022 (bairros).

@@ -1,4 +1,4 @@
-﻿import {
+import {
   AlertCircle,
   Banknote,
   CheckCheck,
@@ -239,10 +239,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
               </div>
               <div>
                 <h3 className="font-bold text-ink text-lg leading-none flex items-center gap-2 font-sans">
-                  <span>Fechamento de Conta — Mesa {String(table.number).padStart(2, '0')}</span>
+                  <span>Fechamento de conta — Mesa {String(table.number).padStart(2, '0')}</span>
                   {table.status === 'AGUARDANDO_CONTA' && (
                     <span className="text-xs px-2.5 py-0.5 rounded-sm bg-amber-100 text-amber-800 tabular-nums font-medium">
-                      Conta Solicitada
+                      Conta pedida
                     </span>
                   )}
                 </h3>
@@ -598,7 +598,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     }`}
                 >
                   <CheckCheck className="w-4 h-4" />
-                  <span>{isFullyPaid ? 'Encerrar Conta e Liberar Mesa' : 'Aguardando Quitação Total'}</span>
+                  <span>{isFullyPaid ? 'Encerrar conta e Liberar mesa' : 'Aguardando Quitação Total'}</span>
                 </button>
               </div>
 

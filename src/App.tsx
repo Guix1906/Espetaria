@@ -8,7 +8,7 @@ import { FinanceView } from './features/finance/FinanceView';
 import { ReportsView } from './features/reports/ReportsView';
 import { AuditLogView } from './features/audit/AuditLogView';
 import { CashierModule } from './features/cashier/CashierModule';
-import { DeliveryCatalogView } from './features/delivery/DeliveryCatalogView';
+import { DigitalMenuQrView } from './features/delivery/DigitalMenuQrView';
 import { DeliveryManagementView } from './features/delivery/DeliveryManagementView';
 import { KDSModule } from './features/kds/KDSModule';
 import { ProductCatalogManageView } from './features/products/ProductCatalogManageView';
@@ -16,7 +16,6 @@ import { SettingsView } from './features/settings/SettingsView';
 import { TeamManagementView } from './features/team/TeamManagementView';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { DailyStockView } from './features/stock/DailyStockView';
-import { TableGridView } from './features/tables/TableGridView';
 import { WaiterModule } from './features/waiter/WaiterModule';
 import { WaiterPortal } from './features/waiter/WaiterPortal';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
@@ -113,12 +112,11 @@ function AdminWorkspace() {
         <main id="main-content" ref={mainRef} tabIndex={-1} aria-label={PAGE_TITLES[activeTab]} className="min-w-0 flex-1 pb-8 outline-none">
           {/* key: ao trocar de tela, um erro da tela anterior não fica preso */}
           <ErrorBoundary key={activeTab} area={activeTab} inline>
-          {activeTab === 'waiter' && <WaiterModule onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
-          {activeTab === 'tables' && <TableGridView onOpenShiftClick={() => setIsShiftModalOpen(true)} onNavigateTab={setActiveTab} />}
+          {(activeTab === 'waiter' || activeTab === 'tables') && <WaiterModule onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
           {activeTab === 'kds' && <KDSModule />}
           {activeTab === 'cashier' && <CashierModule />}
           {activeTab === 'delivery' && <DeliveryManagementView />}
-          {activeTab === 'menu' && <DeliveryCatalogView />}
+          {activeTab === 'menu' && <DigitalMenuQrView />}
           {activeTab === 'products' && <ProductCatalogManageView />}
           {activeTab === 'finance' && <FinanceView />}
           {activeTab === 'reports' && <ReportsView />}
