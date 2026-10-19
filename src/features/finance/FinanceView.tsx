@@ -4,8 +4,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { FilterChip } from '../../components/ui/FilterChip';
-import { PeriodPicker, defaultPeriod, type Period } from '../../components/ui/PeriodPicker';
+import { PeriodPicker, SectionTabs, defaultPeriod, type Period } from '../../components/ui/PeriodPicker';
 import { Chart, CHART_COLORS, baseOptions } from '../../components/charts/Chart';
 import { formatBRL } from '../../lib/formatters';
 import { METHOD_LABELS, SALE_METHODS, buildCashFlow, downloadCsv, financeEntriesApi, salesApi, sumBy, todayISO, type CashFlowGrouping, type FinanceDataset, type FinanceKind, type SaleRecord } from '../../lib/financeData';
@@ -22,13 +21,8 @@ export function FinanceView() {
   return (
     <div className="page-layout">
       <PageHeader title="Financeiro" description="Entradas e saídas reais do caixa, contas a pagar e a receber. As vendas do salão e do delivery entram sozinhas." />
+      <SectionTabs label="Seções do financeiro" value={tab} onChange={setTab} items={[{ id: 'overview', label: 'Visão geral' }, { id: 'cashflow', label: 'Fluxo de caixa' }, { id: 'PAGAR', label: 'Contas a pagar' }, { id: 'RECEBER', label: 'Contas a receber' }]} />
       <PeriodPicker value={period} onChange={setPeriod} />
-      <div className="filter-bar border-b border-line pb-2" aria-label="Seções do financeiro">
-        <FilterChip active={tab === 'overview'} onClick={() => setTab('overview')}>Visão geral</FilterChip>
-        <FilterChip active={tab === 'cashflow'} onClick={() => setTab('cashflow')}>Fluxo de caixa</FilterChip>
-        <FilterChip active={tab === 'PAGAR'} onClick={() => setTab('PAGAR')}>Contas a pagar</FilterChip>
-        <FilterChip active={tab === 'RECEBER'} onClick={() => setTab('RECEBER')}>Contas a receber</FilterChip>
-      </div>
       {error && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">{error}</p>}
       {!data ? <div className="surface-card p-10 text-center text-sm text-ink-muted" role="status">{loading ? 'Carregando dados do período...' : 'Sem dados.'}</div> : (
         <>

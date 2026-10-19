@@ -2,7 +2,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { ChevronDown, Download } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { FilterChip } from '../../components/ui/FilterChip';
-import { PeriodPicker, defaultPeriod, type Period } from '../../components/ui/PeriodPicker';
+import { PeriodPicker, SectionTabs, defaultPeriod, type Period } from '../../components/ui/PeriodPicker';
 import { Chart, CHART_COLORS, baseOptions } from '../../components/charts/Chart';
 import { formatBRL } from '../../lib/formatters';
 import { METHOD_LABELS, downloadCsv, sumBy, type FinanceDataset } from '../../lib/financeData';
@@ -27,10 +27,8 @@ export function ReportsView() {
   return (
     <div className="page-layout">
       <PageHeader title="Relatórios" description="O que vendeu, quanto, quando, por quem e onde. Tudo com exportação para planilha." />
+      <SectionTabs label="Relatórios" items={SECTIONS} value={section} onChange={setSection} />
       <PeriodPicker value={period} onChange={setPeriod} presets={['today', '7d', '30d', 'month', 'last', '12m', 'year']} />
-      <div className="filter-bar border-b border-line pb-2" aria-label="Relatórios">
-        {SECTIONS.map((s) => <FilterChip key={s.id} active={section === s.id} onClick={() => setSection(s.id)}>{s.label}</FilterChip>)}
-      </div>
       {error && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">{error}</p>}
       {!data ? <div className="surface-card p-10 text-center text-sm text-ink-muted" role="status">{loading ? 'Carregando relatório...' : 'Sem dados.'}</div> : (
         <>
