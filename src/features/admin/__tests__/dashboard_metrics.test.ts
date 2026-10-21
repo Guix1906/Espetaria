@@ -66,3 +66,11 @@ describe('Visão geral: números do turno', () => {
     expect(d.losses[0]?.quantity).toBe(2);
   });
 });
+
+describe('Visão geral: alerta do robô do WhatsApp', () => {
+  it('avisa quando o robô falhou nas últimas 2 horas', () => {
+    expect(computeDashboard(base({ botErrorAt: ago(30) })).alerts.some((a) => a.id === 'bot')).toBe(true);
+    expect(computeDashboard(base({ botErrorAt: ago(180) })).alerts.some((a) => a.id === 'bot')).toBe(false);
+    expect(computeDashboard(base({ botErrorAt: null })).alerts.some((a) => a.id === 'bot')).toBe(false);
+  });
+});

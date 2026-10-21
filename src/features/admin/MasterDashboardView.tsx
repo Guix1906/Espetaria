@@ -6,7 +6,7 @@ import React, { useEffect, useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { formatBRL, formatElapsedMinutes } from '../../lib/formatters';
-import { isSupabaseConfigured } from '../../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useNavFocusStore } from '../../stores/useNavFocusStore';
 import { usePrintStore } from '../../stores/usePrintStore';
@@ -40,7 +40,12 @@ const TONE: Record<ActivityEvent['tone'], string> = {
 const card = 'rounded-2xl border border-line bg-surface p-4 sm:p-5';
 /** Cada forma de pagamento com uma cor própria da paleta. */
 const RECEIVED = [['PIX', 'PIX', 'bg-emerald-600'], ['CREDITO', 'Cartão de crédito', 'bg-brand-500'], ['DEBITO', 'Cartão de débito', 'bg-tinta-700'], ['DINHEIRO', 'Dinheiro', 'bg-amber-500'], ['CARTAO_ENTREGA', 'Cartão na entrega', 'bg-brand-300']] as const;
-const sectionTitle = 'flex items-center gap-2 text-base font-semibold text-ink';
+/** Respostas fixas do robô (sem IA), iguais a MEDIA_REPLY/HANDOFF_FALLBACK em supabase/functions/whatsapp-bot/logic.ts. */
+const BOT_CANNED_REPLIES = [
+  'Ainda não consigo ouvir áudios nem ver imagens por aqui. Pode me escrever sua dúvida?',
+  'Vou chamar alguém da equipe para te ajudar, só um instante.',
+];
+const sectionTitle ='flex items-center gap-2 text-base font-semibold text-ink';
 
 export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavigateTab, onOpenShiftClick }) => {
   const { currentShift } = useShiftStore();
@@ -53,7 +58,29 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
 
-  const d = computeDashboard({ shiftId: currentShift?.id ?? null, tables, tabs, orders, orderItems, payments, deliveryOrders, stockMovements, jobs, printerMonitored: isSupabaseConfigured, now });
+  // Última falha do robô do WhatsApp (gravada pela Edge Function whatsapp-bot)
+  const [botErrorAt, setBotErrorAt] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let alive = true;
+    const load = async () => {
+      const { data } = await supabase.from('audit_logs').select('created_at').eq('action', 'WHATSAPP_BOT_ERRO')
+        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      let errorAt: string | null = data?.created_at ?? null;
+      if (errorAt) {
+        // Robô já respondeu com a IA depois da falha: o alerta some
+        const { data: replies } = await supabase.from('whatsapp_bot_messages').select('body')
+          .eq('direction', 'BOT').gt('created_at', errorAt).limit(20);
+        if ((replies ?? []).some((r) => !BOT_CANNED_REPLIES.includes(r.body))) errorAt = null;
+      }
+      if (alive) setBotErrorAt(errorAt);
+    };
+    void load();
+    const id = window.setInterval(() => void load(), 60000);
+    return () => { alive = false; window.clearInterval(id); };
+  }, []);
+
+  const d = computeDashboard({ shiftId: currentShift?.id ?? null, tables, tabs, orders, orderItems, payments, deliveryOrders, stockMovements, jobs, printerMonitored: isSupabaseConfigured, now, botErrorAt });
   const go = (tab: ActiveTab) => onNavigateTab?.(tab);
   const goTable = (tableId: string, tab: ActiveTab) => { useNavFocusStore.getState().focusTable(tableId); go(tab); };
   const activeDeliveries = (Object.values(d.stages).flat() as DeliveryOrder[]).sort((a, b) => a.created_at.localeCompare(b.created_at));

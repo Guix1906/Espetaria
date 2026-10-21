@@ -28,12 +28,14 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { DeliveryOrder, WhatsAppEvent, WhatsAppMessage } from '../../types/domain';
+import { publicAppUrl } from '../../lib/publicUrl';
 
 type DeliveryFilter = 'ALL_ACTIVE' | 'AWAITING_PAYMENT' | 'READY' | 'OUT_FOR_DELIVERY' | 'DELIVERED';
 
 const EVENT_LABEL: Record<WhatsAppMessage['event'], string> = {
   CONFIRMED: 'Confirmação',
   PAID: 'PIX recebido',
+  PREPARING: 'Em preparo',
   READY: 'Pronto',
   OUT_FOR_DELIVERY: 'Saiu p/ entrega',
   DELIVERED: 'Entregue',
@@ -162,7 +164,7 @@ export const DeliveryManagementView: React.FC = () => {
   // Mesmo texto das mensagens automáticas (Configurações → WhatsApp), aberto no WhatsApp da loja
   const sendWhatsAppUpdate = (order: DeliveryOrder) => {
     const template = resolveWhatsAppTemplates(settings.whatsapp_templates)[manualEvent(order)];
-    const msg = renderWhatsAppTemplate(template.text, whatsAppVariables(order, settings.name, window.location.origin));
+    const msg = renderWhatsAppTemplate(template.text, whatsAppVariables(order, settings.name, publicAppUrl()));
     window.open(buildWhatsAppLink(order.phone, msg), '_blank', 'noopener,noreferrer');
   };
 

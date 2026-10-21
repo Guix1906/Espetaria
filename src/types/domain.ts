@@ -281,7 +281,7 @@ export interface DeliveryOrder {
   items: DeliveryOrderItem[];
 }
 
-export type WhatsAppEvent = 'CONFIRMED' | 'PAID' | 'READY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
+export type WhatsAppEvent = 'CONFIRMED' | 'PAID' | 'PREPARING' | 'READY' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
 
 /** Mensagem automática ao cliente (fila whatsapp_outbox). */
 export interface WhatsAppMessage {

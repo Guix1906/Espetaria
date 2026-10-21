@@ -1,4 +1,4 @@
-$src = 'C:\Users\guigo\OneDrive\Documentos\Espetaria\Espetaria-main\supabase\setup_complete_fixed.sql'
+$src = 'C:\Projetos\Espetaria\Espetaria-main\supabase\setup_complete_fixed.sql'
 $text = [System.IO.File]::ReadAllText($src)
 $broken1 = 'DO $ BEGIN'
 $fixed1 = 'DO $$ BEGIN'

@@ -1,0 +1,16 @@
+{
+  // Hospedagem na Cloudflare (Workers com arquivos estáticos). Publicar: npm run deploy:cf
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "espetaria-sabor-da-carne",
+  "compatibility_date": "2026-10-19",
+  // Endereço oficial (zona pontopdv.tech está na Cloudflare)
+  "routes": [{ "pattern": "sabordacarne.pontopdv.tech", "custom_domain": true }],
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "directory": "./dist",
+    // /cardapio e as outras rotas do app abrem o index.html
+    "not_found_handling": "single-page-application"
+  }
+}

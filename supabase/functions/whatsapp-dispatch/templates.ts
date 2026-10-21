@@ -12,6 +12,10 @@ export const DEFAULT_TEMPLATES: Record<string, Template> = {
     enabled: true,
     text: '{nome}, recebemos o seu PIX de *{total}* do pedido *#{pedido}*. Obrigado!',
   },
+  PREPARING: {
+    enabled: true,
+    text: '{nome}, seu pedido *#{pedido}* já está em preparo na brasa. Avisamos quando ficar pronto!\n{loja}',
+  },
   READY: {
     enabled: true,
     text: '{nome}, seu pedido *#{pedido}* está pronto para retirada. Pode vir buscar!\n{loja}',

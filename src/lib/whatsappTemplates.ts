@@ -16,6 +16,7 @@ export type WhatsAppTemplates = Record<WhatsAppEvent, WhatsAppTemplate>;
 export const WHATSAPP_EVENTS: { event: WhatsAppEvent; label: string; when: string }[] = [
   { event: 'CONFIRMED', label: 'Pedido recebido', when: 'Assim que o cliente finaliza o pedido no cardápio.' },
   { event: 'PAID', label: 'Pagamento confirmado', when: 'Quando o caixa marca "PIX recebido".' },
+  { event: 'PREPARING', label: 'Pedido em preparo', when: 'Quando um pedido que estava parado (pendente ou confirmado) entra em preparo. Pedido do cardápio já nasce em preparo e recebe só "Pedido recebido".' },
   { event: 'READY', label: 'Pronto para retirada', when: 'Só na retirada no local: quando o churrasqueiro toca em "Espeto pronto". No delivery o cliente não recebe esta mensagem.' },
   { event: 'OUT_FOR_DELIVERY', label: 'Saiu para entrega', when: 'Só no delivery: quando o entregador toca em "Saiu para entrega".' },
   { event: 'DELIVERED', label: 'Entregue', when: 'Só no delivery: quando a entrega é confirmada.' },
@@ -46,6 +47,10 @@ export const DEFAULT_WHATSAPP_TEMPLATES: WhatsAppTemplates = {
   PAID: {
     enabled: true,
     text: '{nome}, recebemos o seu PIX de *{total}* do pedido *#{pedido}*. Obrigado!',
+  },
+  PREPARING: {
+    enabled: true,
+    text: '{nome}, seu pedido *#{pedido}* já está em preparo na brasa. Avisamos quando ficar pronto!\n{loja}',
   },
   READY: {
     enabled: true,

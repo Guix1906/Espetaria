@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { PixQrCode } from '../pix/PixQrCode';
+import { publicAppUrl } from '../../lib/publicUrl';
 
 /** Cardápio digital no painel: link para abrir em outra aba e QR Code para imprimir nas mesas e no balcão. */
 export function DigitalMenuQrView() {
   const storeName = useSettingsStore((s) => s.settings.name);
-  const url = `${window.location.origin}/cardapio`;
+  const url = `${publicAppUrl()}/cardapio`;
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {

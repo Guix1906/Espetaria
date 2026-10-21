@@ -11,15 +11,14 @@
 // ============================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+import { corsHeadersFor } from '../_shared/cors.ts';
+
 const ROLES = ['MASTER', 'GERENTE', 'GARCOM', 'CHURRASQUEIRA', 'COZINHA', 'BAR', 'CAIXA', 'ENTREGADOR'] as const;
 type Role = typeof ROLES[number];
 
-// Defina ALLOWED_ORIGIN nos secrets da função (ex.: https://espetaria.vercel.app)
-const corsHeaders = {
-  'Access-Control-Allow-Origin': Deno.env.get('ALLOWED_ORIGIN') || '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
+// CORS: ALLOWED_ORIGIN nos secrets (um ou vários endereços separados por vírgula);
+// os cabeçalhos são aplicados em toda resposta no Deno.serve, conforme a origem do pedido.
+const corsHeaders = {};
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -54,6 +53,12 @@ function assertText(value: unknown, field: string): string {
 }
 
 Deno.serve(async (req) => {
+  const res = await handle(req);
+  for (const [k, v] of Object.entries(corsHeadersFor(req))) res.headers.set(k, v);
+  return res;
+});
+
+async function handle(req: Request): Promise<Response> {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') return json({ error: 'Método não permitido.' }, 405);
 
@@ -270,4 +275,4 @@ Deno.serve(async (req) => {
     if (status === 500) console.error(err);
     return json({ error: message }, status);
   }
-});
+}

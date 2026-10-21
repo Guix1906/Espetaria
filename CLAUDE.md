@@ -11,7 +11,14 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   `supabase/setup_complete.sql` acumula todas — ao criar migração nova, anexar o conteúdo nele também.
 - Gráficos: ApexCharts (`src/components/charts/Chart.tsx`, carregado sob demanda).
 - `printer-bridge/`: programa Node que roda no PC da loja, lê `print_queue` do Supabase e imprime ESC/POS nas térmicas Epson (porta 9100).
-- Publicação: Vercel, projeto `espetaria` → https://sabordacarne.vercel.app (`npx vercel@latest deploy --prod --yes`).
+- Publicação: **Cloudflare Workers** (arquivos estáticos), worker `espetaria-sabor-da-carne` (conta guigos191@gmail.com, `npx wrangler whoami`)
+  → **https://sabordacarne.pontopdv.tech** (custom domain em `wrangler.jsonc`; desde 21/10). Publicar: `npm run deploy` (vite build com
+  `@cloudflare/vite-plugin` gera `dist/wrangler.json`, depois `wrangler deploy`). Chaves VITE_* para o build local ficam em
+  `.env.production.local` (fora do git). Cache em `public/_headers`. Vercel (`sabordacarne.vercel.app`) ficou só de reserva.
+  DNS do `pontopdv.tech` agora na Cloudflare (nameservers naya/noel; registro pago na Hostinger).
+  Domínio `pontopdv.tech` (Hostinger, DNS na Hostinger): cada sistema do dono = um subdomínio (CNAME → `cname.vercel-dns.com`), raiz livre.
+  Endereço oficial no app: `VITE_PUBLIC_APP_URL` (Vercel) via `src/lib/publicUrl.ts` (QR Code, links). Secrets: `APP_URL` = domínio novo,
+  `ALLOWED_ORIGIN` = lista separada por vírgula (lida por `supabase/functions/_shared/cors.ts`).
   As chaves do site (`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`) estão cadastradas na Vercel, não em arquivo local.
   `.vercelignore` impede enviar `printer-bridge/`, `supabase/` e `.env*`.
 
@@ -53,6 +60,14 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   Config em `restaurant_settings.whatsapp_bot` (cartão em Configurações → WhatsApp): modo OFF/TEST/ALL — o mesmo número é usado
   pelo robô do Anota AI, então só ligar ALL quando o do Anota for desligado. Pausa quando chama atendente ou a equipe responde.
   Ativação: `supabase/ATIVAR-ROBO-WHATSAPP.bat` (pede a chave do Gemini, grava secrets, publica, copia a URL do webhook).
+- Evolution API v2 (20/10): módulo `supabase/functions/_shared/evolution.ts` (`sendText`, `connectionState`, `normalizePhone`, testado em
+  `src/lib/__tests__/evolution.test.ts`); `whatsapp-dispatch` usa ele quando `WHATSAPP_PROVIDER=evolution`. Webhook de mensagens recebidas:
+  `whatsapp-evolution-webhook` (`--no-verify-jwt`, `?token=EVOLUTION_WEBHOOK_TOKEN`, loga MESSAGES_UPSERT e repassa ao `whatsapp-bot`;
+  o robô lê o formato Evolution em `parseEvolutionIncoming` e responde pela Evolution quando `WHATSAPP_PROVIDER=evolution`).
+  Falha do robô (Gemini/envio) → `audit_logs` action `WHATSAPP_BOT_ERRO` (chave mascarada); se o Gemini falha o cliente recebe
+  HANDOFF_FALLBACK e a conversa pausa; Visão geral mostra alerta por 2 h (`botErrorAt`). Trocar chave: `supabase/TROCAR-CHAVE-GEMINI.bat`. Botão "Testar conexão"
+  em Configurações → WhatsApp chama `whatsapp-status` (com JWT, Master/Gerente). Ativação: `supabase/ATIVAR-EVOLUTION.bat`.
+  Evento novo `PREPARING` ("Pedido em preparo", só na transição PENDING/CONFIRMED → PREPARING) exige a migração 00034.
 - PIX automático (00030, Mercado Pago): com `restaurant_settings.pix_auto_enabled`, pedido do cardápio por PIX nasce
   `AWAITING_PAYMENT` (estoque reservado, sem cupom nem produção). Edge Function `pix-mercadopago` (deploy `--no-verify-jwt`;
   secrets `MP_ACCESS_TOKEN`, `PIX_WEBHOOK_TOKEN`) gera o QR do pedido e, aprovado, chama `release_paid_delivery_order`
@@ -92,7 +107,7 @@ Vercel e Supabase CLI rodam via `npx` (`npx vercel@latest`, `npx supabase`).
 
 ## Deploy (o Claude faz sozinho depois de cada alteração)
 1. `npx tsc --noEmit -p .` · `npx vitest run` · `npx vite build` (build normal, nunca `--mode demo`). Só publicar se tudo passar.
-2. `npx vercel@latest deploy --prod --yes` (publica direto em produção → https://sabordacarne.vercel.app; não há etapa preview/promote).
+2. `npm run deploy` (Cloudflare, publica direto em produção → https://sabordacarne.pontopdv.tech).
 3. Conferir no navegador (o app é PWA: se aparecer versão antiga, limpar service worker/cache da aba).
 - Edge Functions (quando mudarem): `npx supabase functions deploy <nome> --project-ref byamgmjeqawznkagouwd`
   (`whatsapp-dispatch`, `whatsapp-bot` e `pix-mercadopago` com `--no-verify-jwt`).
@@ -101,8 +116,8 @@ Vercel e Supabase CLI rodam via `npx` (`npx vercel@latest`, `npx supabase`).
 ## Arquivos com segredo (não commitar nem publicar)
 - `printer-bridge/.env` — `SUPABASE_SERVICE_ROLE_KEY` e IPs das impressoras.
 
-## Atenção ao editar no Windows/OneDrive
-- O OneDrive às vezes trava arquivos. `Set-Content` que falha pode deixar o arquivo VAZIO — preferir as ferramentas de edição ou `[IO.File]::WriteAllText` e conferir arquivos com 0 bytes depois.
+## Atenção ao editar no Windows
+- Projeto em `C:\Projetos\Espetaria` (saiu do OneDrive em 21/10). `Set-Content` que falha pode deixar o arquivo VAZIO — preferir as ferramentas de edição ou `[IO.File]::WriteAllText` e conferir arquivos com 0 bytes depois.
 - Arquivos têm mistura de quebras de linha LF/CRLF; considerar isso em substituições de texto.
 
 ## Situação em 11/10/2026

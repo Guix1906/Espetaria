@@ -10,8 +10,10 @@ import {
   resolveWhatsAppTemplates,
   whatsAppVariables,
 } from '../../lib/whatsappTemplates';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import type { WhatsAppEvent } from '../../types/domain';
+import { publicAppUrl } from '../../lib/publicUrl';
 
 /** URL da Edge Function que envia as mensagens (derivada do projeto Supabase). */
 function defaultDispatchUrl(): string {
@@ -36,6 +38,45 @@ const SAMPLE_ORDER = {
   items: [{ quantity: 4, product_name: 'Espeto de picanha' }, { quantity: 2, product_name: 'Refrigerante lata' }],
 };
 
+type ConnectionResult = { connected?: boolean; state?: string; provider?: string; instance?: string | null; error?: string };
+
+/** Pergunta ao servidor (Edge Function whatsapp-status) se o WhatsApp está conectado. A chave fica no servidor. */
+function ConnectionCheck() {
+  const [checking, setChecking] = useState(false);
+  const [result, setResult] = useState<ConnectionResult | null>(null);
+
+  const check = async () => {
+    setChecking(true);
+    try {
+      if (!isSupabaseConfigured) {
+        setResult({ connected: false, error: 'Modo demonstração: sem servidor.' });
+        return;
+      }
+      const { data, error } = await supabase.functions.invoke('whatsapp-status', { body: {} });
+      setResult(error ? { connected: false, error: error.message } : (data as ConnectionResult));
+    } catch (err) {
+      setResult({ connected: false, error: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-sm border border-line p-3 text-xs">
+      <button type="button" className="btn-secondary text-xs" onClick={check} disabled={checking}>
+        {checking ? 'Verificando...' : 'Testar conexão do WhatsApp'}
+      </button>
+      {result && (
+        <span className={result.connected ? 'font-semibold text-emerald-700' : 'font-semibold text-red-700'}>
+          {result.connected
+            ? `Conectado (instância ${result.instance ?? ''})`
+            : `Não conectado${result.state && result.state !== 'error' ? ` (estado: ${result.state})` : ''}${result.error ? ` — ${result.error}` : ''}`}
+        </span>
+      )}
+    </div>
+  );
+}
+
 /** Liga/desliga o envio automático de WhatsApp e edita o texto de cada mensagem. */
 export function WhatsAppAutoCard() {
   const { settings, updateSettings } = useSettingsStore();
@@ -49,7 +90,7 @@ export function WhatsAppAutoCard() {
 
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   const current = draft[selected];
-  const preview = renderWhatsAppTemplate(current.text, whatsAppVariables(SAMPLE_ORDER, settings.name, window.location.origin));
+  const preview = renderWhatsAppTemplate(current.text, whatsAppVariables(SAMPLE_ORDER, settings.name, publicAppUrl()));
 
   const toggle = (value: boolean) => {
     updateSettings({
@@ -144,8 +185,10 @@ export function WhatsAppAutoCard() {
         </div>
       </div>
 
+      <ConnectionCheck />
+
       <p className="rounded-sm bg-surface-soft p-3 text-xs text-ink-secondary">
-        O envio usa o número conectado na Z-API (configurado no Supabase). O status de cada mensagem (enviada, na fila, desligada ou com falha) aparece no cartão do pedido, na tela Delivery.
+        O envio usa o número conectado no provedor de WhatsApp (Evolution API ou Z-API, configurado no Supabase). O status de cada mensagem (enviada, na fila, desligada ou com falha) aparece no cartão do pedido, na tela Delivery.
       </p>
     </div>
   );

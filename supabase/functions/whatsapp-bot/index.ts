@@ -1,7 +1,7 @@
 // ============================================================================
 // EDGE FUNCTION: whatsapp-bot
 // Robô de atendimento: recebe as mensagens dos clientes (webhook "Ao receber"
-// da Z-API) e responde com o Gemini (Google), usando os dados reais da loja.
+// da Z-API, ou repassadas pelo whatsapp-evolution-webhook) e responde com o Gemini (Google), usando os dados reais da loja.
 // Deploy: supabase functions deploy whatsapp-bot --no-verify-jwt
 // URL no painel da Z-API: https://<projeto>.supabase.co/functions/v1/whatsapp-bot?token=<WHATSAPP_BOT_TOKEN>
 //
@@ -15,6 +15,7 @@
 // ============================================================================
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
+import { sendText as evolutionSendText } from '../_shared/evolution.ts';
 import {
   buildContextBlock,
   buildGeminiRequest,
@@ -41,8 +42,9 @@ function admin(): SupabaseClient {
   });
 }
 
-/** Envia texto pela Z-API e devolve o id da mensagem (para reconhecer o eco no webhook). */
+/** Envia texto (Evolution ou Z-API) e devolve o id da mensagem (para reconhecer o eco no webhook). */
 async function sendText(phone: string, text: string): Promise<string | null> {
+  if ((Deno.env.get('WHATSAPP_PROVIDER') || '').toLowerCase() === 'evolution') return evolutionSendText(phone, text);
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const clientToken = Deno.env.get('ZAPI_CLIENT_TOKEN');
   if (clientToken) headers['Client-Token'] = clientToken;
@@ -53,6 +55,17 @@ async function sendText(phone: string, text: string): Promise<string | null> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(`Z-API ${res.status}: ${JSON.stringify(body).slice(0, 300)}`);
   return body.messageId ?? body.id ?? null;
+}
+
+/** Falha fica na auditoria (vira alerta na Visão geral) sem expor chaves. */
+async function logBotError(db: SupabaseClient, err: unknown) {
+  const message = (err instanceof Error ? err.message : String(err))
+    .replace(/(api_key:|key=)[A-Za-z0-9._-]+/g, '$1***')
+    .replace(/\b(AIza|AQ\.)[A-Za-z0-9._-]+/g, '***');
+  console.error('[whatsapp-bot]', message);
+  await db.from('audit_logs')
+    .insert({ action: 'WHATSAPP_BOT_ERRO', entity_type: 'whatsapp_bot', entity_id: crypto.randomUUID(), new_data: { error: message.slice(0, 1000) } })
+    .then(() => undefined, () => undefined);
 }
 
 async function pause(db: SupabaseClient, phone: string, hours: number, reason: string) {
@@ -200,7 +213,15 @@ async function handle(payload: unknown) {
     return;
   }
 
-  const answer = await askGemini(context, ((history ?? []) as StoredMessage[]).reverse());
+  let answer: { reply: string; handoff: boolean };
+  try {
+    answer = await askGemini(context, ((history ?? []) as StoredMessage[]).reverse());
+  } catch (err) {
+    // IA fora do ar (chave suspensa, limite, etc.): o cliente não fica sem resposta,
+    // a conversa passa para a equipe e a falha vira alerta na Visão geral.
+    await logBotError(db, err);
+    answer = { reply: HANDOFF_FALLBACK, handoff: true };
+  }
 
   await reply(db, msg.phone, answer.reply);
   if (answer.handoff) await pause(db, msg.phone, bot.pause_hours, 'HANDOFF');
@@ -219,7 +240,7 @@ Deno.serve(async (req) => {
   }
   const payload = await req.json().catch(() => null);
   // Responde na hora para a Z-API e continua o trabalho em segundo plano
-  const work = handle(payload).catch((err) => console.error('[whatsapp-bot]', err instanceof Error ? err.message : err));
+  const work = handle(payload).catch((err) => logBotError(admin(), err));
   if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(work);
   else await work;
   return new Response('ok');

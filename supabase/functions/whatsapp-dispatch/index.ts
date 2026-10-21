@@ -18,6 +18,7 @@
 // ============================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+import { normalizePhone, sendText as evolutionSendText } from '../_shared/evolution.ts';
 import { render, resolveTemplate, variables } from './templates.ts';
 
 const MAX_ATTEMPTS = 5;
@@ -26,11 +27,6 @@ const MAX_ATTEMPTS = 5;
 const MAX_AGE_MS = 3 * 60 * 60 * 1000;
 
 type Outbox = { id: string; delivery_order_id: string; event: string; phone: string; attempts: number; created_at: string };
-
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  return digits.startsWith('55') && digits.length >= 12 ? digits : `55${digits}`;
-}
 
 async function send(phone: string, text: string): Promise<string | null> {
   const provider = (Deno.env.get('WHATSAPP_PROVIDER') || '').toLowerCase();
@@ -49,17 +45,7 @@ async function send(phone: string, text: string): Promise<string | null> {
     return body.messageId ?? body.id ?? null;
   }
 
-  if (provider === 'evolution') {
-    const base = (Deno.env.get('EVOLUTION_URL') || '').replace(/\/$/, '');
-    const res = await fetch(`${base}/message/sendText/${Deno.env.get('EVOLUTION_INSTANCE')}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', apikey: Deno.env.get('EVOLUTION_API_KEY') || '' },
-      body: JSON.stringify({ number: to, text }),
-    });
-    const body = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(`Evolution ${res.status}: ${JSON.stringify(body).slice(0, 300)}`);
-    return body?.key?.id ?? null;
-  }
+  if (provider === 'evolution') return evolutionSendText(to, text);
 
   if (provider === 'meta') {
     const res = await fetch(`https://graph.facebook.com/v21.0/${Deno.env.get('META_PHONE_NUMBER_ID')}/messages`, {
@@ -121,6 +107,8 @@ Deno.serve(async (req) => {
       results.push({ id: job.id, status: 'SENT' });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
+      // Falha no WhatsApp não mexe no pedido: só fica registrada aqui e na fila.
+      console.error(`[whatsapp-dispatch] ${job.event} pedido ${job.delivery_order_id}: ${message}`);
       const finalStatus = job.attempts >= MAX_ATTEMPTS ? 'FAILED' : 'PENDING';
       await admin.from('whatsapp_outbox').update({ status: finalStatus, last_error: message.slice(0, 500) }).eq('id', job.id);
       results.push({ id: job.id, status: finalStatus, error: message });

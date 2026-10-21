@@ -1,5 +1,5 @@
 $ErrorActionPreference = 'Stop'
-$file = 'C:\Users\guigo\OneDrive\Documentos\Espetaria\Espetaria-main\supabase\setup_complete_idempotent.sql'
+$file = 'C:\Projetos\Espetaria\Espetaria-main\supabase\setup_complete_idempotent.sql'
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $content = [IO.File]::ReadAllText($file, $utf8NoBom)
 

@@ -1,6 +1,6 @@
 import re, pathlib
 
-src = pathlib.Path(r'C:\Users\guigo\OneDrive\Documentos\Espetaria\Espetaria-main\supabase\setup_complete_clean.sql')
+src = pathlib.Path(r'C:\Projetos\Espetaria\Espetaria-main\supabase\setup_complete_clean.sql')
 text = src.read_text(encoding='utf-8')
 
 def wrap_enum(m):
@@ -17,6 +17,6 @@ def wrap_enum(m):
 pattern = r'CREATE\s+TYPE\s+(\w+)\s+AS\s+ENUM\s*\(([^;]*?)\)\s*;'
 result = re.sub(pattern, wrap_enum, text, flags=re.DOTALL)
 
-out = pathlib.Path(r'C:\Users\guigo\OneDrive\Documentos\Espetaria\Espetaria-main\supabase\setup_complete_safe.sql')
+out = pathlib.Path(r'C:\Projetos\Espetaria\Espetaria-main\supabase\setup_complete_safe.sql')
 out.write_text(result, encoding='utf-8')
 print('OK', len(result))

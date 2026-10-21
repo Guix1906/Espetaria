@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
-$migrationsDir = 'C:\Users\guigo\OneDrive\Documentos\Espetaria\Espetaria-main\supabase\migrations'
-$outputFile = 'C:\Users\guigo\OneDrive\Documentos\Espetaria\Espetaria-main\supabase\setup_complete_idempotent.sql'
+$migrationsDir = 'C:\Projetos\Espetaria\Espetaria-main\supabase\migrations'
+$outputFile = 'C:\Projetos\Espetaria\Espetaria-main\supabase\setup_complete_idempotent.sql'
 $files = @(
     '00001_initial_schema.sql',
     '00002_stock_atomic_functions.sql',

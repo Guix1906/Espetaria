@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Copy, Link2, MessageCircle, Server } from 'lucide-react';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import type { PrintJob } from '../../types/domain';
+import { publicAppUrl } from '../../lib/publicUrl';
 
 const STALE_AFTER_MS = 60_000;
 
@@ -91,7 +92,7 @@ export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
 /** Link público do cardápio para enviar aos clientes pelo WhatsApp. */
 export function DigitalMenuLinkCard() {
   const [copied, setCopied] = useState(false);
-  const url = `${window.location.origin}/cardapio`;
+  const url = `${publicAppUrl()}/cardapio`;
   const shareText = encodeURIComponent(`Peça seu churrasco pelo nosso cardápio digital: ${url}`);
 
   const copy = async () => {

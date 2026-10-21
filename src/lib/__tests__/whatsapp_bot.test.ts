@@ -47,6 +47,21 @@ describe('Robô de atendimento do WhatsApp', () => {
     expect(bot.parseIncoming(textPayload({ text: undefined, audio: { audioUrl: 'x' } }))).toMatchObject({ kind: 'customer', media: 'audio', text: '' });
   });
 
+  it('lê o webhook MESSAGES_UPSERT da Evolution API', () => {
+    const evo = (key: object, data: object = {}) => ({
+      event: 'messages.upsert',
+      instance: 'Ponto',
+      data: { key: { remoteJid: '5511987654321@s.whatsapp.net', fromMe: false, id: 'EVO1', ...key }, pushName: 'Maria', message: { conversation: 'Tem picanha?' }, messageType: 'conversation', ...data },
+    });
+    expect(bot.parseIncoming(evo({}))).toMatchObject({ kind: 'customer', phone: '5511987654321', text: 'Tem picanha?', messageId: 'EVO1', senderName: 'Maria', media: null });
+    expect(bot.parseIncoming(evo({ fromMe: true }))).toMatchObject({ kind: 'self', senderName: null });
+    expect(bot.parseIncoming(evo({ remoteJid: '120363@g.us' })).kind).toBe('ignore');
+    expect(bot.parseIncoming(evo({ remoteJid: '999@lid', remoteJidAlt: '5511987654321@s.whatsapp.net' }))).toMatchObject({ phone: '5511987654321' });
+    expect(bot.parseIncoming(evo({}, { message: { extendedTextMessage: { text: 'Oi' } } }))).toMatchObject({ text: 'Oi' });
+    expect(bot.parseIncoming(evo({}, { message: { audioMessage: {} }, messageType: 'audioMessage' }))).toMatchObject({ media: 'audio', text: '' });
+    expect(bot.parseIncoming({ event: 'connection.update', data: {} }).kind).toBe('ignore');
+  });
+
   it('monta o histórico em turnos e marca o que a equipe escreveu', () => {
     const messages = bot.toChatTurns([
       { direction: 'BOT', body: 'mensagem solta do robô' },

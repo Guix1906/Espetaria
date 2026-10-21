@@ -99,9 +99,49 @@ export type Incoming =
 
 const MEDIA_KEYS = ['audio', 'image', 'video', 'sticker', 'document', 'location', 'contact'] as const;
 
+const EVOLUTION_MEDIA: Record<string, string> = {
+  audioMessage: 'audio', imageMessage: 'image', videoMessage: 'video', stickerMessage: 'sticker',
+  documentMessage: 'document', documentWithCaptionMessage: 'document', locationMessage: 'location',
+  contactMessage: 'contact', contactsArrayMessage: 'contact',
+};
+
+/** Webhook MESSAGES_UPSERT da Evolution API v2 (uma mensagem por evento). */
+// deno-lint-ignore no-explicit-any
+export function parseEvolutionIncoming(payload: any): Incoming {
+  const event = String(payload?.event ?? '').toLowerCase().replace(/_/g, '.');
+  if (event !== 'messages.upsert') return { kind: 'ignore' };
+  const data = Array.isArray(payload.data) ? payload.data[0] : payload.data;
+  const key = data?.key;
+  if (!key) return { kind: 'ignore' };
+  let jid = String(key.remoteJid ?? '');
+  // Contas com "@lid" (id oculto): o número real vem em remoteJidAlt/senderPn
+  if (jid.endsWith('@lid')) jid = String(key.remoteJidAlt ?? key.senderPn ?? '');
+  if (!jid.endsWith('@s.whatsapp.net')) return { kind: 'ignore' }; // grupos, status, canais
+  const phone = digits(jid.split('@')[0]);
+  if (phone.length < 10) return { kind: 'ignore' };
+
+  const m = data.message ?? {};
+  const text = String(
+    m.conversation ?? m.extendedTextMessage?.text ?? m.imageMessage?.caption ?? m.videoMessage?.caption ?? '',
+  ).trim();
+  const media = EVOLUTION_MEDIA[String(data.messageType ?? '')] ?? MEDIA_KEYS.find((k) => m[`${k}Message`]) ?? null;
+  if (!text && !media) return { kind: 'ignore' };
+
+  return {
+    kind: key.fromMe ? 'self' : 'customer',
+    phone,
+    text: text.slice(0, 2000),
+    messageId: key.id ? String(key.id) : null,
+    senderName: key.fromMe ? null : data.pushName || null,
+    fromApi: false,
+    media: text ? null : media,
+  };
+}
+
 // deno-lint-ignore no-explicit-any
 export function parseIncoming(payload: any): Incoming {
   if (!payload || typeof payload !== 'object') return { kind: 'ignore' };
+  if (payload.event) return parseEvolutionIncoming(payload);
   if (payload.type && payload.type !== 'ReceivedCallback') return { kind: 'ignore' };
   if (payload.isGroup || payload.isNewsletter || payload.broadcast || payload.isStatusReply) return { kind: 'ignore' };
   const rawPhone = String(payload.phone ?? '');

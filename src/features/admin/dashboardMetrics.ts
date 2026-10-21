@@ -24,7 +24,12 @@ export interface DashboardInput {
   /** Com Supabase a fila é do printer-bridge; na demonstração não há impressora real. */
   printerMonitored: boolean;
   now: number;
+  /** Última falha do robô do WhatsApp (IA ou envio), de audit_logs WHATSAPP_BOT_ERRO. */
+  botErrorAt?: string | null;
 }
+
+/** Falha do robô nas últimas 2 horas vira alerta. */
+export const BOT_ERROR_WINDOW_MIN = 120;
 
 export type AlertTone = 'danger' | 'warning';
 export interface DashboardAlert { id: string; tone: AlertTone; text: string; target: 'tables' | 'kds' | 'delivery' | 'settings' | 'cashier'; }
@@ -174,6 +179,10 @@ export function computeDashboard(input: DashboardInput) {
   const pixSoon = stages.AWAITING_PAYMENT.filter((d) => d.pix_expires_at && new Date(d.pix_expires_at).getTime() - now <= ALERT_LIMITS.pixExpiring * 60000);
   if (pixSoon.length) alerts.push({ id: 'pix', tone: 'warning', target: 'delivery', text: `${pixSoon.length} ${pixSoon.length === 1 ? 'PIX vence' : 'PIX vencem'} em menos de ${ALERT_LIMITS.pixExpiring} min sem pagamento` });
   if (input.printerMonitored && (stuckJobs.length || failedJobs.length)) alerts.push({ id: 'printer', tone: 'danger', target: 'settings', text: failedJobs.length ? `${failedJobs.length} ${failedJobs.length === 1 ? 'cupom falhou' : 'cupons falharam'} na impressão` : `Impressora da loja sem responder: ${stuckJobs.length} ${stuckJobs.length === 1 ? 'cupom parado' : 'cupons parados'} há mais de 1 min` });
+  if (input.botErrorAt && minutesSince(input.botErrorAt, now) <= BOT_ERROR_WINDOW_MIN) {
+    const at = new Date(input.botErrorAt);
+    alerts.push({ id: 'bot', tone: 'danger', target: 'settings', text: `Robô do WhatsApp com falha (última às ${pad2(at.getHours())}:${pad2(at.getMinutes())}): clientes estão sendo passados para atendente. Confira a chave do Gemini.` });
+  }
   if (waitingBill.length) alerts.push({ id: 'bill', tone: 'warning', target: 'cashier', text: `${waitingBill.map((t) => `Mesa ${pad2(t.number)}`).join(', ')} ${waitingBill.length === 1 ? 'pediu' : 'pediram'} a conta` });
 
   // ---------------- Movimentações do turno ----------------

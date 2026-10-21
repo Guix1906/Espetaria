@@ -1,5 +1,5 @@
-$src = 'C:\Users\guigo\OneDrive\Documentos\Espetaria\Espetaria-main\supabase\setup_complete_safe.sql'
-$dst = 'C:\Users\guigo\OneDrive\Documentos\Espetaria\Espetaria-main\supabase\setup_complete_fixed.sql'
+$src = 'C:\Projetos\Espetaria\Espetaria-main\supabase\setup_complete_safe.sql'
+$dst = 'C:\Projetos\Espetaria\Espetaria-main\supabase\setup_complete_fixed.sql'
 $text = [System.IO.File]::ReadAllText($src)
 
 # Remove nested DO $$ BEGIN that appears right before another DO $$ BEGIN

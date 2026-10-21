@@ -1,0 +1,21 @@
+# Regras de cache da Cloudflare Pages (copiado para dist/ no build).
+# O service worker e o index sempre buscam a versão nova (o app é PWA).
+/sw.js
+  Cache-Control: no-cache
+/registerSW.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+/index.html
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
+/cardapio
+  Cache-Control: no-cache
+
+# Arquivos com nome versionado pelo Vite: podem ficar guardados por 1 ano
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/produtos/*
+  Cache-Control: public, max-age=604800
