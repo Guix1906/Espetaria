@@ -393,7 +393,7 @@ export const SettingsView: React.FC = () => {
           </div>
 
           {feedbackFor('printers')}
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {/* Impressora Churrasqueira */}
             <div className="surface-card p-4 sm:p-5 space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-2">
@@ -431,7 +431,7 @@ export const SettingsView: React.FC = () => {
                     <UtensilsCrossed className="h-5 w-5" />
                   </span>
                   <div>
-                    <h4 className="font-bold text-ink">Cozinha e cubas</h4>
+                    <h4 className="font-bold text-ink">Cozinha</h4>
                     <p className="text-xs text-ink-muted">Setor KITCHEN</p>
                   </div>
                 </div>
@@ -452,49 +452,6 @@ export const SettingsView: React.FC = () => {
               </div>
             </div>
 
-            {/* Impressora Caixa */}
-            <div className="surface-card p-4 sm:p-5 space-y-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="flex shrink-0 items-center gap-2.5">
-                  <span className="icon-tile bg-sky-100 text-sky-800">
-                    <Building2 className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h4 className="font-bold text-ink">Caixa e balcão</h4>
-                    <p className="text-xs text-ink-muted">Conferência e recibo</p>
-                  </div>
-                </div>
-                <PrinterHealthTag jobs={jobs} sector="NONE" />
-              </div>
-              <p className="text-xs text-ink-secondary">
-                Emite a conferência detalhada da comanda com taxa de serviço e comprovante não-fiscal de pagamento.
-              </p>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (isSupabaseConfigured) { void requestTestPrint('NONE', 'o caixa/expedição'); return; }
-                    const { job } = enqueuePrintJob({
-                      order_id: 'test-cashier-01',
-                      order_number: 903,
-                      sector: 'BAR',
-                      origin: 'SALAO',
-                      table_number: 1,
-                      customer_name: 'Mesa 1 (Conferência)',
-                      items: [
-                        { name: 'Cerveja Original 600ml', quantity: 3, notes: 'Bem gelada' },
-                        { name: 'Água Mineral c/ Gás', quantity: 2, notes: 'Gelo e limão' },
-                      ],
-                    });
-                    setSelectedJobId(job.id);
-                  }}
-                  className="btn-secondary w-full text-xs"
-                >
-                  <Printer className="h-4 w-4 text-sky-700" />
-                  Imprimir teste
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       )}
