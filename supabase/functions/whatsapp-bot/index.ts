@@ -81,7 +81,7 @@ async function reply(db: SupabaseClient, phone: string, text: string) {
 
 /** Dados da loja, cardápio e pedidos do cliente para a IA. */
 async function loadContext(db: SupabaseClient, phone: string, settings: Record<string, unknown>, storeInfo: string) {
-  const appUrl = (Deno.env.get('APP_URL') || '').replace(/\/$/, '') || null;
+  const appUrl = (Deno.env.get('APP_URL') || '').match(/https?:\/\/[^\s]+/)?.[0].replace(/\/$/, '') || null;
   const { data: shift } = await db.from('shifts').select('id').eq('status', 'ABERTO').order('opened_at', { ascending: false }).limit(1).maybeSingle();
   const [{ data: products }, { data: categories }, { data: zones }, { data: stock }, { data: orders }] = await Promise.all([
     db.from('products').select('id, name, price, category_id, tracks_stock, available, allows_doneness, display_order').eq('active', true).order('display_order').order('name'),

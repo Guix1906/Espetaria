@@ -92,6 +92,11 @@ function saveLocalEntries(entries: FinanceEntry[]) {
   try { localStorage.setItem(LOCAL_KEY, JSON.stringify(entries)); } catch { /* sem armazenamento */ }
 }
 
+type DeliveryMoment = { status: string; paid_at?: string | null; delivered_at?: string | null; created_at: string };
+/** Quando o dinheiro do delivery entrou: pago (PIX/"Marcar pago") ou entregue (recebido na porta). Igual à Visão geral e ao fechamento do turno. */
+const receivedAt = (d: DeliveryMoment): string | null =>
+  d.status === 'CANCELLED' ? null : d.paid_at ?? (d.status === 'DELIVERED' ? d.delivered_at ?? d.created_at : null);
+
 export async function loadFinanceData(from: string, to: string): Promise<FinanceDataset> {
   const { start, end } = periodBounds(from, to);
   if (!isSupabaseConfigured) return loadDemoData(from, to, start, end);
@@ -99,7 +104,7 @@ export async function loadFinanceData(from: string, to: string): Promise<Finance
   type Row = Record<string, unknown>;
   const [payments, deliveries, items, orders, losses, shifts, tabs, entriesInRange, overdue, profiles, openTabs] = await Promise.all([
     fetchAll<Row>((a, b) => supabase.from('payments').select('id, amount, method, status, paid_at').gte('paid_at', start).lte('paid_at', end).range(a, b)),
-    fetchAll<Row>((a, b) => supabase.from('delivery_orders').select('id, total, delivery_fee, payment_method, status, created_at, paid_at, address_neighborhood').gte('created_at', start).lte('created_at', end).range(a, b)),
+    fetchAll<Row>((a, b) => supabase.from('delivery_orders').select('id, total, delivery_fee, payment_method, status, created_at, paid_at, delivered_at, address_neighborhood').gte('created_at', start).lte('created_at', end).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('order_items').select('order_id, product_id, product_name, quantity, unit_price, sector, status, created_at').gte('created_at', start).lte('created_at', end).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('orders').select('id, created_by').gte('created_at', start).lte('created_at', end).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('stock_movements').select('product_id, quantity, movement_type, reason, created_at').in('movement_type', ['PERDA', 'DESCARTE', 'CANCELAMENTO_RETORNO']).gte('created_at', start).lte('created_at', end).range(a, b)),
@@ -136,13 +141,13 @@ export async function loadFinanceData(from: string, to: string): Promise<Finance
     from, to,
     sales: [
       ...payments.filter((p) => p.status === 'PAID').map((p) => ({ id: p.id as string, at: p.paid_at as string, amount: num(p.amount), method: String(p.method), channel: 'SALAO' as const })),
-      ...deliveries.filter((d) => d.paid_at && d.status !== 'CANCELLED').map((d) => ({ id: d.id as string, at: d.paid_at as string, amount: num(d.total), method: String(d.payment_method), channel: 'DELIVERY' as const })),
+      ...deliveries.filter((d) => receivedAt(d as DeliveryMoment)).map((d) => ({ id: d.id as string, at: receivedAt(d as DeliveryMoment)!, amount: num(d.total), method: String(d.payment_method), channel: 'DELIVERY' as const })),
     ],
     items: [
       ...items.map((i) => ({ at: i.created_at as string, product_id: (i.product_id as string) ?? null, product_name: String(i.product_name), quantity: num(i.quantity), total: num(i.unit_price) * num(i.quantity), sector: String(i.sector), cancelled: i.status === 'CANCELLED', channel: 'SALAO' as const, waiter_id: waiterByOrder.get(i.order_id as string) ?? null })),
       ...deliveryItems.map((i) => { const d = deliveryById.get(i.delivery_order_id as string); return { at: (d?.created_at as string) ?? start, product_id: (i.product_id as string) ?? null, product_name: String(i.product_name), quantity: num(i.quantity), total: num(i.unit_price) * num(i.quantity), sector: String(i.sector), cancelled: d?.status === 'CANCELLED', channel: 'DELIVERY' as const, waiter_id: null }; }),
     ],
-    deliveries: deliveries.map((d) => ({ at: d.created_at as string, total: num(d.total), fee: num(d.delivery_fee), neighborhood: String(d.address_neighborhood ?? '—'), status: String(d.status), paid: !!d.paid_at, method: String(d.payment_method) })),
+    deliveries: deliveries.map((d) => ({ at: d.created_at as string, total: num(d.total), fee: num(d.delivery_fee), neighborhood: String(d.address_neighborhood ?? '—'), status: String(d.status), paid: !!receivedAt(d as DeliveryMoment), method: String(d.payment_method) })),
     losses: losses.map((l) => ({ at: l.created_at as string, product_name: productName.get(l.product_id as string) ?? 'Produto', quantity: Math.abs(num(l.quantity)), type: String(l.movement_type), reason: (l.reason as string) ?? null })),
     shifts: shifts.map((s) => ({ id: s.id as string, name: String(s.name), opened_at: s.opened_at as string, closed_at: (s.closed_at as string) ?? null, cash_start: num(s.cash_drawer_start), cash_end: s.cash_drawer_end == null ? null : num(s.cash_drawer_end), status: String(s.status) })),
     tabs: tabs.map((t) => ({ paid: paidByTab.get(t.id as string) ?? 0, t })).filter((x) => x.paid > 0.009)
@@ -166,13 +171,13 @@ function loadDemoData(from: string, to: string, start: string, end: string): Fin
     from, to,
     sales: [
       ...payments.filter((p) => p.status === 'PAID' && inRange(p.paid_at)).map((p) => ({ id: p.id, at: p.paid_at, amount: p.amount, method: p.method, channel: 'SALAO' as const })),
-      ...deliveryOrders.filter((d) => d.paid_at && d.status !== 'CANCELLED' && inRange(d.paid_at)).map((d) => ({ id: d.id, at: d.paid_at!, amount: d.total, method: d.payment_method, channel: 'DELIVERY' as const })),
+      ...deliveryOrders.filter((d) => inRange(receivedAt(d))).map((d) => ({ id: d.id, at: receivedAt(d)!, amount: d.total, method: d.payment_method, channel: 'DELIVERY' as const })),
     ],
     items: [
       ...orderItems.filter((i) => inRange(i.created_at)).map((i) => ({ at: i.created_at, product_id: i.product_id, product_name: i.product_name, quantity: i.quantity, total: i.unit_price * i.quantity, sector: i.sector, cancelled: i.status === 'CANCELLED', channel: 'SALAO' as const, waiter_id: waiterByOrder.get(i.order_id) ?? null })),
       ...deliveryOrders.filter((d) => inRange(d.created_at)).flatMap((d) => (d.items ?? []).map((i) => ({ at: d.created_at, product_id: i.product_id, product_name: i.product_name, quantity: i.quantity, total: i.unit_price * i.quantity, sector: i.sector, cancelled: d.status === 'CANCELLED', channel: 'DELIVERY' as const, waiter_id: null }))),
     ],
-    deliveries: deliveryOrders.filter((d) => inRange(d.created_at)).map((d) => ({ at: d.created_at, total: d.total, fee: d.delivery_fee, neighborhood: d.address_neighborhood, status: d.status, paid: !!d.paid_at, method: d.payment_method })),
+    deliveries: deliveryOrders.filter((d) => inRange(d.created_at)).map((d) => ({ at: d.created_at, total: d.total, fee: d.delivery_fee, neighborhood: d.address_neighborhood, status: d.status, paid: !!receivedAt(d), method: d.payment_method })),
     losses: stockMovements.filter((m) => ['PERDA', 'DESCARTE', 'CANCELAMENTO_RETORNO'].includes(m.movement_type) && inRange(m.created_at)).map((m) => ({ at: m.created_at, product_name: m.product_name ?? 'Produto', quantity: Math.abs(m.quantity), type: m.movement_type, reason: m.reason ?? null })),
     shifts: shiftsHistory.filter((s) => inRange(s.opened_at)).map((s) => ({ id: s.id, name: s.name, opened_at: s.opened_at, closed_at: s.closed_at, cash_start: s.cash_drawer_start, cash_end: s.cash_drawer_end, status: s.status })),
     tabs: tabs.filter((t) => t.status === 'CLOSED' && inRange(t.closed_at))

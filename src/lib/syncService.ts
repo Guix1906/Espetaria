@@ -91,11 +91,12 @@ class SyncService {
         logger.warn({ context: 'SyncService', message: 'Aviso ao buscar mesas', error: tablesError });
       }
 
-      // 3. Busca comandas abertas
+      // 3. Busca comandas abertas + as já fechadas do turno atual (faturamento, caixa e fechamento do turno dependem delas)
+      const shiftId = (shiftData as Shift | null)?.id;
       const { data: dbTabs, error: tabsError } = await supabase
         .from('tabs')
         .select('*')
-        .eq('status', 'OPEN');
+        .or(shiftId ? `status.eq.OPEN,shift_id.eq.${shiftId}` : 'status.eq.OPEN');
 
       if (tabsError) {
         logger.warn({ context: 'SyncService', message: 'Aviso ao buscar comandas', error: tabsError });
@@ -112,7 +113,7 @@ class SyncService {
       // Atualiza mesas associando comanda atual
       if (dbTables && dbTables.length > 0) {
         const mergedTables: RestaurantTable[] = dbTables.map((tbl) => {
-          const matchingTab = activeTabs.find((tab) => tab.table_id === tbl.id || tab.table_id === `table-${tbl.number}`);
+          const matchingTab = activeTabs.find((tab) => tab.status === 'OPEN' && (tab.table_id === tbl.id || tab.table_id === `table-${tbl.number}`));
           return {
             ...tbl,
             updated_at: tbl.updated_at ?? new Date().toISOString(),

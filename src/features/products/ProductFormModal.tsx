@@ -33,7 +33,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
   const { currentProfile } = useAuthStore();
 
   const [name, setName] = useState('');
-  const [price, setPrice] = useState<string>('22.00');
+  const [price, setPrice] = useState<string>('');
   const [sector, setSector] = useState<ProductionSector>('GRILL');
   const [type, setType] = useState<ProductType>('ESPETO');
   const categories = useStockStore((state) => state.categories);
@@ -72,7 +72,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setActive(productToEdit.active);
     } else {
       setName('');
-      setPrice('22.00');
+      setPrice('');
       setSector('GRILL');
       setType('ESPETO');
       setCategoryId(useStockStore.getState().categoryIdByOrder(1));
@@ -118,7 +118,9 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     e.preventDefault();
     setErrorMsg(null);
 
-    const parsedPrice = parseFloat(price.replace(',', '.'));
+    // Só aceita número inteiro ou com até 2 casas ("24", "24,90", "24.90"): "22.09.99" não vira 22,09 em silêncio
+    const priceText = price.trim().replace(',', '.');
+    const parsedPrice = /^\d+(\.\d{1,2})?$/.test(priceText) ? Number(priceText) : NaN;
     if (!name.trim()) {
       setErrorMsg('Informe o nome do produto.');
       return;

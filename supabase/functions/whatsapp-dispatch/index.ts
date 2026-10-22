@@ -73,7 +73,8 @@ Deno.serve(async (req) => {
   const { data: settings } = await admin.from('restaurant_settings').select('*').limit(1).maybeSingle();
   const restaurant = settings?.name || 'Espetaria';
   const savedTemplates = settings?.whatsapp_templates ?? null;
-  const appUrl = Deno.env.get('APP_URL') || '';
+  // Só o endereço (ignora BOM/espaços que entram ao gravar o secret pelo PowerShell)
+  const appUrl = (Deno.env.get('APP_URL') || '').match(/https?:\/\/[^\s]+/)?.[0].replace(/\/$/, '') ?? '';
   const results: { id: string; status: string; error?: string }[] = [];
 
   for (const job of (jobs ?? []) as Outbox[]) {
