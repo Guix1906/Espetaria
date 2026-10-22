@@ -41,13 +41,16 @@ export function sideDishCopy(job) {
  */
 export class PrintWorker {
   constructor(config) {
-    if (!config.supabaseUrl || !config.serviceRoleKey) {
-      throw new Error('Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env do printer-bridge.');
+    this.restricted = Boolean(config.anonKey && config.printerEmail && config.printerPassword);
+    if (!config.supabaseUrl || (!this.restricted && !config.serviceRoleKey)) {
+      throw new Error('Defina no .env: SUPABASE_URL + SUPABASE_ANON_KEY + PRINTER_EMAIL + PRINTER_PASSWORD (recomendado) ou SUPABASE_SERVICE_ROLE_KEY.');
     }
     this.config = config;
-    this.supabase = createClient(config.supabaseUrl, config.serviceRoleKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
+    this.supabase = createClient(config.supabaseUrl, this.restricted ? config.anonKey : config.serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: this.restricted },
     });
+    // No acesso restrito as RPCs passam pelos wrappers printer_* (checam se o usuário é a impressora)
+    this.rpcName = (name) => (this.restricted ? `printer_${name}` : name);
     this.running = false;
     this.busy = false;
     this.again = false;
@@ -56,6 +59,14 @@ export class PrintWorker {
 
   async start() {
     this.running = true;
+    if (this.restricted) {
+      const { error } = await this.supabase.auth.signInWithPassword({
+        email: this.config.printerEmail,
+        password: this.config.printerPassword,
+      });
+      if (error) throw new Error(`Login do usuário da impressora falhou: ${error.message}`);
+      log(`[bridge] Logado com acesso restrito (${this.config.printerEmail}).`);
+    }
     log(`[bridge] Iniciado em modo ${this.config.mode.toUpperCase()} como "${this.config.workerName}".`);
 
     this.channel = this.supabase
@@ -94,7 +105,7 @@ export class PrintWorker {
     try {
       do {
         this.again = false;
-        const { data: jobs, error } = await this.supabase.rpc('claim_print_jobs', {
+        const { data: jobs, error } = await this.supabase.rpc(this.rpcName('claim_print_jobs'), {
           p_worker: this.config.workerName,
           p_limit: 10,
         });
@@ -175,7 +186,7 @@ export class PrintWorker {
         const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 8000);
         log(`[bridge] ↻ ${label} falhou (tentativa ${attempt}/${maxRetries}), retentando em ${backoffMs}ms: ${err.message}`);
         setTimeout(() => {
-          this.supabase.rpc('requeue_print_job', { p_job_id: job.id, p_error: err.message }).then(({ error }) => {
+          this.supabase.rpc(this.rpcName('requeue_print_job'), { p_job_id: job.id, p_error: err.message }).then(({ error }) => {
             if (error) log('[bridge] ERRO ao re-enfileirar:', error.message);
           });
         }, backoffMs);
@@ -189,7 +200,7 @@ export class PrintWorker {
   }
 
   async complete(id, success, error, printer) {
-    const { error: rpcError } = await this.supabase.rpc('complete_print_job', {
+    const { error: rpcError } = await this.supabase.rpc(this.rpcName('complete_print_job'), {
       p_job_id: id,
       p_success: success,
       p_error: error,

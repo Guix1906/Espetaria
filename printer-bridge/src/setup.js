@@ -67,11 +67,15 @@ async function main() {
   let text = (fs.existsSync(ENV_FILE) ? fs.readFileSync(ENV_FILE, 'utf8') : fs.readFileSync(EXAMPLE_FILE, 'utf8')).replace(/^﻿/, '');
   const updates = {};
 
-  if (!readEnvValue(text, 'SUPABASE_SERVICE_ROLE_KEY')) {
-    console.log('A chave do Supabase (service_role) ainda não foi cadastrada.');
-    console.log('Pegue em: Supabase → Project Settings → API Keys → service_role (secret).');
-    const key = await ask('Cole a chave aqui e aperte Enter (ou só Enter para pular): ');
-    if (key) updates.SUPABASE_SERVICE_ROLE_KEY = key;
+  if (!readEnvValue(text, 'SUPABASE_SERVICE_ROLE_KEY') && !readEnvValue(text, 'PRINTER_PASSWORD')) {
+    console.log('Acesso ao Supabase ainda não cadastrado (usuário restrito da impressora).');
+    console.log('Chave pública em: Supabase → Project Settings → API Keys → anon (public).');
+    const anon = await ask('Chave anon (ou só Enter para pular): ');
+    if (anon) {
+      updates.SUPABASE_ANON_KEY = anon;
+      updates.PRINTER_EMAIL = await ask('E-mail do usuário da impressora: ');
+      updates.PRINTER_PASSWORD = await ask('Senha do usuário da impressora: ');
+    }
     console.log('');
   }
 

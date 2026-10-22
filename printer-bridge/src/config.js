@@ -31,6 +31,10 @@ export function loadConfig(env = process.env) {
     mode,
     supabaseUrl: env.SUPABASE_URL || '',
     serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY || '',
+    // Acesso restrito (recomendado): chave pública + usuário que só mexe na fila de impressão
+    anonKey: env.SUPABASE_ANON_KEY || '',
+    printerEmail: env.PRINTER_EMAIL || '',
+    printerPassword: env.PRINTER_PASSWORD || '',
     workerName: env.WORKER_NAME || `bridge-${os.hostname()}`,
     pollIntervalMs: parseInt(env.POLL_INTERVAL_MS || '4000', 10),
     printTimeoutMs: parseInt(env.PRINT_TIMEOUT_MS || '5000', 10),
