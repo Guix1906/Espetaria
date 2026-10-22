@@ -1,4 +1,4 @@
-﻿import { ArrowRight, Beer, Bike, Clock3, Flame, PackagePlus, Plus, ShoppingBag, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { ArrowRight, Beer, Bike, Clock3, Flame, PackagePlus, Plus, ShoppingBag, Sparkles, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FilterChip } from '../../components/ui/FilterChip';
@@ -26,7 +26,10 @@ const categories = [
 
 /** publicMode: versão do cliente (link do WhatsApp), sem ações administrativas. */
 export function DeliveryCatalogView({ publicMode = false }: { publicMode?: boolean } = {}) {
-  const { products, dailyPrepStock } = useStockStore();
+  const { products, dailyPrepStock, categories: storeCategories } = useStockStore();
+  // Entradas = produtos da categoria "Entradas" do cadastro
+  const entradaIds = new Set(storeCategories.filter((c) => /^entradas?$/i.test(c.name.trim())).map((c) => c.id));
+  const isEntrada = (product: Product) => entradaIds.has(product.category_id);
   const { cart, addToCart, activeTrackingOrder } = useDeliveryStore();
   const { currentShift } = useShiftStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -42,9 +45,9 @@ export function DeliveryCatalogView({ publicMode = false }: { publicMode?: boole
     if (!product.active) return false;
     if (query && !`${product.name} ${product.description || ''}`.toLocaleLowerCase('pt-BR').includes(query)) return false;
     if (selectedCategory === 'ALL') return true;
-    if (selectedCategory === 'ENTRADA') return product.type === 'PORCAO' && /entrada|petisco|aperitivo/i.test(product.name + ' ' + (product.description || ''));
-    if (selectedCategory === 'ESPETO_C_ACOMP') return product.type === 'ESPETO' && /acompanhamento|c\/|com\s/i.test(product.name + ' ' + (product.description || ''));
-    if (selectedCategory === 'ESPETO_S_ACOMP') return product.type === 'ESPETO' && !/acompanhamento|c\/|com\s/i.test(product.name + ' ' + (product.description || ''));
+    if (selectedCategory === 'ENTRADA') return isEntrada(product);
+    if (selectedCategory === 'ESPETO_C_ACOMP') return product.type === 'ESPETO' && !isEntrada(product) && /acompanhamento|c\/|com\s/i.test(product.name + ' ' + (product.description || ''));
+    if (selectedCategory === 'ESPETO_S_ACOMP') return product.type === 'ESPETO' && !isEntrada(product) && !/acompanhamento|c\/|com\s/i.test(product.name + ' ' + (product.description || ''));
     if (selectedCategory === 'BEBIDA') return product.type === 'BEBIDA';
     return product.type === selectedCategory;
   });

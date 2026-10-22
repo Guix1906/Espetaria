@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { DailyPrepStock, DeliveryOrder, DeliveryOrderItem, DeliveryOrderType, DeliveryStatus, DeliveryPaymentMethod, Product, WhatsAppMessage } from '../types/domain';
+import { Category, DailyPrepStock, DeliveryOrder, DeliveryOrderItem, DeliveryOrderType, DeliveryStatus, DeliveryPaymentMethod, Product, WhatsAppMessage } from '../types/domain';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { callRpc } from '../lib/remote';
 import { audioService } from '../lib/audio';
@@ -162,6 +162,10 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
     }
     const menu = data as PublicMenu;
     const now = new Date().toISOString();
+
+    // Categorias (leitura pública) para montar abas como "Entradas"
+    const { data: categories } = await supabase.from('categories').select('*').eq('active', true).order('display_order');
+    if (categories?.length) useStockStore.setState({ categories: categories as Category[] });
 
     useStockStore.setState({
       products: menu.products.map((p) => ({ ...p, price: Number(p.price), available: !p.is_exhausted })),

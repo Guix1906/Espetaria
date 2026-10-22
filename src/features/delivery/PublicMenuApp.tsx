@@ -30,10 +30,12 @@ const PAYMENTS: { id: DeliveryPaymentMethod; label: string; hint: string }[] = [
   { id: 'CARTAO_ENTREGA', label: 'Cartão na entrega', hint: 'Débito ou crédito na maquininha' },
   { id: 'DINHEIRO', label: 'Dinheiro', hint: 'Pague ao entregador' },
 ];
-const CATEGORY_ORDER = ['Espetos com acompanhamento', 'Espetos', 'Porções', 'Bebidas', 'Sobremesas', 'Outros'];
+const CATEGORY_ORDER = ['Espetos com acompanhamento', 'Espetos', 'Entradas', 'Porções', 'Bebidas', 'Sobremesas', 'Outros'];
 const SAVED_KEY = 'ponto.cardapio.cliente';
 
-function categoryOf(p: Product) {
+/** Aba do cardápio. Produtos da categoria "Entradas" do cadastro ganham aba própria. */
+function categoryOf(p: Product, categoryName?: string) {
+  if (categoryName && /^entradas?$/i.test(categoryName.trim())) return 'Entradas';
   if (p.type === 'ESPETO') return /acompanhamento/i.test(p.name) ? 'Espetos com acompanhamento' : 'Espetos';
   if (p.type === 'PORCAO') return 'Porções';
   if (p.type === 'BEBIDA') return 'Bebidas';
@@ -182,7 +184,7 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
 
 /* ---------- app ---------- */
 export function PublicMenuApp() {
-  const { products, dailyPrepStock } = useStockStore();
+  const { products, dailyPrepStock, categories } = useStockStore();
   const { cart, addToCart, updateCartQuantity, submitDeliveryOrder, zones, activeTrackingOrder } = useDeliveryStore();
   const { currentShift } = useShiftStore();
   const settings = useSettingsStore((s) => s.settings);
@@ -227,7 +229,8 @@ export function PublicMenuApp() {
     const q = query.trim().toLocaleLowerCase('pt-BR');
     return products.filter((p) => p.active && (!q || `${p.name} ${p.description || ''}`.toLocaleLowerCase('pt-BR').includes(q)));
   }, [products, query]);
-  const groups = useMemo(() => CATEGORY_ORDER.map((c) => ({ name: c, items: visible.filter((p) => categoryOf(p) === c) })).filter((g) => g.items.length), [visible]);
+  const catName = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
+  const groups = useMemo(() => CATEGORY_ORDER.map((c) => ({ name: c, items: visible.filter((p) => categoryOf(p, catName.get(p.category_id)) === c) })).filter((g) => g.items.length), [visible, catName]);
   const qtyInCart = (id: string) => cart.filter((c) => c.productId === id).reduce((s, c) => s + c.quantity, 0);
   const count = cart.reduce((s, c) => s + c.quantity, 0);
   const subtotal = cart.reduce((s, c) => s + c.product.price * c.quantity, 0);
