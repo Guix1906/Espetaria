@@ -84,6 +84,8 @@ export function buildTicket(job, config) {
     return r.feed(3).cut();
   }
 
+  if (job.kind === 'BILL') return billTicket(r, job, config);
+
   if (job.kind === 'DELIVERY_SUMMARY') {
     const o = payload;
     const exp = resolveTemplates(config.templates).EXPEDICAO;
@@ -221,6 +223,39 @@ function productionTicket(r, job, config, tpl, label) {
 
   // Etiqueta de delivery: destacável, vai grudada na embalagem deste setor
   if (job.origin === 'DELIVERY' && label.enabled) deliveryLabel(r, job, config, label);
+}
+
+/** Conta da mesa para o cliente conferir (não é documento fiscal). */
+export function billTicket(r, job, config) {
+  const o = job.payload || {};
+  const num = (v) => Number(v || 0);
+  r.align('center').size(2).bold().line(`MESA ${job.table_number ?? '-'}`).bold(false).size(1)
+    .bold().line('CONTA PARA CONFERÊNCIA').bold(false)
+    .line(formatDateFull(job.created_at));
+  r.align('left').divider('=');
+  if (job.customer_name) r.line(`Cliente: ${job.customer_name}`);
+  if (o.waiter) r.line(`Garçom: ${o.waiter}`);
+  if (o.opened_at) r.line(`Aberta em: ${formatTime(o.opened_at)}`);
+  r.divider();
+  for (const item of job.items || []) {
+    const price = brl(num(item.unit_price) * num(item.quantity));
+    r.pair(`${item.quantity}x ${item.name}`.slice(0, config.paperColumns - price.length - 1), price);
+    if (num(item.quantity) > 1) r.line(`   (${brl(item.unit_price)} cada)`);
+  }
+  r.divider();
+  r.pair('Subtotal', brl(o.subtotal));
+  if (num(o.service_fee) > 0) r.pair('Taxa de serviço', brl(o.service_fee));
+  if (num(o.discount) > 0) r.pair('Desconto', `- ${brl(o.discount)}`);
+  r.bold().pair('TOTAL', brl(o.total)).bold(false);
+  if (num(o.paid) > 0) {
+    r.pair('Já pago', brl(o.paid));
+    r.bold().pair('FALTA PAGAR', brl(Math.max(num(o.total) - num(o.paid), 0))).bold(false);
+  }
+  const people = num(o.people_count);
+  if (people > 1) r.line(`Dividido por ${people}: ${brl(num(o.total) / people)} cada`);
+  if (o.pix_key) r.divider().line(`PIX: ${o.pix_key}`);
+  r.divider().align('center').line('Não é documento fiscal').line('Obrigado pela preferência!');
+  return r.feed(3).cut();
 }
 
 function formatDateFull(iso) {

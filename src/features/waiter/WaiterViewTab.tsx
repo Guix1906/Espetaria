@@ -1,11 +1,14 @@
 import {
   CheckCircle2,
+  Printer,
   Receipt,
   Users,
   X,
 } from 'lucide-react';
 import React from 'react';
 import { Dialog } from '../../components/ui/Dialog';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
+import { usePrintStore } from '../../stores/usePrintStore';
 import { formatBRL } from '../../lib/formatters';
 import { useTableStore } from '../../stores/useTableStore';
 import { TabItemsPanel } from './TabItemsPanel';
@@ -25,6 +28,15 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
   onRequestBill,
 }) => {
   const { tabs, getTabOrderItems } = useTableStore();
+  const { notify } = useFeedback();
+  const [printing, setPrinting] = React.useState(false);
+
+  const reprintBill = async () => {
+    setPrinting(true);
+    const ok = await usePrintStore.getState().printBill(table.id);
+    setPrinting(false);
+    notify(ok ? 'Conta enviada para a impressora da churrasqueira.' : 'Não foi possível imprimir a conta.', ok ? 'success' : 'error');
+  };
 
   if (!isOpen) return null;
 
@@ -109,8 +121,18 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
               <strong className="whitespace-nowrap text-sm font-semibold text-brand-700 tabular-nums">{formatBRL(currentTab.total / Math.max(1, currentTab.people_count))}</strong>
             </div>
 
-            {/* Botão de Solicitar Fechamento */}
-            <div className="pt-2">
+            {/* Botão de Solicitar Fechamento (já imprime a conta na churrasqueira) */}
+            <div className="pt-2 space-y-2">
+              {table.status === 'AGUARDANDO_CONTA' && (
+                <button
+                  onClick={() => void reprintBill()}
+                  disabled={printing}
+                  className="w-full py-3.5 rounded-2xl bg-brand-700 text-white font-bold transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-60"
+                  type="button">
+                  <Printer className="w-4 h-4" />
+                  <span>{printing ? 'Enviando...' : 'Imprimir conta de novo'}</span>
+                </button>
+              )}
               <button
                 onClick={onRequestBill}
                 className="w-full py-3.5 rounded-2xl bg-surface-muted hover:bg-surface-muted border border-line text-ink font-bold transition flex items-center justify-center gap-2 shadow-sm"

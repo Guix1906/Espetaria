@@ -6,6 +6,7 @@ import {
   CreditCard,
   Percent,
   Plus,
+  Printer,
   QrCode,
   Receipt,
   Trash2,
@@ -17,6 +18,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { formatBRL, formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { usePrintStore } from '../../stores/usePrintStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { OrderItem, Payment, RestaurantTable, Tab } from '../../types/domain';
@@ -36,6 +38,13 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   onClose,
 }) => {
   const { requestText, notify } = useFeedback();
+  const [printingBill, setPrintingBill] = useState(false);
+  const printBill = async () => {
+    setPrintingBill(true);
+    const ok = await usePrintStore.getState().printBill(table.id);
+    setPrintingBill(false);
+    notify(ok ? 'Conta enviada para a impressora da churrasqueira.' : 'Não foi possível imprimir a conta.', ok ? 'success' : 'error');
+  };
   const {
     tabs,
     getTabOrderItems,
@@ -258,12 +267,22 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                 </p>
               </div>
             </div>
-            <button
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                onClick={() => void printBill()}
+                disabled={printingBill}
+                className="btn-secondary text-xs"
+                type="button">
+                <Printer className="h-4 w-4" />
+                {printingBill ? 'Enviando...' : 'Imprimir conta'}
+              </button>
+              <button
               onClick={onClose}
               className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
               type="button" aria-label="Fechar janela">
               <X className="w-5 h-5" />
             </button>
+            </div>
           </div>
 
           {/* Mensagem de Erro se houver */}

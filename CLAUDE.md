@@ -75,6 +75,9 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   `pix_auto_minutes` (`expire_unpaid_pix_orders`, devolve estoque). Ativação: `supabase/ATIVAR-PIX-MERCADOPAGO.bat`.
 - printer-bridge: espeto "com acompanhamento" gera cópia do cupom para a COZINHA (`sideDishCopy`); delivery sai em um cupom
   compacto por setor com cliente/endereço/pagamento (`compactDeliveryTicket`); expedição separada só com `PRINT_DELIVERY_SUMMARY=true`.
+- Conta da mesa (00035): `request_bill` ("Pediu a conta") enfileira `kind=BILL` na CHURRASQUEIRA (GRILL) via `enqueue_bill_print`
+  (itens agrupados, taxa, desconto, total, já pago, divisão por pessoa, PIX; "Não é documento fiscal"); botão "Imprimir conta" no
+  caixa (`TableSettlementModal`) e "Imprimir conta de novo" no garçom (`WaiterViewTab`). Cupom em `billTicket` (printer-bridge/tickets.js).
 - Impressão: modelos estilo Anota AI ("Produção" e "Completo") configuráveis em Configurações → Modelos de cupom (`restaurant_settings.print_templates`); etiqueta de delivery com dados do cliente.
 
 - Dados da loja (nome, CNPJ, endereço, telefone, chave PIX) vêm SEMPRE de `restaurant_settings`; nada de valores de exemplo

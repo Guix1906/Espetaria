@@ -40,6 +40,8 @@ interface PrintState {
   applyRemoteJob: (row: Record<string, unknown>) => void;
   /** Cupom de teste real para o setor (NONE = caixa/expedição). */
   sendTestPrint: (sector: ProductionSector) => Promise<void>;
+  /** Imprime a conta da mesa (conferência) na churrasqueira. Retorna false se o banco recusar. */
+  printBill: (tableId: string) => Promise<boolean>;
   enqueuePrintJob: (input: CreatePrintJobInput) => { job: PrintJob; isDuplicate: boolean };
   processJob: (jobId: string) => Promise<boolean>;
   reprintJob: (jobId: string, reason?: string) => PrintJob;
@@ -128,6 +130,12 @@ export const usePrintStore = create<PrintState>((set, get) => ({
       return;
     }
     await callRpc('enqueue_test_print', { p_sector: sector }, 'PrintStore');
+  },
+
+  printBill: async (tableId) => {
+    // Modo demonstração: sem banco, não há cupom real de conta
+    if (!isSupabaseConfigured) return true;
+    return (await callRpc('enqueue_bill_print', { p_table_id: tableId, p_reprint: true }, 'PrintStore')) !== null;
   },
 
   enqueuePrintJob: (input) => {

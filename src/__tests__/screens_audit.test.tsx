@@ -18,6 +18,7 @@ import { SettingsView } from '../features/settings/SettingsView';
 import { ShiftOpenModal } from '../features/shifts/ShiftOpenModal';
 import { ShiftCloseModal } from '../features/admin/ShiftCloseModal';
 import { TableSettlementModal } from '../features/cashier/TableSettlementModal';
+import { WaiterViewTab } from '../features/waiter/WaiterViewTab';
 import { PixPaymentModal } from '../features/pix/PixPaymentModal';
 import { DeliveryCartDrawer } from '../features/delivery/DeliveryCartDrawer';
 import { ProductFormModal } from '../features/products/ProductFormModal';
@@ -327,6 +328,14 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       );
       expect(html).toContain('Fechamento de conta');
       expect(html).toContain('Aguardando Quitação Total');
+      expect(html).toContain('Imprimir conta');
+
+      // Garçom: depois de "Pediu a conta", aparece o botão para reimprimir
+      const waiting = { ...table, status: 'AGUARDANDO_CONTA' as const };
+      const waiterHtml = renderWithFeedback(<WaiterViewTab table={waiting} isOpen={true} onClose={vi.fn()} onRequestBill={vi.fn()} />);
+      expect(waiterHtml).toContain('Imprimir conta de novo');
+      const openHtml = renderWithFeedback(<WaiterViewTab table={table} isOpen={true} onClose={vi.fn()} onRequestBill={vi.fn()} />);
+      expect(openHtml).not.toContain('Imprimir conta de novo');
     });
 
     it('3.4 PixPaymentModal abre e exibe QR Code e Chave PIX', () => {
