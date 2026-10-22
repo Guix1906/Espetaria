@@ -19,6 +19,7 @@ import { ShiftOpenModal } from '../features/shifts/ShiftOpenModal';
 import { ShiftCloseModal } from '../features/admin/ShiftCloseModal';
 import { TableSettlementModal } from '../features/cashier/TableSettlementModal';
 import { WaiterViewTab } from '../features/waiter/WaiterViewTab';
+import { WaiterOrderPad } from '../features/waiter/WaiterOrderPad';
 import { PixPaymentModal } from '../features/pix/PixPaymentModal';
 import { DeliveryCartDrawer } from '../features/delivery/DeliveryCartDrawer';
 import { ProductFormModal } from '../features/products/ProductFormModal';
@@ -245,6 +246,13 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       expect(html).toContain('Em consumo');
       expect(html).toContain('Movimentações do turno');
       expect(html).toContain('Comanda aberta · Mesa 01');
+    });
+
+    it('2.1b Lançar pedido do garçom mostra a foto do produto', () => {
+      const [first, ...rest] = useStockStore.getState().products;
+      useStockStore.setState({ products: [{ ...first!, image_url: 'https://exemplo.test/picanha.jpg' }, ...rest] });
+      const html = renderWithFeedback(<WaiterOrderPad table={INITIAL_TABLES[0]!} onBackToTables={vi.fn()} />);
+      expect(html).toContain('https://exemplo.test/picanha.jpg');
     });
 
     it('2.2 WaiterModule com turno aberto permite atendimento livre', () => {
