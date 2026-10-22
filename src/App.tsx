@@ -70,7 +70,7 @@ export function App() {
 }
 
 function AdminWorkspace() {
-  const { currentProfile } = useAuthStore();
+  const currentProfile = useAuthStore((s) => s.currentProfile);
   const allowedTabs = tabsForRole(currentProfile.role);
   const [requestedTab, setActiveTab] = useState<ActiveTab>(() => allowedTabs[0] ?? 'waiter');
   // Nunca renderiza uma tela fora das permissões do papel atual
@@ -93,14 +93,12 @@ function AdminWorkspace() {
     previousTab.current = activeTab;
   }, [activeTab]);
 
-  const { tables, orderItems } = useTableStore();
-  const { dailyPrepStock } = useStockStore();
-  const { deliveryOrders } = useDeliveryStore();
-  const openTablesCount = tables.filter((table) => table.status === 'OCUPADA' || table.status === 'AGUARDANDO_CONTA').length;
-  const waitingBillCount = tables.filter((table) => table.status === 'AGUARDANDO_CONTA').length;
-  const exhaustedCount = dailyPrepStock.filter((stock) => stock.is_exhausted || stock.current_quantity <= 0).length;
-  const pendingProductionCount = orderItems.filter((item) => item.status === 'RECEIVED' || item.status === 'IN_PREPARATION').length;
-  const activeDeliveriesCount = deliveryOrders.filter((order) => ['CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'].includes(order.status)).length;
+  // Só os números do menu: a moldura (e a tela aberta) não redesenha a cada mudança do banco
+  const openTablesCount = useTableStore((s) => s.tables.filter((table) => table.status === 'OCUPADA' || table.status === 'AGUARDANDO_CONTA').length);
+  const waitingBillCount = useTableStore((s) => s.tables.filter((table) => table.status === 'AGUARDANDO_CONTA').length);
+  const pendingProductionCount = useTableStore((s) => s.orderItems.filter((item) => item.status === 'RECEIVED' || item.status === 'IN_PREPARATION').length);
+  const exhaustedCount = useStockStore((s) => s.dailyPrepStock.filter((stock) => stock.is_exhausted || stock.current_quantity <= 0).length);
+  const activeDeliveriesCount = useDeliveryStore((s) => s.deliveryOrders.filter((order) => ['CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'].includes(order.status)).length);
 
   return (
     <div className="app-shell">

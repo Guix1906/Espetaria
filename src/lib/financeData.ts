@@ -109,7 +109,8 @@ export async function loadFinanceData(from: string, to: string): Promise<Finance
   if (!isSupabaseConfigured) return { ...loadDemoData(from, to, start, end), productCosts: (await loadProductCosts()).costs, costsAvailable: true };
 
   type Row = Record<string, unknown>;
-  const [payments, deliveries, items, orders, losses, shifts, tabs, entriesInRange, overdue, profiles, openTabs] = await Promise.all([
+  // Tudo que não depende de outra consulta vai junto (cada ida ao banco custa ~0,3 s)
+  const [payments, deliveries, items, orders, losses, shifts, tabs, entriesInRange, overdue, profiles, openTabs, { costs: productCosts, available: costsAvailable }, payoutsResult] = await Promise.all([
     fetchAll<Row>((a, b) => supabase.from('payments').select('id, amount, method, status, paid_at').gte('paid_at', start).lte('paid_at', end).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('delivery_orders').select('id, total, delivery_fee, payment_method, status, created_at, paid_at, delivered_at, address_neighborhood').gte('created_at', start).lte('created_at', end).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('order_items').select('order_id, product_id, product_name, quantity, unit_price, sector, status, created_at').gte('created_at', start).lte('created_at', end).range(a, b)),
@@ -121,29 +122,29 @@ export async function loadFinanceData(from: string, to: string): Promise<Finance
     fetchAll<Row>((a, b) => supabase.from('finance_entries').select('*').lt('due_date', from).is('paid_at', null).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('profiles').select('id, name').range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('tabs').select('total').eq('status', 'OPEN').range(a, b)),
-  ]);
-  const [{ costs: productCosts, available: costsAvailable }, payoutsResult] = await Promise.all([
     loadProductCosts(),
     supabase.from('driver_payouts').select('created_at, total').gte('created_at', start).lte('created_at', end),
   ]);
 
-  // Itens do delivery (ligados aos pedidos do período)
-  const deliveryIds = deliveries.map((d) => d.id as string);
-  const deliveryItems: Row[] = [];
-  for (let i = 0; i < deliveryIds.length; i += 200) {
-    const chunk = deliveryIds.slice(i, i + 200);
-    const { data, error } = await supabase.from('delivery_order_items').select('delivery_order_id, product_id, product_name, quantity, unit_price, sector').in('delivery_order_id', chunk);
-    if (error) throw new Error(error.message);
-    deliveryItems.push(...(data ?? []));
-  }
-  // Pagamentos válidos das mesas fechadas: estorno tira a mesa do ticket médio
-  const tabIds = tabs.map((t) => t.id as string);
+  // Segunda rodada (depende dos ids acima), também em paralelo, em lotes de 200 ids
+  const chunks = (ids: string[]) => Array.from({ length: Math.ceil(ids.length / 200) }, (_, i) => ids.slice(i * 200, i * 200 + 200));
+  const [itemChunks, paymentChunks] = await Promise.all([
+    // Itens do delivery (ligados aos pedidos do período)
+    Promise.all(chunks(deliveries.map((d) => d.id as string)).map(async (chunk) => {
+      const { data, error } = await supabase.from('delivery_order_items').select('delivery_order_id, product_id, product_name, quantity, unit_price, sector').in('delivery_order_id', chunk);
+      if (error) throw new Error(error.message);
+      return (data ?? []) as Row[];
+    })),
+    // Pagamentos válidos das mesas fechadas: estorno tira a mesa do ticket médio
+    Promise.all(chunks(tabs.map((t) => t.id as string)).map(async (chunk) => {
+      const { data, error } = await supabase.from('payments').select('tab_id, amount').eq('status', 'PAID').in('tab_id', chunk);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    })),
+  ]);
+  const deliveryItems = itemChunks.flat();
   const paidByTab = new Map<string, number>();
-  for (let i = 0; i < tabIds.length; i += 200) {
-    const { data, error } = await supabase.from('payments').select('tab_id, amount').eq('status', 'PAID').in('tab_id', tabIds.slice(i, i + 200));
-    if (error) throw new Error(error.message);
-    (data ?? []).forEach((p) => paidByTab.set(p.tab_id as string, (paidByTab.get(p.tab_id as string) ?? 0) + num(p.amount)));
-  }
+  paymentChunks.flat().forEach((p) => paidByTab.set(p.tab_id as string, (paidByTab.get(p.tab_id as string) ?? 0) + num(p.amount)));
   const deliveryById = new Map(deliveries.map((d) => [d.id as string, d]));
   const waiterByOrder = new Map(orders.map((o) => [o.id as string, (o.created_by as string) ?? null]));
   const productName = new Map(useStockStore.getState().products.map((p) => [p.id, p.name]));
