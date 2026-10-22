@@ -38,7 +38,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   // Vindo da Visão geral com uma mesa escolhida, já abre nela
   const [selectedTableId, setSelectedTableId] = useState<string | null>(() => useNavFocusStore.getState().tableId);
   useEffect(() => { useNavFocusStore.getState().clear(); }, []);
-  const [filter, setFilter] = useState<'ALL' | 'READY' | TableStatus>('ALL');
+  const [filter, setFilter] = useState<'ALL' | 'READY' | TableStatus>(() => (useNavFocusStore.getState().readySection ? 'READY' : 'ALL'));
   const [chosenFilter, setTableFilter] = useState<TableFilter | null>(null);
   const [section, setSection] = useState<Section>(() => (useNavFocusStore.getState().readySection ? 'ready' : 'tables'));
   const [searchTerm, setSearchTerm] = useState('');
