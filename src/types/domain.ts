@@ -322,6 +322,9 @@ export interface RestaurantSettings {
   /** Texto do tempo de entrega e de retirada no cardápio digital (migração 00033). */
   delivery_eta?: string;
   pickup_eta?: string;
+  /** Pagamento do entregador: valor por entrega e valor fixo por turno (migração 00036; padrão 0). */
+  driver_per_delivery?: number;
+  driver_fuel_fixed?: number;
   /** URL da Edge Function whatsapp-dispatch. */
   whatsapp_dispatch_url?: string | null;
   /** Chave pública (anon) enviada pelo banco ao chamar a função. */

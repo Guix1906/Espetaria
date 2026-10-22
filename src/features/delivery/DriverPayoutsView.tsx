@@ -1,5 +1,5 @@
 import { Bike, Calculator, CheckCircle2, Clock3, DollarSign } from 'lucide-react';
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -7,6 +7,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { formatBRL } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 
 interface DriverPayout {
   id: string;
@@ -28,6 +29,22 @@ export function DriverPayoutsView() {
   const [calculating, setCalculating] = useState(false);
 
   const canManage = ['MASTER', 'GERENTE'].includes(currentProfile.role);
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.updateSettings);
+  const perDelivery = Number(settings.driver_per_delivery ?? 0);
+  const fuelFixed = Number(settings.driver_fuel_fixed ?? 0);
+  const [rateText, setRateText] = useState(() => perDelivery.toFixed(2));
+  const [fuelText, setFuelText] = useState(() => fuelFixed.toFixed(2));
+
+  const saveRates = (event: FormEvent) => {
+    event.preventDefault();
+    const parse = (text: string) => { const clean = text.trim().replace(',', '.') || '0'; return /^\d+(\.\d{1,2})?$/.test(clean) ? Number(clean) : NaN; };
+    const rate = parse(rateText);
+    const fuel = parse(fuelText);
+    if (isNaN(rate) || isNaN(fuel)) { notify('Informe valores válidos (ex.: 5 ou 5,50).', 'error'); return; }
+    updateSettings({ driver_per_delivery: rate, driver_fuel_fixed: fuel });
+    notify('Valores do entregador salvos.', 'success');
+  };
 
   const loadPayouts = async () => {
     if (!isSupabaseConfigured || !currentShift) return;
@@ -92,9 +109,24 @@ export function DriverPayoutsView() {
     <div className="space-y-6">
       <PageHeader
         title="Pagamentos dos entregadores"
-        description={`R$ 5,00 por entrega + R$ 10,00 fixo combustível · Turno: ${currentShift?.status === 'ABERTO' ? 'Aberto' : 'Fechado'}`}
+        description={`${formatBRL(perDelivery)} por entrega + ${formatBRL(fuelFixed)} fixo por turno · Turno: ${currentShift?.status === 'ABERTO' ? 'Aberto' : 'Fechado'}`}
         icon={Bike}
       />
+
+      {canManage && (
+        <form onSubmit={saveRates} className="surface-card flex flex-wrap items-end gap-3 p-4">
+          <div>
+            <label htmlFor="driver-rate" className="text-sm">Valor por entrega (R$)</label>
+            <input id="driver-rate" inputMode="decimal" className="mt-1 w-36 rounded-xl border px-3 py-2.5 font-mono" value={rateText} onChange={(e) => setRateText(e.target.value)} placeholder="0,00" />
+          </div>
+          <div>
+            <label htmlFor="driver-fuel" className="text-sm">Fixo por turno (R$)</label>
+            <input id="driver-fuel" inputMode="decimal" className="mt-1 w-36 rounded-xl border px-3 py-2.5 font-mono" value={fuelText} onChange={(e) => setFuelText(e.target.value)} placeholder="0,00" />
+          </div>
+          <button type="submit" className="btn-secondary">Salvar valores</button>
+          <p className="w-full text-xs text-ink-muted">Usados em "Calcular pagamentos do turno". O total pago aos entregadores sai do faturamento líquido no Financeiro.</p>
+        </form>
+      )}
 
       {!currentShift ? (
         <EmptyState

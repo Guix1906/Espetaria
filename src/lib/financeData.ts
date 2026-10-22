@@ -5,6 +5,7 @@ import { useDeliveryStore } from '../stores/useDeliveryStore';
 import { useStockStore } from '../stores/useStockStore';
 import { useShiftStore } from '../stores/useShiftStore';
 import { useAuthStore } from '../stores/useAuthStore';
+import { loadProductCosts } from './productCosts';
 
 // ============================================================================
 // Financeiro e relatórios. As vendas vêm direto de payments (salão) e
@@ -47,6 +48,12 @@ export interface FinanceDataset {
   entries: FinanceEntry[];
   openTabsTotal: number;
   staff: Record<string, string>;
+  /** Custo por produto (product_costs, migração 00036). */
+  productCosts?: Record<string, number>;
+  /** false quando a migração 00036 ainda não rodou (custos indisponíveis). */
+  costsAvailable?: boolean;
+  /** Pagamentos dos entregadores calculados no período. */
+  driverPayouts?: { at: string; total: number }[];
 }
 
 export const FINANCE_CATEGORIES: Record<FinanceKind, string[]> = {
@@ -99,7 +106,7 @@ const receivedAt = (d: DeliveryMoment): string | null =>
 
 export async function loadFinanceData(from: string, to: string): Promise<FinanceDataset> {
   const { start, end } = periodBounds(from, to);
-  if (!isSupabaseConfigured) return loadDemoData(from, to, start, end);
+  if (!isSupabaseConfigured) return { ...loadDemoData(from, to, start, end), productCosts: (await loadProductCosts()).costs, costsAvailable: true };
 
   type Row = Record<string, unknown>;
   const [payments, deliveries, items, orders, losses, shifts, tabs, entriesInRange, overdue, profiles, openTabs] = await Promise.all([
@@ -114,6 +121,10 @@ export async function loadFinanceData(from: string, to: string): Promise<Finance
     fetchAll<Row>((a, b) => supabase.from('finance_entries').select('*').lt('due_date', from).is('paid_at', null).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('profiles').select('id, name').range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('tabs').select('total').eq('status', 'OPEN').range(a, b)),
+  ]);
+  const [{ costs: productCosts, available: costsAvailable }, payoutsResult] = await Promise.all([
+    loadProductCosts(),
+    supabase.from('driver_payouts').select('created_at, total').gte('created_at', start).lte('created_at', end),
   ]);
 
   // Itens do delivery (ligados aos pedidos do período)
@@ -155,6 +166,9 @@ export async function loadFinanceData(from: string, to: string): Promise<Finance
     entries: [...entriesInRange, ...overdue].map((e) => ({ ...(e as unknown as FinanceEntry), amount: num(e.amount) })),
     openTabsTotal: openTabs.reduce((s, t) => s + num(t.total), 0),
     staff: Object.fromEntries(profiles.map((p) => [p.id as string, String(p.name)])),
+    productCosts,
+    costsAvailable,
+    driverPayouts: (payoutsResult.data ?? []).map((p) => ({ at: p.created_at as string, total: num(p.total) })),
   };
 }
 
@@ -282,7 +296,8 @@ function weekStart(date: string) {
   return d.toLocaleDateString('sv-SE');
 }
 
-export function buildCashFlow(data: FinanceDataset, grouping: CashFlowGrouping = 'auto'): CashFlowBucket[] {
+/** Divide o período em dias/semanas/meses/anos (todos os intervalos, mesmo os vazios). */
+function periodBuckets<T>(data: FinanceDataset, grouping: CashFlowGrouping, make: (key: string, label: string) => T) {
   const days = Math.round((new Date(data.to).getTime() - new Date(data.from).getTime()) / 86_400_000) + 1;
   const mode = grouping === 'auto' ? (days > 62 ? 'month' : 'day') : grouping;
   const keyOf = (date: string) => (mode === 'month' ? date.slice(0, 7) : mode === 'year' ? date.slice(0, 4) : mode === 'week' ? weekStart(date) : date);
@@ -292,14 +307,19 @@ export function buildCashFlow(data: FinanceDataset, grouping: CashFlowGrouping =
     const d = new Date(`${key}T12:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
     return mode === 'week' ? `Sem. ${d}` : d;
   };
-  const buckets = new Map<string, CashFlowBucket>();
+  const buckets = new Map<string, T>();
   const cursor = new Date(`${data.from}T12:00:00`);
   const last = new Date(`${data.to}T12:00:00`);
   while (cursor <= last) {
     const key = keyOf(cursor.toLocaleDateString('sv-SE'));
-    if (!buckets.has(key)) buckets.set(key, { key, label: labelOf(key), inflow: 0, outflow: 0, inflowForecast: 0, outflowForecast: 0, balance: 0, projected: 0 });
+    if (!buckets.has(key)) buckets.set(key, make(key, labelOf(key)));
     cursor.setDate(cursor.getDate() + 1);
   }
+  return { buckets, keyOf };
+}
+
+export function buildCashFlow(data: FinanceDataset, grouping: CashFlowGrouping = 'auto'): CashFlowBucket[] {
+  const { buckets, keyOf } = periodBuckets<CashFlowBucket>(data, grouping, (key, label) => ({ key, label, inflow: 0, outflow: 0, inflowForecast: 0, outflowForecast: 0, balance: 0, projected: 0 }));
   const add = (date: string, field: 'inflow' | 'outflow' | 'inflowForecast' | 'outflowForecast', value: number) => {
     const bucket = buckets.get(keyOf(date));
     if (bucket) bucket[field] += value;
@@ -321,6 +341,58 @@ export function buildCashFlow(data: FinanceDataset, grouping: CashFlowGrouping =
     projected += b.inflow - b.outflow + b.inflowForecast - b.outflowForecast;
     return { ...b, balance: running, projected };
   });
+}
+
+/** Compras de mercadoria: já entram no lucro pelo custo dos produtos, então não são descontadas de novo. */
+export const MERCHANDISE_CATEGORIES = ['Carnes e insumos', 'Bebidas'];
+
+export interface ProfitTotals {
+  gross: number;          // tudo que os clientes pagaram (salão + delivery, com taxa de serviço e entrega)
+  discounts: number;      // descontos dados nas mesas (já fora do bruto)
+  drivers: number;        // pagamentos dos entregadores
+  net: number;            // bruto - entregadores
+  productCost: number;    // custo dos produtos vendidos
+  expenses: number;       // contas pagas, menos compras de mercadoria
+  merchandise: number;    // compras de mercadoria pagas (informativo)
+  profit: number;         // líquido - custo dos produtos - despesas
+}
+export interface ProfitBucket extends ProfitTotals { key: string; label: string }
+
+const emptyProfit = (): ProfitTotals => ({ gross: 0, discounts: 0, drivers: 0, net: 0, productCost: 0, expenses: 0, merchandise: 0, profit: 0 });
+
+/**
+ * Faturamento bruto, líquido e lucro do período, no total e por dia/semana/mês/ano.
+ * Produtos vendidos sem custo cadastrado entram com custo zero e são listados em `missingCost`.
+ */
+export function buildProfit(data: FinanceDataset, grouping: CashFlowGrouping = 'auto') {
+  const { buckets, keyOf } = periodBuckets<ProfitBucket>(data, grouping, (key, label) => ({ key, label, ...emptyProfit() }));
+  const total = emptyProfit();
+  const add = (iso: string, field: keyof ProfitTotals, value: number) => {
+    total[field] += value;
+    const bucket = buckets.get(keyOf(dayKey(iso)));
+    if (bucket) bucket[field] += value;
+  };
+  const costs = data.productCosts ?? {};
+  const missing = new Set<string>();
+
+  data.sales.forEach((s) => add(s.at, 'gross', s.amount));
+  data.tabs.forEach((t) => add(t.closed_at, 'discounts', t.discount));
+  (data.driverPayouts ?? []).forEach((p) => add(p.at, 'drivers', p.total));
+  data.items.filter((i) => !i.cancelled).forEach((i) => {
+    const cost = i.product_id ? costs[i.product_id] : undefined;
+    if (cost == null) { missing.add(i.product_name); return; }
+    add(i.at, 'productCost', cost * i.quantity);
+  });
+  data.entries.filter((e) => e.kind === 'PAGAR' && e.paid_at).forEach((e) => {
+    add(e.paid_at!, MERCHANDISE_CATEGORIES.includes(e.category) ? 'merchandise' : 'expenses', e.amount);
+  });
+
+  const finish = <T extends ProfitTotals>(row: T): T => {
+    row.net = row.gross - row.drivers;
+    row.profit = row.net - row.productCost - row.expenses;
+    return row;
+  };
+  return { total: finish(total), buckets: [...buckets.values()].map(finish), missingCost: [...missing].sort() };
 }
 
 export function sumBy<T>(rows: T[], key: (row: T) => string, value: (row: T) => number) {

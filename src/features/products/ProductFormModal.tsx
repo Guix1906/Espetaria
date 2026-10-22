@@ -13,6 +13,7 @@ import { useStockStore } from '../../stores/useStockStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { Product } from '../../types/domain';
+import { loadProductCosts, saveProductCost } from '../../lib/productCosts';
 import { ProductionSector, ProductType } from '../../types/enums';
 
 interface ProductFormModalProps {
@@ -34,6 +35,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
 
   const [name, setName] = useState('');
   const [price, setPrice] = useState<string>('');
+  const [cost, setCost] = useState<string>('');
   const [sector, setSector] = useState<ProductionSector>('GRILL');
   const [type, setType] = useState<ProductType>('ESPETO');
   const categories = useStockStore((state) => state.categories);
@@ -86,6 +88,14 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
       setInitialShiftQuantity('40');
     }
     setErrorMsg(null);
+    setCost('');
+    if (!productToEdit || !isOpen) return;
+    let alive = true;
+    void loadProductCosts().then(({ costs }) => {
+      const value = costs[productToEdit.id];
+      if (alive && value != null) setCost(value.toFixed(2));
+    });
+    return () => { alive = false; };
   }, [productToEdit, isOpen]);
 
   // Ajusta automaticamente regras inteligentes ao mudar setor ou tipo
@@ -119,8 +129,17 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
     setErrorMsg(null);
 
     // Só aceita número inteiro ou com até 2 casas ("24", "24,90", "24.90"): "22.09.99" não vira 22,09 em silêncio
-    const priceText = price.trim().replace(',', '.');
-    const parsedPrice = /^\d+(\.\d{1,2})?$/.test(priceText) ? Number(priceText) : NaN;
+    const parseMoney = (text: string) => {
+      const clean = text.trim().replace(',', '.');
+      return /^\d+(\.\d{1,2})?$/.test(clean) ? Number(clean) : NaN;
+    };
+    const parsedPrice = parseMoney(price);
+    // Custo é opcional: vazio = sem custo cadastrado
+    const parsedCost = cost.trim() === '' ? null : parseMoney(cost);
+    if (parsedCost !== null && isNaN(parsedCost)) {
+      setErrorMsg('Informe um custo válido (ex.: 18 ou 18,50) ou deixe em branco.');
+      return;
+    }
     if (!name.trim()) {
       setErrorMsg('Informe o nome do produto.');
       return;
@@ -165,6 +184,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
           low_stock_threshold: lowStockValue,
           active,
         });
+        void saveProductCost(productToEdit.id, parsedCost);
       } else {
         const initialQty = parseInt(initialShiftQuantity, 10);
         const saved = addProduct(
@@ -194,6 +214,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               }
             : undefined
         );
+        if (parsedCost !== null) void saveProductCost(saved.id, parsedCost);
         onSaved?.(saved);
       }
 
@@ -322,6 +343,27 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   className="w-full pl-9 pr-3 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 font-mono font-bold text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-shadow"
                 />
               </div>
+            </div>
+
+            <div className="sm:col-span-3">
+              <label htmlFor="product-cost" className="block text-xs font-semibold text-stone-700 mb-1.5">
+                Custo do produto (R$) <span className="font-normal text-stone-500">· opcional, só a gerência vê</span>
+              </label>
+              <div className="relative sm:max-w-[33%]">
+                <span className="absolute left-3 top-2.5 text-xs text-stone-400 font-mono font-bold">R$</span>
+                <input
+                  id="product-cost"
+                  type="text"
+                  inputMode="decimal"
+                  value={cost}
+                  onChange={(e) => setCost(e.target.value)}
+                  placeholder="18.00"
+                  className="w-full pl-9 pr-3 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-shadow"
+                />
+              </div>
+              <p className="mt-1 text-[11px] text-stone-500">
+                Quanto a casa gasta para servir uma unidade (carne, espeto, embalagem). Usado no lucro do Financeiro.
+              </p>
             </div>
           </div>
 

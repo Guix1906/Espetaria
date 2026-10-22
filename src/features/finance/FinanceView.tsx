@@ -10,8 +10,9 @@ import { formatBRL } from '../../lib/formatters';
 import { METHOD_LABELS, SALE_METHODS, buildCashFlow, downloadCsv, financeEntriesApi, salesApi, sumBy, todayISO, type CashFlowGrouping, type FinanceDataset, type FinanceKind, type SaleRecord } from '../../lib/financeData';
 import { useFinanceData } from './useFinanceData';
 import { EntriesPanel, EntryForm } from './EntriesPanel';
+import { ProfitPanel } from './ProfitPanel';
 
-type Tab = 'overview' | 'cashflow' | 'PAGAR' | 'RECEBER';
+type Tab = 'overview' | 'result' | 'cashflow' | 'PAGAR' | 'RECEBER';
 
 export function FinanceView() {
   const [period, setPeriod] = useState<Period>(() => defaultPeriod('30d'));
@@ -21,12 +22,13 @@ export function FinanceView() {
   return (
     <div className="page-layout">
       <PageHeader title="Financeiro" description="Entradas e saídas reais do caixa, contas a pagar e a receber. As vendas do salão e do delivery entram sozinhas." />
-      <SectionTabs label="Seções do financeiro" value={tab} onChange={setTab} items={[{ id: 'overview', label: 'Visão geral' }, { id: 'cashflow', label: 'Fluxo de caixa' }, { id: 'PAGAR', label: 'Contas a pagar' }, { id: 'RECEBER', label: 'Contas a receber' }]} />
+      <SectionTabs label="Seções do financeiro" value={tab} onChange={setTab} items={[{ id: 'overview', label: 'Visão geral' }, { id: 'result', label: 'Bruto, líquido e lucro' }, { id: 'cashflow', label: 'Fluxo de caixa' }, { id: 'PAGAR', label: 'Contas a pagar' }, { id: 'RECEBER', label: 'Contas a receber' }]} />
       <PeriodPicker value={period} onChange={setPeriod} />
       {error && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">{error}</p>}
       {!data ? <div className="surface-card p-10 text-center text-sm text-ink-muted" role="status">{loading ? 'Carregando dados do período...' : 'Sem dados.'}</div> : (
         <>
           {tab === 'overview' && <Overview data={data} />}
+          {tab === 'result' && <ProfitPanel data={data} />}
           {tab === 'cashflow' && <CashFlow data={data} reload={reload} />}
           {(tab === 'PAGAR' || tab === 'RECEBER') && <EntriesPanel kind={tab as FinanceKind} data={data} onChanged={reload} />}
         </>
@@ -83,7 +85,7 @@ function ForecastToggle({ value, onChange }: { value: boolean; onChange: (v: boo
   return <button type="button" aria-pressed={value} onClick={() => onChange(!value)} className={`min-h-[44px] rounded-md border px-3.5 text-sm font-semibold ${value ? 'border-ink bg-ink text-white' : 'border-line-strong bg-surface text-ink-secondary'}`}>{value ? 'Ocultar previsto' : 'Mostrar previsto'}</button>;
 }
 /** Agrupamento do fluxo: dia, semana, mês ou ano. */
-function GroupingPicker({ value, onChange }: { value: CashFlowGrouping; onChange: (g: CashFlowGrouping) => void }) {
+export function GroupingPicker({ value, onChange }: { value: CashFlowGrouping; onChange: (g: CashFlowGrouping) => void }) {
   const options: { id: CashFlowGrouping; label: string }[] = [{ id: 'day', label: 'Dia' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'year', label: 'Ano' }];
   return (
     <div role="group" aria-label="Agrupar por" className="inline-flex rounded-xl border border-line bg-surface p-0.5">
@@ -93,7 +95,7 @@ function GroupingPicker({ value, onChange }: { value: CashFlowGrouping; onChange
 }
 
 /** Agrupamento escolhido; volta ao automático quando o período muda. */
-function useGrouping(data: FinanceDataset) {
+export function useGrouping(data: FinanceDataset) {
   const [state, setState] = useState<{ key: string; value: CashFlowGrouping }>(() => ({ key: data.from + data.to, value: autoGrouping(data) }));
   const value = state.key === data.from + data.to ? state.value : autoGrouping(data);
   return [value, (g: CashFlowGrouping) => setState({ key: data.from + data.to, value: g })] as const;

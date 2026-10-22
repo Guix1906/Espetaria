@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../supabase', () => ({ isSupabaseConfigured: false, supabase: {} }));
 
-import { buildCashFlow, sumBy, type FinanceDataset } from '../financeData';
+import { buildCashFlow, buildProfit, sumBy, type FinanceDataset } from '../financeData';
 
 const base: FinanceDataset = {
   from: '2026-10-01', to: '2026-10-05', sales: [], items: [], deliveries: [], losses: [], shifts: [], tabs: [], entries: [], openTabsTotal: 0, staff: {},
@@ -47,6 +47,27 @@ describe('Fluxo de caixa', () => {
     const weeks = buildCashFlow({ ...base, from: '2026-10-05', to: '2026-10-18', sales }, 'week');
     expect(weeks.map((w) => w.inflow)).toEqual([30, 5]);
     expect(buildCashFlow({ ...base, from: '2025-12-01', to: '2026-01-31', sales }, 'year')).toHaveLength(2);
+  });
+
+  it('calcula bruto, líquido e lucro sem descontar a compra de mercadoria duas vezes', () => {
+    const item = (product_id: string, product_name: string, quantity: number, day: string, cancelled = false) => ({ at: at(day), product_id, product_name, quantity, total: 0, sector: 'GRILL', cancelled, channel: 'SALAO' as const, waiter_id: null });
+    const { total, buckets, missingCost } = buildProfit({
+      ...base,
+      sales: [{ id: 's', at: at('2026-10-01'), amount: 300, method: 'PIX', channel: 'SALAO' }, { id: 'd', at: at('2026-10-02'), amount: 100, method: 'DINHEIRO', channel: 'DELIVERY' }],
+      tabs: [{ closed_at: at('2026-10-01'), total: 300, people: 2, discount: 10, service_fee: 27 }],
+      driverPayouts: [{ at: at('2026-10-02'), total: 15 }],
+      productCosts: { picanha: 20 },
+      items: [item('picanha', 'Picanha', 3, '2026-10-01'), item('picanha', 'Picanha', 9, '2026-10-01', true), item('suco', 'Suco', 2, '2026-10-02')],
+      entries: [
+        entry({ amount: 50, category: 'Energia e água', paid_at: at('2026-10-02') }),
+        entry({ amount: 500, category: 'Carnes e insumos', paid_at: at('2026-10-02') }),
+        entry({ amount: 70, category: 'Aluguel' }), // não paga: fora do lucro
+      ],
+    });
+    expect(total).toMatchObject({ gross: 400, discounts: 10, drivers: 15, net: 385, productCost: 60, expenses: 50, merchandise: 500, profit: 275 });
+    expect(buckets[0]).toMatchObject({ gross: 300, net: 300, productCost: 60, profit: 240 });
+    expect(buckets[1]).toMatchObject({ gross: 100, drivers: 15, expenses: 50, profit: 35 });
+    expect(missingCost).toEqual(['Suco']);
   });
 
   it('soma por chave em ordem decrescente', () => {
