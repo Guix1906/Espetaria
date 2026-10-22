@@ -22,6 +22,14 @@ describe('Via do entregador (DRIVER)', () => {
     }
   });
 
+  it('resumo do delivery (na hora do pedido) sai como via do entregador, motoboy em branco', () => {
+    const job = { ...order({ payment_method: 'PIX', paid_at: null, driver_name: null }), kind: 'DELIVERY_SUMMARY' };
+    const text = buildTicket(job, config).toText();
+    expect(text).toContain('VIA DO ENTREGADOR');
+    expect(text).toContain('MOTOBOY: ________');
+    expect(text).toContain('PIX NÃO CONFIRMADO');
+  });
+
   it('diz se o PIX foi pago ou não', () => {
     expect(buildTicket(order({ payment_method: 'PIX', paid_at: '2026-10-22T23:01:00Z' }), config).toText()).toContain('PIX PAGO - NÃO COBRAR');
     expect(buildTicket(order({ payment_method: 'PIX', paid_at: null }), config).toText()).toContain('PIX NÃO CONFIRMADO');

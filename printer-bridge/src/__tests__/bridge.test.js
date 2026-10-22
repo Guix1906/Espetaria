@@ -102,9 +102,9 @@ describe('Roteamento e cupons', () => {
       payload: { customer_name: 'Ana', address_street: 'Rua A', address_number: '1', address_neighborhood: 'Centro',
                  subtotal: 30, delivery_fee: 5, total: 35, payment_method: 'DINHEIRO', cash_change_for: 50 },
     }, baseConfig).toText();
-    expect(text).toContain('Total:');
+    expect(text).toContain('VIA DO ENTREGADOR');
     expect(text).toContain('R$ 35,00');
-    expect(text).toContain('Levar troco: R$ 15,00');
+    expect(text).toContain('levar R$ 15,00');
   });
 });
 

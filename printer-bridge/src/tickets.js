@@ -92,7 +92,8 @@ export function buildTicket(job, config) {
   }
 
   if (job.kind === 'BILL') return billTicket(r, job, config);
-  if (job.kind === 'DRIVER') return driverTicket(r, job, config);
+  // Delivery: o cupom geral do pedido já sai como via do entregador (vai na sacola)
+  if (job.kind === 'DRIVER' || (job.kind === 'DELIVERY_SUMMARY' && !isPickup(job))) return driverTicket(r, job, config);
 
   if (job.kind === 'DELIVERY_SUMMARY') {
     const o = payload;

@@ -155,9 +155,10 @@ export class PrintWorker {
     const maxRetries = 3;
     const attempt = (job.attempts || 0) + 1;
     try {
-      // Cliente, endereço e pagamento já saem no cupom de cada setor: expedição separada
-      // só se PRINT_DELIVERY_SUMMARY=true no .env (economia de papel)
-      if (job.kind === 'DELIVERY_SUMMARY' && process.env.PRINT_DELIVERY_SUMMARY !== 'true') {
+      // Delivery: o resumo sai como via do entregador. Retirada já tem os dados no cupom
+      // do setor: expedição separada só se PRINT_DELIVERY_SUMMARY=true no .env
+      const pickup = (job.payload?.order_type) === 'PICKUP';
+      if (job.kind === 'DELIVERY_SUMMARY' && pickup && process.env.PRINT_DELIVERY_SUMMARY !== 'true') {
         await this.complete(job.id, true, null, 'DISPENSADO');
         log(`[bridge] – ${label} dispensado (dados já vão no cupom do setor)`);
         return;
