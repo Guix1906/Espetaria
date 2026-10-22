@@ -32,7 +32,7 @@ export interface DashboardInput {
 export const BOT_ERROR_WINDOW_MIN = 120;
 
 export type AlertTone = 'danger' | 'warning';
-export interface DashboardAlert { id: string; tone: AlertTone; text: string; target: 'tables' | 'kds' | 'delivery' | 'settings' | 'cashier'; }
+export interface DashboardAlert { id: string; tone: AlertTone; text: string; target: 'ready' | 'kds' | 'delivery' | 'settings' | 'cashier'; }
 
 export type DeliveryStage = 'AWAITING_PAYMENT' | 'IN_PRODUCTION' | 'READY' | 'OUT_FOR_DELIVERY';
 export interface ActivityEvent { id: string; time: string; channel: 'Casa' | 'Delivery' | 'Retirada' | 'Sistema'; title: string; description: string; tone: 'success' | 'warning' | 'info' | 'danger' | 'neutral'; }
@@ -170,7 +170,7 @@ export function computeDashboard(input: DashboardInput) {
   const alerts: DashboardAlert[] = [];
   const oldReady = readyItems.filter((i) => minutesSince(i.prepared_at ?? i.updated_at, now) >= ALERT_LIMITS.readyNotServed);
   const oldReadyUnits = oldReady.reduce((s, i) => s + i.quantity, 0);
-  if (oldReadyUnits) alerts.push({ id: 'ready', tone: 'warning', target: 'tables', text: `${oldReadyUnits} ${oldReadyUnits === 1 ? 'item pronto esperando' : 'itens prontos esperando'} o garçom há ${readyOldest} min` });
+  if (oldReadyUnits) alerts.push({ id: 'ready', tone: 'warning', target: 'ready', text: `${oldReadyUnits} ${oldReadyUnits === 1 ? 'item pronto esperando' : 'itens prontos esperando'} o garçom há ${readyOldest} min` });
   const oldGrill = grillItems.filter((i) => minutesSince(i.created_at, now) >= ALERT_LIMITS.grillTooLong);
   if (oldGrill.length) alerts.push({ id: 'grill', tone: 'warning', target: 'kds', text: `${oldGrill.length} ${oldGrill.length === 1 ? 'espeto na brasa' : 'espetos na brasa'} há mais de ${ALERT_LIMITS.grillTooLong} min` });
   if (lateDeliveries.length) alerts.push({ id: 'late', tone: 'danger', target: 'delivery', text: `${lateDeliveries.length} ${lateDeliveries.length === 1 ? 'delivery atrasado' : 'deliveries atrasados'} (mais de ${ALERT_LIMITS.deliveryLate} min): ${lateDeliveries.map((d) => `#${d.order_number}`).join(', ')}` });

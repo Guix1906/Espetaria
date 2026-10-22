@@ -14,7 +14,7 @@ import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
 import type { DeliveryOrder } from '../../types/domain';
-import { ALERT_LIMITS, computeDashboard, stageOf, type ActivityEvent, type DeliveryStage } from './dashboardMetrics';
+import { ALERT_LIMITS, computeDashboard, stageOf, type ActivityEvent, type DashboardAlert, type DeliveryStage } from './dashboardMetrics';
 import { ShiftCloseModal } from './ShiftCloseModal';
 
 interface MasterDashboardViewProps {
@@ -82,7 +82,12 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
 
   const d = computeDashboard({ shiftId: currentShift?.id ?? null, tables, tabs, orders, orderItems, payments, deliveryOrders, stockMovements, jobs, printerMonitored: isSupabaseConfigured, now, botErrorAt });
   const go = (tab: ActiveTab) => onNavigateTab?.(tab);
-  const goTable = (tableId: string, tab: ActiveTab) => { useNavFocusStore.getState().focusTable(tableId); go(tab); };
+  const goAlert = (target: DashboardAlert['target']) => {
+    if (target !== 'ready') return go(target);
+    useNavFocusStore.getState().focusReady();
+    go('waiter');
+  };
+  const goTable =(tableId: string, tab: ActiveTab) => { useNavFocusStore.getState().focusTable(tableId); go(tab); };
   const activeDeliveries = (Object.values(d.stages).flat() as DeliveryOrder[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
   const lateIds = new Set(d.lateDeliveries.map((o) => o.id));
   const feed = d.feed.filter((e) => feedFilter === 'Tudo' || (feedFilter === 'Casa' ? e.channel === 'Casa' : e.channel === 'Delivery' || e.channel === 'Retirada'));
@@ -169,7 +174,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
       {d.alerts.length > 0 && (
         <section aria-label="Alertas" className="space-y-2">
           {d.alerts.map((alert) => (
-            <button key={alert.id} type="button" onClick={() => go(alert.target)}
+            <button key={alert.id} type="button" onClick={() => goAlert(alert.target)}
               className={`flex min-h-[44px] w-full items-center gap-3 rounded-md border px-3.5 py-2.5 text-left text-[15px] font-medium ${alert.tone === 'danger' ? 'border-rose-300 bg-rose-50 text-rose-900' : 'border-amber-300 bg-amber-50 text-amber-950'}`}>
               <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
               <span className="flex-1">{alert.text}</span>

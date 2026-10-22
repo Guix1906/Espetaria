@@ -7,6 +7,9 @@ import { create } from 'zustand';
 interface NavFocusState {
   tableId: string | null;
   focusTable: (tableId: string) => void;
+  /** Salão abre direto na aba "Prontos" (alerta de item pronto esperando). */
+  readySection: boolean;
+  focusReady: () => void;
   /** Chamar depois de montar (useEffect): ler no estado inicial e limpar aqui. */
   clear: () => void;
 }
@@ -14,5 +17,7 @@ interface NavFocusState {
 export const useNavFocusStore = create<NavFocusState>((set) => ({
   tableId: null,
   focusTable: (tableId) => set({ tableId }),
-  clear: () => set({ tableId: null }),
+  readySection: false,
+  focusReady: () => set({ readySection: true }),
+  clear: () => set({ tableId: null, readySection: false }),
 }));

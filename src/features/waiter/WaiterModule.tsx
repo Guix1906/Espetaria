@@ -40,7 +40,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   useEffect(() => { useNavFocusStore.getState().clear(); }, []);
   const [filter, setFilter] = useState<'ALL' | 'READY' | TableStatus>('ALL');
   const [chosenFilter, setTableFilter] = useState<TableFilter | null>(null);
-  const [section, setSection] = useState<Section>('tables');
+  const [section, setSection] = useState<Section>(() => (useNavFocusStore.getState().readySection ? 'ready' : 'tables'));
   const [searchTerm, setSearchTerm] = useState('');
   const [tableToOpen, setTableToOpen] = useState<RestaurantTable | null>(null);
   const [tableForBill, setTableForBill] = useState<RestaurantTable | null>(null);

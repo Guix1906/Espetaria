@@ -26,6 +26,13 @@ const payLabel = (job, method) => (isPickup(job) && method === 'CARTAO_ENTREGA' 
 
 const brl = (value) => `R$ ${Number(value || 0).toFixed(2).replace('.', ',')}`;
 
+/** Situação do pagamento para quem entrega: PIX confirmado não se cobra. */
+export function paymentStatus(job, d) {
+  if (!d.payment_method) return '';
+  if (d.payment_method === 'PIX') return d.paid_at ? 'PIX PAGO - NÃO COBRAR' : 'PIX NÃO CONFIRMADO - CONFERIR';
+  return d.paid_at ? 'PAGO - NÃO COBRAR' : `COBRAR ${payLabel(job, d.payment_method)}`;
+}
+
 function formatTime(iso) {
   const date = iso ? new Date(iso) : new Date();
   return date.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -85,6 +92,7 @@ export function buildTicket(job, config) {
   }
 
   if (job.kind === 'BILL') return billTicket(r, job, config);
+  if (job.kind === 'DRIVER') return driverTicket(r, job, config);
 
   if (job.kind === 'DELIVERY_SUMMARY') {
     const o = payload;
@@ -122,6 +130,7 @@ export function buildTicket(job, config) {
     r.bold().size(3).pair('TOTAL', brl(o.total)).size(1).bold(false);
     r.divider();
     r.bold().line(`PAGAMENTO: ${payLabel(job, o.payment_method)}`).bold(false);
+    r.bold().line(paymentStatus(job, o)).bold(false);
     if (o.payment_method === 'DINHEIRO' && o.cash_change_for) {
       r.line(`Troco para ${brl(o.cash_change_for)} (levar ${brl(o.cash_change_for - o.total)})`);
     }
@@ -172,6 +181,7 @@ export function compactDeliveryTicket(r, job, config, tpl) {
   }
   if (d.payment_method || d.total != null) {
     r.bold().pair(payLabel(job, d.payment_method), d.total != null ? brl(d.total) : '').bold(false);
+    if (d.payment_method) r.bold().line(paymentStatus(job, d)).bold(false);
     if (d.payment_method === 'DINHEIRO' && d.cash_change_for) {
       r.line(`Troco p/ ${brl(d.cash_change_for)}${d.total != null ? ` (levar ${brl(d.cash_change_for - d.total)})` : ''}`);
     }
@@ -258,6 +268,42 @@ export function billTicket(r, job, config) {
   return r.feed(3).cut();
 }
 
+/** Via do entregador: sai no "Saiu para entrega", com o nome do motoboy e o pedido completo. */
+export function driverTicket(r, job, config) {
+  const o = job.payload || {};
+  r.align('center').size(2).bold().line(remoteTitle(job)).bold(false).size(1)
+    .bold().line('VIA DO ENTREGADOR').bold(false)
+    .line(formatDateFull(o.dispatched_at || job.created_at));
+  r.align('left').divider('=');
+  r.size(2).bold().line(`MOTOBOY: ${o.driver_name || '________'}`).bold(false).size(1);
+  r.divider();
+  r.bold().line(`CLIENTE: ${o.customer_name || job.customer_name || ''}`).bold(false);
+  if (o.phone) r.bold().line(`TEL: ${o.phone}`).bold(false);
+  r.line(`END: ${o.address_street || ''}, ${o.address_number || ''}`);
+  if (o.address_complement) r.line(`COMPL: ${o.address_complement}`);
+  r.size(2).bold().line(`BAIRRO: ${o.address_neighborhood || ''}`).bold(false).size(1);
+  if (o.address_reference) r.line(`REF: ${o.address_reference}`);
+  r.divider();
+  for (const item of job.items || []) {
+    const price = brl(Number(item.unit_price || 0) * Number(item.quantity || 0));
+    r.pair(`${item.quantity}x ${item.name}`.slice(0, config.paperColumns - price.length - 1), price);
+    if (item.notes) r.line(`   OBS: ${item.notes}`);
+  }
+  if (o.notes) r.line(`OBS DO PEDIDO: ${o.notes}`);
+  r.divider();
+  r.pair('Subtotal', brl(o.subtotal));
+  r.pair('Taxa de entrega', brl(o.delivery_fee));
+  r.bold().size(2).pair('TOTAL', brl(o.total)).size(1).bold(false);
+  r.divider();
+  r.bold().line(`PAGAMENTO: ${payLabel(job, o.payment_method)}`).bold(false);
+  r.align('center').invert().size(2).bold().line(` ${paymentStatus(job, o)} `).bold(false).size(1).invert(false).align('left');
+  if (o.payment_method === 'DINHEIRO' && o.cash_change_for) {
+    r.bold().line(`Troco para ${brl(o.cash_change_for)} - levar ${brl(o.cash_change_for - o.total)}`).bold(false);
+  }
+  r.divider().feed(2).line('Recebido por: ______________________').feed(1).line('Horário da entrega: ____:____');
+  return r.feed(3).cut();
+}
+
 function formatDateFull(iso) {
   const date = iso ? new Date(iso) : new Date();
   return date.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '');
@@ -320,7 +366,7 @@ export function anotaTicket(r, job, config, tpl, { complete, data }) {
         r.line(`Troco para: ${brl(d.cash_change_for)}`);
         if (d.total != null) r.bold().line(`Levar troco: ${brl(d.cash_change_for - d.total)}`).bold(false);
       }
-      r.divider().align('center').line('* Cobrar do cliente *').align('left');
+      r.divider().align('center').bold().line(`* ${paymentStatus(job, d)} *`).bold(false).align('left');
     }
     if (d.total != null) {
       r.divider();
