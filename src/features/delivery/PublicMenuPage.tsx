@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
+import { useStockStore } from '../../stores/useStockStore';
 import { PublicMenuApp } from './PublicMenuApp';
 
 /**
@@ -13,7 +14,8 @@ export function PublicMenuPage() {
   const { loadPublicMenu, refreshTrackingStatus } = useDeliveryStore();
   const restaurant = useSettingsStore((s) => s.settings.name);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(isSupabaseConfigured);
+  // Com o cardápio já guardado no aparelho, mostra na hora e atualiza por trás
+  const [loading, setLoading] = useState(() => isSupabaseConfigured && !useStockStore.getState().products.some((p) => p.active));
 
   useEffect(() => {
     document.title = `Cardápio | ${restaurant}`;

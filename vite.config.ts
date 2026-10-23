@@ -28,6 +28,12 @@ export default defineConfig(({ command, mode }) => ({
     // Nova versão assume imediatamente (sem ficar presa na versão antiga do cache)
     workbox: {
       globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
+      // Fotos dos produtos (Supabase Storage ou outro link): ficam guardadas no aparelho e abrem na hora
+      runtimeCaching: [{
+        urlPattern: ({ request }) => request.destination === 'image',
+        handler: 'StaleWhileRevalidate',
+        options: { cacheName: 'product-images', expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 }, cacheableResponse: { statuses: [0, 200] } },
+      }],
       // skipWaiting/clientsClaim desligados: eram eles que recarregavam a página ao abrir
       clientsClaim: true,
       cleanupOutdatedCaches: true,

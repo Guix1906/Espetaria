@@ -74,7 +74,8 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   (só service_role) → PREPARING + `enqueue_delivery_production`. "PIX recebido" manual também libera. Vence em
   `pix_auto_minutes` (`expire_unpaid_pix_orders`, devolve estoque). Ativação: `supabase/ATIVAR-PIX-MERCADOPAGO.bat`.
 - printer-bridge: espeto "com acompanhamento" gera cópia do cupom para a COZINHA (`sideDishCopy`); delivery sai em um cupom
-  compacto por setor com cliente/endereço/pagamento (`compactDeliveryTicket`); expedição separada só com `PRINT_DELIVERY_SUMMARY=true`.
+  compacto por setor com cliente/endereço/pagamento (`compactDeliveryTicket`); via do motoboy (DELIVERY_SUMMARY) sai sempre no
+  delivery com endereço, na CHURRASQUEIRA se houver espeto, senão na COZINHA; retirada não imprime (`deliverySummarySector`, sem .env).
 - Conta da mesa (00035): `request_bill` ("Pediu a conta") enfileira `kind=BILL` na CHURRASQUEIRA (GRILL) via `enqueue_bill_print`
   (itens agrupados, taxa, desconto, total, já pago, divisão por pessoa, PIX; "Não é documento fiscal"); botão "Imprimir conta" no
   caixa (`TableSettlementModal`) e "Imprimir conta de novo" no garçom (`WaiterViewTab`). Cupom em `billTicket` (printer-bridge/tickets.js).

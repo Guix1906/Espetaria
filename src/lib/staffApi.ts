@@ -67,6 +67,17 @@ export const staffApi = {
     return staff;
   },
 
+  /**
+   * Lista rápida direto da tabela `profiles` (sem a Edge Function, que demora a "acordar").
+   * Não traz último acesso nem se tem login — isso chega depois com `list()`.
+   */
+  async listQuick(): Promise<StaffMember[]> {
+    if (!isSupabaseConfigured) return this.list();
+    const { data, error } = await supabase.from('profiles').select('*').order('name');
+    if (error) throw new Error(error.message);
+    return (data ?? []) as StaffMember[];
+  },
+
   async create(input: NewStaffInput): Promise<StaffMember> {
     if (input.password.length < 8) throw new Error('A senha precisa ter pelo menos 8 caracteres.');
     if (!isSupabaseConfigured) {

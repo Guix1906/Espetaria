@@ -35,6 +35,16 @@ export function sideDishCopy(job) {
 }
 
 /**
+ * Via do motoboy (cupom de expedição): só para entrega no endereço; retirada não tem.
+ * Sai na CHURRASQUEIRA quando o pedido tem espeto; se for só cozinha/bar, sai na COZINHA.
+ * Devolve null quando não deve imprimir.
+ */
+export function deliverySummarySector(orderType, itemSectors) {
+  if (orderType === 'PICKUP') return null;
+  return (itemSectors || []).includes('GRILL') || !(itemSectors || []).length ? 'GRILL' : 'KITCHEN';
+}
+
+/**
  * Consome a fila print_queue do Supabase:
  *  - acorda imediatamente em cada INSERT (Realtime)
  *  - e faz polling periódico como garantia (queda de internet, Realtime fora)
@@ -138,6 +148,14 @@ export class PrintWorker {
     return this.templates;
   }
 
+  /** Setor onde sai a via do motoboy (ver deliverySummarySector). */
+  async summarySector(job) {
+    const orderType = job.payload?.order_type;
+    const { data, error } = await this.supabase.from('delivery_order_items').select('sector').eq('delivery_order_id', job.order_id);
+    if (error) log('[bridge] Setores do pedido indisponíveis, via do motoboy vai para a churrasqueira:', error.message);
+    return deliverySummarySector(orderType, (data || []).map((row) => row.sector));
+  }
+
   /** Dados do cliente para a etiqueta de delivery (nome, telefone, endereço, pagamento). */
   async enrich(job) {
     if (job.kind !== 'ORDER' || job.origin !== 'DELIVERY') return job;
@@ -155,13 +173,16 @@ export class PrintWorker {
     const maxRetries = 3;
     const attempt = (job.attempts || 0) + 1;
     try {
-      // Delivery: o resumo sai como via do entregador. Retirada já tem os dados no cupom
-      // do setor: expedição separada só se PRINT_DELIVERY_SUMMARY=true no .env
-      const pickup = (job.payload?.order_type) === 'PICKUP';
-      if (job.kind === 'DELIVERY_SUMMARY' && pickup && process.env.PRINT_DELIVERY_SUMMARY !== 'true') {
-        await this.complete(job.id, true, null, 'DISPENSADO');
-        log(`[bridge] – ${label} dispensado (dados já vão no cupom do setor)`);
-        return;
+      // Delivery: o resumo é a via do entregador (churrasqueira/cozinha). Retirada já tem os
+      // dados no cupom do setor: expedição separada só se PRINT_DELIVERY_SUMMARY=true no .env
+      if (job.kind === 'DELIVERY_SUMMARY') {
+        const sector = await this.summarySector(job);
+        if (!sector && process.env.PRINT_DELIVERY_SUMMARY !== 'true') {
+          await this.complete(job.id, true, null, 'DISPENSADO');
+          log(`[bridge] – ${label} dispensado (retirada no balcão, sem motoboy)`);
+          return;
+        }
+        if (sector) job = { ...job, sector };
       }
       const templates = await this.loadTemplates();
       const printConfig = { ...this.config, templates, ...(this.paperColumns ? { paperColumns: this.paperColumns } : {}) };

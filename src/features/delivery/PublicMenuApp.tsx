@@ -68,7 +68,7 @@ const inputCls = 'h-12 w-full rounded-md border border-line bg-white px-3.5 text
 const labelCls = 'mb-1.5 block text-[14px] font-medium text-ink-secondary';
 
 function Photo({ product, className }: { product: Product; className: string }) {
-  if (product.image_url) return <img src={product.image_url} alt="" loading="lazy" className={`${className} object-cover`} />;
+  if (product.image_url) return <img src={product.image_url} alt="" decoding="async" className={`${className} object-cover`} />;
   return <div aria-hidden="true" className={`${className} flex items-center justify-center bg-[repeating-linear-gradient(135deg,rgb(var(--color-surface-muted))_0_8px,rgb(var(--color-canvas))_8px_16px)] text-[22px] font-semibold text-ink-muted`}>{product.name.replace(/^espeto (de )?/i, '').charAt(0).toUpperCase()}</div>;
 }
 
@@ -230,6 +230,10 @@ export function PublicMenuApp() {
     return products.filter((p) => p.active && (!q || `${p.name} ${p.description || ''}`.toLocaleLowerCase('pt-BR').includes(q)));
   }, [products, query]);
   const catName = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
+  // Baixa todas as fotos assim que o cardápio chega: rolar e abrir um produto não espera a imagem
+  useEffect(() => {
+    products.forEach((p) => { if (p.active && p.image_url) { const img = new Image(); img.decoding = 'async'; img.src = p.image_url; } });
+  }, [products]);
   const groups = useMemo(() => CATEGORY_ORDER.map((c) => ({ name: c, items: visible.filter((p) => categoryOf(p, catName.get(p.category_id)) === c) })).filter((g) => g.items.length), [visible, catName]);
   const qtyInCart = (id: string) => cart.filter((c) => c.productId === id).reduce((s, c) => s + c.quantity, 0);
   const count = cart.reduce((s, c) => s + c.quantity, 0);

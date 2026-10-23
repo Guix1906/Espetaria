@@ -3,7 +3,7 @@ import type { StatusKind } from '../../lib/statusStyles';
 import { ArrowRight, CheckCheck, Info, LayoutGrid, Receipt, Search, Settings2, ShoppingBag, Smartphone, Users, BellRing } from 'lucide-react';
 import { StatCard } from '../../components/ui/StatCard';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -51,14 +51,19 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const isShiftOpen = currentShift?.status === 'ABERTO';
   const query = searchTerm.trim().toLocaleLowerCase('pt-BR');
   const selectedTable = tables.find((table) => table.id === selectedTableId);
-  const activeTables = tables.filter((table) => table.active).sort((a, b) => a.number - b.number);
-  const getTableTab = (tableId: string) => tabs.find((tab) => tab.table_id === tableId && tab.status === 'OPEN');
-  const itemsOfTable = (tableId: string): OrderItem[] => {
-    const tab = getTableTab(tableId);
-    if (!tab) return [];
-    const orderIds = new Set(orders.filter((order) => order.tab_id === tab.id).map((order) => order.id));
-    return orderItems.filter((item) => orderIds.has(item.order_id));
-  };
+  // Índices montados uma vez por mudança de dados (antes, cada mesa varria todos os pedidos a cada toque)
+  const activeTables = useMemo(() => tables.filter((table) => table.active).sort((a, b) => a.number - b.number), [tables]);
+  const openTabByTable = useMemo(() => new Map(tabs.filter((tab) => tab.status === 'OPEN' && tab.table_id).map((tab) => [tab.table_id!, tab])), [tabs]);
+  const itemsByTable = useMemo(() => {
+    const tableOfOrder = new Map<string, string>();
+    const tableOfTab = new Map([...openTabByTable].map(([tableId, tab]) => [tab.id, tableId]));
+    orders.forEach((order) => { const tableId = tableOfTab.get(order.tab_id); if (tableId) tableOfOrder.set(order.id, tableId); });
+    const map = new Map<string, OrderItem[]>();
+    orderItems.forEach((item) => { const tableId = tableOfOrder.get(item.order_id); if (tableId) map.set(tableId, [...(map.get(tableId) ?? []), item]); });
+    return map;
+  }, [openTabByTable, orders, orderItems]);
+  const getTableTab = (tableId: string) => openTabByTable.get(tableId);
+  const itemsOfTable = (tableId: string): OrderItem[] => itemsByTable.get(tableId) ?? [];
   const readyItemsOf = (tableId: string) => itemsOfTable(tableId).filter((item) => item.status === 'READY');
   const readyTables = activeTables.filter((table) => readyItemsOf(table.id).length > 0);
   const readyTableIds = new Set(readyTables.map((table) => table.id));
@@ -255,7 +260,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
       <nav aria-label="Área do garçom" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
         <div className="mx-auto grid max-w-5xl grid-cols-3">
           {navItems.map(({ key, label, icon: Icon, badge }) => (
-            <button key={key} type="button" onClick={() => setSection(key)} aria-current={section === key ? 'page' : undefined}
+            <button key={key} type="button" onClick={() => { setSection(key); window.scrollTo({ top: 0 }); }} aria-current={section === key ? 'page' : undefined}
               className={`flex h-[62px] flex-col items-center justify-center gap-1 text-[13px] ${section === key ? 'font-semibold text-brand-500' : 'text-ink-secondary'}`}>
               <span className="relative">
                 <Icon className="h-6 w-6" aria-hidden="true" />

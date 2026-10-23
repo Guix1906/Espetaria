@@ -12,6 +12,9 @@ import type { AppRole } from '../../types/enums';
 
 const ALL_ROLES: AppRole[] = ['MASTER', 'GERENTE', 'GARCOM', 'CHURRASQUEIRA', 'COZINHA', 'BAR', 'CAIXA', 'ENTREGADOR'];
 
+/** Última lista carregada: voltar à tela mostra a equipe na hora, enquanto atualiza. */
+let staffCache: StaffMember[] = [];
+
 type ModalState =
   | { kind: 'create' }
   | { kind: 'edit'; member: StaffMember }
@@ -25,7 +28,10 @@ export function TeamManagementView() {
   const isMaster = currentProfile.role === 'MASTER';
   const assignableRoles = isMaster ? ALL_ROLES : ALL_ROLES.filter((role) => role !== 'MASTER');
 
-  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [staff, setStaffState] = useState<StaffMember[]>(() => staffCache);
+  const setStaff = useCallback((next: StaffMember[] | ((list: StaffMember[]) => StaffMember[])) => {
+    setStaffState((list) => { staffCache = typeof next === 'function' ? next(list) : next; return staffCache; });
+  }, []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -35,14 +41,20 @@ export function TeamManagementView() {
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
+    // 1) lista da tabela aparece na hora; 2) último acesso chega depois pela Edge Function
+    const quick = staffApi.listQuick().then((list) => {
+      setStaff((current) => list.map((p) => ({ ...current.find((m) => m.id === p.id), ...p })));
+    }).catch(() => undefined);
     try {
-      setStaff(await staffApi.list());
+      const full = await staffApi.list();
+      await quick;
+      setStaff(full);
     } catch (failure: unknown) {
       setError(failure instanceof Error ? failure.message : 'Não foi possível carregar a equipe.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setStaff]);
 
   useEffect(() => {
     if (canManage) void load();
@@ -107,7 +119,7 @@ export function TeamManagementView() {
                         <span className={`status-badge ${member.is_active ? 'bg-emerald-50 text-emerald-800' : 'border-line bg-surface-muted text-ink-muted'}`}>{member.is_active ? 'Ativo' : isRemoved(member) ? 'Excluído (histórico mantido)' : 'Inativo'}</span>
                       </p>
                       <p className="truncate text-sm text-ink-muted">{member.email} · {formatRole(member.role)}</p>
-                      {isSupabaseConfigured && <p className="text-xs text-ink-muted">{member.last_sign_in_at ? `Último acesso: ${formatDateTime(member.last_sign_in_at)}` : member.has_login ? 'Nunca acessou' : 'Sem login criado'}</p>}
+                      {isSupabaseConfigured && <p className="text-xs text-ink-muted">{member.last_sign_in_at ? `Último acesso: ${formatDateTime(member.last_sign_in_at)}` : member.has_login === undefined ? 'Carregando último acesso...' : member.has_login ? 'Nunca acessou' : 'Sem login criado'}</p>}
                     </div>
                     {canEdit(member) ? (
                       <div className="flex flex-wrap gap-2">
