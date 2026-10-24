@@ -20,7 +20,8 @@ import { OrderPixBlock, OrderStatusView } from './OrderStatusView';
  */
 
 type Step = 'menu' | 'cart' | 'delivery' | 'payment' | 'review' | 'checkout' | 'sent';
-const DONENESS: { id: MeatDoneness; label: string }[] = [
+const TOP_DRINKS = ['refrigerante lata', 'água mineral sem gás', 'refrigerante 1l', 'água mineral com gás', 'long neck', 'suco de maracujá'];
+const DONENESS:{ id: MeatDoneness; label: string }[] = [
   { id: 'MAL_PASSADA', label: 'Mal passada' },
   { id: 'AO_PONTO', label: 'Ao ponto' },
   { id: 'BEM_PASSADA', label: 'Bem passada' },
@@ -246,7 +247,13 @@ export function PublicMenuApp() {
   const minFeeShort = Number.isInteger(minFee) ? `R$ ${minFee}` : formatBRL(minFee);
   const fee = isPickup ? 0 : zone?.fee ?? 0;
   const total = subtotal + fee;
-  const drinks = products.filter((p) => p.active && p.type === 'BEBIDA' && stockOf(p).isAvailable).slice(0, 3);
+  // Sugestões no "Seu pedido": as bebidas mais pedidas primeiro, depois as demais
+  const drinkRank = (name: string) => {
+    const i = TOP_DRINKS.findIndex((top) => name.toLowerCase().startsWith(top));
+    return i === -1 ? TOP_DRINKS.length : i;
+  };
+  const drinks = products.filter((p) => p.active && p.type === 'BEBIDA' && stockOf(p).isAvailable)
+    .sort((a, b) => drinkRank(a.name) - drinkRank(b.name)).slice(0, 6);
 
   /* scroll-spy das categorias */
   const sectionsRef = useRef<Record<string, HTMLElement | null>>({});
@@ -524,7 +531,7 @@ export function PublicMenuApp() {
             <div>
               <h2 className="mb-3 text-[15px] font-semibold">Para beber</h2>
               <div className="grid grid-cols-3 gap-2.5">
-                {drinks.map((d) => <button key={d.id} type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} className="rounded-md border border-line bg-white p-3 text-left"><span className="line-clamp-2 block text-[14px] font-semibold leading-snug">{d.name}</span><span className="mt-1 block whitespace-nowrap text-[13px] tabular-nums text-ink-muted">+ {formatBRL(d.price)}</span></button>)}
+                {drinks.map((d) => <button key={d.id} type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} className="overflow-hidden rounded-md border border-line bg-white text-left"><Photo product={d} className="h-20 w-full" /><span className="block p-2.5"><span className="line-clamp-2 block text-[14px] font-semibold leading-snug">{d.name}</span><span className="mt-1 block whitespace-nowrap text-[13px] tabular-nums text-ink-muted">+ {formatBRL(d.price)}</span></span></button>)}
               </div>
             </div>
           )}
