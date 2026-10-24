@@ -167,7 +167,41 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
         <span id="tables-search-hint" className="sr-only">{showOccupied.length + showFree.length} mesas encontradas</span>
       </label>
       {shiftNotice}
-      {showOccupied.length > 0 && (
+      {/* "Todas": uma grade só, em ordem; ocupada = cor cheia, livre = contorno verde */}
+      {tableFilter === 'all' && (showOccupied.length + showFree.length) > 0 && (
+        <section aria-label="Todas as mesas" className="space-y-2.5">
+          <p className="flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-ink-secondary">
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-brand-500" />Ocupada</span>
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-amber-500" />Conta pedida</span>
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-emerald-600" />Item pronto</span>
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm border-2 border-emerald-600" />Livre</span>
+          </p>
+          <div className="grid grid-cols-3 gap-2 xs:grid-cols-4">
+            {[...showOccupied, ...showFree].sort((a, b) => a.number - b.number).map((table) => {
+              if (!isOccupied(table)) {
+                return (
+                  <button key={table.id} type="button" disabled={!isShiftOpen} onClick={() => askOpen(table)}
+                    className={`flex h-[64px] items-center justify-center rounded-lg border-2 bg-surface font-mono text-2xl font-bold disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-dashed border-line-strong text-ink-secondary' : 'border-emerald-600 text-emerald-800'}`}
+                    aria-label={`Mesa ${pad2(table.number)} livre${table.status === 'RESERVADA' ? ' (reservada)' : ''}. Abrir comanda`}>
+                    {pad2(table.number)}
+                  </button>
+                );
+              }
+              const chip = statusChip(table);
+              const fill = chip.kind === 'ready' ? 'bg-emerald-600' : chip.kind === 'bill' ? 'bg-amber-500' : 'bg-brand-500';
+              return (
+                <button key={table.id} type="button" onClick={() => setSelectedTableId(table.id)}
+                  className={`flex h-[64px] flex-col items-center justify-center rounded-lg text-white shadow-[0_2px_6px_rgba(43,33,28,.2)] active:brightness-95 ${fill}`}
+                  aria-label={`Mesa ${pad2(table.number)} ocupada, ${chip.label}. Lançar itens`}>
+                  <span className="font-mono text-2xl font-bold leading-none">{pad2(table.number)}</span>
+                  <span className="mt-1 text-[12px] font-semibold leading-none">{chip.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      )}
+      {tableFilter !== 'all' && showOccupied.length > 0 && (
         <ul className="space-y-2" aria-label="Mesas ocupadas">
           {showOccupied.map((table) => {
             const tab = getTableTab(table.id);
@@ -195,7 +229,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
           })}
         </ul>
       )}
-      {showFree.length > 0 && (
+      {tableFilter !== 'all' && showFree.length > 0 && (
         <section aria-label="Mesas livres">
           <h2 className="mb-2 text-sm font-semibold text-ink-secondary">Livres <span className="font-normal text-ink-muted">· toque para abrir</span></h2>
           <div className="grid grid-cols-3 xs:grid-cols-4 gap-2">
