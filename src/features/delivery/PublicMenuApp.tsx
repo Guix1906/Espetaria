@@ -136,7 +136,9 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
     document.body.style.overflow = 'hidden';
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
   }, [onClose]);
-  const submit = () => { const e = onAdd(qty, doneness, notes); if (e) setErr(e); };
+  const submit = () => {
+    if (needsDoneness && !doneness) { setErr('Escolha o ponto da carne para continuar.'); return; }
+    const e = onAdd(qty, doneness, notes); if (e) setErr(e); };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(43,33,28,.5)] lg:items-center lg:p-6" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={product.name} onClick={(e) => e.stopPropagation()}
@@ -157,7 +159,7 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
                 <legend className="mb-2 flex items-center gap-2 text-[17px] font-semibold">Ponto da carne <span className="rounded-md bg-ink px-1.5 py-0.5 text-[12px] font-semibold text-surface">Obrigatório</span></legend>
                 <div className="divide-y divide-surface-muted lg:grid lg:grid-cols-3 lg:gap-2 lg:divide-y-0">
                   {DONENESS.map((d) => (
-                    <button key={d.id} type="button" role="radio" aria-checked={doneness === d.id} onClick={() => setDoneness(d.id)}
+                    <button key={d.id} type="button" role="radio" aria-checked={doneness === d.id} onClick={() => { setDoneness(d.id); setErr(null); }}
                       className={`flex h-12 w-full items-center gap-3 text-left text-[16px] lg:justify-center lg:rounded-md lg:border lg:text-[15px] ${doneness === d.id ? 'lg:border-2 lg:border-brand-500 lg:bg-brand-50 lg:font-semibold' : 'lg:border-line-strong lg:bg-white'}`}>
                       <span className="shrink-0 lg:hidden"><Radio on={doneness === d.id} /></span>{d.label}
                     </button>
@@ -174,7 +176,7 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
               <span className="w-6 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
               <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-full w-11 items-center justify-center text-brand-500"><Plus className="h-5 w-5" /></button>
             </div>
-            <Button size="lg" block disabled={needsDoneness && !doneness} onClick={submit} className="font-semibold">{needsDoneness && !doneness ? 'Escolha o ponto' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
+            <Button size="lg" block onClick={submit} className="font-semibold">{needsDoneness && !doneness ? 'Escolha o ponto' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
           </div>
         </div>
       </div>

@@ -40,7 +40,10 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const needsDoneness = product.allows_doneness && !selectedDoneness;
 
   const handleConfirm = () => {
-    if (needsDoneness) return;
+    if (needsDoneness) {
+      setErrorMessage('Escolha o ponto da carne para continuar.');
+      return;
+    }
     setErrorMessage(null);
     try {
       onConfirm(product.allows_doneness ? selectedDoneness : null, product.allows_notes ? notes.trim() : '', quantity);
@@ -78,7 +81,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
             const on = selectedDoneness === option.value;
             return (
               <label key={option.value} className={`flex min-h-[76px] cursor-pointer items-center gap-3 rounded-lg border px-3.5 py-2.5 ${on ? 'border-brand-500 bg-brand-50' : 'border-line bg-white'}`}>
-                <input type="radio" name="meat-doneness" value={option.value} checked={on} onChange={() => setSelectedDoneness(option.value)} className="h-[22px] w-[22px] shrink-0 accent-brand-500" />
+                <input type="radio" name="meat-doneness" value={option.value} checked={on} onChange={() => { setSelectedDoneness(option.value); setErrorMessage(null); }} className="h-[22px] w-[22px] shrink-0 accent-brand-500" />
                 <span className="h-[30px] w-2 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />
                 <span className="flex-1"><span className="block text-[15px] font-semibold text-ink">{option.label}</span><span className="mt-0.5 block text-[13px] text-ink-muted">{option.description}</span></span>
                 {on && <Check className="h-5 w-5 text-brand-500" aria-hidden="true" />}
@@ -93,7 +96,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
         </div> : <button type="button" onClick={() => setShowNotes(true)} className="min-h-[44px] text-sm font-semibold text-brand-500">+ Adicionar observação</button>)}
       </div>
       <div className="shrink-0 border-t border-line px-4 pt-3" style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom))' }}>
-        <Button size="lg" block onClick={handleConfirm} disabled={needsDoneness} className="justify-between font-semibold">
+        <Button size="lg" block onClick={handleConfirm} className="justify-between font-semibold">
           <span>{needsDoneness ? 'Escolha o ponto' : isEditing ? 'Salvar alteração' : `Adicionar ${quantity} ${quantity === 1 ? 'item' : 'itens'}`}</span>
           <span className="font-mono font-bold">{formatBRL(product.price * quantity)}</span>
         </Button>
