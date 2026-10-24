@@ -76,7 +76,8 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
         {cancelled && order.cancel_reason && <p className="mt-1 text-[15px] text-ink-muted">Motivo: {order.cancel_reason}</p>}
       </div>
 
-      {showPix && <OrderPixBlock order={order} />}
+      {/* PIX automático trava o pedido até pagar: fica no topo. PIX manual vem depois do andamento. */}
+      {showPix && order.status === 'AWAITING_PAYMENT' && <OrderPixBlock order={order} />}
 
       {!cancelled && (
         <ol aria-label="Andamento do pedido" className="space-y-0">
@@ -102,6 +103,8 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
           })}
         </ol>
       )}
+
+      {showPix && order.status !== 'AWAITING_PAYMENT' && <OrderPixBlock order={order} />}
 
       <section className="rounded-md border border-line bg-white p-4">
         <ul className="space-y-2">

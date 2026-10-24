@@ -14,7 +14,20 @@ import type { DeliveryOrder } from '../../types/domain';
 
 interface DeliveryTrackingModalProps { order: DeliveryOrder; isOpen: boolean; onClose: () => void; }
 
-/** Pagamento PIX do pedido: QR Code real + Copia e Cola no valor exato. */
+/** QR Code escondido: no celular o cliente usa o Copia e Cola; o QR é para pagar de outro aparelho. */
+function PixQrToggle({ payload }: { payload: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex min-h-[44px] w-full items-center justify-center gap-2 text-sm font-semibold text-brand-700">
+        <QrCode className="h-4 w-4" aria-hidden="true" />{open ? 'Esconder QR Code' : 'Mostrar QR Code'}
+      </button>
+      {open && <PixQrCode payload={payload} size={200} />}
+    </div>
+  );
+}
+
+/** Pagamento PIX do pedido: Copia e Cola no valor exato (QR Code sob demanda). */
 export function DeliveryPixPanel({ order }: { order: DeliveryOrder }) {
   const { settings } = useSettingsStore();
   const [copied, setCopied] = useState(false);
@@ -48,12 +61,11 @@ export function DeliveryPixPanel({ order }: { order: DeliveryOrder }) {
         <p className="mt-1 text-2xl font-bold text-brand-800 tabular-nums">{formatBRL(order.total)}</p>
         <p className="text-xs text-ink-secondary">Favorecido: {settings.pix_merchant_name}</p>
       </div>
-      <PixQrCode payload={payload} size={200} />
       <button type="button" onClick={() => void copy()} className={`${copied ? 'btn-success' : 'btn-primary'} w-full`}>
         {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
         {copied ? 'Código copiado' : 'Copiar código PIX'}
       </button>
-      <textarea readOnly value={payload} onFocus={(e) => e.currentTarget.select()} rows={2} aria-label="Código PIX Copia e Cola" className="w-full break-all rounded-xl border border-line-strong bg-white p-2 font-mono text-[11px] text-ink-secondary" />
+      <PixQrToggle payload={payload} />
     </section>
   );
 }
@@ -127,12 +139,11 @@ export function AutoPixPanel({ order }: { order: DeliveryOrder }) {
         <p className="mt-1 text-2xl font-bold text-brand-800 tabular-nums">{formatBRL(order.total)}</p>
         {secondsLeft !== null && <p className="text-xs text-ink-secondary tabular-nums">{secondsLeft > 0 ? `Pague em até ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}` : 'Prazo do PIX encerrado'}</p>}
       </div>
-      <PixQrCode payload={qr} size={200} />
       <button type="button" onClick={() => void copy()} className={`${copied ? 'btn-success' : 'btn-primary'} w-full`}>
         {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
         {copied ? 'Código copiado' : 'Copiar código PIX'}
       </button>
-      <textarea readOnly value={qr} onFocus={(e) => e.currentTarget.select()} rows={2} aria-label="Código PIX Copia e Cola" className="w-full break-all rounded-xl border border-line-strong bg-white p-2 font-mono text-[11px] text-ink-secondary" />
+      <PixQrToggle payload={qr} />
       <p className="flex items-center gap-2 text-xs text-ink-secondary"><Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />Não precisa mandar comprovante: assim que o pagamento cair, esta tela confirma sozinha e o pedido vai para a brasa.</p>
     </section>
   );
