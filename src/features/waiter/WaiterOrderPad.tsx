@@ -82,7 +82,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
       ? [{ id: TOP, title: 'Mais pedidos', rows: sortRows(topProducts) }, ...categories.map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }))]
       : categories.filter((c) => c.id === selectedCategory).map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }));
 
-  const { notify } = useFeedback();
+  const { notify, requestChoice } = useFeedback();
   /** Rola até a busca do cardápio, descontando o cabeçalho fixo (sem scrollIntoView). */
   const scrollToCatalog = () => {
     const el = document.getElementById('waiter-catalog');
@@ -147,6 +147,18 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
           : orderSent ? <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção.</span></div><button type="button" className="icon-button bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>
           : (billRequested || table.status === 'AGUARDANDO_CONTA') ? <p role="status" className="notice border-brand-200 bg-brand-50 text-brand-900">Conta pedida. Aguarde o atendimento do caixa.</p>
           : null}
+        {/* Mesa aberta sem nenhum pedido: o garçom pode desfazer (abriu a mesa errada) */}
+        {activeTab && cartCount === 0 && !useTableStore.getState().getTabOrderItems(activeTab.id).some((item) => item.status !== 'CANCELLED') && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3.5 py-3">
+            <p className="text-[15px] text-ink-secondary">Mesa aberta, ainda sem pedido.</p>
+            <button type="button" onClick={async () => {
+              const answer = await requestChoice({ title: `Liberar a Mesa ${pad2(table.number)}?`, message: 'Use quando abriu a mesa por engano. Ela volta a ficar livre.', choices: [{ value: 'yes', label: 'Sim, liberar a mesa' }, { value: 'no', label: 'Não, continuar atendendo' }] });
+              if (answer !== 'yes') return;
+              try { useTableStore.getState().releaseEmptyTab(activeTab.id, currentProfile.id); notify(`Mesa ${pad2(table.number)} liberada.`, 'success'); onBackToTables(); }
+              catch (error: unknown) { notify(error instanceof Error ? error.message : 'Não foi possível liberar a mesa.', 'error'); }
+            }} className="min-h-[44px] rounded-lg border-2 border-rose-300 bg-white px-3.5 text-[15px] font-semibold text-rose-700 active:bg-rose-50">Liberar mesa</button>
+          </div>
+        )}
         {activeTab && <TabItemsPanel table={table} onSwap={(item) => { setSwapping(item.product_name); setSearchQuery(''); setSelectedCategory(TOP); scrollToCatalog(); }} />}
         <div id="waiter-catalog" className="flex scroll-mt-32 items-center gap-2">
           <label className="relative block flex-1">

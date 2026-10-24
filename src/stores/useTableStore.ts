@@ -86,6 +86,8 @@ interface TableState {
   reopenTabAtomic: (tabId: string, userId: string, reason: string) => void;
   /** Anula a comanda inteira (lançamento de teste/engano): cancela itens, estorna pagamentos e libera a mesa. */
   voidTabAtomic: (tabId: string, reason: string, userId: string, returnStock?: boolean) => void;
+  /** Garçom libera mesa aberta por engano: só comanda sem itens e sem pagamento (fica na auditoria). */
+  releaseEmptyTab: (tabId: string, userId: string) => void;
   getTabByTableId: (tableId: string) => Tab | undefined;
   getTabOrderItems: (tabId: string) => OrderItem[];
 
@@ -745,6 +747,22 @@ export const useTableStore = create<TableState>((set, get) => ({
       context: 'TableStore',
       message: `Comanda da Mesa ${table?.number} reaberta por ${userId}. Motivo: ${reason}`,
     });
+  },
+
+  releaseEmptyTab: (tabId, userId) => {
+    const tab = get().tabs.find((t) => t.id === tabId);
+    if (!tab) throw new Error('Comanda não encontrada.');
+    if (tab.status !== 'OPEN') throw new Error('Esta comanda já foi encerrada.');
+    const orderIds = new Set(get().orders.filter((o) => o.tab_id === tabId).map((o) => o.id));
+    if (get().orderItems.some((i) => orderIds.has(i.order_id) && i.status !== 'CANCELLED')) throw new Error('A mesa já tem pedido lançado. Peça ao gerente para anular a comanda.');
+    if (get().payments.some((p) => p.tab_id === tabId && p.status === 'PAID')) throw new Error('A mesa já tem pagamento registrado. Peça ao caixa para resolver.');
+    const now = new Date().toISOString();
+    set({
+      tabs: get().tabs.map((t) => (t.id === tabId ? { ...t, status: 'CANCELLED' as const, subtotal: 0, service_fee: 0, discount: 0, total: 0, closed_at: now, closed_by: userId, updated_at: now } : t)),
+      tables: get().tables.map((t) => (t.id === tab.table_id ? { ...t, status: 'LIVRE' as const, current_tab: undefined, updated_at: now } : t)),
+    });
+    void callRpc('release_empty_tab', { p_tab_id: tabId }, 'TableStore');
+    logger.info({ context: 'TableStore', message: `Comanda ${tabId} liberada (mesa aberta por engano).` });
   },
 
   voidTabAtomic: (tabId, reason, userId, returnStock) => {
