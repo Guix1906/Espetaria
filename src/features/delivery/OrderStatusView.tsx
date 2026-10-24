@@ -87,9 +87,14 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
             const last = i === steps.length - 1;
             return (
               <li key={step.title} aria-current={isCurrent ? 'step' : undefined} className="relative flex gap-3.5 pb-5 last:pb-0">
-                {!last && <span aria-hidden="true" className={`absolute left-[9px] top-6 h-[calc(100%-20px)] w-0.5 ${isDone ? 'bg-emerald-600' : 'bg-line'}`} />}
-                <span aria-hidden="true" className={`relative z-10 mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${isDone ? 'bg-emerald-600 text-white' : isCurrent ? 'border-[6px] border-brand-500 bg-white' : 'border-2 border-line-strong bg-white'}`}>
-                  {isDone && <Check className="h-3 w-3" strokeWidth={3} />}
+                {!last && <span aria-hidden="true" className={`absolute left-[9px] top-6 h-[calc(100%-20px)] w-0.5 overflow-hidden ${isDone ? 'bg-emerald-600' : 'bg-line'}`}>
+                  {isCurrent && <span className="pm-step-flow absolute inset-x-0 top-0 h-2/5 bg-gradient-to-b from-transparent via-brand-500 to-transparent" />}
+                </span>}
+                <span aria-hidden="true" className="relative z-10 mt-0.5 flex h-5 w-5 shrink-0">
+                  {isCurrent && <span className="pm-step-halo absolute inset-0 rounded-full bg-brand-500" />}
+                  <span className={`relative flex h-5 w-5 items-center justify-center rounded-full ${isDone ? 'bg-emerald-600 text-white' : isCurrent ? 'border-[6px] border-brand-500 bg-white' : 'border-2 border-line-strong bg-white'}`}>
+                    {isDone && <Check className="h-3 w-3" strokeWidth={3} />}
+                  </span>
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-baseline justify-between gap-3">
