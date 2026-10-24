@@ -14,6 +14,27 @@ import type { DeliveryOrder } from '../../types/domain';
 
 interface DeliveryTrackingModalProps { order: DeliveryOrder; isOpen: boolean; onClose: () => void; }
 
+/** Copia o código PIX; sem clipboard (navegador antigo / http) usa o modo antigo de seleção. */
+async function copyText(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.setAttribute('readonly', '');
+    area.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(area);
+    area.select();
+    area.setSelectionRange(0, text.length);
+    const ok = document.execCommand('copy');
+    area.remove();
+    return ok;
+  }
+}
+
+const PIX_HOW_TO = 'Abra o app do banco e cole em PIX Copia e Cola.';
+
 /** QR Code escondido: no celular o cliente usa o Copia e Cola; o QR é para pagar de outro aparelho. */
 function PixQrToggle({ payload }: { payload: string }) {
   const [open, setOpen] = useState(false);
@@ -45,13 +66,9 @@ export function DeliveryPixPanel({ order }: { order: DeliveryOrder }) {
   });
 
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(payload);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2500);
-    } catch {
-      setCopied(false);
-    }
+    if (!(await copyText(payload))) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -65,6 +82,7 @@ export function DeliveryPixPanel({ order }: { order: DeliveryOrder }) {
         {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
         {copied ? 'Código copiado' : 'Copiar código PIX'}
       </button>
+      <p className="text-center text-[14px] text-ink-secondary">{PIX_HOW_TO}</p>
       <PixQrToggle payload={payload} />
     </section>
   );
@@ -123,13 +141,9 @@ export function AutoPixPanel({ order }: { order: DeliveryOrder }) {
 
   const secondsLeft = expiresAt ? Math.max(0, Math.floor((new Date(expiresAt).getTime() - now) / 1000)) : null;
   const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(qr);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2500);
-    } catch {
-      setCopied(false);
-    }
+    if (!(await copyText(qr))) return;
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -143,6 +157,7 @@ export function AutoPixPanel({ order }: { order: DeliveryOrder }) {
         {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
         {copied ? 'Código copiado' : 'Copiar código PIX'}
       </button>
+      <p className="text-center text-[14px] text-ink-secondary">{PIX_HOW_TO}</p>
       <PixQrToggle payload={qr} />
       <p className="flex items-center gap-2 text-xs text-ink-secondary"><Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />Não precisa mandar comprovante: assim que o pagamento cair, esta tela confirma sozinha e o pedido vai para a brasa.</p>
     </section>

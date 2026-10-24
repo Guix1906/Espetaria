@@ -1,6 +1,6 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import { Button } from '../../components/ui/Button';
-import { ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
+import { ChevronDown, ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { getProductAvailability } from '../../lib/productAvailability';
@@ -31,13 +31,16 @@ const PAYMENTS: { id: DeliveryPaymentMethod; label: string; hint: string }[] = [
   { id: 'CARTAO_ENTREGA', label: 'Cartão na entrega', hint: 'Débito ou crédito na maquininha' },
   { id: 'DINHEIRO', label: 'Dinheiro', hint: 'Pague ao entregador' },
 ];
-const CATEGORY_ORDER = ['Espetos com acompanhamento', 'Espetos', 'Entradas', 'Porções', 'Bebidas', 'Sobremesas', 'Outros'];
+// "Combos" = espetos com acompanhamento (nome curto na aba; o cadastro continua igual)
+const COMBOS = 'Combos';
+const COMBO_SIDES = 'Todos acompanham arroz, vinagrete, farofa e purê';
+const CATEGORY_ORDER = [COMBOS, 'Espetos', 'Entradas', 'Porções', 'Bebidas', 'Sobremesas', 'Outros'];
 const SAVED_KEY = 'ponto.cardapio.cliente';
 
 /** Aba do cardápio. Produtos da categoria "Entradas" do cadastro ganham aba própria. */
 function categoryOf(p: Product, categoryName?: string) {
   if (categoryName && /^entradas?$/i.test(categoryName.trim())) return 'Entradas';
-  if (p.type === 'ESPETO') return /acompanhamento/i.test(p.name) ? 'Espetos com acompanhamento' : 'Espetos';
+  if (p.type === 'ESPETO') return /acompanhamento/i.test(p.name) ? COMBOS : 'Espetos';
   if (p.type === 'PORCAO') return 'Porções';
   if (p.type === 'BEBIDA') return 'Bebidas';
   if (p.type === 'SOBREMESA') return 'Sobremesas';
@@ -45,6 +48,22 @@ function categoryOf(p: Product, categoryName?: string) {
 }
 const slug = (s: string) => 'cat-' + s.normalize('NFD').replace(/[^\w]+/g, '-').toLowerCase();
 const parseMoney = (s: string) => { const n = parseFloat(s.replace(/\./g, '').replace(',', '.')); return Number.isFinite(n) ? n : NaN; };
+/** (99) 99999-9999 enquanto digita (fixo com 10 dígitos vira (99) 9999-9999). */
+function maskPhone(raw: string) {
+  const d = raw.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d.length ? `(${d}` : '';
+  const head = d.length === 11 ? 7 : 6;
+  return d.length <= head ? `(${d.slice(0, 2)}) ${d.slice(2)}` : `(${d.slice(0, 2)}) ${d.slice(2, head)}-${d.slice(head)}`;
+}
+/** Notas para "troco para": até 3 valores redondos acima do total. */
+function changeSuggestions(total: number) {
+  const out: number[] = [];
+  const round10 = Math.ceil((total + 0.01) / 10) * 10;
+  for (const v of [round10, 50, 100, 200]) if (v > total && !out.includes(v)) out.push(v);
+  return out.sort((a, b) => a - b).slice(0, 3);
+}
+/** Descrição repetida dos combos ("Acompanha arroz, ...") sai do item: vai uma vez no título da seção. */
+const isSidesDescription = (d?: string | null) => !!d && /^acompanha\s/i.test(d.trim());
 
 function useIsDesktop() {
   const [is, setIs] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches);
@@ -64,7 +83,6 @@ function loadCustomer(): Customer {
 }
 
 /* ---------- peças visuais ---------- */
-const primaryBtn = 'flex h-14 w-full items-center justify-center gap-2 rounded-md bg-brand-500 px-5 text-[17px] font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-ink-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink';
 const inputCls = 'h-12 w-full rounded-md border border-line bg-white px-3.5 text-[16px] text-ink placeholder:text-ink-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-50';
 const labelCls = 'mb-1.5 block text-[14px] font-medium text-ink-secondary';
 
@@ -117,7 +135,7 @@ function Progress({ n }: { n: 1 | 2 | 3 }) {
 }
 
 function Footer({ children }: { children: ReactNode }) {
-  return <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-5 pt-3" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)' }}><div className="mx-auto max-w-xl">{children}</div></div>;
+  return <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface px-5 pt-3" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}><div className="mx-auto max-w-xl">{children}</div></div>;
 }
 
 function Alert({ children }: { children: ReactNode }) {
@@ -130,7 +148,10 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
   const [doneness, setDoneness] = useState<MeatDoneness | null>(null);
   const [notes, setNotes] = useState('');
   const [err, setErr] = useState<string | null>(null);
+  const [flagDoneness, setFlagDoneness] = useState(false);
+  const donenessRef = useRef<HTMLFieldSetElement>(null);
   const needsDoneness = product.allows_doneness;
+  const missingDoneness = needsDoneness && !doneness;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -138,7 +159,12 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
     return () => { window.removeEventListener('keydown', onKey); document.body.style.overflow = ''; };
   }, [onClose]);
   const submit = () => {
-    if (needsDoneness && !doneness) { setErr('Escolha o ponto da carne para continuar.'); return; }
+    // Falta o ponto: rola até o grupo e destaca (o botão parece desabilitado, mas responde ao toque)
+    if (missingDoneness) {
+      setFlagDoneness(true);
+      donenessRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     const e = onAdd(qty, doneness, notes); if (e) setErr(e); };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(43,33,28,.5)] lg:items-center lg:p-6" onClick={onClose}>
@@ -156,11 +182,13 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
               {product.description && <p className="mt-2 text-[15px] leading-snug text-ink-muted">{product.description}</p>}
             </div>
             {needsDoneness && (
-              <fieldset>
-                <legend className="mb-2 flex items-center gap-2 text-[17px] font-semibold">Ponto da carne <span className="rounded-md bg-ink px-1.5 py-0.5 text-[12px] font-semibold text-surface">Obrigatório</span></legend>
-                <div className="divide-y divide-surface-muted lg:grid lg:grid-cols-3 lg:gap-2 lg:divide-y-0">
+              <fieldset ref={donenessRef} className={`rounded-md border-2 border-[#B5502E] bg-[#FBEFE8] px-4 pb-2 pt-3 ${flagDoneness && missingDoneness ? 'ring-4 ring-[#B5502E]/30' : ''}`}>
+                <legend className="sr-only">Ponto da carne</legend>
+                <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"><span className="text-[17px] font-semibold">Ponto da carne</span><span className="text-[13px] font-semibold text-[#B5502E]">Escolha 1 · obrigatório</span></p>
+                {flagDoneness && missingDoneness && <p role="alert" className="mt-1 text-[14px] font-semibold text-rose-700">Escolha o ponto da carne para continuar.</p>}
+                <div className="mt-1 divide-y divide-[#B5502E]/15 lg:mt-3 lg:grid lg:grid-cols-3 lg:gap-2 lg:divide-y-0">
                   {DONENESS.map((d) => (
-                    <button key={d.id} type="button" role="radio" aria-checked={doneness === d.id} onClick={() => { setDoneness(d.id); setErr(null); }}
+                    <button key={d.id} type="button" role="radio" aria-checked={doneness === d.id} onClick={() => { setDoneness(d.id); setErr(null); setFlagDoneness(false); }}
                       className={`flex h-12 w-full items-center gap-3 text-left text-[16px] lg:justify-center lg:rounded-md lg:border lg:text-[15px] ${doneness === d.id ? 'lg:border-2 lg:border-brand-500 lg:bg-brand-50 lg:font-semibold' : 'lg:border-line-strong lg:bg-white'}`}>
                       <span className="shrink-0 lg:hidden"><Radio on={doneness === d.id} /></span>{d.label}
                     </button>
@@ -168,16 +196,17 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
                 </div>
               </fieldset>
             )}
-            <div><label htmlFor="pm-notes" className="mb-2 block text-[17px] font-semibold">Observação</label><input id="pm-notes" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ex.: pouco sal" className={inputCls} /></div>
+            <div><label htmlFor="pm-notes" className="mb-2 block text-[17px] font-semibold">Observação</label><input id="pm-notes" value={notes} onChange={(e) => setNotes(e.target.value)}
+              onFocus={(e) => { const el = e.currentTarget; window.setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); }} placeholder="Ex.: pouco sal" className={inputCls} /></div>
             {err && <Alert>{err}</Alert>}
           </div>
-          <div className="flex gap-3 border-t border-line px-5 pt-3 lg:px-7 lg:pb-5" style={{ paddingBottom: 'max(calc(env(safe-area-inset-bottom) + 16px), 20px)' }}>
-            <div className="flex h-14 items-center rounded-md border border-line-strong bg-white">
-              <button type="button" aria-label="Diminuir" onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex h-full w-11 items-center justify-center text-ink-muted"><Minus className="h-5 w-5" /></button>
-              <span className="w-6 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
-              <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-full w-11 items-center justify-center text-brand-500"><Plus className="h-5 w-5" /></button>
+          <div className="flex items-center gap-3 border-t border-line px-5 pt-3 lg:px-7 lg:pb-5" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+            <div className="flex h-[52px] shrink-0 items-center rounded-md border border-line-strong bg-white">
+              <button type="button" aria-label="Diminuir" onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex h-[52px] w-11 items-center justify-center text-ink-muted"><Minus className="h-5 w-5" /></button>
+              <span className="w-9 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
+              <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-[52px] w-11 items-center justify-center text-brand-500"><Plus className="h-5 w-5" /></button>
             </div>
-            <Button size="lg" block onClick={submit} className="font-semibold">{needsDoneness && !doneness ? 'Escolha o ponto' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
+            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness} className={`px-3 text-[15px] font-semibold leading-tight ${missingDoneness ? '!bg-ink-muted' : 'whitespace-nowrap'}`}>{missingDoneness ? 'Escolha o ponto da carne' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
           </div>
         </div>
       </div>
@@ -206,6 +235,7 @@ export function PublicMenuApp() {
   const [payment, setPayment] = useState<DeliveryPaymentMethod>('PIX');
   const [changeFor, setChangeFor] = useState('');
   const [noChange, setNoChange] = useState(false);
+  const [otherChange, setOtherChange] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -244,7 +274,6 @@ export function PublicMenuApp() {
   const isPickup = orderType === 'PICKUP';
   const zone = zones.find((z) => z.name === customer.neighborhood);
   const minFee = zones.length ? Math.min(...zones.map((z) => z.fee)) : 0;
-  const minFeeShort = Number.isInteger(minFee) ? `R$ ${minFee}` : formatBRL(minFee);
   const fee = isPickup ? 0 : zone?.fee ?? 0;
   const total = subtotal + fee;
   // Sugestões no "Seu pedido": as bebidas mais pedidas primeiro, depois as demais
@@ -253,7 +282,7 @@ export function PublicMenuApp() {
     return i === -1 ? TOP_DRINKS.length : i;
   };
   const drinks = products.filter((p) => p.active && p.type === 'BEBIDA' && stockOf(p).isAvailable)
-    .sort((a, b) => drinkRank(a.name) - drinkRank(b.name)).slice(0, 6);
+    .sort((a, b) => drinkRank(a.name) - drinkRank(b.name)).slice(0, 8);
 
   /* scroll-spy das categorias */
   const sectionsRef = useRef<Record<string, HTMLElement | null>>({});
@@ -302,7 +331,7 @@ export function PublicMenuApp() {
   const validatePayment = () => {
     if (payment === 'DINHEIRO' && !noChange) {
       const v = parseMoney(changeFor);
-      if (!changeFor.trim() || Number.isNaN(v)) return 'Informe o troco ou marque "Não preciso de troco".';
+      if (!changeFor.trim() || Number.isNaN(v)) return 'Escolha o troco ou toque em "Sem troco".';
       if (v < total) return `O troco precisa ser de pelo menos ${formatBRL(total)}.`;
     }
     return null;
@@ -336,7 +365,7 @@ export function PublicMenuApp() {
 
   /* ---------- telas ---------- */
   const typeOptions = [
-    { id: 'DELIVERY' as const, label: <>Entrega{zones.length > 0 && <span className="font-normal text-ink-muted"> · <span className="hidden min-[400px]:inline">a partir de </span>{minFeeShort}</span>}</> },
+    { id: 'DELIVERY' as const, label: <span className="whitespace-nowrap">Entrega{zones.length > 0 && <span className="font-normal text-ink-muted"> · {formatBRL(minFee)}</span>}</span> },
     { id: 'PICKUP' as const, label: 'Retirada' },
   ];
 
@@ -355,22 +384,24 @@ export function PublicMenuApp() {
     </label>
   );
 
-  const productRow = (p: Product) => {
+  const productRow = (p: Product, inCombos = false) => {
     const { isAvailable } = stockOf(p);
     const q = qtyInCart(p.id);
+    const description = inCombos && isSidesDescription(p.description) ? null : p.description;
     return (
       <li key={p.id} className="border-b border-surface-muted last:border-b-0">
-        <button type="button" disabled={!isAvailable} onClick={() => (p.allows_doneness ? setSheetProduct(p) : onPlus(p))} className="flex w-full gap-3.5 py-3.5 text-left disabled:cursor-not-allowed">
+        <button type="button" disabled={!isAvailable} onClick={() => (p.allows_doneness ? setSheetProduct(p) : onPlus(p))} className={`flex w-full gap-3.5 text-left disabled:cursor-not-allowed ${description ? 'py-3.5' : 'items-center py-2.5'}`}>
           <div className="min-w-0 flex-1">
             <h3 className="text-[17px] font-semibold leading-snug">{p.name}</h3>
-            {p.description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{p.description}</p>}
+            {description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{description}</p>}
             {isAvailable ? <p className="mt-1.5 text-[16px] font-semibold tabular-nums">{formatBRL(p.price)}</p> : <p className="mt-1.5 flex items-center gap-2"><span className="text-[16px] font-semibold tabular-nums text-ink-muted opacity-60">{formatBRL(p.price)}</span><StatusTag kind="alert" className="text-[13px] font-semibold">Esgotado</StatusTag></p>}
           </div>
-          <div className="relative shrink-0">
-            <Photo product={p} className={`h-24 w-24 rounded-md ${isAvailable ? '' : 'opacity-50 grayscale'}`} />
+          {/* "+" dentro da foto: não passa da borda da imagem nem da tela */}
+          <div className="relative shrink-0 overflow-hidden rounded-md">
+            <Photo product={p} className={`${description ? 'h-24 w-24' : 'h-[92px] w-[92px]'} ${isAvailable ? '' : 'opacity-50 grayscale'}`} />
             {isAvailable && (q > 0
-              ? <span aria-label={`${q} no pedido`} className="absolute -bottom-1.5 -right-1.5 flex h-9 min-w-[36px] items-center justify-center rounded-full bg-ink px-2 text-[15px] font-semibold text-white shadow-[0_2px_6px_rgba(43,33,28,.2)]">{q}</span>
-              : <span aria-hidden="true" className="absolute -bottom-1.5 -right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white shadow-[0_2px_6px_rgba(43,33,28,.2)]"><Plus className="h-5 w-5" /></span>)}
+              ? <span aria-label={`${q} no pedido`} className="absolute bottom-1.5 right-1.5 flex h-10 min-w-[40px] items-center justify-center rounded-full bg-ink px-2 text-[15px] font-semibold text-white shadow-[0_2px_6px_rgba(43,33,28,.25)]">{q}</span>
+              : <span aria-hidden="true" className="absolute bottom-1.5 right-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white shadow-[0_2px_6px_rgba(43,33,28,.25)]"><Plus className="h-5 w-5" /></span>)}
           </div>
         </button>
       </li>
@@ -385,15 +416,15 @@ export function PublicMenuApp() {
         className={`relative flex gap-3.5 rounded-md bg-white p-3.5 text-left transition hover:shadow-[0_2px_8px_rgba(43,33,28,.08)] disabled:cursor-not-allowed ${q > 0 ? 'border-2 border-ink' : 'border border-line'}`}>
         <div className="flex min-w-0 flex-1 flex-col">
           <h3 className="text-[17px] font-semibold leading-snug">{p.name}</h3>
-          {p.description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{p.description}</p>}
+          {p.description && !(categoryOf(p, catName.get(p.category_id)) === COMBOS && isSidesDescription(p.description)) && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{p.description}</p>}
           <div className="mt-auto flex items-center gap-2 pt-2">
             {isAvailable ? <span className="text-[16px] font-semibold tabular-nums">{formatBRL(p.price)}</span> : <><span className="text-[16px] font-semibold tabular-nums text-ink-muted opacity-60">{formatBRL(p.price)}</span><StatusTag kind="alert" className="text-[13px] font-semibold">Esgotado</StatusTag></>}
             {q > 0 && <span className="rounded-2xl bg-ink px-2 py-0.5 text-[12px] font-semibold text-surface">{q} no pedido</span>}
           </div>
         </div>
-        <div className="relative shrink-0">
-          <Photo product={p} className={`h-[96px] w-[96px] rounded-md xl:h-[110px] xl:w-[110px] ${isAvailable ? '' : 'opacity-50 grayscale'}`} />
-          {isAvailable && <span aria-hidden="true" className="absolute -bottom-1.5 -right-1.5 flex h-9 w-9 items-center justify-center rounded-full bg-brand-500 text-white shadow-[0_2px_6px_rgba(43,33,28,.2)]"><Plus className="h-5 w-5" /></span>}
+        <div className="relative shrink-0 overflow-hidden rounded-md">
+          <Photo product={p} className={`h-[96px] w-[96px] xl:h-[110px] xl:w-[110px] ${isAvailable ? '' : 'opacity-50 grayscale'}`} />
+          {isAvailable && <span aria-hidden="true" className="absolute bottom-1.5 right-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white shadow-[0_2px_6px_rgba(43,33,28,.2)]"><Plus className="h-5 w-5" /></span>}
         </div>
       </button>
     );
@@ -419,7 +450,7 @@ export function PublicMenuApp() {
       <div><label htmlFor="pm-name" className={labelCls}>Seu nome</label><input id="pm-name" autoComplete="name" value={customer.name} onChange={(e) => saveCustomer({ name: e.target.value })} className={inputCls} /></div>
       <div>
         <label htmlFor="pm-phone" className={labelCls}>WhatsApp</label>
-        <input id="pm-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(11) 98765-4321" value={customer.phone} onChange={(e) => saveCustomer({ phone: e.target.value })} className={inputCls} />
+        <input id="pm-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(99) 99999-9999" maxLength={15} value={maskPhone(customer.phone)} onChange={(e) => saveCustomer({ phone: maskPhone(e.target.value) })} className={inputCls} />
         <p className="mt-1.5 text-[13px] text-ink-muted">Enviamos a confirmação e o link de acompanhamento.</p>
       </div>
       {isPickup ? (
@@ -428,16 +459,19 @@ export function PublicMenuApp() {
         <>
           <div className={twoCols ? 'col-span-2' : ''}>
             <div className="mb-1.5 flex items-baseline justify-between"><label htmlFor="pm-hood" className="text-[14px] font-medium text-ink-secondary">Bairro</label>{zone && <span className="text-[14px] text-ink-muted">Taxa {formatBRL(zone.fee)}</span>}</div>
-            <select id="pm-hood" value={customer.neighborhood} onChange={(e) => saveCustomer({ neighborhood: e.target.value })} className={`${inputCls} appearance-none bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%228%22><path d=%22M1 1l5 5 5-5%22 stroke=%22%236B5D53%22 stroke-width=%221.6%22 fill=%22none%22/></svg>')] bg-[right_14px_center] bg-no-repeat pr-10`}>
-              <option value="">Escolha o bairro</option>
-              {zones.map((z) => <option key={z.name} value={z.name}>{z.name} · {formatBRL(z.fee)}</option>)}
-            </select>
+            <div className="relative">
+              <select id="pm-hood" autoComplete="address-level3" value={customer.neighborhood} onChange={(e) => saveCustomer({ neighborhood: e.target.value })} className={`${inputCls} cursor-pointer appearance-none pr-12 ${customer.neighborhood ? '' : 'text-ink-muted'}`}>
+                <option value="">Escolha o bairro</option>
+                {zones.map((z) => <option key={z.name} value={z.name}>{z.name} · {formatBRL(z.fee)}</option>)}
+              </select>
+              <span aria-hidden="true" className="pointer-events-none absolute inset-y-1 right-1 flex w-10 items-center justify-center rounded-r-md border-l border-line text-ink"><ChevronDown className="h-5 w-5" /></span>
+            </div>
           </div>
           <div className={`grid grid-cols-[1fr_96px] gap-3 ${twoCols ? 'col-span-2' : ''}`}>
             <div><label htmlFor="pm-street" className={labelCls}>Rua</label><input id="pm-street" autoComplete="address-line1" value={customer.street} onChange={(e) => saveCustomer({ street: e.target.value })} className={inputCls} /></div>
-            <div><label htmlFor="pm-number" className={labelCls}>Nº</label><input id="pm-number" inputMode="numeric" value={customer.number} onChange={(e) => saveCustomer({ number: e.target.value })} className={inputCls} /></div>
+            <div><label htmlFor="pm-number" className={labelCls}>Nº</label><input id="pm-number" inputMode="numeric" autoComplete="address-line2" value={customer.number} onChange={(e) => saveCustomer({ number: e.target.value })} className={inputCls} /></div>
           </div>
-          <div className={twoCols ? 'col-span-2' : ''}><label htmlFor="pm-comp" className={labelCls}>Complemento ou referência <span className="font-normal text-ink-muted">(opcional)</span></label><input id="pm-comp" autoComplete="address-line2" value={customer.complement} onChange={(e) => saveCustomer({ complement: e.target.value })} className={inputCls} /></div>
+          <div className={twoCols ? 'col-span-2' : ''}><label htmlFor="pm-comp" className={labelCls}>Complemento ou referência <span className="font-normal text-ink-muted">(opcional)</span></label><input id="pm-comp" autoComplete="address-line3" value={customer.complement} onChange={(e) => saveCustomer({ complement: e.target.value })} className={inputCls} /></div>
         </>
       )}
     </div>
@@ -460,12 +494,26 @@ export function PublicMenuApp() {
       {inRow && payment === 'DINHEIRO' && <div className="col-span-3">{cashFields}</div>}
     </div>
   );
+  // Troco: "Sem troco", notas sugeridas acima do total ou "Outro" (valor digitado)
+  const suggestions = changeSuggestions(total);
+  const pickedNote = !noChange && !otherChange ? suggestions.find((v) => parseMoney(changeFor) === v) : undefined;
+  const changeChip = (on: boolean, label: string, onClick: () => void) => (
+    <button key={label} type="button" role="radio" aria-checked={on} onClick={() => { onClick(); setFormError(null); }}
+      className={`min-h-[44px] rounded-md px-3.5 text-[15px] ${on ? 'border-2 border-brand-500 bg-brand-50 font-semibold text-ink' : 'border border-line-strong bg-white font-medium text-ink-secondary'}`}>{label}</button>
+  );
   const cashFields = (
     <div className="mt-4 space-y-3 border-t border-surface-muted pt-4">
-      <div><label htmlFor="pm-change" className={labelCls}>Troco para quanto?</label>
-        <div className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[16px] text-ink-muted">R$</span><input id="pm-change" inputMode="decimal" disabled={noChange} value={changeFor} onChange={(e) => setChangeFor(e.target.value.replace(/[^\d,.]/g, ''))} placeholder="0,00" className={`${inputCls} pl-10 disabled:bg-canvas`} /></div>
+      <p className="text-[15px] font-semibold">Troco para quanto?</p>
+      <div role="radiogroup" aria-label="Troco" className="flex flex-wrap gap-2">
+        {changeChip(noChange, 'Sem troco', () => { setNoChange(true); setOtherChange(false); setChangeFor(''); })}
+        {suggestions.map((v) => changeChip(pickedNote === v, formatBRL(v), () => { setNoChange(false); setOtherChange(false); setChangeFor(String(v)); }))}
+        {changeChip(otherChange, 'Outro', () => { setNoChange(false); setOtherChange(true); setChangeFor(''); })}
       </div>
-      <label className="flex min-h-[44px] cursor-pointer items-center gap-3 text-[15px]"><input type="checkbox" checked={noChange} onChange={(e) => setNoChange(e.target.checked)} className="h-5 w-5 accent-brand-500" />Não preciso de troco</label>
+      {otherChange && (
+        <div><label htmlFor="pm-change" className={labelCls}>Valor da nota</label>
+          <div className="relative"><span className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-[16px] text-ink-muted">R$</span><input id="pm-change" inputMode="decimal" autoFocus value={changeFor} onChange={(e) => setChangeFor(e.target.value.replace(/[^\d,.]/g, ''))} placeholder="0,00" className={`${inputCls} pl-10`} /></div>
+        </div>
+      )}
     </div>
   );
   const paymentSummary = payment === 'DINHEIRO' ? `Dinheiro · ${noChange || !changeFor ? 'sem troco' : `troco para ${formatBRL(parseMoney(changeFor) || 0)}`}` : PAYMENTS.find((p) => p.id === payment)!.label;
@@ -529,10 +577,21 @@ export function PublicMenuApp() {
           <p className="rounded-2xl border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Os acompanhamentos da casa já vão junto com o pedido.</p>
           {drinks.length > 0 && (
             <div>
-              <h2 className="mb-3 text-[15px] font-semibold">Para beber</h2>
-              <div className="grid grid-cols-3 gap-2.5">
-                {drinks.map((d) => <button key={d.id} type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} className="overflow-hidden rounded-md border border-line bg-white text-left"><Photo product={d} className="h-20 w-full" /><span className="block p-2.5"><span className="line-clamp-2 block text-[14px] font-semibold leading-snug">{d.name}</span><span className="mt-1 block whitespace-nowrap text-[13px] tabular-nums text-ink-muted">+ {formatBRL(d.price)}</span></span></button>)}
-              </div>
+              <h2 className="mb-3 text-[17px] font-semibold">Que tal uma bebida?</h2>
+              <ul className="no-scrollbar -mx-5 flex snap-x gap-2.5 overflow-x-auto px-5 pb-1" aria-label="Bebidas sugeridas">
+                {drinks.map((d) => {
+                  const q = qtyInCart(d.id);
+                  return (
+                    <li key={d.id} className="w-[132px] shrink-0 snap-start">
+                      <button type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="relative block w-full overflow-hidden rounded-md border border-line bg-white text-left">
+                        <Photo product={d} className="h-[90px] w-full" />
+                        <span className="block p-2.5 pr-11"><span className="line-clamp-2 block min-h-[2.5em] text-[14px] font-semibold leading-snug">{d.name}</span><span className="mt-1 block whitespace-nowrap text-[14px] font-semibold tabular-nums">{formatBRL(d.price)}</span></span>
+                        <span aria-hidden="true" className={`absolute bottom-2.5 right-2.5 flex h-[34px] min-w-[34px] items-center justify-center rounded-full px-1.5 text-[14px] font-semibold text-white ${q > 0 ? 'bg-ink' : 'bg-brand-500'}`}>{q > 0 ? q : <Plus className="h-[18px] w-[18px]" />}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           )}
         </div>
@@ -553,7 +612,7 @@ export function PublicMenuApp() {
           {formError && <Alert>{formError}</Alert>}
         </div>
         <Footer>
-          <div className="mb-3 flex justify-between text-[15px]"><span className="text-ink-secondary">{isPickup ? 'Subtotal' : 'Subtotal + entrega'}</span><span className="font-semibold tabular-nums">{!isPickup && !zone ? `${formatBRL(subtotal)} + taxa` : formatBRL(total)}</span></div>
+          <div className="mb-3 flex justify-between text-[15px]"><span className="text-ink-secondary">{isPickup ? 'Total' : zone ? 'Total com entrega' : 'Subtotal'}</span><span className="font-semibold tabular-nums">{formatBRL(isPickup || zone ? total : subtotal)}</span></div>
           <Button size="lg" block onClick={() => { const e = validateDelivery(); setFormError(e); if (!e) go('payment'); }} className="font-semibold">Ir para pagamento</Button>
         </Footer>
       </div>
@@ -586,7 +645,7 @@ export function PublicMenuApp() {
             ? <p className="text-[16px]">{settings.address || 'Na loja'}<span className="block text-[14px] text-ink-muted">Pronto em {pickupEta} · {customer.name}</span></p>
             : <p className="text-[16px]">{customer.street}, {customer.number}{customer.complement ? ` · ${customer.complement}` : ''}<span className="block text-[14px] text-ink-muted">{customer.neighborhood} · {deliveryEta} · {customer.name}</span></p>)}
           {block('Pagamento', back, <p className="text-[16px]">{paymentSummary}</p>)}
-          {block('Itens', () => window.history.go(-3), <ul className="space-y-1.5">{cart.map((c) => <li key={c.id} className="flex justify-between gap-3 text-[15px]"><span>{c.quantity}× {c.product.name}{c.doneness && <span className="text-ink-muted"> · {formatDoneness(c.doneness)}</span>}</span><span className="shrink-0 tabular-nums">{formatBRL(c.product.price * c.quantity)}</span></li>)}</ul>)}
+          {block('Itens', () => window.history.go(-3), <ul className="space-y-2.5">{cart.map((c) => <li key={c.id} className="flex justify-between gap-3 text-[15px]"><span className="min-w-0">{c.quantity}× {c.product.name}{(c.doneness || c.notes) && <span className="mt-0.5 block text-[14px] text-ink-muted">{c.doneness && formatDoneness(c.doneness)}{c.doneness && c.notes && <br />}{c.notes && `“${c.notes}”`}</span>}</span><span className="shrink-0 tabular-nums">{formatBRL(c.product.price * c.quantity)}</span></li>)}</ul>)}
           <div className="pt-4">{totals()}</div>
           {closedNotice && <div className="pt-4">{closedNotice}</div>}
           {formError && <div className="pt-4"><Alert>{formError}</Alert></div>}
@@ -649,7 +708,8 @@ export function PublicMenuApp() {
             {groups.length === 0 && <p className="py-16 text-center text-[16px] text-ink-muted">Nada encontrado para “{query}”.</p>}
             {groups.map((g) => (
               <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
-                <h2 className="mb-4 text-[24px] font-semibold">{g.name}</h2>
+                <h2 className={`text-[24px] font-semibold ${g.name === COMBOS ? '' : 'mb-4'}`}>{g.name}</h2>
+                {g.name === COMBOS && <p className="mb-4 mt-1 text-[15px] text-ink-muted">{COMBO_SIDES}</p>}
                 <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">{g.items.map(productCard)}</div>
               </section>
             ))}
@@ -690,17 +750,20 @@ export function PublicMenuApp() {
           {groups.map((g) => (
             <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
               <h2 className="text-sm font-semibold text-ink-secondary">{g.name} · {g.items.length} {g.items.length === 1 ? 'item' : 'itens'}</h2>
-              <ul>{g.items.map(productRow)}</ul>
+              {g.name === COMBOS && <p className="mt-0.5 text-[14px] text-ink-muted">{COMBO_SIDES}</p>}
+              <ul>{g.items.map((p) => productRow(p, g.name === COMBOS))}</ul>
             </section>
           ))}
         </main>
+        {/* Barra do carrinho flutuante: acessível de qualquer ponto da rolagem */}
         {count > 0 && (
-          <Footer>
-            <button type="button" onClick={() => { setCartError(null); go('cart'); }} className={`${primaryBtn} justify-between`}>
-              <span className="flex items-center gap-3"><span className="flex h-7 min-w-[28px] items-center justify-center rounded-2xl bg-brand-700 px-1.5 text-[15px] tabular-nums">{count}</span>Ver pedido</span>
-              <span className="tabular-nums">{formatBRL(subtotal)}</span>
+          <div className="fixed inset-x-0 bottom-0 z-30 px-4" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+            <button type="button" onClick={() => { setCartError(null); go('cart'); }}
+              className="mx-auto flex h-14 w-full max-w-xl items-center justify-between gap-3 rounded-xl bg-[#2A201B] px-5 text-[17px] font-semibold text-white shadow-[0_8px_24px_rgba(43,33,28,.35)] active:opacity-90">
+              <span className="truncate">Ver pedido · {count} {count === 1 ? 'item' : 'itens'}</span>
+              <span className="shrink-0 font-mono tabular-nums">{formatBRL(subtotal)}</span>
             </button>
-          </Footer>
+          </div>
         )}
       </div>
     );

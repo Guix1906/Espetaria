@@ -63,12 +63,14 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
   const { steps, current } = buildSteps(order);
   const cancelled = order.status === 'CANCELLED';
   const done = order.status === 'DELIVERED';
+  // PIX ainda não confirmado: no lugar da linha do tempo, só "aguardando confirmação"
+  const awaitingPix = order.payment_method === 'PIX' && !order.paid_at && !cancelled && !done;
   return (
     <div className="space-y-6 text-ink">
       <div>
         <p className="font-mono text-[13px] text-ink-muted">Pedido #{order.order_number}</p>
-        <h2 className={`mt-1 text-[28px] font-semibold leading-tight ${cancelled ? 'text-rose-600' : ''}`}>{statusTitle(order)}</h2>
-        {!cancelled && !done && (
+        <h2 className={`mt-1 text-[28px] font-semibold leading-tight ${cancelled ? 'text-rose-600' : ''}`}>{awaitingPix ? 'Aguardando o PIX' : statusTitle(order)}</h2>
+        {!cancelled && !done && !awaitingPix && (
           <p className="mt-1 text-[15px] text-ink-muted">
             {pickup ? `Pronto entre ${hhmm(addMin(order.created_at, 30))} e ${hhmm(addMin(order.created_at, 40))}` : `Chega entre ${hhmm(addMin(order.created_at, 40))} e ${hhmm(addMin(order.created_at, 55))}`}
           </p>
@@ -79,7 +81,14 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
       {/* PIX automático trava o pedido até pagar: fica no topo. PIX manual vem depois do andamento. */}
       {showPix && order.status === 'AWAITING_PAYMENT' && <OrderPixBlock order={order} />}
 
-      {!cancelled && (
+      {awaitingPix && (
+        <div role="status" className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <span aria-hidden="true" className="relative mt-1.5 flex h-3 w-3 shrink-0"><span className="pm-step-halo absolute inset-0 rounded-full bg-amber-500" /><span className="relative h-3 w-3 rounded-full bg-amber-500" /></span>
+          <span><span className="block text-[16px] font-semibold">Aguardando confirmação do PIX…</span><span className="mt-0.5 block text-[14px]">Assim que a loja confirmar o pagamento, você acompanha o preparo por aqui.</span></span>
+        </div>
+      )}
+
+      {!cancelled && !awaitingPix && (
         <ol aria-label="Andamento do pedido" className="space-y-0">
           {steps.map((step, i) => {
             const isDone = i < current || (done && i === current);
@@ -131,7 +140,10 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
         </p>
       </section>
 
-      <button type="button" onClick={() => openRestaurantWhatsApp(order)} className="flex h-[52px] w-full items-center justify-center rounded-md border border-line-strong bg-white text-[16px] font-semibold text-ink hover:bg-canvas">Falar com a loja no WhatsApp</button>
+      {/* Rodapé fixo com safe-area: nunca fica atrás da barra do navegador */}
+      <div className="sticky bottom-0 z-10 -mx-5 bg-surface px-5 pt-3" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
+        <button type="button" onClick={() => openRestaurantWhatsApp(order)} className="flex h-[52px] w-full items-center justify-center rounded-md border border-line-strong bg-white text-[16px] font-semibold text-ink hover:bg-canvas">Falar com a loja no WhatsApp</button>
+      </div>
     </div>
   );
 }
