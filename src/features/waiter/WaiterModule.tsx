@@ -172,9 +172,13 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
           {showOccupied.map((table) => {
             const tab = getTableTab(table.id);
             const chip = statusChip(table);
+            // Cor de referência no movimento: ocupada = terracota, pronto = verde, conta pedida = âmbar
+            const tone = chip.kind === 'ready' ? 'border-emerald-400 border-l-emerald-600 bg-emerald-100'
+              : chip.kind === 'bill' ? 'border-amber-400 border-l-amber-500 bg-amber-100'
+              : 'border-brand-300 border-l-brand-500 bg-brand-100';
             return (
               <li key={table.id}>
-                <button type="button" onClick={() => setSelectedTableId(table.id)} className="flex min-h-[72px] w-full items-center gap-3 rounded-xl border border-line bg-surface px-3.5 py-3 text-left active:bg-accent/10"
+                <button type="button" onClick={() => setSelectedTableId(table.id)} className={`flex min-h-[72px] w-full items-center gap-3 rounded-xl border border-l-[6px] px-3.5 py-3 text-left active:brightness-95 ${tone}`}
                   aria-label={`Mesa ${pad2(table.number)}, ${tabName(table, tab)}, ${chip.label}. Lançar itens`}>
                   <span className="w-11 shrink-0 font-mono text-[26px] font-bold text-ink">{pad2(table.number)}</span>
                   <span className="min-w-0 flex-1">

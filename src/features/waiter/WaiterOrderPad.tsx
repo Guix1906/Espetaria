@@ -134,7 +134,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
         <div className="mx-auto mt-2 flex max-w-5xl flex-nowrap gap-1.5 overflow-x-auto pb-0.5" aria-label="Categorias do cardápio">
           {[{ id: TOP, name: 'Mais pedidos' }, ...categories].map((category) => (
             <button key={category.id} type="button" aria-pressed={selectedCategory === category.id && !query} onClick={() => { setSelectedCategory(category.id); setSearchQuery(''); scrollToCatalog(); }}
-              className={`h-[38px] shrink-0 whitespace-nowrap rounded-md border px-3 text-sm font-semibold ${selectedCategory === category.id && !query ? 'border-ink bg-ink text-white' : 'border-line bg-surface text-ink'}`}>
+              className={`h-[42px] shrink-0 whitespace-nowrap rounded-md border px-3.5 text-base font-semibold ${selectedCategory === category.id && !query ? 'border-ink bg-ink text-white' : 'border-line bg-surface text-ink'}`}>
               {category.id === TOP ? category.name : shortCategoryName(category.name)}
             </button>
           ))}
@@ -158,21 +158,21 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
         </div>
         {sections.every((s) => !s.rows.length) ? <EmptyState title="Nenhum produto encontrado" description="Tente outro nome ou escolha uma categoria diferente." action={<button type="button" className="btn-secondary" onClick={() => { setSelectedCategory(TOP); setSearchQuery(''); }}>Limpar busca</button>} /> : sections.filter((s) => s.rows.length).map((section) => (
           <section key={section.id} aria-label={section.title} className="space-y-2">
-            <h2 className="pt-1 text-sm font-semibold text-ink-secondary">{section.title}</h2>
+            <h2 className="pt-1 text-base font-semibold text-ink-secondary">{section.title}</h2>
             <ul className="waiter-products grid grid-cols-1 gap-2 sm:grid-cols-2">
               {section.rows.map(({ product, level, left, inCart }) => {
                 const out = level === 'out';
                 const blocked = !activeTab || (out && inCart === 0);
                 const tag = stockText(level, left, inCart);
                 return (
-                  <li key={product.id} className={`flex min-h-[62px] items-center gap-3 rounded-xl border px-3.5 py-2 ${inCart ? 'border-brand-200 bg-brand-50' : 'border-line bg-surface'}`}>
+                  <li key={product.id} className={`flex min-h-[72px] items-center gap-3 rounded-xl border px-3.5 py-2 ${inCart ? 'border-brand-200 bg-brand-50' : 'border-line bg-surface'}`}>
                     {product.image_url && (
-                      <img src={product.image_url} alt="" loading="lazy" className={`h-12 w-12 shrink-0 rounded-md object-cover ${out && !inCart ? 'opacity-50 grayscale' : ''}`}
+                      <img src={product.image_url} alt="" loading="lazy" className={`h-14 w-14 shrink-0 rounded-md object-cover ${out && !inCart ? 'opacity-50 grayscale' : ''}`}
                         onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
                     )}
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-base font-semibold leading-snug text-ink">{product.name}</h3>
-                      <p className="mt-0.5 flex flex-wrap items-baseline gap-x-2.5 text-[13px]">
+                      <h3 className="text-[19px] font-semibold leading-snug text-ink">{product.name}</h3>
+                      <p className="mt-1 flex flex-wrap items-baseline gap-x-2.5 text-base">
                         <span className={`font-mono text-ink-secondary ${out && !inCart ? 'opacity-50' : ''}`}>{formatBRL(product.price)}</span>
                         {tag && (out && !inCart ? <StatusTag kind="alert" className="font-semibold">{tag.text}</StatusTag> : <span className={tag.cls}>{tag.text}</span>)}
                       </p>
