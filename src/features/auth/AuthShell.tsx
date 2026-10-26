@@ -77,10 +77,10 @@ export function ForgotPassword() {
 
 const EMAIL_KEY = 'ponto_ultimo_email';
 /** E-mail lembrado neste aparelho (só conveniência; falha silenciosa sem armazenamento). */
-export function rememberedEmail(kind: 'owner' | 'waiter'): string {
+export function rememberedEmail(kind: 'owner' | 'waiter' | 'waiter-login'): string {
   try { return localStorage.getItem(`${EMAIL_KEY}_${kind}`) ?? ''; } catch { return ''; }
 }
-export function rememberEmail(kind: 'owner' | 'waiter', email: string) {
+export function rememberEmail(kind: 'owner' | 'waiter' | 'waiter-login', email: string) {
   try { localStorage.setItem(`${EMAIL_KEY}_${kind}`, email.trim()); } catch { /* sem armazenamento */ }
 }
 

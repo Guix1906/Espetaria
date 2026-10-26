@@ -52,6 +52,16 @@ function assertText(value: unknown, field: string): string {
   return value.trim();
 }
 
+/** Parte do e-mail sem o "+apelido": garcon+joao@x.com → garcon@x.com */
+export function baseEmail(email: string): string {
+  const [local = '', domain = ''] = email.trim().toLowerCase().split('@');
+  return `${local.split('+')[0]}@${domain}`;
+}
+
+function slug(text: string): string {
+  return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20) || 'colaborador';
+}
+
 Deno.serve(async (req) => {
   const res = await handle(req);
   for (const [k, v] of Object.entries(corsHeadersFor(req))) res.headers.set(k, v);
@@ -84,6 +94,20 @@ async function handle(req: Request): Promise<Response> {
 
     if (action === 'setup_status') {
       return json({ needs_setup: await needsSetup() });
+    }
+
+    // E-mail compartilhado (ex.: todos os garçons com garcon@loja): devolve os nomes ativos
+    // que usam esse e-mail, para o garçom escolher o próprio nome na tela de entrada.
+    if (action === 'shared_logins') {
+      const typed = assertText(body.email, 'email').toLowerCase();
+      const base = baseEmail(typed);
+      const [local, domain] = base.split('@');
+      const { data, error } = await admin.from('profiles').select('name, email')
+        .eq('is_active', true).ilike('email', `${local}%@${domain}`).order('name');
+      if (error) throw error;
+      const logins = (data ?? []).filter((p) => baseEmail(String(p.email)) === base)
+        .map((p) => ({ name: p.name as string, login: String(p.email).toLowerCase() }));
+      return json({ logins });
     }
 
     if (action === 'setup_first_admin') {
@@ -138,6 +162,23 @@ async function handle(req: Request): Promise<Response> {
         new_data: newData,
       });
 
+    // E-mail já usado por outra pessoa: cria um login próprio com o nome (garcon+joao@loja).
+    // A caixa de e-mail é a mesma; para o sistema cada colaborador continua tendo login único.
+    const uniqueLogin = async (email: string, name: string, exceptId?: string) => {
+      const taken = async (candidate: string) => {
+        const { data } = await admin.from('profiles').select('id').ilike('email', candidate).limit(2);
+        return (data ?? []).some((p) => p.id !== exceptId);
+      };
+      if (!(await taken(email))) return email;
+      const [local = '', domain = ''] = baseEmail(email).split('@');
+      const tag = slug(name);
+      for (let n = 1; n < 50; n++) {
+        const candidate = `${local}+${tag}${n > 1 ? n : ''}@${domain}`;
+        if (!(await taken(candidate))) return candidate;
+      }
+      throw new HttpError(400, 'Já existe um usuário com este e-mail.');
+    };
+
     const loadTarget = async (id: unknown) => {
       if (typeof id !== 'string') throw new HttpError(400, 'Colaborador inválido.');
       const { data } = await admin.from('profiles').select('*').eq('id', id).single();
@@ -171,8 +212,8 @@ async function handle(req: Request): Promise<Response> {
 
       // -------------------------------------------------------------- CREATE
       case 'create': {
-        const email = assertText(body.email, 'email').toLowerCase();
         const name = assertText(body.name, 'nome');
+        const email = await uniqueLogin(assertText(body.email, 'email').toLowerCase(), name);
         const role = assertRole(body.role);
         const password = assertPassword(body.password);
         if (role === 'MASTER' && !callerIsMaster) throw new HttpError(403, 'Somente o Master pode criar outro Master.');
@@ -207,8 +248,9 @@ async function handle(req: Request): Promise<Response> {
 
         if (body.name !== undefined) changes.name = assertText(body.name, 'nome');
         if (body.email !== undefined) {
-          const email = assertText(body.email, 'email').toLowerCase();
-          if (email !== String(target.email ?? '').toLowerCase()) {
+          let email = assertText(body.email, 'email').toLowerCase();
+          if (email !== String(target.email ?? '').toLowerCase() && baseEmail(email) !== String(target.email ?? '').toLowerCase()) {
+            email = await uniqueLogin(email, String(body.name ?? target.name), target.id);
             // Troca o e-mail de login no Auth (já confirmado, sem mandar e-mail ao colaborador)
             const { error: emailError } = await admin.auth.admin.updateUserById(target.id, { email, email_confirm: true });
             if (emailError) {

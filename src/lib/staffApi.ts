@@ -61,6 +61,13 @@ export const staffApi = {
     await invoke({ action: 'setup_first_admin', ...input });
   },
 
+  /** Colaboradores que entram com o mesmo e-mail (ex.: garcon@loja): nome e login de cada um. */
+  async sharedLogins(email: string): Promise<{ name: string; login: string }[]> {
+    if (!isSupabaseConfigured || !email.includes('@')) return [];
+    const { logins } = await invoke<{ logins: { name: string; login: string }[] }>({ action: 'shared_logins', email: email.trim() });
+    return logins ?? [];
+  },
+
   async list(): Promise<StaffMember[]> {
     if (!isSupabaseConfigured) return localProfiles().map((p) => ({ ...p, has_login: false }));
     const { staff } = await invoke<{ staff: StaffMember[] }>({ action: 'list' });

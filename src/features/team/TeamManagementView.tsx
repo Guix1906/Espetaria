@@ -157,7 +157,9 @@ export function TeamManagementView() {
           onSubmit={async (values) => {
             const created = await staffApi.create({ ...values, password: values.password! });
             setStaff((list) => [...list.filter((m) => m.id !== created.id), { ...created, has_login: true }].sort((a, b) => a.name.localeCompare(b.name)));
-            setNotice(`${created.name} cadastrado(a). Informe o e-mail e a senha ao colaborador.`);
+            setNotice(created.email.toLowerCase() !== values.email.trim().toLowerCase()
+              ? `${created.name} cadastrado(a) com o e-mail compartilhado. Para entrar: e-mail ${values.email.trim()}, escolher o nome "${created.name}" e a senha dele(a).`
+              : `${created.name} cadastrado(a). Informe o e-mail e a senha ao colaborador.`);
           }}
         />
       )}

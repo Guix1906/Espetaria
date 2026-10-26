@@ -5,6 +5,7 @@ import { LogOut, Volume2, VolumeX } from 'lucide-react';
 import { audioService } from '../../lib/audio';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { staffApi } from '../../lib/staffApi';
 import type { Profile } from '../../types/domain';
 import { WaiterModule } from './WaiterModule';
 
@@ -42,6 +43,17 @@ export function WaiterPortal() {
   const [email, setEmail] = useState(() => rememberedEmail('waiter'));
   const [password, setPassword] = useState('');
   const [profileId, setProfileId] = useState('');
+  // E-mail usado por vários garçons: cada um escolhe o próprio nome (login interno garcon+nome@...)
+  const [sharedLogins, setSharedLogins] = useState<{ name: string; login: string }[]>([]);
+  const [login, setLogin] = useState(() => rememberedEmail('waiter-login'));
+  useEffect(() => {
+    if (!isSupabaseConfigured || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setSharedLogins([]); return; }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      staffApi.sharedLogins(email).then((list) => { if (!cancelled) setSharedLogins(list.length > 1 ? list : []); }).catch(() => undefined);
+    }, 400);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [email]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [online, setOnline] = useState(() => typeof navigator === 'undefined' || navigator.onLine);
@@ -98,7 +110,10 @@ export function WaiterPortal() {
     try {
       let profile: unknown;
       if (isSupabaseConfigured) {
-        await signIn(email, password);
+        const chosen = sharedLogins.length > 1 ? sharedLogins.find((s) => s.login === login)?.login : null;
+        if (sharedLogins.length > 1 && !chosen) throw new Error('Selecione seu nome para entrar.');
+        await signIn(chosen ?? email, password);
+        if (chosen) rememberEmail('waiter-login', chosen);
         profile = useAuthStore.getState().currentProfile;
         if (!isWaiterProfile(profile)) await signOut();
       } else {
@@ -154,6 +169,7 @@ export function WaiterPortal() {
           {error && <p role="alert" className={authError}>{error}</p>}
           {isSupabaseConfigured ? <>
             <div><label htmlFor="waiter-email" className={authLabel}>E-mail</label><input id="waiter-email" className={authInput} type="email" inputMode="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} /></div>
+            {sharedLogins.length > 1 && <div><label htmlFor="waiter-login" className={authLabel}>Seu nome</label><select id="waiter-login" className={authInput} required value={sharedLogins.some((s) => s.login === login) ? login : ''} onChange={(event) => setLogin(event.target.value)}><option value="">Selecione</option>{sharedLogins.map((s) => <option key={s.login} value={s.login}>{s.name}</option>)}</select></div>}
             <div><label htmlFor="waiter-password" className={authLabel}>Senha</label><PasswordField id="waiter-password" value={password} onChange={setPassword} /></div>
           </> : <div><label htmlFor="waiter-profile" className={authLabel}>Seu nome (demonstração, sem senha)</label><select id="waiter-profile" className={authInput} required value={profileId} onChange={(event) => setProfileId(event.target.value)}><option value="">Selecione</option>{profiles.map((profile) => <option key={profile.id} value={profile.id}>{profile.name}</option>)}</select></div>}
           <button type="submit" disabled={busy} className={authButton}>{busy ? 'Entrando...' : 'Entrar no atendimento'}</button>
