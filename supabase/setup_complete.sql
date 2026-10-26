@@ -6832,3 +6832,12 @@ END;
 $$;
 REVOKE ALL ON FUNCTION release_empty_tab(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION release_empty_tab(UUID) TO authenticated;
+
+
+-- ============================================================================
+-- 00040: Expande a quantidade de mesas do restaurante para 60 mesas
+-- ============================================================================
+INSERT INTO restaurant_tables (number, capacity, status, active)
+SELECT i, 4, 'LIVRE', true
+FROM generate_series(21, 60) i
+WHERE NOT EXISTS (SELECT 1 FROM restaurant_tables WHERE number = i);

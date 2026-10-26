@@ -292,7 +292,7 @@ export const INITIAL_PRODUCTS: Product[] = [
   }
 ];
 
-export const INITIAL_TABLES: RestaurantTable[] = Array.from({ length: 20 }, (_, i) => ({
+export const INITIAL_TABLES: RestaurantTable[] = Array.from({ length: 60 }, (_, i) => ({
   id: `table-${i + 1}`,
   number: i + 1,
   capacity: (i + 1) % 4 === 0 ? 6 : 4,

@@ -572,6 +572,14 @@ export function PublicMenuApp() {
         <TopBar title="Seu pedido" onBack={back} />
         <div className="space-y-5 px-5 pt-2">
           {cartError && <div className="pt-3"><Alert>{cartError}</Alert></div>}
+          {!isOpen && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+              <p className="font-semibold text-[15px]">Loja fechada no momento</p>
+              <p className="mt-1 text-[13px] text-amber-900 leading-relaxed">
+                Você pode olhar o cardápio e escolher seus itens favoritos, mas os pedidos só podem ser enviados com o restaurante aberto.
+              </p>
+            </div>
+          )}
           {cart.length ? cartLines() : <p className="py-10 text-center text-[15px] text-ink-muted">Seu pedido está vazio.</p>}
           <button type="button" onClick={back} className="flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-brand-700"><Plus className="h-4 w-4" />Adicionar mais itens</button>
           <p className="rounded-2xl border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Os acompanhamentos da casa já vão junto com o pedido.</p>
@@ -597,7 +605,14 @@ export function PublicMenuApp() {
         </div>
         <Footer>
           <div className="mb-3 flex justify-between text-[15px]"><span className="text-ink-secondary">Subtotal · {count} {count === 1 ? 'item' : 'itens'}</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
-          <Button size="lg" block disabled={!cart.length} onClick={() => { setCartError(null); go('delivery'); }} className="font-semibold">Continuar</Button>
+          {isOpen ? (
+            <Button size="lg" block disabled={!cart.length} onClick={() => { setCartError(null); go('delivery'); }} className="font-semibold">Continuar</Button>
+          ) : (
+            <div className="space-y-1.5 text-center">
+              <Button size="lg" block disabled className="font-semibold opacity-60">Loja fechada no momento</Button>
+              <p className="text-xs text-ink-muted">Aguarde o início do expediente para enviar seu pedido.</p>
+            </div>
+          )}
         </Footer>
       </div>
     );
@@ -651,7 +666,7 @@ export function PublicMenuApp() {
           {formError && <div className="pt-4"><Alert>{formError}</Alert></div>}
         </div>
         <Footer>
-          <Button size="lg" block disabled={sending || !cart.length} onClick={() => void send()} className="font-semibold">{sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
+          <Button size="lg" block disabled={sending || !cart.length || !isOpen} onClick={() => void send()} className="font-semibold">{!isOpen ? 'Loja fechada no momento' : sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
           <p className="mt-2 text-center text-[13px] text-ink-muted">A confirmação chega no seu WhatsApp.</p>
         </Footer>
       </div>
@@ -723,7 +738,7 @@ export function PublicMenuApp() {
             <div className="space-y-2 border-t border-line p-5 text-[15px]">
               <div className="flex justify-between"><span className="text-ink-secondary">Subtotal</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
               <p className="text-[14px] text-ink-muted">{isPickup ? 'Retirada no local: sem taxa' : 'Entrega: calculada no bairro'}</p>
-              <Button size="lg" block disabled={!cart.length} onClick={() => go('checkout')} className="mt-2 font-semibold">Finalizar pedido · {formatBRL(subtotal)}</Button>
+              <Button size="lg" block disabled={!cart.length || !isOpen} onClick={() => go('checkout')} className="mt-2 font-semibold">{!isOpen ? 'Loja fechada no momento' : `Finalizar pedido · ${formatBRL(subtotal)}`}</Button>
             </div>
           </aside>
         </div>

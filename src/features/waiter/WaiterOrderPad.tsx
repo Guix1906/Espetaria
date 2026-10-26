@@ -103,8 +103,17 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
   const lastLine = (product: Product) => [...cart].reverse().find((item) => item.product.id === product.id);
   const increment = (product: Product) => { const line = lastLine(product); if (line) tryAdd(() => updateQuantity(table.id, line.id, 1)); else handleAdd(product); };
   const decrement = (product: Product) => { const line = lastLine(product); if (line) updateQuantity(table.id, line.id, -1); };
-  const handleDonenessConfirm = (doneness: MeatDoneness | null, notes: string, quantity: number) => {
-    if (modalProduct) addItem(table.id, modalProduct, quantity, doneness, notes);
+  const handleDonenessConfirm = (doneness: MeatDoneness | null, notes: string, quantity: number, multiDoneness?: { doneness: MeatDoneness; quantity: number }[]) => {
+    if (!modalProduct) return;
+    if (multiDoneness && multiDoneness.length > 0) {
+      for (const item of multiDoneness) {
+        if (item.quantity > 0) {
+          addItem(table.id, modalProduct, item.quantity, item.doneness, notes);
+        }
+      }
+    } else {
+      addItem(table.id, modalProduct, quantity, doneness, notes);
+    }
   };
 
   const subtitle = [activeTab?.customer_name && activeTab.customer_name !== `Mesa ${table.number}` ? activeTab.customer_name : null, activeTab?.people_count ? `${activeTab.people_count} ${activeTab.people_count === 1 ? 'pessoa' : 'pessoas'}` : null].filter(Boolean).join(' · ');
