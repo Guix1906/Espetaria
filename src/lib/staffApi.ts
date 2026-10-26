@@ -16,7 +16,7 @@ export interface NewStaffInput {
   password: string;
 }
 
-export type StaffChanges = Partial<Pick<Profile, 'name' | 'role' | 'is_active'>>;
+export type StaffChanges = Partial<Pick<Profile, 'name' | 'email' | 'role' | 'is_active'>>;
 
 /**
  * Chama a Edge Function `manage-staff`. A chave de administrador fica no servidor;
@@ -93,7 +93,11 @@ export const staffApi = {
   },
 
   async update(id: string, changes: StaffChanges): Promise<StaffMember> {
+    if (changes.email !== undefined) changes = { ...changes, email: changes.email.trim().toLowerCase() };
     if (!isSupabaseConfigured) {
+      if (changes.email && localProfiles().some((p) => p.id !== id && p.email.toLowerCase() === changes.email)) {
+        throw new Error('Já existe um usuário com este e-mail.');
+      }
       const updated = localProfiles().map((p) => (p.id === id ? { ...p, ...changes, updated_at: new Date().toISOString() } : p));
       saveLocal(updated);
       return updated.find((p) => p.id === id)!;

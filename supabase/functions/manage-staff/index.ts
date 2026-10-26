@@ -206,6 +206,17 @@ async function handle(req: Request): Promise<Response> {
         const changes: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
         if (body.name !== undefined) changes.name = assertText(body.name, 'nome');
+        if (body.email !== undefined) {
+          const email = assertText(body.email, 'email').toLowerCase();
+          if (email !== String(target.email ?? '').toLowerCase()) {
+            // Troca o e-mail de login no Auth (já confirmado, sem mandar e-mail ao colaborador)
+            const { error: emailError } = await admin.auth.admin.updateUserById(target.id, { email, email_confirm: true });
+            if (emailError) {
+              throw new HttpError(400, /already|registered|exists/i.test(emailError.message) ? 'Já existe um usuário com este e-mail.' : emailError.message);
+            }
+            changes.email = email;
+          }
+        }
         if (body.role !== undefined) {
           const role = assertRole(body.role);
           if (role === 'MASTER' && !callerIsMaster) throw new HttpError(403, 'Somente o Master pode promover a Master.');

@@ -170,9 +170,13 @@ export function TeamManagementView() {
           lockRole={modal.member.id === currentProfile.id}
           onClose={() => setModal(null)}
           onSubmit={async (values) => {
-            const updated = await staffApi.update(modal.member.id, { name: values.name, role: values.role });
+            const emailChanged = values.email.trim().toLowerCase() !== modal.member.email.toLowerCase();
+            const updated = await staffApi.update(modal.member.id, { name: values.name, role: values.role, ...(emailChanged ? { email: values.email } : {}) });
             setStaff((list) => list.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
-            setNotice(`Dados de ${updated.name} atualizados.`);
+            if (values.password) await staffApi.resetPassword(modal.member.id, values.password);
+            setNotice(emailChanged || values.password
+              ? `Dados de ${updated.name} atualizados. Informe o novo ${[emailChanged && 'e-mail', values.password && 'senha'].filter(Boolean).join(' e a nova ')} ao colaborador.`
+              : `Dados de ${updated.name} atualizados.`);
           }}
         />
       )}
@@ -228,6 +232,7 @@ function StaffFormModal({ title, roles, initial, lockRole, onClose, onSubmit }: 
   const [email, setEmail] = useState(initial?.email ?? '');
   const [role, setRole] = useState<AppRole>(initial?.role ?? 'GARCOM');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -236,7 +241,9 @@ function StaffFormModal({ title, roles, initial, lockRole, onClose, onSubmit }: 
     setBusy(true);
     setError(null);
     try {
-      await onSubmit({ name, email, role, password: isCreate ? password : undefined });
+      if (!isCreate && password && password.length < 8) throw new Error('A senha precisa ter pelo menos 8 caracteres.');
+      if (!isCreate && password !== confirm) throw new Error('As senhas não conferem.');
+      await onSubmit({ name, email, role, password: password || undefined });
       onClose();
     } catch (failure: unknown) {
       setError(failure instanceof Error ? failure.message : 'Não foi possível salvar.');
@@ -254,7 +261,7 @@ function StaffFormModal({ title, roles, initial, lockRole, onClose, onSubmit }: 
         </div>
         {error && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">{error}</p>}
         <div><label htmlFor="staff-name">Nome</label><input id="staff-name" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" required value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div><label htmlFor="staff-email">E-mail (login)</label><input id="staff-email" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" type="email" required disabled={!isCreate} value={email} onChange={(e) => setEmail(e.target.value)} /></div>
+        <div><label htmlFor="staff-email">E-mail (login)</label><input id="staff-email" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />{!isCreate && <p className="mt-1 text-xs text-ink-muted">Ao trocar, o colaborador passa a entrar com o e-mail novo.</p>}</div>
         <div>
           <label htmlFor="staff-role">Papel</label>
           <select id="staff-role" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" value={role} disabled={lockRole} onChange={(e) => setRole(e.target.value as AppRole)}>
@@ -268,6 +275,16 @@ function StaffFormModal({ title, roles, initial, lockRole, onClose, onSubmit }: 
             <input id="staff-password" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" type="password" autoComplete="new-password" minLength={8} required value={password} onChange={(e) => setPassword(e.target.value)} />
             <p className="mt-1 text-xs text-ink-muted">Mínimo de 8 caracteres. Entregue ao colaborador pessoalmente.</p>
           </div>
+        )}
+        {!isCreate && isSupabaseConfigured && (
+          <>
+            <div>
+              <label htmlFor="staff-new-password">Nova senha</label>
+              <input id="staff-new-password" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" type="password" autoComplete="new-password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+              <p className="mt-1 text-xs text-ink-muted">Deixe em branco para manter a senha atual. Mínimo de 8 caracteres.</p>
+            </div>
+            {password && <div><label htmlFor="staff-confirm-password">Confirmar nova senha</label><input id="staff-confirm-password" className="mt-1 w-full rounded-md border border-line-strong bg-surface p-3 text-base" type="password" autoComplete="new-password" minLength={8} required value={confirm} onChange={(e) => setConfirm(e.target.value)} /></div>}
+          </>
         )}
         <button type="submit" disabled={busy} className="btn-primary w-full">{busy ? 'Salvando...' : isCreate ? 'Cadastrar colaborador' : 'Salvar alterações'}</button>
       </form>
