@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Edit3, CheckCircle2, AlertCircle, Users } from 'lucide-react';
+import { Plus, Trash2, Edit3, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useTableStore } from '../../stores/useTableStore';
 import { callRpc } from '../../lib/remote';
 import { isSupabaseConfigured } from '../../lib/supabase';
@@ -32,14 +32,11 @@ export const TableManagementView: React.FC = () => {
     setSuccess(null);
 
     const num = parseInt(formNumber, 10);
-    const cap = parseInt(formCapacity, 10);
+    // Capacidade não limita nada (mesa sem limite de pessoas); mantém o valor salvo
+    const cap = parseInt(formCapacity, 10) || 4;
 
     if (!num || num < 1 || num > 99) {
       setError('Número da mesa deve estar entre 1 e 99.');
-      return;
-    }
-    if (!cap || cap < 1 || cap > 50) {
-      setError('Capacidade deve estar entre 1 e 50.');
       return;
     }
 
@@ -164,7 +161,7 @@ export const TableManagementView: React.FC = () => {
           <h4 className="text-sm font-bold text-ink">
             {editingId ? 'Editar mesa' : 'Adicionar nova mesa'}
           </h4>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="max-w-[10rem]">
             <div>
               <label className="mb-1 block text-xs font-semibold text-ink-secondary">Número</label>
               <input
@@ -178,19 +175,8 @@ export const TableManagementView: React.FC = () => {
                 className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm font-mono font-bold"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-secondary">Capacidade</label>
-              <input
-                type="number"
-                min={1}
-                max={50}
-                required
-                value={formCapacity}
-                onChange={(e) => setFormCapacity(e.target.value)}
-                className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm font-mono font-bold"
-              />
-            </div>
           </div>
+          <p className="text-xs text-ink-muted">A mesa não tem limite de pessoas.</p>
           <div className="flex gap-2 pt-1">
             <button type="submit" className="btn-primary text-xs">
               <CheckCircle2 className="h-4 w-4" />
@@ -220,10 +206,6 @@ export const TableManagementView: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold tabular-nums text-ink">
                   {String(table.number).padStart(2, '0')}
-                </span>
-                <span className="flex items-center gap-1 text-[11px] text-ink-muted">
-                  <Users className="h-3 w-3" />
-                  {table.capacity}
                 </span>
               </div>
               <span

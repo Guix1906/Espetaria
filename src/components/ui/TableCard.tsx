@@ -1,4 +1,4 @@
-import { ArrowRight, Clock3, Plus, Receipt, ShoppingBag, Users } from 'lucide-react';
+import { ArrowRight, Clock3, Plus, Receipt, ShoppingBag } from 'lucide-react';
 import { formatBRL, formatElapsedMinutes, getTableStatusConfig } from '../../lib/formatters';
 import type { RestaurantTable, Tab } from '../../types/domain';
 import { STATUS_TOP_BORDER, tableStatusKind } from '../../lib/statusStyles';
@@ -19,9 +19,7 @@ export function TableCard({ table, tab, onOpen, onOrder, onBill, disabled = fals
   const content = (
     <div className="flex flex-1 flex-col p-3.5 sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <h2 className="text-xl font-bold tracking-tight text-ink tabular-nums">Mesa {String(table.number).padStart(2, '0')}</h2>
-        <span className="flex items-center gap-1 text-xs text-ink-muted" aria-label={`${table.capacity} lugares`}><Users className="h-3.5 w-3.5" aria-hidden="true" />{table.capacity}</span>
-      </div>
+        <h2 className="text-xl font-bold tracking-tight text-ink tabular-nums">Mesa {String(table.number).padStart(2, '0')}</h2>      </div>
       <span className={`status-badge mt-3 ${status.badgeBg}`}>{status.label}</span>
       <div className="flex flex-1 flex-col justify-center py-4">
         {tab ? (
