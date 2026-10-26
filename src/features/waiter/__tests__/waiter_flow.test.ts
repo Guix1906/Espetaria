@@ -3,6 +3,9 @@ import { useCartStore } from '../../../stores/useCartStore';
 import { useTableStore } from '../../../stores/useTableStore';
 import { useStockStore } from '../../../stores/useStockStore';
 import { INITIAL_PRODUCTS } from '../../../lib/mockData';
+import { setServiceFeeRate } from '../../../lib/utils';
+// Estes testes conferem a conta com taxa de serviço de 10%
+setServiceFeeRate(10);
 
 describe('ETAPA 3: Módulo do Garçom e Carrinho Multi-Mesa (Espetaria)', () => {
   const picanha = INITIAL_PRODUCTS.find((p) => p.id === 'prod-picanha')!;

@@ -264,7 +264,7 @@ describe('ETAPA 4: Telas de Produção KDS (Churrasqueira, Cozinha, Bar)', () =>
     }).toThrow(/está ESGOTADO/i);
   });
 
-  it('4. KDS Bar: expedição ágil de bebidas com 1 tap "Pronto!"', () => {
+  it('4. Bebida da mesa já nasce entregue (o garçom pega e leva; não vai para o Bar)', () => {
     const tableId = useTableStore.getState().tables[0]!.id;
     const tab = useTableStore.getState().openTab(tableId, 'Cliente Bar', 2, '', userId, shiftId);
 
@@ -277,14 +277,8 @@ describe('ETAPA 4: Telas de Produção KDS (Churrasqueira, Cozinha, Bar)', () =>
 
     const barItem = useTableStore.getState().orderItems.find((i) => i.order_id === order.id)!;
     expect(barItem.sector).toBe('BAR');
-    expect(barItem.status).toBe('RECEIVED');
-
-    // Barman tira cerveja e aperta "Pronto!"
-    useTableStore.getState().updateOrderItemStatus(barItem.id, 'READY');
-
-    const updatedItem = useTableStore.getState().orderItems.find((i) => i.id === barItem.id)!;
-    expect(updatedItem.status).toBe('READY');
-    expect(updatedItem.prepared_at).not.toBeNull();
+    expect(barItem.status).toBe('DELIVERED');
+    expect(barItem.delivered_at).not.toBeNull();
   });
 
   it('5. Ações em Lote no KDS: "Todos na Brasa" e "Tudo Pronto" atualizam todos os itens do setor', () => {
@@ -311,7 +305,7 @@ describe('ETAPA 4: Telas de Produção KDS (Churrasqueira, Cozinha, Bar)', () =>
 
     // O item do Bar NÃO deve ser afetado pela ação da churrasqueira
     const barItem = useTableStore.getState().orderItems.find((i) => i.order_id === order.id && i.sector === 'BAR')!;
-    expect(barItem.status).toBe('RECEIVED');
+    expect(barItem.status).toBe('DELIVERED');
 
     // Churrasqueiro aperta "Tudo Pronto"
     useTableStore.getState().updateOrderSectorItemsStatus(order.id, 'GRILL', 'READY');

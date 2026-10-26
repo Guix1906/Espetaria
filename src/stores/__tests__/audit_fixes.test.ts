@@ -10,6 +10,9 @@ import { useAuthStore } from '../useAuthStore';
 import { INITIAL_PROFILES, INITIAL_TABLES } from '../../lib/mockData';
 import { computeTabTotals, sumMoney } from '../../lib/utils';
 import type { Tab } from '../../types/domain';
+import { setServiceFeeRate } from '../../lib/utils';
+// Estes testes conferem a conta com taxa de serviço de 10%
+setServiceFeeRate(10);
 
 function makeTab(overrides: Partial<Tab> = {}): Tab {
   const now = new Date().toISOString();

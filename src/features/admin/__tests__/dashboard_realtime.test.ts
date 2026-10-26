@@ -4,6 +4,9 @@ import { useStockStore } from '../../../stores/useStockStore';
 import { useTableStore } from '../../../stores/useTableStore';
 import { usePrintStore } from '../../../stores/usePrintStore';
 import { Product } from '../../../types/domain';
+import { setServiceFeeRate } from '../../../lib/utils';
+// Estes testes conferem a conta com taxa de serviço de 10%
+setServiceFeeRate(10);
 
 // Mock Web Audio API
 class MockAudioContext {

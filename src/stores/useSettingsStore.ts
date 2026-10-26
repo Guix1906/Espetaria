@@ -190,6 +190,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // ignore
     }
     set({ settings: DEFAULT_SETTINGS });
+    setServiceFeeRate(DEFAULT_SETTINGS.service_fee_percent);
   }
 }));
+
+// Conta da mesa já nasce com a taxa configurada (a loja não cobra: 0%)
+setServiceFeeRate(useSettingsStore.getState().settings.service_fee_percent);
 
