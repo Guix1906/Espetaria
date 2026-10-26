@@ -75,10 +75,11 @@ describe('Roteamento e cupons', () => {
     expect(parsePrinterAddress('')).toBeNull();
   });
 
-  it('manda espetos para a churrasqueira e expedição para a cozinha quando não há caixa', () => {
+  it('sem impressora no bar/caixa, bebidas e expedição vão para a churrasqueira (cozinha só acompanhamentos)', () => {
     expect(resolvePrinter(baseConfig, 'GRILL').address.host).toBe('10.0.0.1');
-    expect(resolvePrinter(baseConfig, 'BAR').target).toBe('KITCHEN');
-    expect(resolvePrinter(baseConfig, 'NONE').target).toBe('KITCHEN');
+    expect(resolvePrinter(baseConfig, 'KITCHEN').target).toBe('KITCHEN');
+    expect(resolvePrinter(baseConfig, 'BAR').target).toBe('GRILL');
+    expect(resolvePrinter(baseConfig, 'NONE').target).toBe('GRILL');
   });
 
   it('cupom de produção (layout padrão) traz mesa, ponto e observação', () => {

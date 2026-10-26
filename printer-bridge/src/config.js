@@ -51,15 +51,16 @@ export function loadConfig(env = process.env) {
  * Qual impressora recebe o cupom de cada setor.
  *  GRILL   -> churrasqueira
  *  KITCHEN -> cozinha (acompanhamentos)
- *  BAR     -> bar; se não houver, cozinha
- *  NONE    -> expedição/caixa (cupom de delivery); se não houver, cozinha
+ *  BAR     -> bar; se não houver, churrasqueira (cozinha é só acompanhamentos)
+ *  NONE    -> expedição/caixa (cupom de delivery); se não houver, churrasqueira
  */
 export function resolvePrinter(config, sector) {
   const p = config.printers;
+  const grill = () => (p.GRILL ? { target: 'GRILL', address: p.GRILL } : { target: 'KITCHEN', address: p.KITCHEN });
   switch (sector) {
     case 'GRILL': return { target: 'GRILL', address: p.GRILL };
     case 'KITCHEN': return { target: 'KITCHEN', address: p.KITCHEN };
-    case 'BAR': return p.BAR ? { target: 'BAR', address: p.BAR } : { target: 'KITCHEN', address: p.KITCHEN };
-    default: return p.CASHIER ? { target: 'CASHIER', address: p.CASHIER } : { target: 'KITCHEN', address: p.KITCHEN };
+    case 'BAR': return p.BAR ? { target: 'BAR', address: p.BAR } : grill();
+    default: return p.CASHIER ? { target: 'CASHIER', address: p.CASHIER } : grill();
   }
 }

@@ -15,8 +15,8 @@ const EXAMPLE_FILE = path.join(ROOT, '.env.example');
 export const PRINTER_FIELDS = [
   { key: 'PRINTER_GRILL', label: 'Churrasqueira (espetos)', required: true },
   { key: 'PRINTER_KITCHEN', label: 'Cozinha (porções e acompanhamentos)', required: true },
-  { key: 'PRINTER_BAR', label: 'Bar (bebidas) — vazio = imprime na cozinha', required: false },
-  { key: 'PRINTER_CASHIER', label: 'Caixa / expedição do delivery — vazio = imprime na cozinha', required: false },
+  { key: 'PRINTER_BAR', label: 'Bar (bebidas) — vazio = imprime na churrasqueira', required: false },
+  { key: 'PRINTER_CASHIER', label: 'Caixa / expedição do delivery — vazio = imprime na churrasqueira', required: false },
 ];
 
 /** Lê "CHAVE=valor" do texto do .env (ignora comentários). */

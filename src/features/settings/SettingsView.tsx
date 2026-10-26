@@ -59,12 +59,12 @@ function readSavedTab(): SettingsTab {
   }
 }
 
-/** Setores de impressão, na mesma regra do printer-bridge (bar e caixa sem impressora própria saem na cozinha). */
+/** Setores de impressão, na mesma regra do printer-bridge (bar e caixa sem impressora própria saem na churrasqueira). */
 const PRINTER_SECTORS: { sector: ProductionSector; title: string; description: string; icon: typeof Store; tone: string }[] = [
   { sector: 'GRILL', title: 'Churrasqueira', description: 'Espetos com o ponto da carne em destaque, a via do motoboy quando o delivery tem espeto e a conta da mesa.', icon: Flame, tone: 'bg-amber-100 text-amber-800' },
   { sector: 'KITCHEN', title: 'Cozinha', description: 'Porções e acompanhamentos, a cópia do espeto com acompanhamento e a via do motoboy quando não há espeto.', icon: UtensilsCrossed, tone: 'bg-emerald-100 text-emerald-800' },
-  { sector: 'BAR', title: 'Bar', description: 'Bebidas. Sem impressora própria no bar, o cupom sai na cozinha.', icon: CupSoda, tone: 'bg-sky-100 text-sky-800' },
-  { sector: 'NONE', title: 'Caixa', description: 'Itens sem setor de produção. Sem impressora própria no caixa, o cupom sai na cozinha.', icon: Receipt, tone: 'bg-surface-muted text-ink-secondary' },
+  { sector: 'BAR', title: 'Bar', description: 'Bebidas. Sem impressora própria no bar, o cupom sai na churrasqueira.', icon: CupSoda, tone: 'bg-sky-100 text-sky-800' },
+  { sector: 'NONE', title: 'Caixa', description: 'Itens sem setor de produção. Sem impressora própria no caixa, o cupom sai na churrasqueira.', icon: Receipt, tone: 'bg-surface-muted text-ink-secondary' },
 ];
 
 const FIELD ='h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-base sm:text-sm';
