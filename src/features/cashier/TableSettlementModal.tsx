@@ -1,3 +1,4 @@
+import { getServiceFeeRate } from '../../lib/utils';
 import {
   AlertCircle,
   Banknote,
@@ -376,7 +377,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
               {/* Ajustes de Taxa de Serviço e Desconto */}
               <div className="border-t border-line pt-3 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
+                {getServiceFeeRate() > 0 && <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer select-none text-ink">
                     <input
                       type="checkbox"
@@ -384,12 +385,12 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                       onChange={handleToggleServiceFee}
                       className="w-4 h-4 rounded text-brand-700 focus:ring-0 focus:outline-none cursor-pointer bg-surface-muted border-line"
                     />
-                    <span className="font-semibold">Taxa de serviço (10%)</span>
+                    <span className="font-semibold">Taxa de serviço ({Math.round(getServiceFeeRate() * 1000) / 10}%)</span>
                   </label>
                   <span className="tabular-nums text-ink font-bold">
                     {formatBRL(currentTab.service_fee)}
                   </span>
-                </div>
+                </div>}
 
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-ink font-semibold flex items-center gap-1">

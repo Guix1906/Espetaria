@@ -5,6 +5,7 @@ import { logger } from '../lib/logger';
 import { appStorage } from '../lib/storage';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useRemoteErrorStore } from '../lib/remote';
+import { setServiceFeeRate } from '../lib/utils';
 
 const STORAGE_KEY = 'espetaria_restaurant_settings_v1';
 
@@ -15,7 +16,7 @@ export const DEFAULT_SETTINGS: RestaurantSettings = {
   cnpj: '',
   phone: '',
   address: '',
-  service_fee_percent: 10.0,
+  service_fee_percent: 0,
   allow_custom_service_fee: true,
   timezone: 'America/Sao_Paulo',
   pix_key: '',
@@ -134,6 +135,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       message: 'Configurações atualizadas com sucesso',
     });
     set({ settings: updated });
+    if (partial.service_fee_percent !== undefined) setServiceFeeRate(updated.service_fee_percent);
     void persistRemote(partial);
   },
 
@@ -165,6 +167,7 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       // armazenamento local indisponível: segue só em memória
     }
     set({ settings: merged });
+    setServiceFeeRate(merged.service_fee_percent);
   },
 
   updatePixConfig: ({ pix_key, pix_key_type, pix_merchant_name, pix_merchant_city }) => {

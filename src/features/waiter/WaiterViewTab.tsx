@@ -102,12 +102,14 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
                 {formatBRL(currentTab.subtotal)}
               </span>
             </div>
-            <div className="flex justify-between text-ink-muted">
-              <span>Taxa de serviço (10%)</span>
-              <span className="tabular-nums text-ink">
-                {formatBRL(currentTab.service_fee)}
-              </span>
-            </div>
+            {currentTab.service_fee > 0 && (
+              <div className="flex justify-between text-ink-muted">
+                <span>Taxa de serviço</span>
+                <span className="tabular-nums text-ink">
+                  {formatBRL(currentTab.service_fee)}
+                </span>
+              </div>
+            )}
             <div className="flex justify-between items-center text-sm font-bold text-ink pt-2 border-t border-line">
               <span className="text-ink">Total</span>
               <span className="text-2xl font-bold text-brand-700 tabular-nums">
