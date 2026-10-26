@@ -32,7 +32,7 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 const isOccupied = (table: RestaurantTable) => table.status === 'OCUPADA' || table.status === 'AGUARDANDO_CONTA';
 
 export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: WaiterModuleProps = {}) {
-  const { tables, tabs, openTab, orders, orderItems, markDelivered } = useTableStore();
+  const { tables, tabs, openTab, orders, orderItems } = useTableStore();
   const { currentShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
   // Vindo da Visão geral com uma mesa escolhida, já abre nela
@@ -263,7 +263,6 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
                 <span className="font-mono text-xl font-bold text-ink">Mesa {pad2(table.number)}</span>
                 <span className="ml-2 truncate text-sm text-ink-muted">{tabName(table, tab)}</span>
               </button>
-              {items.length > 1 && <button type="button" className="h-11 shrink-0 rounded-lg bg-emerald-600 px-3 text-sm font-semibold text-white" onClick={() => items.forEach((item) => markDelivered(item.id))}>Servir todos</button>}
             </div>
             <ul className="divide-y divide-line">
               {items.map((item) => (
@@ -272,9 +271,6 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
                     <span className="block text-[15px] font-semibold text-ink">{item.quantity}x {item.product_name}</span>
                     {(item.doneness || item.notes) && <span className="block text-xs text-ink-muted">{[item.doneness ? formatDoneness(item.doneness) : null, item.notes].filter(Boolean).join(' · ')}</span>}
                   </span>
-                  <button type="button" className="flex h-11 shrink-0 items-center gap-1.5 rounded-lg border border-sucesso px-3 text-sm font-semibold text-sucesso" onClick={() => markDelivered(item.id)}>
-                    <CheckCheck className="h-4 w-4" aria-hidden="true" />Servir
-                  </button>
                 </li>
               ))}
             </ul>

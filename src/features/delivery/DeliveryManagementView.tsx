@@ -180,7 +180,7 @@ export const DeliveryManagementView: React.FC = () => {
       <PageHeader eyebrow="Pedidos e entregas" title="Delivery" description="Acompanhe cada pedido, organize as saídas e mantenha o cliente informado." icon={Bike} />
 
       {/* Abas de navegação */}
-      <div className="flex gap-2 overflow-x-auto border-b border-line pb-1">
+      <div className="flex flex-wrap gap-2 border-b border-line pb-1">
         <button
           type="button"
           onClick={() => setActiveTab('orders')}
@@ -198,7 +198,8 @@ export const DeliveryManagementView: React.FC = () => {
             aria-pressed={activeTab === 'payouts'}
           >
             <DollarSign className="h-4 w-4" />
-            <span>Pagamentos dos entregadores</span>
+            <span className="sm:hidden">Entregadores</span>
+            <span className="hidden sm:inline">Pagamentos dos entregadores</span>
           </button>
         )}
       </div>
@@ -214,7 +215,7 @@ export const DeliveryManagementView: React.FC = () => {
       </div>
 
       {/* Filtros Rápidos */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+      <div className="flex flex-wrap items-center gap-2 pb-1 text-xs">
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
           className={`filter-chip ${filter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
@@ -395,12 +396,13 @@ export const DeliveryManagementView: React.FC = () => {
 
                 {/* Ações Operacionais */}
                 <div className="border-t border-line pt-3.5 space-y-2">
-                  <div className="flex gap-2">
+                  {/* Ação principal em linha própria (largura total) para nunca cortar o texto no cartão estreito */}
+                  <div className="flex flex-wrap gap-2">
                     {/* Botão de Avançar Status */}
                     {!isDelivered && order.status !== 'AWAITING_PAYMENT' && (
                       <button
                         onClick={() => handleAdvanceStatus(order)}
-                        className={`flex-1 min-h-[48px] rounded-md font-semibold text-[15px] transition flex items-center justify-center gap-2 ${isConfirmed
+                        className={`basis-full min-h-[48px] whitespace-nowrap px-3 rounded-md font-semibold text-[15px] transition flex items-center justify-center gap-2 ${isConfirmed
                             ? 'btn-primary text-white'
                             : isPreparing
                               ? 'btn-success'
@@ -440,22 +442,22 @@ export const DeliveryManagementView: React.FC = () => {
                     {/* Botão de WhatsApp para Avisar Cliente */}
                     <button
                       onClick={() => sendWhatsAppUpdate(order)}
-                      className="btn-secondary min-h-[48px] px-3.5"
+                      className="btn-secondary min-h-[44px] flex-1 px-3.5"
                       title="Enviar atualização de status no WhatsApp do cliente"
                       type="button" aria-label="Enviar atualização de status no WhatsApp do cliente">
                       <MessageCircle className="w-4 h-4 text-emerald-700" />
-                      <span className="hidden sm:inline">WhatsApp</span>
+                      <span>WhatsApp</span>
                     </button>
 
                     {/* Cancelar */}
                     {!isDelivered && canCancel && (
                       <button
                         onClick={() => void handleCancelOrder(order)}
-                        className="btn-secondary min-h-[48px] px-3 text-rose-700 hover:bg-rose-50"
+                        className="btn-secondary min-h-[44px] flex-1 px-3 text-rose-700 hover:bg-rose-50"
                         title="Cancelar pedido"
                         type="button" aria-label={`Cancelar pedido #${order.order_number}`}>
                         <Trash2 className="h-4 w-4" />
-                        <span className="hidden sm:inline">Cancelar</span>
+                        <span>Cancelar</span>
                       </button>
                     )}
                   </div>

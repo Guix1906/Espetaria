@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
+import { useLivePolling } from '../../lib/useLivePolling';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import type { DeliveryOrder } from '../../types/domain';
 import { OrderStatusView } from './OrderStatusView';
 
-const REFRESH_MS = 15_000;
+const REFRESH_MS = 5_000;
 
 /** Converte a resposta pública (sem telefone nem dados internos) no formato do pedido. */
 function toOrder(data: Record<string, unknown>): DeliveryOrder {
@@ -72,28 +73,26 @@ export function PublicOrderTrackingPage({ orderId }: { orderId: string }) {
       setState(local ? 'ready' : 'not_found');
       return;
     }
-    let stopped = false;
-    let timer = 0;
-    const load = async () => {
-      const { data, error } = await supabase.rpc('get_delivery_tracking', { p_order_id: orderId });
-      if (stopped) return;
-      if (error) {
-        // UUID inválido também cai aqui: trata como pedido não encontrado
-        // Falha passageira com o pedido já na tela: mantém o que já foi mostrado
-        setState((prev) => (error.code === '22P02' ? 'not_found' : prev === 'ready' ? 'ready' : 'error'));
-      } else if (!data) {
-        setState('not_found');
-      } else {
-        const next = toOrder(data as Record<string, unknown>);
-        setOrder(next);
-        setState('ready');
-        if (next.status === 'DELIVERED' || next.status === 'CANCELLED') return;
-      }
-      timer = window.setTimeout(() => void load(), REFRESH_MS);
-    };
     void load();
-    return () => { stopped = true; window.clearTimeout(timer); };
   }, [orderId]);
+
+  const load = async () => {
+    const { data, error } = await supabase.rpc('get_delivery_tracking', { p_order_id: orderId });
+    if (error) {
+      // UUID inválido também cai aqui: trata como pedido não encontrado
+      // Falha passageira com o pedido já na tela: mantém o que já foi mostrado
+      setState((prev) => (error.code === '22P02' ? 'not_found' : prev === 'ready' ? 'ready' : 'error'));
+    } else if (!data) {
+      setState('not_found');
+    } else {
+      setOrder(toOrder(data as Record<string, unknown>));
+      setState('ready');
+    }
+  };
+
+  // Atualiza sozinho até o pedido terminar (entregue ou cancelado)
+  const finished = order?.status === 'DELIVERED' || order?.status === 'CANCELLED';
+  useLivePolling(load, REFRESH_MS, isSupabaseConfigured && state !== 'not_found' && !finished);
 
   return (
     <div className="min-h-screen bg-surface text-ink">

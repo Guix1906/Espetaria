@@ -60,7 +60,7 @@ export function PeriodPicker({ value, onChange, presets }: { value: Period; onCh
 /** Abas de seção com sublinhado (sem cartões). */
 export function SectionTabs<T extends string>({ items, value, onChange, label }: { items: { id: T; label: string }[]; value: T; onChange: (id: T) => void; label: string }) {
   return (
-    <div role="tablist" aria-label={label} className="-mx-1 flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line px-1">
+    <div role="tablist" aria-label={label} className="-mx-1 flex flex-wrap gap-1 border-b border-line px-1">
       {items.map((s) => (
         <button
           key={s.id}

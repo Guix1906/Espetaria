@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { isSupabaseConfigured } from '../../lib/supabase';
+import { useLivePolling } from '../../lib/useLivePolling';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useStockStore } from '../../stores/useStockStore';
@@ -26,11 +27,13 @@ export function PublicMenuPage() {
     void useSettingsStore.getState().loadRemoteSettings();
     const load = () => loadPublicMenu().then(() => setError(null)).catch((e: Error) => setError(e.message)).finally(() => setLoading(false));
     void load();
-    // Mantém disponibilidade de produtos e status do pedido atualizados
+    // Mantém disponibilidade de produtos atualizada
     const menuTimer = window.setInterval(load, 60_000);
-    const trackingTimer = window.setInterval(() => void refreshTrackingStatus(), 15_000);
-    return () => { window.clearInterval(menuTimer); window.clearInterval(trackingTimer); };
-  }, [loadPublicMenu, refreshTrackingStatus]);
+    return () => window.clearInterval(menuTimer);
+  }, [loadPublicMenu]);
+
+  // Status do pedido: atualiza sozinho (cliente não precisa recarregar a página)
+  useLivePolling(refreshTrackingStatus, 5_000);
 
   if (loading) return <div className="flex min-h-screen items-center justify-center bg-[#FBF8F3] text-[16px] text-[#6B5D53]" role="status">Carregando cardápio...</div>;
   return (

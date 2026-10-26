@@ -124,7 +124,7 @@ export const CashierModule: React.FC = () => {
       </section>
 
       {/* Barra de Filtros */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+      <div className="flex flex-wrap items-center gap-2 pb-1 text-xs">
         <button
           onClick={() => setFilter('WAITING_BILL')}
           className={`filter-chip ${effectiveFilter === 'WAITING_BILL' ? 'is-active' : ''}`}

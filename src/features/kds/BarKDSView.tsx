@@ -1,4 +1,4 @@
-﻿import {
+import {
   Beer,
   CheckCheck,
   Filter,
@@ -61,7 +61,7 @@ export const BarKDSView: React.FC = () => {
       </>} />
 
       {/* Filtros da Fila do Bar */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
+      <div className="flex flex-wrap items-center gap-2 pb-1 text-xs">
         <button
           onClick={() => setFilter('ALL_ACTIVE')}
           className={`filter-chip ${filter === 'ALL_ACTIVE' ? 'is-active' : ''}`}

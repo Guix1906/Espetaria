@@ -104,7 +104,8 @@
   .btn-danger { @apply border-rose-700 bg-rose-700 text-white; }
   .btn-danger:hover:not(:disabled) { @apply border-rose-800 bg-rose-800; }
   .icon-button { @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink; }
-  .filter-bar { @apply flex min-w-0 items-center gap-2 overflow-x-auto pb-1; }
+  /* Quebra em linhas em vez de rolar de lado: nenhum filtro fica cortado na borda da tela */
+  .filter-bar { @apply flex min-w-0 flex-wrap items-center gap-2 pb-1; }
   .filter-chip { @apply inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink-secondary; }
   .filter-chip:hover { @apply border-brand-300 bg-brand-50 text-brand-800; }
   .filter-chip.is-active { @apply border-brand-950 bg-brand-950 text-white; }
