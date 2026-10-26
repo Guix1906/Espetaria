@@ -118,7 +118,7 @@ export function TeamManagementView() {
                         {isSelf && <span className="status-badge bg-brand-50 text-brand-800">Você</span>}
                         <span className={`status-badge ${member.is_active ? 'bg-emerald-50 text-emerald-800' : 'border-line bg-surface-muted text-ink-muted'}`}>{member.is_active ? 'Ativo' : isRemoved(member) ? 'Excluído (histórico mantido)' : 'Inativo'}</span>
                       </p>
-                      <p className="truncate text-sm text-ink-muted">{member.email} · {formatRole(member.role)}</p>
+                      <p className="truncate text-sm text-ink-muted">{displayEmail(member.email)} · {formatRole(member.role)}</p>
                       {isSupabaseConfigured && <p className="text-xs text-ink-muted">{member.last_sign_in_at ? `Último acesso: ${formatDateTime(member.last_sign_in_at)}` : member.has_login === undefined ? 'Carregando último acesso...' : member.has_login ? 'Nunca acessou' : 'Sem login criado'}</p>}
                     </div>
                     {canEdit(member) ? (
@@ -172,7 +172,7 @@ export function TeamManagementView() {
           lockRole={modal.member.id === currentProfile.id}
           onClose={() => setModal(null)}
           onSubmit={async (values) => {
-            const emailChanged = values.email.trim().toLowerCase() !== modal.member.email.toLowerCase();
+            const emailChanged = values.email.trim().toLowerCase() !== displayEmail(modal.member.email).toLowerCase();
             const updated = await staffApi.update(modal.member.id, { name: values.name, role: values.role, ...(emailChanged ? { email: values.email } : {}) });
             setStaff((list) => list.map((m) => (m.id === updated.id ? { ...m, ...updated } : m)));
             if (values.password) await staffApi.resetPassword(modal.member.id, values.password);
@@ -231,7 +231,7 @@ function StaffFormModal({ title, roles, initial, lockRole, onClose, onSubmit }: 
 }) {
   const isCreate = !initial;
   const [name, setName] = useState(initial?.name ?? '');
-  const [email, setEmail] = useState(initial?.email ?? '');
+  const [email, setEmail] = useState(initial ? displayEmail(initial.email) : '');
   const [role, setRole] = useState<AppRole>(initial?.role ?? 'GARCOM');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -294,6 +294,11 @@ function StaffFormModal({ title, roles, initial, lockRole, onClose, onSubmit }: 
   );
 }
 
+/** Login interno de e-mail compartilhado (garcon+bruno@loja) aparece como o e-mail digitado (garcon@loja). */
+function displayEmail(email: string) {
+  return email.replace(/\+[^@]*@/, '@');
+}
+
 /** Perfil sem login e inativo: excluído, mantido só pelo histórico. */
 function isRemoved(member: StaffMember) {
   return isSupabaseConfigured && !member.is_active && member.has_login === false;
@@ -324,7 +329,7 @@ function DeleteModal({ member, onClose, onConfirm }: { member: StaffMember; onCl
           <button type="button" onClick={onClose} className="icon-button" aria-label="Fechar"><X className="h-5 w-5" /></button>
         </div>
         {error && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">{error}</p>}
-        <p className="text-sm text-ink-secondary">O acesso de <strong>{member.email}</strong> será removido imediatamente e não poderá ser desfeito. Se o colaborador já registrou pedidos, pagamentos ou turnos, o nome continua aparecendo apenas nesses registros.</p>
+        <p className="text-sm text-ink-secondary">O acesso de <strong>{member.name} ({displayEmail(member.email)})</strong> será removido imediatamente e não poderá ser desfeito. Se o colaborador já registrou pedidos, pagamentos ou turnos, o nome continua aparecendo apenas nesses registros.</p>
         <p className="text-xs text-ink-muted">Para afastar alguém temporariamente, prefira <strong>Desativar</strong>.</p>
         <div className="flex gap-2">
           <button type="button" className="btn-secondary flex-1" onClick={onClose} disabled={busy}>Cancelar</button>
