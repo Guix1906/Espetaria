@@ -198,9 +198,10 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
     it('1.14 SettingsView (Configurações) deve abrir e renderizar sem erros', () => {
       const html = renderWithFeedback(<SettingsView />);
       expect(html).toContain('Configurações');
-      expect(html).toContain('PIX');
-      expect(html).toContain('Impressoras');
-      expect(html).toContain('Fila de impressão');
+      // Abas agrupadas: os 4 assuntos sempre visíveis; abre em "Loja"
+      expect(html).toContain('Pagamentos');
+      expect(html).toContain('Delivery');
+      expect(html).toContain('Impressão');
       expect(html).toContain('Dados da loja');
     });
   });

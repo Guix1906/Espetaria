@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Building2,
   CheckCircle2,
   Copy,
+  CupSoda,
+  FileText,
   Flame,
   MapPin,
+  Receipt,
   MessageCircle,
   Printer,
   QrCode,
@@ -20,14 +23,14 @@ import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { FilterChip } from '../../components/ui/FilterChip';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { usePrintStore } from '../../stores/usePrintStore';
-import { PixKeyType } from '../../types/enums';
+import type { PixKeyType, ProductionSector } from '../../types/enums';
 import { generatePixPayload } from '../../lib/pix';
 import { PixQrCode } from '../pix/PixQrCode';
 import { PixAutoCard } from './PixAutoCard';
 import { WhatsAppAutoCard } from './WhatsAppAutoCard';
 import { WhatsAppBotCard } from './WhatsAppBotCard';
 import { formatBRL } from '../../lib/formatters';
-import { isSupabaseConfigured } from '../../lib/supabase';
+import { maskCnpj, maskPhone, pixKeyError, toPixText } from '../../lib/inputMasks';
 import { PrintBridgeStatus, DigitalMenuLinkCard, PrinterHealthTag } from './PrintBridgeStatus';
 
 import { PrintTemplatesEditor } from './PrintTemplatesEditor';
@@ -35,6 +38,37 @@ import { TableManagementView } from './TableManagementView';
 import { DeliveryZonesView } from './DeliveryZonesView';
 
 type SettingsTab = 'pix' | 'printers' | 'templates' | 'queue' | 'store' | 'tables' | 'zones' | 'whatsapp';
+type SettingsGroup = 'loja' | 'pagamentos' | 'delivery' | 'impressao';
+
+/** Abas agrupadas por assunto: o grupo aparece em cima, as abas dele logo abaixo. */
+const GROUPS: { id: SettingsGroup; label: string; icon: typeof Store; tabs: { id: SettingsTab; label: string; icon: typeof Store }[] }[] = [
+  { id: 'loja', label: 'Loja', icon: Store, tabs: [{ id: 'store', label: 'Dados da loja', icon: Store }, { id: 'tables', label: 'Mesas', icon: Building2 }] },
+  { id: 'pagamentos', label: 'Pagamentos', icon: QrCode, tabs: [{ id: 'pix', label: 'PIX', icon: QrCode }] },
+  { id: 'delivery', label: 'Delivery', icon: MapPin, tabs: [{ id: 'zones', label: 'Bairros e taxas', icon: MapPin }, { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle }] },
+  { id: 'impressao', label: 'Impressão', icon: Printer, tabs: [{ id: 'printers', label: 'Impressoras', icon: Printer }, { id: 'templates', label: 'Modelos de cupom', icon: FileText }, { id: 'queue', label: 'Fila de impressão', icon: Zap }] },
+];
+const ALL_TABS = GROUPS.flatMap((g) => g.tabs.map((t) => t.id));
+const TAB_STORAGE_KEY = 'ponto.settings.tab';
+
+function readSavedTab(): SettingsTab {
+  try {
+    const saved = localStorage.getItem(TAB_STORAGE_KEY) as SettingsTab | null;
+    return saved && ALL_TABS.includes(saved) ? saved : 'store';
+  } catch {
+    return 'store';
+  }
+}
+
+/** Setores de impressão, na mesma regra do printer-bridge (bar e caixa sem impressora própria saem na cozinha). */
+const PRINTER_SECTORS: { sector: ProductionSector; title: string; description: string; icon: typeof Store; tone: string }[] = [
+  { sector: 'GRILL', title: 'Churrasqueira', description: 'Espetos com o ponto da carne em destaque, a via do motoboy quando o delivery tem espeto e a conta da mesa.', icon: Flame, tone: 'bg-amber-100 text-amber-800' },
+  { sector: 'KITCHEN', title: 'Cozinha', description: 'Porções e acompanhamentos, a cópia do espeto com acompanhamento e a via do motoboy quando não há espeto.', icon: UtensilsCrossed, tone: 'bg-emerald-100 text-emerald-800' },
+  { sector: 'BAR', title: 'Bar', description: 'Bebidas. Sem impressora própria no bar, o cupom sai na cozinha.', icon: CupSoda, tone: 'bg-sky-100 text-sky-800' },
+  { sector: 'NONE', title: 'Caixa', description: 'Itens sem setor de produção. Sem impressora própria no caixa, o cupom sai na cozinha.', icon: Receipt, tone: 'bg-surface-muted text-ink-secondary' },
+];
+
+const FIELD ='h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-base sm:text-sm';
+const LABEL = 'mb-1 block text-sm font-semibold text-ink-secondary';
 
 export const SettingsView: React.FC = () => {
   const { settings, updateSettings, updatePixConfig } = useSettingsStore();
@@ -44,7 +78,6 @@ export const SettingsView: React.FC = () => {
     reprintJob,
     deleteJobs,
     formatTicketText,
-    enqueuePrintJob,
     sendTestPrint,
   } = usePrintStore();
   const { requestChoice, notify } = useFeedback();
@@ -63,7 +96,7 @@ export const SettingsView: React.FC = () => {
     else notify('Não foi possível excluir. Tente de novo.', 'error');
   };
 
-  const [activeTab, setActiveTab] = useState<SettingsTab>('pix');
+  const [activeTab, setActiveTabState] = useState<SettingsTab>(readSavedTab);
   const [copied, setCopied] = useState(false);
   const [saveFeedback, setSaveFeedbackState] = useState<{ scope: 'pix' | 'store' | 'printers'; message: string } | null>(null);
   const setSaveFeedback = (scope: 'pix' | 'store' | 'printers', message: string | null, ms = 4000) => {
@@ -83,12 +116,54 @@ export const SettingsView: React.FC = () => {
 
   // Estados locais da Loja
   const [storeName, setStoreName] = useState(settings.name);
-  const [cnpj, setCnpj] = useState(settings.cnpj);
-  const [phone, setPhone] = useState(settings.phone);
+  const [cnpj, setCnpj] = useState(settings.cnpj ? maskCnpj(settings.cnpj) : '');
+  const [phone, setPhone] = useState(settings.phone ? maskPhone(settings.phone) : '');
   const [address, setAddress] = useState(settings.address);
   const [serviceFee, setServiceFee] = useState(settings.service_fee_percent);
   const [deliveryEta, setDeliveryEta] = useState(settings.delivery_eta ?? '40–55 min');
   const [pickupEta, setPickupEta] = useState(settings.pickup_eta ?? '30–40 min');
+
+  // Alterações digitadas e ainda não salvas
+  const pixDirty = pixKey !== settings.pix_key || pixKeyType !== settings.pix_key_type
+    || pixMerchantName !== settings.pix_merchant_name || pixMerchantCity !== settings.pix_merchant_city;
+  const storeDirty = storeName !== settings.name || cnpj !== (settings.cnpj ? maskCnpj(settings.cnpj) : '')
+    || phone !== (settings.phone ? maskPhone(settings.phone) : '') || address !== settings.address
+    || Number(serviceFee) !== settings.service_fee_percent
+    || deliveryEta !== (settings.delivery_eta ?? '40–55 min') || pickupEta !== (settings.pickup_eta ?? '30–40 min');
+  const dirtyHere = (activeTab === 'pix' && pixDirty) || (activeTab === 'store' && storeDirty);
+  const pixError = pixKey ? pixKeyError(pixKeyType, pixKey) : null;
+
+  // Fechar ou recarregar a página com algo digitado pede confirmação do navegador
+  useEffect(() => {
+    if (!pixDirty && !storeDirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [pixDirty, storeDirty]);
+
+  const discardChanges = () => {
+    setPixKey(settings.pix_key); setPixKeyType(settings.pix_key_type);
+    setPixMerchantName(settings.pix_merchant_name); setPixMerchantCity(settings.pix_merchant_city);
+    setStoreName(settings.name); setCnpj(settings.cnpj ? maskCnpj(settings.cnpj) : ''); setPhone(settings.phone ? maskPhone(settings.phone) : '');
+    setAddress(settings.address); setServiceFee(settings.service_fee_percent);
+    setDeliveryEta(settings.delivery_eta ?? '40–55 min'); setPickupEta(settings.pickup_eta ?? '30–40 min');
+  };
+
+  const setActiveTab = async (tab: SettingsTab) => {
+    if (tab === activeTab) return;
+    if (dirtyHere) {
+      const answer = await requestChoice({
+        title: 'Sair sem salvar?',
+        message: 'Você mudou dados nesta aba e ainda não clicou em Salvar.',
+        choices: [{ value: 'stay', label: 'Continuar editando' }, { value: 'leave', label: 'Sair sem salvar' }],
+      });
+      if (answer !== 'leave') return;
+      discardChanges();
+    }
+    setActiveTabState(tab);
+    try { localStorage.setItem(TAB_STORAGE_KEY, tab); } catch { /* sem armazenamento: só não lembra a aba */ }
+  };
+  const activeGroup = GROUPS.find((g) => g.tabs.some((t) => t.id === activeTab)) ?? GROUPS[0]!;
 
   // Preview de PIX
   const previewAmount = 45.0;
@@ -103,12 +178,14 @@ export const SettingsView: React.FC = () => {
 
   const handleSavePix = (e: React.FormEvent) => {
     e.preventDefault();
+    if (pixKeyError(pixKeyType, pixKey)) return;
     updatePixConfig({
-      pix_key: pixKey,
+      pix_key: pixKey.trim(),
       pix_key_type: pixKeyType,
       pix_merchant_name: pixMerchantName,
       pix_merchant_city: pixMerchantCity,
     });
+    setPixKey(pixKey.trim());
     setSaveFeedback('pix', 'PIX salvo. O novo QR Code já vale no salão e no delivery.');
   };
 
@@ -136,43 +213,13 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const requestTestPrint = async (sector: 'GRILL' | 'KITCHEN' | 'NONE', label: string) => {
-    await sendTestPrint(sector);
-    setSaveFeedback('printers', `Cupom de teste enviado para ${label}. Confira a impressora e a aba Fila.`, 5000);
-  };
-
-  const handlePrintTestGrill = () => {
-    if (isSupabaseConfigured) { void requestTestPrint('GRILL', 'a churrasqueira'); return; }
-    const { job } = enqueuePrintJob({
-      order_id: 'test-grill-01',
-      order_number: 901,
-      sector: 'GRILL',
-      origin: 'SALAO',
-      table_number: 7,
-      customer_name: 'Mesa 7 (Teste)',
-      items: [
-        { name: 'Espeto de Picanha Grill', quantity: 2, doneness: 'AO_PONTO', notes: 'Pouco sal' },
-        { name: 'Espeto de Queijo Coalho', quantity: 1, doneness: null, notes: 'Bem dourado' },
-      ],
-    });
-    setSelectedJobId(job.id);
-  };
-
-  const handlePrintTestKitchen = () => {
-    if (isSupabaseConfigured) { void requestTestPrint('KITCHEN', 'a cozinha'); return; }
-    const { job } = enqueuePrintJob({
-      order_id: 'test-kitchen-01',
-      order_number: 902,
-      sector: 'KITCHEN',
-      origin: 'SALAO',
-      table_number: 7,
-      customer_name: 'Mesa 7 (Teste)',
-      items: [
-        { name: 'Porção de Mandioca Cozida', quantity: 1, notes: 'Manteiga de garrafa à parte' },
-        { name: 'Cuba Feijão Tropeiro Especial', quantity: 1, notes: null },
-      ],
-    });
-    setSelectedJobId(job.id);
+  const handlePrintTest = async (sector: ProductionSector, title: string) => {
+    try {
+      await sendTestPrint(sector);
+      setSaveFeedback('printers', `Cupom de teste enviado: ${title}. Confira a impressora e a aba Fila de impressão.`, 5000);
+    } catch {
+      notify('Não foi possível enviar o teste. Tente de novo.', 'error');
+    }
   };
 
   const selectedJob = jobs.find((j) => j.id === selectedJobId) || jobs[0];
@@ -185,44 +232,45 @@ export const SettingsView: React.FC = () => {
       <PageHeader
         eyebrow="Painel administrativo"
         title="Configurações"
-        description="PIX, impressoras, modelos de cupom e dados da loja."
+        description="Loja, pagamentos, delivery e impressão."
         icon={SettingsIcon}
       />
 
-      {/* Navegação de Abas */}
-      <div className="filter-bar border-b border-line pb-2" aria-label="Abas de configuração">
-        <FilterChip active={activeTab === 'pix'} onClick={() => setActiveTab('pix')}>
-          <QrCode className="h-4 w-4" />
-          PIX
-        </FilterChip>
-        <FilterChip active={activeTab === 'printers'} onClick={() => setActiveTab('printers')}>
-          <Printer className="h-4 w-4" />
-          Impressoras
-        </FilterChip>
-        <FilterChip active={activeTab === 'templates'} onClick={() => setActiveTab('templates')}>
-          <Printer className="h-4 w-4" />
-          Modelos de cupom
-        </FilterChip>
-        <FilterChip active={activeTab === 'queue'} onClick={() => setActiveTab('queue')} count={pendingCount}>
-          <Zap className="h-4 w-4" />
-          Fila de impressão
-        </FilterChip>
-        <FilterChip active={activeTab === 'store'} onClick={() => setActiveTab('store')}>
-          <Store className="h-4 w-4" />
-          Dados da loja
-        </FilterChip>
-        <FilterChip active={activeTab === 'tables'} onClick={() => setActiveTab('tables')}>
-          <Building2 className="h-4 w-4" />
-          Mesas
-        </FilterChip>
-        <FilterChip active={activeTab === 'zones'} onClick={() => setActiveTab('zones')}>
-          <MapPin className="h-4 w-4" />
-          Bairros e taxas
-        </FilterChip>
-        <FilterChip active={activeTab === 'whatsapp'} onClick={() => setActiveTab('whatsapp')}>
-          <MessageCircle className="h-4 w-4" />
-          WhatsApp
-        </FilterChip>
+      {/* Grupos (4 botões que cabem no celular) e, abaixo, as abas do grupo */}
+      <div className="space-y-2 border-b border-line pb-2">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="tablist" aria-label="Assuntos das configurações">
+          {GROUPS.map((group) => {
+            const Icon = group.icon;
+            const active = group.id === activeGroup.id;
+            return (
+              <button
+                key={group.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => void setActiveTab(group.tabs[0]!.id)}
+                className={`flex h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold transition-colors ${active ? 'bg-brand-700 text-white' : 'bg-surface-soft text-ink-secondary hover:bg-surface-muted'}`}
+              >
+                <Icon className="h-4 w-4" aria-hidden="true" />
+                {group.label}
+                {group.id === 'impressao' && pendingCount > 0 && <span className={`font-mono text-xs ${active ? 'text-white' : 'text-amber-800'}`}>{pendingCount}</span>}
+              </button>
+            );
+          })}
+        </div>
+        {activeGroup.tabs.length > 1 && (
+          <div className="filter-bar" aria-label={`Abas de ${activeGroup.label}`}>
+            {activeGroup.tabs.map((tab) => {
+              const Icon = tab.icon;
+              return (
+                <FilterChip key={tab.id} active={activeTab === tab.id} onClick={() => void setActiveTab(tab.id)} count={tab.id === 'queue' ? pendingCount : undefined}>
+                  <Icon className="h-4 w-4" />
+                  {tab.label}
+                </FilterChip>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {activeTab === 'whatsapp' && <div className="space-y-6"><WhatsAppAutoCard /><WhatsAppBotCard /></div>}
@@ -244,11 +292,12 @@ export const SettingsView: React.FC = () => {
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-ink-secondary">Tipo da chave</label>
+                <label htmlFor="pix-key-type" className={LABEL}>Tipo da chave</label>
                 <select
+                  id="pix-key-type"
                   value={pixKeyType}
                   onChange={(e) => setPixKeyType(e.target.value as PixKeyType)}
-                  className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm"
+                  className={FIELD}
                 >
                   <option value="EMAIL">E-mail</option>
                   <option value="CNPJ">CNPJ</option>
@@ -259,50 +308,56 @@ export const SettingsView: React.FC = () => {
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold text-ink-secondary">Chave PIX</label>
+                <label htmlFor="pix-key" className={LABEL}>Chave PIX</label>
                 <input
+                  id="pix-key"
                   type="text"
                   required
                   value={pixKey}
-                  onChange={(e) => setPixKey(e.target.value)}
-                  placeholder="ex: contato@espetariasabor.com.br"
-                  className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm font-mono"
+                  onChange={(e) => setPixKey(pixKeyType === 'CNPJ' ? maskCnpj(e.target.value) : e.target.value)}
+                  placeholder={{ EMAIL: 'contato@sualoja.com.br', CNPJ: '00.000.000/0000-00', CPF: '000.000.000-00', TELEFONE: '+55 11 98765-4321', ALEATORIA: '123e4567-e89b-12d3-a456-426614174000' }[pixKeyType]}
+                  aria-invalid={Boolean(pixError)}
+                  className={`${FIELD} font-mono ${pixError ? 'border-rose-500' : ''}`}
                 />
+                {pixError && <span className="mt-1 block text-xs font-medium text-rose-700" role="alert">{pixError}</span>}
               </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-ink-secondary">Nome do favorecido</label>
+                <label htmlFor="pix-name" className={LABEL}>Nome do favorecido</label>
                 <input
+                  id="pix-name"
                   type="text"
                   required
                   maxLength={25}
                   value={pixMerchantName}
-                  onChange={(e) => setPixMerchantName(e.target.value.toUpperCase())}
+                  onChange={(e) => setPixMerchantName(toPixText(e.target.value))}
                   placeholder="ESPETARIA SABOR DA CARNE"
-                  className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm uppercase"
+                  className={`${FIELD} uppercase`}
                 />
-                <span className="text-[11px] text-ink-muted">Máximo 25 caracteres (padrão BACEN)</span>
+                <span className="text-xs text-ink-muted">Até 25 letras. Acentos são tirados sozinhos.</span>
               </div>
 
               <div>
-                <label className="mb-1 block text-xs font-semibold text-ink-secondary">Cidade</label>
+                <label htmlFor="pix-city" className={LABEL}>Cidade</label>
                 <input
+                  id="pix-city"
                   type="text"
                   required
                   maxLength={15}
                   value={pixMerchantCity}
-                  onChange={(e) => setPixMerchantCity(e.target.value.toUpperCase())}
+                  onChange={(e) => setPixMerchantCity(toPixText(e.target.value))}
                   placeholder="SAO PAULO"
-                  className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm uppercase"
+                  className={`${FIELD} uppercase`}
                 />
-                <span className="text-[11px] text-ink-muted">Sem acentos (padrão BACEN)</span>
+                <span className="text-xs text-ink-muted">Até 15 letras. Acentos são tirados sozinhos.</span>
               </div>
             </div>
 
             <div className="pt-2">
-              <button type="submit" className="btn-primary w-full py-2.5">
+              {pixDirty && <p className="mb-2 text-sm font-medium text-amber-800" role="status">Alterações ainda não salvas.</p>}
+              <button type="submit" className="btn-primary w-full py-2.5" disabled={Boolean(pixError)}>
                 <CheckCircle2 className="h-4 w-4" />
                 Salvar PIX
               </button>
@@ -394,68 +449,25 @@ export const SettingsView: React.FC = () => {
 
           {feedbackFor('printers')}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {/* Impressora Churrasqueira */}
-            <div className="surface-card p-4 sm:p-5 space-y-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="flex shrink-0 items-center gap-2.5">
-                  <span className="icon-tile bg-amber-100 text-amber-800">
-                    <Flame className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h4 className="font-bold text-ink">Churrasqueira</h4>
-                    <p className="text-xs text-ink-muted">Setor GRILL</p>
+            {PRINTER_SECTORS.map(({ sector, title, description, icon: Icon, tone }) => (
+              <div key={sector} className="surface-card p-4 sm:p-5 space-y-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="flex shrink-0 items-center gap-2.5">
+                    <span className={`icon-tile ${tone}`}><Icon className="h-5 w-5" /></span>
+                    <h4 className="font-bold text-ink">{title}</h4>
                   </div>
+                  <PrinterHealthTag jobs={jobs} sector={sector} />
                 </div>
-                <PrinterHealthTag jobs={jobs} sector="GRILL" />
-              </div>
-              <p className="text-xs text-ink-secondary">
-                Recebe exclusivamente espetos e cortes bovinos/suínos com especificação obrigatória de ponto da carne em destaque.
-              </p>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handlePrintTestGrill}
-                  className="btn-secondary w-full text-xs"
-                >
-                  <Printer className="h-4 w-4 text-amber-700" />
-                  Imprimir teste da churrasqueira
-                </button>
-              </div>
-            </div>
-
-            {/* Impressora Cozinha */}
-            <div className="surface-card p-4 sm:p-5 space-y-4">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="flex shrink-0 items-center gap-2.5">
-                  <span className="icon-tile bg-emerald-100 text-emerald-800">
-                    <UtensilsCrossed className="h-5 w-5" />
-                  </span>
-                  <div>
-                    <h4 className="font-bold text-ink">Cozinha</h4>
-                    <p className="text-xs text-ink-muted">Setor KITCHEN</p>
-                  </div>
-                </div>
-                <PrinterHealthTag jobs={jobs} sector="KITCHEN" />
-              </div>
-              <p className="text-xs text-ink-secondary">
-                Recebe porções, mandioca, feijão tropeiro, farofas e pratos de acompanhamento das cubas gastronômicas.
-              </p>
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handlePrintTestKitchen}
-                  className="btn-secondary w-full text-xs"
-                >
-                  <Printer className="h-4 w-4 text-emerald-700" />
+                <p className="text-sm text-ink-secondary">{description}</p>
+                <button type="button" onClick={() => handlePrintTest(sector, title)} className="btn-secondary min-h-[44px] w-full text-sm">
+                  <Printer className="h-4 w-4" aria-hidden="true" />
                   Imprimir teste
                 </button>
               </div>
-            </div>
-
+            ))}
           </div>
         </div>
       )}
-
       {/* ABA 3: FILA TÉRMICA & TOLERÂNCIA A FALHAS / QUEDA DE ENERGIA */}
       {activeTab === 'queue' && (
         <div className="space-y-6">
@@ -586,72 +598,82 @@ export const SettingsView: React.FC = () => {
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-ink-secondary">Nome do restaurante</label>
+            <label htmlFor="store-name" className={LABEL}>Nome do restaurante</label>
             <input
+              id="store-name"
               type="text"
               required
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
-              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm"
+              className={FIELD}
             />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-secondary">CNPJ</label>
+              <label htmlFor="store-cnpj" className={LABEL}>CNPJ</label>
               <input
+                id="store-cnpj"
                 type="text"
+                inputMode="numeric"
+                placeholder="00.000.000/0000-00"
                 value={cnpj}
-                onChange={(e) => setCnpj(e.target.value)}
-                className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm"
+                onChange={(e) => setCnpj(maskCnpj(e.target.value))}
+                className={FIELD}
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-semibold text-ink-secondary">Telefone e WhatsApp</label>
+              <label htmlFor="store-phone" className={LABEL}>Telefone e WhatsApp</label>
               <input
-                type="text"
+                id="store-phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="(00) 00000-0000"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm"
+                onChange={(e) => setPhone(maskPhone(e.target.value))}
+                className={FIELD}
               />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-ink-secondary">Endereço</label>
+            <label htmlFor="store-address" className={LABEL}>Endereço</label>
             <input
+              id="store-address"
               type="text"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm"
+              className={FIELD}
             />
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label htmlFor="store-delivery-eta" className="mb-1 block text-sm font-semibold text-ink-secondary">Tempo de entrega (cardápio)</label>
-              <input id="store-delivery-eta" type="text" value={deliveryEta} onChange={(e) => setDeliveryEta(e.target.value)} placeholder="40–55 min" className="h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-sm" />
+              <input id="store-delivery-eta" type="text" value={deliveryEta} onChange={(e) => setDeliveryEta(e.target.value)} placeholder="40–55 min" className={FIELD} />
             </div>
             <div>
               <label htmlFor="store-pickup-eta" className="mb-1 block text-sm font-semibold text-ink-secondary">Tempo de retirada (cardápio)</label>
-              <input id="store-pickup-eta" type="text" value={pickupEta} onChange={(e) => setPickupEta(e.target.value)} placeholder="30–40 min" className="h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-sm" />
+              <input id="store-pickup-eta" type="text" value={pickupEta} onChange={(e) => setPickupEta(e.target.value)} placeholder="30–40 min" className={FIELD} />
             </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-semibold text-ink-secondary">Taxa de serviço (%)</label>
+            <label htmlFor="store-fee" className={LABEL}>Taxa de serviço (%)</label>
             <input
+              id="store-fee"
               type="number"
               min="0"
               max="30"
               step="0.5"
               value={serviceFee}
               onChange={(e) => setServiceFee(Number(e.target.value))}
-              className="w-full rounded-xl border border-line bg-surface px-3 py-2 text-sm"
+              className={FIELD}
             />
           </div>
 
           <div className="pt-2">
+            {storeDirty && <p className="mb-2 text-sm font-medium text-amber-800" role="status">Alterações ainda não salvas.</p>}
             <button type="submit" className="btn-primary w-full py-2.5">
               Salvar dados da loja
             </button>
