@@ -116,9 +116,12 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
                       <button type="button" className="btn-secondary px-3 py-2" onClick={() => void cancel(item, true)} aria-label={`Trocar ${item.product_name}`}>
                         <ArrowLeftRight className="h-4 w-4" aria-hidden="true" /><span className="hidden xs:inline">Trocar</span>
                       </button>
-                      <button type="button" className="icon-button h-10 w-10 text-rose-700 hover:bg-rose-50 hover:text-rose-800" onClick={() => void cancel(item, false)} aria-label={`Cancelar ${item.product_name}`}>
-                        <Trash2 className="h-4 w-4" aria-hidden="true" />
-                      </button>
+                      {/* Cancelar sem troca só gerente/master (evita fraude); garçom só troca */}
+                      {isManager && (
+                        <button type="button" className="icon-button h-10 w-10 text-rose-700 hover:bg-rose-50 hover:text-rose-800" onClick={() => void cancel(item, false)} aria-label={`Cancelar ${item.product_name}`}>
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
