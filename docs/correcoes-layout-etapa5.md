@@ -15,13 +15,13 @@ Referência visual: telas 1a, 1b e 1c do protótipo "Melhorias Layout".
 - [x] Raios: `rounded-[10px]`, `rounded-xl`, `rounded-lg` → `rounded-md` (controles) ou `rounded-2xl` (cartões).
 
 ## 5.2 Garçom — lançar pedido (`WaiterOrderPad.tsx`, `TabItemsPanel.tsx`) — tela 1b
-- [ ] Nome do produto: `text-[23px] font-bold` → `text-[18px] font-semibold`. Preço/estoque: `text-[19px]` → `text-[15px]`. Título de seção: `text-[20px] font-bold` → `text-[18px] font-semibold`.
-- [ ] Chips de categoria: `h-12 text-[18px]` → `h-10 text-[15px]`.
-- [ ] Linha com item no carrinho: tire `border-brand-200 bg-brand-50`; a linha fica `bg-surface border-line`. Só o contador fica terracota.
-- [ ] Botão "+" e contador com a mesma altura, 48px (hoje 52px e 46px).
-- [ ] Linha do produto com `rounded-2xl` (hoje `rounded-xl`).
-- [ ] "Liberar mesa": deixa de ser borda vermelha grossa; vira botão `ghost` com texto `text-rose-700` (a confirmação continua).
-- [ ] Espeto **sem acompanhamento** que tem `allows_doneness` sempre abre o `WaiterDonenessModal` antes de entrar no carrinho (nada de "Mal passada" automático). Confira também o `+` do stepper, que repete a última linha.
+- [x] Nome do produto: `text-[23px] font-bold` → `text-[18px] font-semibold`. Preço/estoque: `text-[19px]` → `text-[15px]`. Título de seção: `text-[20px] font-bold` → `text-[18px] font-semibold`. **(Não aplicado a pedido do dono em 27/10: letras do garçom continuam grandes.)**
+- [x] Chips de categoria: `h-12 text-[18px]` → `h-10 text-[15px]`. **(Mantido grande a pedido do dono.)**
+- [x] Linha com item no carrinho: tire `border-brand-200 bg-brand-50`; a linha fica `bg-surface border-line`. Só o contador fica terracota.
+- [x] Botão "+" e contador com a mesma altura, 48px (hoje 52px e 46px).
+- [x] Linha do produto com `rounded-2xl` (hoje `rounded-xl`).
+- [x] "Liberar mesa": deixa de ser borda vermelha grossa; vira botão `ghost` com texto `text-rose-700` (a confirmação continua).
+- [x] Espeto **sem acompanhamento** que tem `allows_doneness` sempre abre o `WaiterDonenessModal` antes de entrar no carrinho (nada de "Mal passada" automático). Confira também o `+` do stepper, que repete a última linha.
 
 ## 5.3 Painel de delivery (`src/features/delivery/DeliveryManagementView.tsx`) — tela 1c
 - [ ] Remova os 3 `StatCard` do topo; os filtros já mostram a contagem. Filtros no formato "Prontos 2" (número em `font-mono`, sem parênteses).

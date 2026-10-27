@@ -164,14 +164,14 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
           : null}
         {/* Mesa aberta sem nenhum pedido: o garçom pode desfazer (abriu a mesa errada) */}
         {activeTab && cartCount === 0 && !useTableStore.getState().getTabOrderItems(activeTab.id).some((item) => item.status !== 'CANCELLED') && (
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3.5 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-line bg-surface px-3.5 py-3">
             <p className="text-[17px] text-ink-secondary">Mesa aberta, ainda sem pedido.</p>
             <button type="button" onClick={async () => {
               const answer = await requestChoice({ title: `Liberar a Mesa ${pad2(table.number)}?`, message: 'Use quando abriu a mesa por engano. Ela volta a ficar livre.', choices: [{ value: 'yes', label: 'Sim, liberar a mesa' }, { value: 'no', label: 'Não, continuar atendendo' }] });
               if (answer !== 'yes') return;
               try { useTableStore.getState().releaseEmptyTab(activeTab.id, currentProfile.id); notify(`Mesa ${pad2(table.number)} liberada.`, 'success'); onBackToTables(); }
               catch (error: unknown) { notify(error instanceof Error ? error.message : 'Não foi possível liberar a mesa.', 'error'); }
-            }} className="min-h-[44px] rounded-lg border-2 border-rose-300 bg-white px-3.5 text-[17px] font-semibold text-rose-700 active:bg-rose-50">Liberar mesa</button>
+            }} className="min-h-[44px] rounded-md px-3.5 text-[17px] font-semibold text-rose-700 hover:bg-rose-50 active:bg-rose-50">Liberar mesa</button>
           </div>
         )}
         {activeTab && <TabItemsPanel table={table} onSwap={(item) => { setSwapping(item.product_name); setSearchQuery(''); setSelectedCategory(TOP); scrollToCatalog(); }} />}
@@ -192,7 +192,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
                 const blocked = !activeTab || (out && inCart === 0);
                 const tag = stockText(level, left, inCart);
                 return (
-                  <li key={product.id} className={`flex min-h-[88px] items-center gap-3 rounded-xl border px-3.5 py-3 ${inCart ? 'border-brand-200 bg-brand-50' : 'border-line bg-surface'}`}>
+                  <li key={product.id} className="flex min-h-[88px] items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3">
                     {product.image_url && (
                       <img src={product.image_url} alt="" loading="lazy" className={`h-14 w-14 shrink-0 rounded-md object-cover ${out && !inCart ? 'opacity-50 grayscale' : ''}`}
                         onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
@@ -205,13 +205,13 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
                       </p>
                     </div>
                     {inCart > 0 ? (
-                      <div className="flex h-[46px] shrink-0 items-center rounded-lg bg-brand-500 text-white">
-                        <button type="button" className="flex h-[46px] w-11 items-center justify-center" onClick={() => decrement(product)} aria-label={`Tirar 1 ${product.name}`}><Minus className="h-5 w-5" /></button>
+                      <div className="flex h-12 shrink-0 items-center rounded-md bg-brand-500 text-white">
+                        <button type="button" className="flex h-12 w-11 items-center justify-center" onClick={() => decrement(product)} aria-label={`Tirar 1 ${product.name}`}><Minus className="h-5 w-5" /></button>
                         <output className="min-w-[1.75rem] text-center font-mono text-lg font-bold" aria-live="polite" aria-label={`${inCart} no pedido`}>{inCart}</output>
-                        <button type="button" className="flex h-[46px] w-11 items-center justify-center disabled:opacity-40" disabled={blocked || out} onClick={() => increment(product)} aria-label={`Mais 1 ${product.name}`}><Plus className="h-5 w-5" /></button>
+                        <button type="button" className="flex h-12 w-11 items-center justify-center disabled:opacity-40" disabled={blocked || out} onClick={() => increment(product)} aria-label={`Mais 1 ${product.name}`}><Plus className="h-5 w-5" /></button>
                       </div>
                     ) : !out && (
-                      <button type="button" disabled={blocked} onClick={() => handleAdd(product)} className="flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-lg border-2 border-brand-500 text-brand-500 active:bg-brand-50 disabled:opacity-40"
+                      <button type="button" disabled={blocked} onClick={() => handleAdd(product)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border-2 border-brand-500 text-brand-500 active:bg-brand-50 disabled:opacity-40"
                         aria-label={`Adicionar ${product.name}, ${formatBRL(product.price)}${level === 'low' ? `. Restam ${left}` : ''}`}>
                         <Plus className="h-5 w-5" />
                       </button>
