@@ -46,15 +46,15 @@ Referência visual: telas 1a, 1b e 1c do protótipo "Melhorias Layout".
 - [x] Texto do combo: mostre os acompanhamentos que realmente vão, ou peça ao dono para confirmar a frase antes de mudar. (confirmado pelo dono: arroz, vinagrete, farofa e purê)
 
 ## 5.5 Fechamento de conta (`src/features/cashier/TableSettlementModal.tsx`)
-- [ ] `bg-white` → `bg-surface`, `border-stone-*` → `border-line`, `rounded-xl` → `rounded-md`.
-- [ ] Método de pagamento legível (`METHOD_LABELS`), não `{p.method}`.
-- [ ] Textos: "Itens lançados", "Total devido", "Total pago", "Encerrar conta e liberar mesa", "Aguardando pagamento total".
-- [ ] "Conta pedida" via `StatusTag kind="bill"` (terracota), não amber.
-- [ ] "Encerrar conta" com 56px/17px; "Lançar" com 48px/15px; métodos e atalhos 1/2, 1/3 com 44px.
-- [ ] Atalho extra "Por pessoa (N)" usando `currentTab.people_count`.
-- [ ] Remover pagamento pede confirmação (`requestChoice`) e o botão tem 44×44px.
-- [ ] Desconto maior que zero pede motivo (`requestText`), salvo nas notas da comanda.
-- [ ] Hora de abertura sem segundos.
+- [x] `bg-white` → `bg-surface`, `border-stone-*` → `border-line`, `rounded-xl` → `rounded-md`.
+- [x] Método de pagamento legível (`METHOD_LABELS`), não `{p.method}`.
+- [x] Textos: "Itens lançados", "Total devido", "Total pago", "Encerrar conta e liberar mesa", "Aguardando pagamento total".
+- [x] "Conta pedida" via `StatusTag kind="bill"` (terracota), não amber.
+- [x] "Encerrar conta" com 56px/17px; "Lançar" com 48px/15px; métodos e atalhos 1/2, 1/3 com 44px.
+- [x] Atalho extra "Por pessoa (N)" usando `currentTab.people_count`.
+- [x] Remover pagamento pede confirmação (`requestChoice`) e o botão tem 44×44px.
+- [x] Desconto maior que zero pede motivo (`requestText`), salvo nas notas da comanda. (função `set_tab_discount_reason`, migração 00044)
+- [x] Hora de abertura sem segundos.
 
 ## 5.6 Em todas as telas
 - [ ] Um nome por etapa em cliente, painel e garçom: "Recebido", "Na brasa", "Pronto", "Saiu para entrega", "Entregue". Centralize em `src/lib/statusStyles.ts`.

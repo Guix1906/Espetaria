@@ -16,6 +16,9 @@ import {
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
+import { StatusTag } from '../../components/ui/StatusTag';
+import { METHOD_LABELS } from '../../lib/financeData';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { formatBRL, formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -38,7 +41,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { requestText, notify } = useFeedback();
+  const { requestText, requestChoice, notify } = useFeedback();
   const [printingBill, setPrintingBill] = useState(false);
   const printBill = async () => {
     setPrintingBill(true);
@@ -69,6 +72,8 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   // Estados locais de ajuste de conta
   const [includeServiceFee, setIncludeServiceFee] = useState<boolean>(true);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
+  /** Texto digitado no desconto; só aplica ao sair do campo (aí pede o motivo). */
+  const [discountDraft, setDiscountDraft] = useState<string | null>(null);
 
   // Estados de novo pagamento
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PIX');
@@ -140,6 +145,34 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
       includeServiceFee,
       discountAmount: sanitized,
     });
+  };
+
+  // Desconto maior que zero pede o motivo (vai para as observações da comanda e para a auditoria)
+  const commitDiscount = async () => {
+    if (discountDraft === null) return;
+    const value = Math.max(0, parseFloat(discountDraft.replace(',', '.')) || 0);
+    setDiscountDraft(null);
+    if (value === discountAmount) return;
+    if (value > 0) {
+      const reason = await requestText({ title: `Desconto de ${formatBRL(value)}`, label: 'Motivo do desconto', confirmText: 'Aplicar desconto', initialValue: '', message: 'O motivo fica registrado na comanda.' });
+      if (!reason?.trim()) return;
+      handleApplyDiscount(value);
+      if (isSupabaseConfigured) {
+        const { error } = await supabase.rpc('set_tab_discount_reason', { p_tab_id: currentTab.id, p_reason: reason.trim() });
+        if (error) notify('Desconto aplicado, mas o motivo não foi salvo (falta rodar a migração 00044 no Supabase).', 'error');
+      }
+      return;
+    }
+    handleApplyDiscount(0);
+  };
+
+  const handleRemovePayment = async (p: Payment) => {
+    const answer = await requestChoice({
+      title: `Remover pagamento de ${formatBRL(p.amount)}?`,
+      message: `${METHOD_LABELS[p.method] ?? p.method} lançado nesta conta.`,
+      choices: [{ value: 'yes', label: 'Sim, remover' }, { value: 'no', label: 'Não, manter' }],
+    });
+    if (answer === 'yes') removePayment(p.id);
   };
 
   // Preenche campo de pagamento com o saldo restante ao mudar de método ou abrir
@@ -250,11 +283,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
               <div>
                 <h3 className="font-bold text-ink text-lg leading-none flex items-center gap-2 font-sans">
                   <span>Fechamento de conta — Mesa {String(table.number).padStart(2, '0')}</span>
-                  {table.status === 'AGUARDANDO_CONTA' && (
-                    <span className="text-xs px-2.5 py-0.5 rounded-sm bg-amber-100 text-amber-800 tabular-nums font-medium">
-                      Conta pedida
-                    </span>
-                  )}
+                  {table.status === 'AGUARDANDO_CONTA' && <StatusTag kind="bill" className="font-semibold">Conta pedida</StatusTag>}
                 </h3>
                 <p className="text-xs text-ink-muted mt-1 flex items-center gap-2">
                   <span>{currentTab.customer_name}</span>
@@ -264,7 +293,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     {currentTab.people_count} pessoas
                   </span>
                   <span>•</span>
-                  <span>Aberta às {new Date(currentTab.opened_at).toLocaleTimeString('pt-BR')}</span>
+                  <span>Aberta às {new Date(currentTab.opened_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                 </p>
               </div>
             </div>
@@ -279,7 +308,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
               </button>
               <button
               onClick={onClose}
-              className="p-2 rounded-xl text-ink-muted hover:text-ink hover:bg-surface-muted transition"
+              className="p-2 rounded-md text-ink-muted hover:text-ink hover:bg-surface-muted transition"
               type="button" aria-label="Fechar janela">
               <X className="w-5 h-5" />
             </button>
@@ -288,7 +317,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
           {/* Mensagem de Erro se houver */}
           {errorMessage && (
-            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2" role="alert">
+            <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2" role="alert">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-700" />
               <span>{errorMessage}</span>
             </div>
@@ -298,11 +327,11 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 overflow-y-auto pr-1 custom-scrollbar">
 
             {/* COLUNA ESQUERDA: Conferência Item a Item (6 colunas) */}
-            <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-white p-4 rounded-2xl border border-stone-300">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-2">
+            <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-surface p-4 rounded-2xl border border-line">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
                 <span className="text-xs font-bold text-ink flex items-center gap-1.5 font-sans">
                   <Receipt className="w-4 h-4 text-brand-700" />
-                  <span>Itens Lançados ({items.filter(i => i.status !== 'CANCELLED').length})</span>
+                  <span>Itens lançados ({items.filter(i => i.status !== 'CANCELLED').length})</span>
                 </span>
                 <span className="text-xs text-ink-muted tabular-nums">
                   Auditoria de consumo
@@ -331,9 +360,9 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     return (
                       <div
                         key={item.id}
-                        className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 ${isCancelled
+                        className={`p-2.5 rounded-md border flex items-center justify-between gap-2 ${isCancelled
                             ? 'bg-rose-50 border-rose-200 text-ink-muted line-through'
-                            : 'bg-white border-stone-300 text-ink'
+                            : 'bg-surface border-line text-ink'
                           }`}
                       >
                         <div className="flex-1 min-w-0">
@@ -402,16 +431,18 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                       type="number"
                       min="0"
                       step="0.50"
-                      value={discountAmount || ''}
+                      value={discountDraft ?? (discountAmount || '')}
                       placeholder="0,00"
-                      onChange={(e) => handleApplyDiscount(parseFloat(e.target.value) || 0)}
-                      className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-stone-300 text-ink tabular-nums text-right text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
+                      onChange={(e) => setDiscountDraft(e.target.value)}
+                      onBlur={() => void commitDiscount()}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                      className="w-full px-2.5 py-1.5 rounded-md bg-surface border border-line text-ink tabular-nums text-right text-xs focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
                       aria-label="Desconto em reais" />
                   </div>
                 </div>
 
                 <div className="flex justify-between items-baseline pt-2 border-t border-line">
-                  <span className="font-bold text-ink text-sm font-sans">TOTAL DEVIDO:</span>
+                  <span className="font-bold text-ink text-sm font-sans">Total devido</span>
                   <span className="tabular-nums text-2xl font-bold text-brand-700">
                     {formatBRL(currentTab.total)}
                   </span>
@@ -420,14 +451,14 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
             </div>
 
             {/* COLUNA DIREITA: Divisão de Pagamentos Multimeios (6 colunas) */}
-            <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-white p-4 rounded-2xl border border-stone-300">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-2">
+            <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-surface p-4 rounded-2xl border border-line">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-2">
                 <span className="text-xs font-bold text-ink flex items-center gap-1.5 font-sans">
                   <Coins className="w-4 h-4 text-emerald-700" />
                   <span>Pagamento</span>
                 </span>
                 <span className="text-xs tabular-nums text-ink-muted">
-                  Total Pago: <strong className="text-emerald-700">{formatBRL(totalPaid)}</strong>
+                  Total pago: <strong className="text-emerald-700">{formatBRL(totalPaid)}</strong>
                 </span>
               </div>
 
@@ -441,11 +472,11 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                   payments.map((p) => (
                     <div
                       key={p.id}
-                      className="p-2.5 rounded-xl bg-surface-muted border border-line flex items-center justify-between text-xs shadow-sm"
+                      className="p-2.5 rounded-md bg-surface-muted border border-line flex items-center justify-between text-xs shadow-sm"
                     >
                       <div className="flex items-center gap-2">
                         <span className="px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-800 font-medium tabular-nums text-xs">
-                          {p.method}
+                          {METHOD_LABELS[p.method] ?? p.method}
                         </span>
                         <div>
                           <span className="tabular-nums font-bold text-ink text-sm">
@@ -459,11 +490,11 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                         </div>
                       </div>
                       <button
-                        onClick={() => removePayment(p.id)}
-                        className="p-1.5 text-ink-muted hover:text-rose-700 hover:bg-rose-50 rounded transition"
+                        onClick={() => void handleRemovePayment(p)}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-muted hover:text-rose-700 hover:bg-rose-50 transition"
                         title="Remover este pagamento"
                         type="button" aria-label="Remover este pagamento">
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   ))
@@ -499,9 +530,9 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                           key={m.id}
                           type="button"
                           onClick={() => handleSelectMethod(m.id)}
-                          className={`py-2.5 rounded-xl text-xs font-bold transition flex flex-col items-center gap-1 ${isSelected
+                          className={`min-h-[44px] py-2 rounded-md text-sm font-bold transition flex flex-col items-center justify-center gap-1 ${isSelected
                               ? 'bg-brand-700 text-white font-bold shadow-sm'
-                              : 'bg-white border border-stone-300 text-ink hover:bg-brand-50 hover:border-brand-300'
+                              : 'bg-surface border border-line text-ink hover:bg-brand-50 hover:border-brand-300'
                             }`}
                         >
                           <Icon className="w-4 h-4" />
@@ -535,13 +566,13 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                           value={paymentAmount}
                           onChange={(e) => setPaymentAmount(e.target.value)}
                           placeholder={remainingDue.toFixed(2)}
-                          className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-white border border-stone-300 text-ink tabular-nums text-sm font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
+                          className="w-full min-h-[48px] pl-9 pr-3 rounded-md bg-surface border border-line text-ink tabular-nums text-sm font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
                           aria-label="Valor do pagamento em reais" inputMode="decimal" />
                       </div>
 
                       <button
                         type="submit"
-                        className="btn-success px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shrink-0"
+                        className="btn-success min-h-[48px] px-4 rounded-md text-[15px] flex items-center gap-1.5 shrink-0"
                       >
                         <Plus className="w-4 h-4" />
                         <span>Lançar</span>
@@ -549,28 +580,18 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     </div>
 
                     {/* Botões Rápidos de Divisão */}
-                    <div className="flex flex-wrap gap-1.5 text-xs tabular-nums text-ink-muted">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentAmount(remainingDue.toFixed(2))}
-                        className="px-2.5 py-1 rounded-lg bg-white border border-stone-300 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 transition"
-                      >
-                        Total ({formatBRL(remainingDue)})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentAmount((remainingDue / 2).toFixed(2))}
-                        className="px-2.5 py-1 rounded-lg bg-white border border-stone-300 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 transition"
-                      >
-                        1/2 ({formatBRL(remainingDue / 2)})
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentAmount((remainingDue / 3).toFixed(2))}
-                        className="px-2.5 py-1 rounded-lg bg-white border border-stone-300 hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 transition"
-                      >
-                        1/3 ({formatBRL(remainingDue / 3)})
-                      </button>
+                    <div className="flex flex-wrap gap-1.5 text-sm tabular-nums text-ink-secondary">
+                      {([
+                        ['Total', 1],
+                        ['1/2', 2],
+                        ['1/3', 3],
+                        ...(currentTab.people_count > 1 && ![2, 3].includes(currentTab.people_count) ? [[`Por pessoa (${currentTab.people_count})`, currentTab.people_count] as const] : []),
+                      ] as const).map(([label, parts]) => (
+                        <button key={label} type="button" onClick={() => setPaymentAmount((remainingDue / parts).toFixed(2))}
+                          className="min-h-[44px] px-3 rounded-md bg-surface border border-line hover:bg-brand-50 hover:text-brand-700 hover:border-brand-300 transition">
+                          {label} ({formatBRL(remainingDue / parts)})
+                        </button>
+                      ))}
                     </div>
                   </div>
 
@@ -590,7 +611,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                             placeholder="0,00"
                             value={cashTendered}
                             onChange={(e) => setCashTendered(e.target.value)}
-                            className="w-full pl-7 pr-2.5 py-1.5 rounded-xl bg-surface-muted border border-line text-ink tabular-nums text-xs text-right focus:ring-1 focus:ring-brand-600 focus:outline-none"
+                            className="w-full pl-7 pr-2.5 py-1.5 rounded-md bg-surface-muted border border-line text-ink tabular-nums text-xs text-right focus:ring-1 focus:ring-brand-600 focus:outline-none"
                             aria-label="Dinheiro recebido do cliente" inputMode="decimal" />
                         </div>
                       </div>
@@ -612,13 +633,13 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                   type="button"
                   disabled={!isFullyPaid}
                   onClick={handleFinalizeClosure}
-                  className={`w-full py-4 rounded-2xl font-bold text-xs transition shadow-sm flex items-center justify-center gap-2 ${isFullyPaid
+                  className={`w-full min-h-[56px] rounded-md font-bold text-[17px] transition shadow-sm flex items-center justify-center gap-2 ${isFullyPaid
                       ? 'btn-success'
                       : 'bg-surface-muted text-ink-muted cursor-not-allowed border border-line'
                     }`}
                 >
-                  <CheckCheck className="w-4 h-4" />
-                  <span>{isFullyPaid ? 'Encerrar conta e Liberar mesa' : 'Aguardando Quitação Total'}</span>
+                  <CheckCheck className="w-5 h-5" />
+                  <span>{isFullyPaid ? 'Encerrar conta e liberar mesa' : 'Aguardando pagamento total'}</span>
                 </button>
               </div>
 
