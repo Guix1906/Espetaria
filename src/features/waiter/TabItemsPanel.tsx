@@ -1,5 +1,6 @@
 import { VoidTabButton } from '../tables/VoidTabButton';
-import { ArrowLeftRight, CheckCheck, ChevronDown, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, ChevronDown, Trash2 } from 'lucide-react';
+import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
 import { useState } from 'react';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { formatBRL, formatDoneness, getOrderItemStatusConfig } from '../../lib/formatters';
@@ -19,7 +20,7 @@ interface TabItemsPanelProps {
 
 /** Itens já lançados na comanda da mesa, com servir, cancelar e trocar. */
 export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelProps) {
-  const { tabs, getTabOrderItems, markDelivered, cancelOrderItemAtomic } = useTableStore();
+  const { tabs, getTabOrderItems, cancelOrderItemAtomic } = useTableStore();
   const { currentProfile } = useAuthStore();
   const { currentShift } = useShiftStore();
   const { notify, requestText, requestChoice } = useFeedback();
@@ -30,8 +31,8 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
   const active = items.filter((item) => item.status !== 'CANCELLED');
   const cancelled = items.filter((item) => item.status === 'CANCELLED');
   const [expanded, setExpanded] = useState(false);
-  const preparingCount = active.filter((i) => i.status === 'RECEIVED' || i.status === 'IN_PREPARATION').reduce((s, i) => s + i.quantity, 0);
-  const readyCount = active.filter((i) => i.status === 'READY').reduce((s, i) => s + i.quantity, 0);
+  const preparingCount = active.filter(isPendingProduction).reduce((s, i) => s + i.quantity, 0);
+  const readyCount = active.filter((i) => isFreshReady(i)).reduce((s, i) => s + i.quantity, 0);
   const totalCount = active.reduce((s, i) => s + i.quantity, 0);
 
   const cancel = async (item: OrderItem, swap: boolean) => {
@@ -73,8 +74,8 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
     const summary = [`${totalCount} na mesa`, preparingCount ? `${preparingCount} em preparo` : null, readyCount ? `${readyCount} ${readyCount === 1 ? 'pronto' : 'prontos'}` : null].filter(Boolean).join(' · ');
     return (
       <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-3.5 py-2.5 text-left">
-        <span className="min-w-0 truncate text-[15px] text-ink"><span className="font-semibold">{summary}</span></span>
-        <span className="flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-700">Ver<ChevronDown className="h-4 w-4" aria-hidden="true" /></span>
+        <span className="min-w-0 truncate text-[17px] text-ink"><span className="font-semibold">{summary}</span></span>
+        <span className="flex shrink-0 items-center gap-1 text-base font-semibold text-brand-700">Ver<ChevronDown className="h-4 w-4" aria-hidden="true" /></span>
       </button>
     );
   }
@@ -84,11 +85,11 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
       {!compact && (
         <div className="flex items-baseline justify-between gap-3">
           <button type="button" onClick={() => setExpanded(false)} aria-expanded={true} className="flex items-center gap-1 text-left"><h2 id={`tab-items-${table.id}`} className="text-base font-semibold">Já lançado nesta mesa</h2><ChevronDown className="h-4 w-4 rotate-180 text-ink-muted" aria-hidden="true" /></button>
-          <span className="flex items-center gap-2 text-sm text-ink-muted tabular-nums">{active.length} {active.length === 1 ? 'item' : 'itens'} · {formatBRL(tab.subtotal)}<VoidTabButton tab={tab} tableNumber={table.number} compact /></span>
+          <span className="flex items-center gap-2 text-base text-ink-muted tabular-nums">{active.length} {active.length === 1 ? 'item' : 'itens'} · {formatBRL(tab.subtotal)}<VoidTabButton tab={tab} tableNumber={table.number} compact /></span>
         </div>
       )}
       {active.length === 0 ? (
-        <p className="py-4 text-center text-sm text-ink-muted">Nenhum item lançado ainda. Escolha os produtos abaixo.</p>
+        <p className="py-4 text-center text-base text-ink-muted">Nenhum item lançado ainda. Escolha os produtos abaixo.</p>
       ) : (
         <ul className="divide-y divide-line rounded-lg border border-line">
           {active.map((item) => {
@@ -97,20 +98,15 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
             return (
               <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink">{item.quantity}x {item.product_name}</p>
-                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
+                  <p className="text-lg font-semibold leading-snug text-ink">{item.quantity}x {item.product_name}</p>
+                  <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-base text-ink-muted">
                     <span className={`rounded-sm px-1.5 py-0.5 font-medium ${status.bg} ${status.color}`}>{status.label}</span>
                     {item.doneness && <span>Ponto: {formatDoneness(item.doneness)}</span>}
                     <span className="tabular-nums">{formatBRL(item.unit_price * item.quantity)}</span>
                   </p>
-                  {item.notes && <p className="mt-0.5 text-xs text-ink-secondary">Obs: {item.notes}</p>}
+                  {item.notes && <p className="mt-0.5 text-base text-ink-secondary">Obs: {item.notes}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
-                  {item.status === 'READY' && (
-                    <button type="button" className="btn-success px-3 py-2" onClick={() => markDelivered(item.id)}>
-                      <CheckCheck className="h-4 w-4" aria-hidden="true" />Servir
-                    </button>
-                  )}
                   {canChange && (
                     <>
                       <button type="button" className="btn-secondary px-3 py-2" onClick={() => void cancel(item, true)} aria-label={`Trocar ${item.product_name}`}>
@@ -131,7 +127,7 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
         </ul>
       )}
       {cancelled.length > 0 && (
-        <details className="text-xs text-ink-muted">
+        <details className="text-base text-ink-muted">
           <summary className="cursor-pointer py-1">{cancelled.length} {cancelled.length === 1 ? 'item cancelado' : 'itens cancelados'}</summary>
           <ul className="mt-1 space-y-0.5 pl-4">
             {cancelled.map((item) => <li key={item.id} className="line-through">{item.quantity}x {item.product_name}</li>)}

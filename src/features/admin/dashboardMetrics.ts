@@ -1,5 +1,6 @@
 import type { DeliveryOrder, Order, OrderItem, Payment, PrintJob, RestaurantTable, StockMovement, Tab } from '../../types/domain';
 import { formatBRL } from '../../lib/formatters';
+import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
 
 /** Limites dos alertas (minutos). */
 export const ALERT_LIMITS = {
@@ -72,7 +73,7 @@ export function computeDashboard(input: DashboardInput) {
   const shiftItems = orderItems.filter((i) => inShift(i) && i.status !== 'CANCELLED');
   const people = openTabs.reduce((s, t) => s + (t.people_count || 1), 0);
   const waitingBill = tables.filter((t) => t.status === 'AGUARDANDO_CONTA');
-  const readyItems = orderItems.filter((i) => i.status === 'READY');
+  const readyItems = orderItems.filter((i) => isFreshReady(i, now));
   const readyOldest = readyItems.reduce((m, i) => Math.max(m, minutesSince(i.prepared_at ?? i.updated_at, now)), 0);
   const grillItems = orderItems.filter((i) => i.sector === 'GRILL' && i.status === 'IN_PREPARATION');
   const grillOldest = grillItems.reduce((m, i) => Math.max(m, minutesSince(i.created_at, now)), 0);
@@ -91,8 +92,8 @@ export function computeDashboard(input: DashboardInput) {
     const items = orderItems.filter((i) => ids.has(i.order_id) && i.status !== 'CANCELLED');
     const lastOrderAt = tabOrders.reduce<string | null>((m, o) => (!m || o.created_at > m ? o.created_at : m), null);
     return {
-      ready: items.filter((i) => i.status === 'READY').reduce((s, i) => s + i.quantity, 0),
-      preparing: items.filter((i) => i.status === 'RECEIVED' || i.status === 'IN_PREPARATION').reduce((s, i) => s + i.quantity, 0),
+      ready: items.filter((i) => isFreshReady(i, now)).reduce((s, i) => s + i.quantity, 0),
+      preparing: items.filter(isPendingProduction).reduce((s, i) => s + i.quantity, 0),
       served: items.filter((i) => i.status === 'DELIVERED').reduce((s, i) => s + i.quantity, 0),
       itemCount: items.reduce((s, i) => s + i.quantity, 0),
       minutesSinceLastOrder: lastOrderAt ? minutesSince(lastOrderAt, now) : null,
@@ -139,7 +140,7 @@ export function computeDashboard(input: DashboardInput) {
 
   // ---------------- Produção (unidades) ----------------
   const production: Record<'GRILL' | 'KITCHEN' | 'BAR', { salon: number; delivery: number }> = { GRILL: { salon: 0, delivery: 0 }, KITCHEN: { salon: 0, delivery: 0 }, BAR: { salon: 0, delivery: 0 } };
-  orderItems.filter((i) => i.status === 'RECEIVED' || i.status === 'IN_PREPARATION').forEach((i) => {
+  orderItems.filter(isPendingProduction).forEach((i) => {
     if (i.sector in production) production[i.sector as keyof typeof production].salon += i.quantity;
   });
   stages.IN_PRODUCTION.forEach((d) => d.items.forEach((i) => {

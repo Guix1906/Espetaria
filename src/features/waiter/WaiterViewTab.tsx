@@ -10,6 +10,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { usePrintStore } from '../../stores/usePrintStore';
 import { formatBRL } from '../../lib/formatters';
+import { isFreshReady } from '../../lib/productionStatus';
 import { useTableStore } from '../../stores/useTableStore';
 import { TabItemsPanel } from './TabItemsPanel';
 import { RestaurantTable } from '../../types/domain';
@@ -43,7 +44,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
   const currentTab = tabs.find((t) => t.table_id === table.id && t.status === 'OPEN');
   const items = currentTab ? getTabOrderItems(currentTab.id) : [];
 
-  const readyToDeliverCount = items.filter((i) => i.status === 'READY').length;
+  const readyToDeliverCount = items.filter((i) => isFreshReady(i)).length;
 
   return (
     <Dialog label="Consumo da mesa" onClose={onClose} placement="sheet">
@@ -56,10 +57,10 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
               <Receipt className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-ink text-base leading-tight font-sans">
+              <h3 className="font-bold text-ink text-xl leading-tight font-sans">
                 Consumo — Mesa {String(table.number).padStart(2, '0')}
               </h3>
-              <p className="text-xs text-ink-muted mt-0.5 flex items-center gap-2">
+              <p className="text-base text-ink-muted mt-0.5 flex items-center gap-2">
                 <span className="font-bold text-ink">{currentTab?.customer_name || 'Comanda aberta'}</span>
                 <span>•</span>
                 <span className="flex items-center gap-1 font-medium">
@@ -79,11 +80,11 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
 
         {/* Alerta de Itens Prontos para Entrega */}
         {readyToDeliverCount > 0 && (
-          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-2 shadow-sm">
+          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-base flex items-center justify-between gap-2 shadow-sm">
             <div className="flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
               <span className="font-bold">
-                {readyToDeliverCount} {readyToDeliverCount === 1 ? 'item pronto' : 'itens prontos'} na brasa/cozinha para servir!
+                {readyToDeliverCount} {readyToDeliverCount === 1 ? 'item pronto' : 'itens prontos'} para levar à mesa
               </span>
             </div>
           </div>
@@ -95,7 +96,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
 
         {/* Resumo Financeiro da Mesa */}
         {currentTab && (
-          <div className="border-t border-line pt-4 space-y-2.5 text-xs">
+          <div className="border-t border-line pt-4 space-y-2.5 text-base">
             <div className="flex justify-between text-ink-muted">
               <span>Subtotal</span>
               <span className="tabular-nums font-bold text-ink">
@@ -110,7 +111,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
                 </span>
               </div>
             )}
-            <div className="flex justify-between items-center text-sm font-bold text-ink pt-2 border-t border-line">
+            <div className="flex justify-between items-center text-base font-bold text-ink pt-2 border-t border-line">
               <span className="text-ink">Total</span>
               <span className="text-2xl font-bold text-brand-700 tabular-nums">
                 {formatBRL(currentTab.total)}
@@ -118,9 +119,9 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
             </div>
 
             {/* Divisão por Pessoa */}
-            <div className="flex items-center justify-between gap-2 rounded-md bg-surface-muted px-3 py-2.5 text-xs text-ink">
+            <div className="flex items-center justify-between gap-2 rounded-md bg-surface-muted px-3 py-2.5 text-base text-ink">
               <span className="whitespace-nowrap">Por pessoa ({currentTab.people_count})</span>
-              <strong className="whitespace-nowrap text-sm font-semibold text-brand-700 tabular-nums">{formatBRL(currentTab.total / Math.max(1, currentTab.people_count))}</strong>
+              <strong className="whitespace-nowrap text-base font-semibold text-brand-700 tabular-nums">{formatBRL(currentTab.total / Math.max(1, currentTab.people_count))}</strong>
             </div>
 
             {/* Botão de Solicitar Fechamento (já imprime a conta na churrasqueira) */}
@@ -135,13 +136,15 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
                   <span>{printing ? 'Enviando...' : 'Imprimir conta de novo'}</span>
                 </button>
               )}
-              <button
-                onClick={onRequestBill}
-                className="w-full py-3.5 rounded-2xl bg-surface-muted hover:bg-surface-muted border border-line text-ink font-bold transition flex items-center justify-center gap-2 shadow-sm"
-                type="button">
-                <Receipt className="w-4 h-4 text-brand-700" />
-                <span>Pedir fechamento da conta</span>
-              </button>
+              {table.status !== 'AGUARDANDO_CONTA' && (
+                <button
+                  onClick={onRequestBill}
+                  className="w-full py-3.5 rounded-md bg-surface border border-line-strong text-ink font-bold transition flex flex-col items-center justify-center gap-0.5 shadow-sm"
+                  type="button">
+                  <span className="flex items-center gap-2"><Receipt className="w-4 h-4 text-brand-700" />Pedir a conta</span>
+                  <span className="text-sm font-medium text-ink-muted">A conta sai na impressora da churrasqueira</span>
+                </button>
+              )}
             </div>
           </div>
         )}

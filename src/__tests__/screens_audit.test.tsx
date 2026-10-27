@@ -136,7 +136,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       expect(html).toContain('Painel de produção');
       expect(html).toContain('Churrasqueira');
       expect(html).toContain('Cozinha e cubas');
-      expect(html).toContain('Bar e bebidas');
+      expect(html).not.toContain('Bar e bebidas');
     });
 
     it('1.5 GrillKDSView (Produção Churrasqueira) deve abrir e renderizar sem erros', () => {
@@ -149,7 +149,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
     it('1.6 KitchenKDSView (Produção Cozinha) deve abrir e renderizar sem erros', () => {
       const html = renderWithFeedback(<KitchenKDSView />);
       expect(html).toContain('Cozinha');
-      expect(html).toContain('Impressora da Cozinha Ativa');
+      expect(html).toContain('impressora da cozinha');
       expect(html).toContain('Estoque das cubas');
     });
 

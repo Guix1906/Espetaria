@@ -1,6 +1,7 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import { VoidTabButton } from '../tables/VoidTabButton';
 import { StockSnapshot } from './StockSnapshot';
+import { LiveBoard } from './LiveBoard';
 import { AlertCircle, AlertTriangle, ArrowRight, Bike, ChevronDown, Clock, Download, Flame, Lock, PackageCheck, PieChart, Plus, ShieldCheck, Store, TrendingUp, UtensilsCrossed } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
@@ -184,31 +185,35 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
         </section>
       )}
 
-      {/* 3 NÚMEROS GRANDES */}
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Resumo do turno">
+      {/* 4 NÚMEROS DO TURNO */}
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Resumo do turno">
         <button type="button" onClick={() => go('finance')} disabled={!onNavigateTab} className={`${card} text-left`}>
-          <p className="text-sm text-ink-muted">Faturamento realizado</p>
-          <p className="mt-1 font-mono text-3xl font-bold text-ink">{formatBRL(d.revenue.realized)}</p>
+          <p className="text-sm text-ink-muted">Faturado</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-ink sm:text-3xl">{formatBRL(d.revenue.realized)}</p>
           <p className="mt-1 text-[13px] text-ink-muted">+ {formatBRL(d.revenue.inProgress)} em andamento</p>
         </button>
         <button type="button" onClick={() => go('tables')} disabled={!onNavigateTab} className={`${card} text-left`}>
           <p className="text-sm text-ink-muted">Mesas abertas</p>
-          <p className="mt-1 font-mono text-3xl font-bold text-ink">{d.salon.openTabs.length}</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-ink sm:text-3xl">{d.salon.openTabs.length}</p>
           <p className="mt-1 text-[13px] text-ink-muted">{d.salon.people} {d.salon.people === 1 ? 'pessoa' : 'pessoas'}{d.salon.waitingBill.length ? ` · ${d.salon.waitingBill.length} pediram a conta` : ''}</p>
         </button>
-        <button type="button" onClick={() => go('delivery')} disabled={!onNavigateTab} className={`${card} text-left`}>
-          <p className="text-sm text-ink-muted">Delivery em andamento</p>
-          <p className="mt-1 font-mono text-3xl font-bold text-ink">{activeDeliveries.length}</p>
-          <p className="mt-1 text-[13px] text-ink-muted">{lateIds.size ? `${lateIds.size} atrasado${lateIds.size > 1 ? 's' : ''}` : 'nenhum atrasado'}</p>
+        <button type="button" onClick={() => go('kds')} disabled={!onNavigateTab} className={`${card} text-left`}>
+          <p className="text-sm text-ink-muted">Na brasa</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-ink sm:text-3xl">{d.production.GRILL.salon + d.production.GRILL.delivery}</p>
+          <p className="mt-1 text-[13px] text-ink-muted">espetos · {d.productionTotal} un em produção</p>
+        </button>
+        <button type="button" onClick={() => go('delivery')} disabled={!onNavigateTab} className={`${card} text-left ${lateIds.size ? 'border-rose-300 bg-rose-50' : ''}`}>
+          <p className={`text-sm ${lateIds.size ? 'text-rose-800' : 'text-ink-muted'}`}>Delivery atrasado</p>
+          <p className={`mt-1 font-mono text-2xl font-bold sm:text-3xl ${lateIds.size ? 'text-rose-700' : 'text-ink'}`}>{lateIds.size}</p>
+          <p className="mt-1 text-[13px] text-ink-muted">{activeDeliveries.length} em andamento</p>
         </button>
       </section>
 
-      {/* MESAS EM ATENDIMENTO */}
-      <section className={`${card} space-y-3`} aria-labelledby="tabs-title">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 id="tabs-title" className={sectionTitle}><UtensilsCrossed className="h-5 w-5 text-brand-700" />Mesas em atendimento ({d.salon.openTabs.length})</h2>
-          {onNavigateTab && <button type="button" onClick={() => go('waiter')} className={actionBtn}><Plus className="h-4 w-4" />Novo atendimento</button>}
-        </div>
+      {/* MOVIMENTO AGORA EM 3 COLUNAS */}
+      <LiveBoard now={now} openTabs={d.salon.openTabs} tabInfo={d.tabInfo} readyOldest={d.salon.readyOldest} activeDeliveries={activeDeliveries} lateIds={lateIds} go={onNavigateTab ? go : undefined} goTable={onNavigateTab ? goTable : undefined} />
+
+      {/* MESAS EM ATENDIMENTO (ações: lançar, cobrar, anular) */}
+      <Block id="tabs-title" title={`Mesas em atendimento (${d.salon.openTabs.length})`} icon={UtensilsCrossed} action={onNavigateTab && <button type="button" onClick={() => go('waiter')} className={actionBtn}><Plus className="h-4 w-4" />Novo atendimento</button>}>
         {d.salon.openTabs.length === 0 ? <p className="py-6 text-center text-sm text-ink-muted">Nenhuma comanda aberta no momento.</p> : (
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {[...d.salon.openTabs].sort((a, b) => a.opened_at.localeCompare(b.opened_at)).map((tab) => {
@@ -245,7 +250,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
             })}
           </div>
         )}
-      </section>
+      </Block>
 
       {/* DETALHES RECOLHIDOS */}
       <Block id="now-salon" title="Casa agora" icon={UtensilsCrossed} summary={<span className="font-mono">{formatBRL(d.salon.open)}</span>} action={onNavigateTab && <button type="button" className={actionBtn} onClick={() => go('tables')}>Ver mesas</button>}>

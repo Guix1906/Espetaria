@@ -13,7 +13,7 @@ import { useTableStore } from '../../stores/useTableStore';
 import type { MeatDoneness } from '../../types/enums';
 import { GrillExhaustModal } from './GrillExhaustModal';
 import { GrillLiveSummary } from './GrillLiveSummary';
-import { KDSElapsedTimer } from './KDSElapsedTimer';
+import { KDSElapsedTimer, LEVEL_CARD, elapsedLevel, useNow } from './KDSElapsedTimer';
 
 /** Tempo para desfazer um toque errado antes de avisar cozinha/cliente. */
 const UNDO_MS = 4000;
@@ -54,6 +54,7 @@ export const GrillKDSView: React.FC = () => {
   const [isExhaustModalOpen, setIsExhaustModalOpen] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(audioService.getAudioEnabled());
   const [pending, setPending] = useState<Record<string, true>>({});
+  const now = useNow();
   const timers = useRef(new Map<string, { timer: number; commit: () => void }>());
 
   // Saiu da tela com um "pronto" ainda no prazo de desfazer: confirma na hora
@@ -163,8 +164,9 @@ export const GrillKDSView: React.FC = () => {
           {tickets.map((ticket) => {
             const kind = KIND_LABEL[ticket.kind];
             const isPending = Boolean(pending[ticket.key]);
+            const level = LEVEL_CARD[elapsedLevel(ticket.createdAt, now, 15, 25)];
             return (
-              <li key={ticket.key} className={`flex flex-col gap-3 rounded-lg border p-4 shadow-sm transition ${isPending ? 'border-emerald-300 bg-emerald-50' : 'border-line bg-surface'}`}>
+              <li key={ticket.key} className={`flex flex-col gap-3 rounded-lg border border-l-8 p-4 shadow-sm transition ${level} ${isPending ? 'border-emerald-300 bg-emerald-50' : 'border-line bg-surface'}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -178,10 +180,10 @@ export const GrillKDSView: React.FC = () => {
 
                 <ul className="space-y-1.5">
                   {ticket.items.map((item) => (
-                    <li key={item.id} className="text-base">
-                      <span className="font-bold tabular-nums text-ink">{item.quantity}x</span>{' '}
+                    <li key={item.id} className="text-xl leading-snug">
+                      <span className="font-mono font-bold tabular-nums text-accent-700">{item.quantity}x</span>{' '}
                       <span className="font-semibold text-ink">{item.name}</span>
-                      {item.doneness && <span className="ml-2 rounded-sm bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-900">{formatDoneness(item.doneness)}</span>}
+                      {item.doneness && <span className="ml-2 rounded-sm bg-amber-100 px-2 py-0.5 text-sm font-bold text-amber-900">{formatDoneness(item.doneness)}</span>}
                       {item.notes && <span className="block text-sm text-amber-800">Obs: {item.notes}</span>}
                     </li>
                   ))}

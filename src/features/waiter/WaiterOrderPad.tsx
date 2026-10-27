@@ -1,7 +1,7 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { ArrowLeft, ArrowRight, CheckCircle2, Minus, Plus, Search, X } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { formatBRL } from '../../lib/formatters';
 import { getProductAvailability, getStockLevel, type StockLevel } from '../../lib/productAvailability';
@@ -48,6 +48,12 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
   const [billRequested, setBillRequested] = useState(false);
   const [swapping, setSwapping] = useState<string | null>(null);
   const activeTab = tabs.find((tab) => tab.table_id === table.id && tab.status === 'OPEN');
+  // Abrir a mesa conta como "levou à mesa": o aviso de pronto some sem o botão "Servir"
+  useEffect(() => {
+    if (!activeTab) return;
+    const { getTabOrderItems, markDelivered } = useTableStore.getState();
+    getTabOrderItems(activeTab.id).filter((item) => item.status === 'READY').forEach((item) => markDelivered(item.id));
+  }, [activeTab?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const cart = getCart(table.id);
   const cartCount = getCartItemsCount(table.id);
   const cartTotal = getCartTotal(table.id);
@@ -132,12 +138,12 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
             <button type="button" onClick={onBackToTables} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-ink" aria-label="Voltar às mesas"><ArrowLeft className="h-5 w-5" /></button>
             <div className="min-w-0">
               <h1 className="truncate font-mono text-xl font-bold leading-tight text-ink">Mesa {pad2(table.number)}</h1>
-              {subtitle && <p className="truncate text-[13px] text-ink-muted">{subtitle}</p>}
+              {subtitle && <p className="truncate text-base text-ink-muted">{subtitle}</p>}
             </div>
           </div>
           <button type="button" onClick={() => setIsViewTabOpen(true)} className="flex min-h-[44px] shrink-0 flex-col items-end justify-center rounded-md border border-line-strong bg-surface px-2.5 py-1 text-right active:bg-surface-muted" aria-label={`Ver consumo e conta: ${formatBRL(activeTab?.total)}`}>
-            <span className="text-[13px] font-semibold text-brand-700">Ver conta ›</span>
-            <span className="font-mono text-[15px] font-bold text-ink">{formatBRL(activeTab?.total)}</span>
+            <span className="text-base font-semibold text-brand-700">Ver conta ›</span>
+            <span className="font-mono text-[17px] font-bold text-ink">{formatBRL(activeTab?.total)}</span>
           </button>
         </div>
         <div className="mx-auto mt-2 flex max-w-5xl flex-nowrap gap-1.5 overflow-x-auto pb-0.5" aria-label="Categorias do cardápio">
@@ -159,13 +165,13 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
         {/* Mesa aberta sem nenhum pedido: o garçom pode desfazer (abriu a mesa errada) */}
         {activeTab && cartCount === 0 && !useTableStore.getState().getTabOrderItems(activeTab.id).some((item) => item.status !== 'CANCELLED') && (
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line bg-surface px-3.5 py-3">
-            <p className="text-[15px] text-ink-secondary">Mesa aberta, ainda sem pedido.</p>
+            <p className="text-[17px] text-ink-secondary">Mesa aberta, ainda sem pedido.</p>
             <button type="button" onClick={async () => {
               const answer = await requestChoice({ title: `Liberar a Mesa ${pad2(table.number)}?`, message: 'Use quando abriu a mesa por engano. Ela volta a ficar livre.', choices: [{ value: 'yes', label: 'Sim, liberar a mesa' }, { value: 'no', label: 'Não, continuar atendendo' }] });
               if (answer !== 'yes') return;
               try { useTableStore.getState().releaseEmptyTab(activeTab.id, currentProfile.id); notify(`Mesa ${pad2(table.number)} liberada.`, 'success'); onBackToTables(); }
               catch (error: unknown) { notify(error instanceof Error ? error.message : 'Não foi possível liberar a mesa.', 'error'); }
-            }} className="min-h-[44px] rounded-lg border-2 border-rose-300 bg-white px-3.5 text-[15px] font-semibold text-rose-700 active:bg-rose-50">Liberar mesa</button>
+            }} className="min-h-[44px] rounded-lg border-2 border-rose-300 bg-white px-3.5 text-[17px] font-semibold text-rose-700 active:bg-rose-50">Liberar mesa</button>
           </div>
         )}
         {activeTab && <TabItemsPanel table={table} onSwap={(item) => { setSwapping(item.product_name); setSearchQuery(''); setSelectedCategory(TOP); scrollToCatalog(); }} />}
@@ -175,7 +181,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
             <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar item" className="h-11 w-full rounded-lg border border-line-strong bg-surface pl-10 pr-3 text-base placeholder:text-ink-muted" />
           </label>
-          {canManageProducts && <button type="button" onClick={() => setIsProductModalOpen(true)} className="btn-secondary h-11 shrink-0 px-3 text-xs" title="Cadastrar novo produto no cardápio"><Plus className="h-4 w-4" /><span className="hidden sm:inline">Novo produto</span></button>}
+          {canManageProducts && <button type="button" onClick={() => setIsProductModalOpen(true)} className="btn-secondary h-11 shrink-0 px-3 text-base" title="Cadastrar novo produto no cardápio"><Plus className="h-4 w-4" /><span className="hidden sm:inline">Novo produto</span></button>}
         </div>
         {sections.every((s) => !s.rows.length) ? <EmptyState title="Nenhum produto encontrado" description="Tente outro nome ou escolha uma categoria diferente." action={<button type="button" className="btn-secondary" onClick={() => { setSelectedCategory(TOP); setSearchQuery(''); }}>Limpar busca</button>} /> : sections.filter((s) => s.rows.length).map((section) => (
           <section key={section.id} aria-label={section.title} className="space-y-2">
@@ -221,8 +227,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
         <div className="fixed inset-x-3 z-30 mx-auto max-w-2xl" style={{ bottom: 'max(26px, calc(env(safe-area-inset-bottom) + 12px))' }}>
           <button type="button" onClick={() => setIsCartDrawerOpen(true)} className="flex h-[62px] w-full items-center gap-3 rounded-2xl bg-brand-500 px-3.5 text-white shadow-[0_8px_24px_rgba(80,30,10,0.3)] active:bg-brand-700">
             <span className="flex h-8 min-w-[32px] items-center justify-center rounded-md bg-white px-1.5 font-mono text-base font-bold text-brand-500">{cartCount}</span>
-            <span className="min-w-0 flex-1 whitespace-nowrap text-left text-[15px] font-semibold xs:text-[17px]">Revisar e enviar</span>
-            <span className="whitespace-nowrap font-mono text-[15px] font-bold xs:text-[17px]">{formatBRL(cartTotal)}</span>
+            <span className="min-w-0 flex-1 whitespace-nowrap text-left text-[17px] font-semibold xs:text-[17px]">Revisar e enviar</span>
+            <span className="whitespace-nowrap font-mono text-[17px] font-bold xs:text-[17px]">{formatBRL(cartTotal)}</span>
             <ArrowRight className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>

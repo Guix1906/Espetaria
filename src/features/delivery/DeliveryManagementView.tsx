@@ -102,6 +102,7 @@ function WhatsAppStatus({ messages, onRetry }: { messages: WhatsAppMessage[]; on
 }
 
 import { useCancelDeliveryOrder } from './useCancelDeliveryOrder';
+import { KDSElapsedTimer, LEVEL_CARD, elapsedLevel, useNow } from '../kds/KDSElapsedTimer';
 
 export const DeliveryManagementView: React.FC = () => {
   const { requestText, notify } = useFeedback();
@@ -110,6 +111,7 @@ export const DeliveryManagementView: React.FC = () => {
   const settings = useSettingsStore((s) => s.settings);
 
   const [activeTab, setActiveTab] = useState<'orders' | 'payouts'>('orders');
+  const now = useNow();
   // Entregador abre direto nos pedidos prontos para sair
   const [filter, setFilter] = useState<DeliveryFilter>(() => (currentProfile.role === 'ENTREGADOR' ? 'READY' : 'ALL_ACTIVE'));
   // Mensagens que falharam por instabilidade da API ficam "na fila": tenta de novo a cada minuto
@@ -272,31 +274,31 @@ export const DeliveryManagementView: React.FC = () => {
             const isDelivered = order.status === 'DELIVERED';
             const isPickup = isPickupOrder(order);
             const status = getDeliveryStatusConfig(order.status, order.order_type);
+            const isActive = !isDelivered && order.status !== 'CANCELLED';
 
             return (
               <div
                 key={order.id}
-                className="p-5 rounded-2xl border border-line bg-surface flex flex-col justify-between space-y-4"
+                className={`p-5 rounded-lg border border-line border-l-8 bg-surface flex flex-col justify-between space-y-4 ${isActive ? LEVEL_CARD[elapsedLevel(order.created_at, now, 30, 45)] : 'border-l-line'}`}
               >
                 <div>
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-                    <div>
-                      <span className="text-2xl font-bold tabular-nums text-ink">
-                        #{order.order_number}
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3">
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold tabular-nums text-ink-muted">
+                        #{order.order_number} · {formatBRL(order.total)}
                       </span>
-                      <h4 className="font-bold text-ink text-sm">
+                      <h4 className="break-words text-2xl font-bold leading-tight text-ink">
                         {order.customer_name}
                       </h4>
                     </div>
 
-                    <div className="text-right">
-                      <span className="block font-mono text-[15px] font-bold text-ink">
-                        {formatBRL(order.total)}
-                      </span>
+                    {isActive ? (
+                      <KDSElapsedTimer createdAt={order.created_at} warningMinutes={30} urgentMinutes={45} />
+                    ) : (
                       <span className="text-xs text-ink-muted tabular-nums">
                         {new Date(order.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                       </span>
-                    </div>
+                    )}
                   </div>
 
                   <div className="mt-3 flex flex-wrap items-center gap-2">

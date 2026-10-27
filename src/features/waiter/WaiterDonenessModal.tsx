@@ -108,7 +108,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
       <div className="flex items-start justify-between gap-3 border-b border-line px-4 pb-3">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500"><Flame className="h-5 w-5" aria-hidden="true" /></span>
-          <div className="min-w-0"><h2 className="text-lg font-bold leading-tight text-ink">{product.name}</h2><p className="mt-0.5 font-mono text-[13px] text-ink-muted">{formatBRL(product.price)} por unidade</p></div>
+          <div className="min-w-0"><h2 className="text-lg font-bold leading-tight text-ink">{product.name}</h2><p className="mt-0.5 font-mono text-base text-ink-muted">{formatBRL(product.price)} por unidade</p></div>
         </div>
         <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink" aria-label="Fechar personalização" onClick={onClose}><X className="h-5 w-5" /></button>
       </div>
@@ -116,7 +116,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
         {errorMessage && <div className="notice border-rose-200 bg-rose-50 text-rose-800" role="alert">{errorMessage}</div>}
         {(!product.allows_doneness || isEditing) && (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-white px-3.5 py-2">
-            <span className="text-sm font-semibold text-ink">Quantidade</span>
+            <span className="text-base font-semibold text-ink">Quantidade</span>
             <div className="flex items-center gap-2">
               <button type="button" className="flex h-11 w-11 items-center justify-center rounded-md border border-line disabled:opacity-40" aria-label="Diminuir quantidade" disabled={quantity <= 1} onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus className="h-4 w-4" /></button>
               <output aria-live="polite" className="w-8 text-center font-mono text-xl font-bold">{quantity}</output>
@@ -125,7 +125,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
           </div>
         )}
         {product.allows_doneness && <fieldset className="space-y-2">
-          <legend className="mb-2 text-sm font-semibold text-ink">Como você prefere o ponto? {!isEditing && <span className="font-normal text-xs text-ink-muted">· escolha a quantidade por ponto</span>}</legend>
+          <legend className="mb-2 text-base font-semibold text-ink">Como você prefere o ponto? {!isEditing && <span className="font-normal text-base text-ink-muted">· escolha a quantidade por ponto</span>}</legend>
           {options.map((option) => {
             const on = selectedDoneness === option.value;
             const count = donenessCounts[option.value] || 0;
@@ -138,8 +138,8 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
                   <div className="flex min-w-0 items-center gap-3">
                     <span className="h-[32px] w-2.5 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />
                     <div className="min-w-0">
-                      <span className="block text-[15px] font-semibold text-ink leading-tight">{option.label}</span>
-                      <span className="mt-0.5 block text-[13px] text-ink-muted leading-tight">{option.description}</span>
+                      <span className="block text-[17px] font-semibold text-ink leading-tight">{option.label}</span>
+                      <span className="mt-0.5 block text-base text-ink-muted leading-tight">{option.description}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -182,17 +182,17 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
               <label key={option.value} className={`flex min-h-[76px] cursor-pointer items-center gap-3 rounded-lg border px-3.5 py-2.5 ${on ? 'border-brand-500 bg-brand-50' : 'border-line bg-white'}`}>
                 <input type="radio" name="meat-doneness" value={option.value} checked={on} onChange={() => { setSelectedDoneness(option.value); setErrorMessage(null); }} className="h-[22px] w-[22px] shrink-0 accent-brand-500" />
                 <span className="h-[30px] w-2 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />
-                <span className="flex-1"><span className="block text-[15px] font-semibold text-ink">{option.label}</span><span className="mt-0.5 block text-[13px] text-ink-muted">{option.description}</span></span>
+                <span className="flex-1"><span className="block text-[17px] font-semibold text-ink">{option.label}</span><span className="mt-0.5 block text-base text-ink-muted">{option.description}</span></span>
                 {on && <Check className="h-5 w-5 text-brand-500" aria-hidden="true" />}
               </label>
             );
           })}
         </fieldset>}
         {product.allows_notes && (showNotes ? <div>
-          <label htmlFor="doneness-notes" className="mb-2 block text-sm font-semibold text-ink">Alguma observação?</label>
-          {product.allows_doneness && <div className="mb-2 flex flex-wrap gap-1.5">{COMMON_NOTES.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`min-h-[38px] rounded-md border px-2.5 text-xs font-medium ${noteTags.includes(tag) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>{tag}</button>)}</div>}
+          <label htmlFor="doneness-notes" className="mb-2 block text-base font-semibold text-ink">Alguma observação?</label>
+          {product.allows_doneness && <div className="mb-2 flex flex-wrap gap-1.5">{COMMON_NOTES.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(tag) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>{tag}</button>)}</div>}
           <textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ex.: Sem cebola, gelo à parte..." className="w-full rounded-lg border border-line-strong bg-white p-3 text-base" />
-        </div> : <button type="button" onClick={() => setShowNotes(true)} className="min-h-[44px] text-sm font-semibold text-brand-500">+ Adicionar observação</button>)}
+        </div> : <button type="button" onClick={() => setShowNotes(true)} className="min-h-[44px] text-base font-semibold text-brand-500">+ Adicionar observação</button>)}
       </div>
       <div className="shrink-0 border-t border-line px-4 pt-3" style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom))' }}>
         <Button size="lg" block onClick={handleConfirm} disabled={needsDoneness} className="justify-between font-semibold">

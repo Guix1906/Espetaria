@@ -10,6 +10,8 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { SearchField } from '../../components/ui/SearchField';
 import { TableCard } from '../../components/ui/TableCard';
 import { formatBRL, formatDoneness, formatElapsedMinutes, getTableStatusConfig } from '../../lib/formatters';
+import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
+import { ALERT_LIMITS } from '../admin/dashboardMetrics';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
@@ -64,7 +66,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   }, [openTabByTable, orders, orderItems]);
   const getTableTab = (tableId: string) => openTabByTable.get(tableId);
   const itemsOfTable = (tableId: string): OrderItem[] => itemsByTable.get(tableId) ?? [];
-  const readyItemsOf = (tableId: string) => itemsOfTable(tableId).filter((item) => item.status === 'READY');
+  const readyItemsOf = (tableId: string) => itemsOfTable(tableId).filter((item) => isFreshReady(item, now));
   const readyTables = activeTables.filter((table) => readyItemsOf(table.id).length > 0);
   const readyTableIds = new Set(readyTables.map((table) => table.id));
 
@@ -98,7 +100,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
     return (
       <div className="page-layout">
         <PageHeader eyebrow="Operação do salão" title="Salão" description="Escolha uma mesa para abrir a comanda, lançar pedidos ou fechar a conta." icon={Smartphone} actions={<a className="btn-secondary min-h-[44px]" href="#/garcom"><Smartphone className="h-4 w-4" />Área do garçom no celular</a>} />
-        <div className="stat-grid">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard label="Mesas livres" value={activeTables.filter((table) => table.status === 'LIVRE').length} hint="Disponíveis para novos clientes" icon={CheckCheck} tone="success" />
           <StatCard label="Em atendimento" value={activeTables.filter((table) => table.status === 'OCUPADA').length} hint="Comandas em andamento" icon={Users} />
           <StatCard label="Conta pedida" value={activeTables.filter((table) => table.status === 'AGUARDANDO_CONTA').length} hint="Prontas para o fechamento" icon={Receipt} tone="brand" />
@@ -129,9 +131,13 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
 
   const statusChip = (table: RestaurantTable) => {
     const items = itemsOfTable(table.id).filter((item) => item.status !== 'CANCELLED');
-    if (readyTableIds.has(table.id)) return { label: 'Pronto', kind: 'ready' as StatusKind };
+    if (readyTableIds.has(table.id)) {
+      // Há quanto tempo o item pronto mais antigo espera; passou de 5 min vira alerta
+      const since = readyItemsOf(table.id).reduce((m, item) => Math.max(m, Math.floor((now - new Date(item.prepared_at ?? item.updated_at).getTime()) / 60000)), 0);
+      return { label: since >= 1 ? `Pronto há ${since} min` : 'Pronto agora', kind: (since >= ALERT_LIMITS.readyNotServed ? 'alert' : 'ready') as StatusKind, short: 'Pronto' };
+    }
     if (table.status === 'AGUARDANDO_CONTA') return { label: 'Conta pedida', kind: 'bill' as StatusKind };
-    if (items.some((item) => item.status === 'RECEIVED' || item.status === 'IN_PREPARATION')) return { label: 'Em preparo', kind: 'preparing' as StatusKind };
+    if (items.some(isPendingProduction)) return { label: 'Em preparo', kind: 'preparing' as StatusKind };
     if (!items.length) return { label: 'Sem pedido', kind: 'occupied' as StatusKind };
     return { label: 'Servido', kind: 'occupied' as StatusKind };
   };
@@ -139,10 +145,10 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const tabName = (table: RestaurantTable, tab: Tab | undefined) => (tab?.customer_name && tab.customer_name !== `Mesa ${table.number}` ? tab.customer_name : 'Sem nome');
 
   const readyBanner = readyTables.length > 0 && (
-    <button type="button" onClick={() => setSection('ready')} className="flex min-h-[64px] w-full items-center justify-between gap-3 rounded-xl bg-sucesso px-3.5 py-3 text-left text-white">
+    <button type="button" onClick={() => setSection('ready')} className="flex min-h-[64px] w-full items-center justify-between gap-3 rounded-2xl bg-sucesso px-3.5 py-3 text-left text-white">
       <span className="min-w-0">
         <span className="block text-[17px] font-semibold">{readyCount} {readyCount === 1 ? 'item pronto' : 'itens prontos'}</span>
-        <span className="block truncate text-sm text-white/90">{readyTables.map((table) => `Mesa ${pad2(table.number)}`).join(' · ')} — levar agora</span>
+        <span className="block truncate text-base text-white/90">{readyTables.map((table) => `Mesa ${pad2(table.number)}`).join(' · ')} — levar agora</span>
       </span>
       <ArrowRight className="h-6 w-6 shrink-0" aria-hidden="true" />
     </button>
@@ -151,11 +157,11 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const tablesSection = (
     <div className="space-y-3.5">
       {readyBanner}
-      <div className="grid grid-cols-3 gap-1 rounded-[10px] bg-line p-1" role="tablist" aria-label="Filtrar mesas">
+      <div className="grid grid-cols-3 gap-1 rounded-md bg-line p-1" role="tablist" aria-label="Filtrar mesas">
         {([['occupied', 'Ocupadas', occupied.length], ['free', 'Livres', free.length], ['all', 'Todas', activeTables.length]] as const).map(([key, label, count]) => (
           <button key={key} type="button" role="tab" aria-selected={tableFilter === key} aria-controls="tables-panel" onClick={() => setTableFilter(key)}
-            className={`flex h-10 items-center justify-center gap-1.5 rounded-lg text-[15px] font-semibold ${tableFilter === key ? 'bg-ink text-white' : 'text-ink'}`}>
-            {label}<span className={`font-mono text-xs ${tableFilter === key ? 'text-white/80' : 'text-ink-muted'}`}>{count}</span>
+            className={`flex h-10 items-center justify-center gap-1.5 rounded-md text-[17px] font-semibold ${tableFilter === key ? 'bg-ink text-white' : 'text-ink'}`}>
+            {label}<span className={`font-mono text-base ${tableFilter === key ? 'text-white/80' : 'text-ink-muted'}`}>{count}</span>
           </button>
         ))}
       </div>
@@ -163,7 +169,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
         <span className="sr-only">Buscar mesa ou cliente</span>
         <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
         <input type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Nº da mesa ou cliente" aria-describedby="tables-search-hint"
-          className="h-11 w-full rounded-lg border border-line bg-surface pl-10 pr-3 text-base placeholder:text-ink-muted" />
+          className="h-11 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-base placeholder:text-ink-muted" />
         <span id="tables-search-hint" className="sr-only">{showOccupied.length + showFree.length} mesas encontradas</span>
       </label>
       {shiftNotice}
@@ -171,8 +177,8 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
       {tableFilter === 'all' && (showOccupied.length + showFree.length) > 0 && (
         <section aria-label="Todas as mesas" className="space-y-2.5">
           <p className="flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-ink-secondary">
-            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-brand-500" />Ocupada</span>
-            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-amber-500" />Conta pedida</span>
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm border border-line-strong bg-surface-muted" />Ocupada</span>
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-brand-500" />Conta pedida</span>
             <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-emerald-600" />Item pronto</span>
             <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm border-2 border-emerald-600" />Livre</span>
           </p>
@@ -181,20 +187,21 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
               if (!isOccupied(table)) {
                 return (
                   <button key={table.id} type="button" disabled={!isShiftOpen} onClick={() => askOpen(table)}
-                    className={`flex h-[64px] items-center justify-center rounded-lg border-2 bg-surface font-mono text-2xl font-bold disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-dashed border-line-strong text-ink-secondary' : 'border-emerald-600 text-emerald-800'}`}
+                    className={`flex h-[64px] items-center justify-center rounded-md border-2 bg-surface font-mono text-2xl font-bold disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-dashed border-line-strong text-ink-secondary' : 'border-emerald-600 text-emerald-800'}`}
                     aria-label={`Mesa ${pad2(table.number)} livre${table.status === 'RESERVADA' ? ' (reservada)' : ''}. Abrir comanda`}>
                     {pad2(table.number)}
                   </button>
                 );
               }
               const chip = statusChip(table);
-              const fill = chip.kind === 'ready' ? 'bg-emerald-600' : chip.kind === 'bill' ? 'bg-amber-500' : 'bg-brand-500';
+              // Ocupada fica neutra; só "conta pedida" (terracota) e "pronto" (verde) chamam atenção
+              const fill = 'short' in chip ? 'bg-emerald-600 text-white' : chip.kind === 'bill' ? 'bg-brand-500 text-white' : 'border border-line-strong bg-surface-muted text-ink';
               return (
                 <button key={table.id} type="button" onClick={() => setSelectedTableId(table.id)}
-                  className={`flex h-[64px] flex-col items-center justify-center rounded-lg text-white shadow-[0_2px_6px_rgba(43,33,28,.2)] active:brightness-95 ${fill}`}
+                  className={`flex h-[64px] flex-col items-center justify-center rounded-md active:brightness-95 ${fill}`}
                   aria-label={`Mesa ${pad2(table.number)} ocupada, ${chip.label}. Lançar itens`}>
                   <span className="font-mono text-2xl font-bold leading-none">{pad2(table.number)}</span>
-                  <span className="mt-1 text-[12px] font-semibold leading-none">{chip.label}</span>
+                  <span className="mt-1 text-base font-semibold leading-none">{'short' in chip ? chip.short : chip.label}</span>
                 </button>
               );
             })}
@@ -206,18 +213,15 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
           {showOccupied.map((table) => {
             const tab = getTableTab(table.id);
             const chip = statusChip(table);
-            // Cor de referência no movimento: ocupada = terracota, pronto = verde, conta pedida = âmbar
-            const tone = chip.kind === 'ready' ? 'border-emerald-400 border-l-emerald-600 bg-emerald-100'
-              : chip.kind === 'bill' ? 'border-amber-400 border-l-amber-500 bg-amber-100'
-              : 'border-brand-300 border-l-brand-500 bg-brand-100';
+            // A cor fica só na etiqueta de situação
             return (
               <li key={table.id}>
-                <button type="button" onClick={() => setSelectedTableId(table.id)} className={`flex min-h-[72px] w-full items-center gap-3 rounded-xl border border-l-[6px] px-3.5 py-3 text-left active:brightness-95 ${tone}`}
+                <button type="button" onClick={() => setSelectedTableId(table.id)} className="flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 text-left active:bg-surface-muted"
                   aria-label={`Mesa ${pad2(table.number)}, ${tabName(table, tab)}, ${chip.label}. Lançar itens`}>
                   <span className="w-11 shrink-0 font-mono text-[26px] font-bold text-ink">{pad2(table.number)}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-base font-semibold text-ink">{tabName(table, tab)}</span>
-                    <span className="block truncate text-[13px] text-ink-muted">{tabSubtitle(tab)}</span>
+                    <span className="block truncate text-base text-ink-muted">{tabSubtitle(tab)}</span>
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1">
                     <span className="font-mono text-base font-bold text-ink">{formatBRL(tab?.total)}</span>
@@ -231,11 +235,11 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
       )}
       {tableFilter !== 'all' && showFree.length > 0 && (
         <section aria-label="Mesas livres">
-          <h2 className="mb-2 text-sm font-semibold text-ink-secondary">Livres <span className="font-normal text-ink-muted">· toque para abrir</span></h2>
+          <h2 className="mb-2 text-base font-semibold text-ink-secondary">Livres <span className="font-normal text-ink-muted">· toque para abrir</span></h2>
           <div className="grid grid-cols-3 xs:grid-cols-4 gap-2">
             {showFree.map((table) => (
               <button key={table.id} type="button" disabled={!isShiftOpen} onClick={() => askOpen(table)}
-                className={`flex h-[50px] items-center justify-center rounded-lg border bg-surface font-mono text-xl font-bold disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-dashed border-line-strong text-ink-secondary' : 'border-emerald-600 text-emerald-800'}`}
+                className={`flex h-[50px] items-center justify-center rounded-md border bg-surface font-mono text-xl font-bold disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-dashed border-line-strong text-ink-secondary' : 'border-emerald-600 text-emerald-800'}`}
                 aria-label={`Mesa ${pad2(table.number)}${table.status === 'RESERVADA' ? ' (reservada)' : ''}. Abrir comanda`}>
                 {pad2(table.number)}
               </button>
@@ -257,19 +261,19 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
         const items = readyItemsOf(table.id);
         const tab = getTableTab(table.id);
         return (
-          <section key={table.id} className="rounded-xl border border-line bg-surface p-3.5">
+          <section key={table.id} className="rounded-2xl border border-line bg-surface p-3.5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <button type="button" onClick={() => setSelectedTableId(table.id)} className="min-h-[44px] min-w-0 text-left">
                 <span className="font-mono text-xl font-bold text-ink">Mesa {pad2(table.number)}</span>
-                <span className="ml-2 truncate text-sm text-ink-muted">{tabName(table, tab)}</span>
+                <span className="ml-2 truncate text-base text-ink-muted">{tabName(table, tab)}</span>
               </button>
             </div>
             <ul className="divide-y divide-line">
               {items.map((item) => (
                 <li key={item.id} className="flex items-center gap-3 py-2">
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[15px] font-semibold text-ink">{item.quantity}x {item.product_name}</span>
-                    {(item.doneness || item.notes) && <span className="block text-xs text-ink-muted">{[item.doneness ? formatDoneness(item.doneness) : null, item.notes].filter(Boolean).join(' · ')}</span>}
+                    <span className="block text-[17px] font-semibold text-ink">{item.quantity}x {item.product_name}</span>
+                    {(item.doneness || item.notes) && <span className="block text-base text-ink-muted">{[item.doneness ? formatDoneness(item.doneness) : null, item.notes].filter(Boolean).join(' · ')}</span>}
                   </span>
                 </li>
               ))}
@@ -295,10 +299,10 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
         <div className="mx-auto grid max-w-5xl grid-cols-3">
           {navItems.map(({ key, label, icon: Icon, badge }) => (
             <button key={key} type="button" onClick={() => { setSection(key); window.scrollTo({ top: 0 }); }} aria-current={section === key ? 'page' : undefined}
-              className={`flex h-[62px] flex-col items-center justify-center gap-1 text-[13px] ${section === key ? 'font-semibold text-brand-500' : 'text-ink-secondary'}`}>
+              className={`flex h-[62px] flex-col items-center justify-center gap-1 text-base ${section === key ? 'font-semibold text-brand-500' : 'text-ink-secondary'}`}>
               <span className="relative">
                 <Icon className="h-6 w-6" aria-hidden="true" />
-                {!!badge && <span className="absolute -right-3 -top-2 min-w-[20px] rounded bg-sucesso px-1 text-center font-mono text-[11px] font-bold leading-5 text-white">{badge}</span>}
+                {!!badge && <span className="absolute -right-3 -top-2 min-w-[20px] rounded bg-sucesso px-1 text-center font-mono text-base font-bold leading-5 text-white">{badge}</span>}
               </span>
               {label}{!!badge && <span className="sr-only">: {badge}</span>}
             </button>

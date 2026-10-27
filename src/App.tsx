@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Header } from './components/layout/Header';
+import { isPendingProduction } from './lib/productionStatus';
 import { NavigationTabs } from './components/layout/NavigationTabs';
 import { PAGE_TITLES, tabsForRole, type ActiveTab } from './components/layout/navigation';
 import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
@@ -96,7 +97,7 @@ function AdminWorkspace() {
   // Só os números do menu: a moldura (e a tela aberta) não redesenha a cada mudança do banco
   const openTablesCount = useTableStore((s) => s.tables.filter((table) => table.status === 'OCUPADA' || table.status === 'AGUARDANDO_CONTA').length);
   const waitingBillCount = useTableStore((s) => s.tables.filter((table) => table.status === 'AGUARDANDO_CONTA').length);
-  const pendingProductionCount = useTableStore((s) => s.orderItems.filter((item) => item.status === 'RECEIVED' || item.status === 'IN_PREPARATION').length);
+  const pendingProductionCount = useTableStore((s) => s.orderItems.filter(isPendingProduction).length);
   const exhaustedCount = useStockStore((s) => s.dailyPrepStock.filter((stock) => stock.is_exhausted || stock.current_quantity <= 0).length);
   const activeDeliveriesCount = useDeliveryStore((s) => s.deliveryOrders.filter((order) => ['CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'].includes(order.status)).length);
 

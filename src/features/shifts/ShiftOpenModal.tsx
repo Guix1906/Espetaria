@@ -1,7 +1,8 @@
-import { AlertCircle, CheckCircle2, Coins, Flame, History, Minus, Plus, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Coins, Flame, History, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { formatBRL } from '../../lib/formatters';
+import { isComboProduct } from '../../lib/comboStock';
 import { loadLastClosedShiftPrep } from '../../lib/lastShift';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
@@ -16,10 +17,11 @@ interface ShiftOpenModalProps {
 /** '' = ainda não preenchido (fica destacado). */
 type PrepValue = { quantity: string; cubas: string };
 
-const toNumber = (v: string) => (v.trim() === '' ? null : Math.max(0, Number(v) || 0));
+const toNumber = (v: string) => (v.trim() === '' ? null : Math.max(0, Number(v.replace(',', '.')) || 0));
+const isRice = (p: Product) => p.name.trim().toLocaleLowerCase('pt-BR') === 'arroz';
 
 export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose }) => {
-  const { products } = useStockStore();
+  const { products, categories } = useStockStore();
   const { openShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
 
@@ -44,14 +46,27 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
 
   if (!isOpen) return null;
 
-  const stockProducts = products.filter((p) => p.active && p.tracks_stock);
-  const grillProducts = stockProducts.filter((p) => !p.is_cubas && p.sector !== 'BAR');
-  const cubaProducts = stockProducts.filter((p) => p.is_cubas);
-  const barProducts = stockProducts.filter((p) => !p.is_cubas && p.sector === 'BAR');
+  // "X com acompanhamento" não é digitado: o banco calcula o saldo = menor entre espeto X e arroz (00031)
+  // Só se conta no turno: espetos, porções de arroz e entradas. O resto vende sem controle de quantidade.
+  const activeTracked = products.filter((p) => p.active && p.tracks_stock);
+  const combos = activeTracked.filter(isComboProduct);
+  const isStarter = (p: Product) => /entrada/i.test(categories.find((c) => c.id === p.category_id)?.name ?? '');
+  const rice = activeTracked.find(isRice);
+  const skewers = activeTracked.filter((p) => !isComboProduct(p) && p.sector === 'GRILL' && p !== rice && !isStarter(p));
+  const starters = activeTracked.filter((p) => !isComboProduct(p) && p !== rice && isStarter(p));
+  const stockProducts = [...skewers, ...(rice ? [rice] : []), ...starters];
 
+  /** Arroz é lançado direto em porções (o rendimento muda a cada dia). */
+  const usesCubas = (p: Product) => p.is_cubas && p !== rice;
   const portionsOf = (p: Product) => portionsOverride[p.id] || p.portions_per_cuba || 1;
   const valueOf = (id: string): PrepValue => prepValues[id] ?? { quantity: '', cubas: '' };
-  const isFilled = (p: Product) => (p.is_cubas ? valueOf(p.id).cubas : valueOf(p.id).quantity).trim() !== '';
+  const isFilled = (p: Product) => (usesCubas(p) ? valueOf(p.id).cubas : valueOf(p.id).quantity).trim() !== '';
+  const qtyOf = (p: Product) => (usesCubas(p) ? Math.round((toNumber(valueOf(p.id).cubas) ?? 0) * portionsOf(p)) : toNumber(valueOf(p.id).quantity) ?? 0);
+  const riceQty = rice ? qtyOf(rice) : 0;
+  const baseOf = (combo: Product) => {
+    const name = combo.name.replace(/\s+com acompanhamento\s*$/i, '').trim().toLocaleLowerCase('pt-BR');
+    return stockProducts.find((p) => p.name.trim().toLocaleLowerCase('pt-BR') === name);
+  };
   const missingCount = stockProducts.filter((p) => !isFilled(p)).length;
 
   const setField = (productId: string, field: keyof PrepValue, value: string) =>
@@ -71,7 +86,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
       last.items.forEach((item) => {
         const prod = stockProducts.find((p) => p.id === item.productId);
         if (!prod) return;
-        if (prod.is_cubas) {
+        if (usesCubas(prod)) {
           next[prod.id] = { quantity: '', cubas: String(item.cubas) };
           if (item.portions > 0) portions[prod.id] = item.portions;
         } else {
@@ -95,7 +110,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
       const items: PrepItemInput[] = [];
       stockProducts.forEach((prod) => {
         const val = valueOf(prod.id);
-        if (prod.is_cubas) {
+        if (usesCubas(prod)) {
           const cubas = toNumber(val.cubas) ?? 0;
           if (cubas > 0) items.push({ productId: prod.id, cubasCount: cubas, portionsPerCuba: portionsOf(prod) });
         } else {
@@ -190,45 +205,46 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             </div>
           </div>
 
-          {grillProducts.length > 0 && (
+          <p className="text-[13px] text-ink-muted">Só espetos, arroz e entradas têm quantidade. Bebidas e os demais itens vendem sem contagem.</p>
+
+          {skewers.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Espetos e porções preparados (unidades)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{grillProducts.map(unitRow)}</div>
+              <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Espetos preparados (unidades)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{skewers.map(unitRow)}</div>
             </div>
           )}
 
-          {cubaProducts.length > 0 && (
+          {rice && (
             <div className="space-y-3">
-              <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Acompanhamentos (cubas)</h3>
-              <div className="space-y-3">
-                {cubaProducts.map((p) => {
-                  const cubasRaw = valueOf(p.id).cubas;
-                  const cubas = toNumber(cubasRaw) ?? 0;
-                  const portions = portionsOf(p);
+              <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Arroz (porções que rendeu hoje)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{unitRow(rice)}</div>
+            </div>
+          )}
+
+          {combos.length > 0 && (
+            <div className="space-y-2 rounded-2xl border border-line bg-surface-soft p-3">
+              <h3 className="font-bold text-ink text-sm">Espetos com acompanhamento (calculado sozinho)</h3>
+              <p className="text-[13px] text-ink-muted">Usam o espeto + 1 porção de arroz. O que dá para vender é o menor dos dois.</p>
+              <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+                {combos.map((combo) => {
+                  const base = baseOf(combo);
+                  const parts = [base ? qtyOf(base) : null, rice ? riceQty : null].filter((n): n is number => n !== null);
+                  const avail = parts.length ? Math.min(...parts) : 0;
                   return (
-                    <div key={p.id} className={`p-3 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${isFilled(p) ? 'bg-surface border-line' : 'bg-amber-50/60 border-amber-200'}`}>
-                      <div>
-                        <div className="font-semibold text-ink">{p.name}</div>
-                        <div className="text-sm text-ink-secondary mt-0.5 font-mono">
-                          {cubas} {cubas === 1 ? 'cuba' : 'cubas'} × {portions} = <strong className="text-ink">{cubas * portions} porções</strong>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button type="button" onClick={() => step(p.id, 'cubas', -1)} className={stepButton} aria-label={`Tirar 1 cuba de ${p.name}`}><Minus className="w-4 h-4" /></button>
-                        <input type="number" min="0" step="0.5" inputMode="decimal" value={cubasRaw} placeholder="—" onChange={(e) => setField(p.id, 'cubas', e.target.value)} className={`w-20 ${fieldClass(isFilled(p))}`} aria-label={`Cubas de ${p.name}`} />
-                        <button type="button" onClick={() => step(p.id, 'cubas', 1)} className={stepButton} aria-label={`Somar 1 cuba em ${p.name}`}><Plus className="w-4 h-4" /></button>
-                      </div>
-                    </div>
+                    <li key={combo.id} className="flex justify-between gap-2 text-sm">
+                      <span className="truncate text-ink-secondary">{combo.name}</span>
+                      <span className="shrink-0 font-mono font-bold text-ink">{base ? `até ${avail}` : 'sem espeto base'}</span>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             </div>
           )}
 
-          {barProducts.length > 0 && (
+          {starters.length > 0 && (
             <div className="space-y-3">
-              <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Bebidas disponíveis (unidades)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{barProducts.map(unitRow)}</div>
+              <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Entradas (unidades)</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{starters.map(unitRow)}</div>
             </div>
           )}
 

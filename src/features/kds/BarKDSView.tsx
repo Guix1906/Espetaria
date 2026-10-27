@@ -14,7 +14,7 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { audioService } from '../../lib/audio';
 import { getOrderItemStatusConfig } from '../../lib/formatters';
 import { useTableStore } from '../../stores/useTableStore';
-import { KDSElapsedTimer } from './KDSElapsedTimer';
+import { KDSElapsedTimer, LEVEL_CARD, elapsedLevel, useNow } from './KDSElapsedTimer';
 
 type KDSFilter = 'ALL_ACTIVE' | 'RECEIVED' | 'READY';
 
@@ -22,6 +22,8 @@ export const BarKDSView: React.FC = () => {
   const { orders, orderItems, tables, updateOrderItemStatus, updateOrderSectorItemsStatus } = useTableStore();
   const [filter, setFilter] = useState<KDSFilter>('ALL_ACTIVE');
   const [audioEnabled, setAudioEnabled] = useState<boolean>(audioService.getAudioEnabled());
+
+  const now = useNow();
 
   const handleToggleAudio = () => {
     const next = !audioEnabled;
@@ -102,14 +104,14 @@ export const BarKDSView: React.FC = () => {
             return (
               <div
                 key={order.id}
-                className="bg-surface-muted border border-line hover:border-sky-300 rounded-2xl p-5 shadow-sm flex flex-col justify-between space-y-4 transition duration-200"
+                className={`bg-surface border border-line border-l-8 rounded-lg p-5 shadow-sm flex flex-col justify-between space-y-4 transition duration-200 ${hasPending ? LEVEL_CARD[elapsedLevel(order.created_at, now, 3, 6)] : 'border-l-emerald-600'}`}
               >
                 <div>
                   <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl sm:text-2xl font-bold text-ink tabular-nums tracking-tight">
-                          MESA {tableNum}
+                        <span className="text-3xl font-bold text-ink tabular-nums tracking-tight">
+                          Mesa {tableNum}
                         </span>
                         <span className="text-xs px-2.5 py-0.5 rounded-sm bg-surface-muted border-line text-ink-muted tabular-nums font-medium">
                           #{order.order_number}
@@ -142,10 +144,10 @@ export const BarKDSView: React.FC = () => {
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-lg font-bold text-sky-700 tabular-nums">
+                              <span className="font-mono text-xl font-bold text-sky-700 tabular-nums">
                                 {item.quantity}x
                               </span>
-                              <span className="font-bold text-ink text-base">
+                              <span className="font-bold text-ink text-xl">
                                 {item.product_name}
                               </span>
                             </div>
