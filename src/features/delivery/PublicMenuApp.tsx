@@ -595,7 +595,7 @@ export function PublicMenuApp() {
           {closedNotice}
           {cart.length ? cartLines() : <p className="py-10 text-center text-[15px] text-ink-muted">Sua sacola está vazia.</p>}
           <button type="button" onClick={back} className="flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-brand-700"><Plus className="h-4 w-4" />Adicionar mais itens</button>
-          <p className="rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Os acompanhamentos da casa já vão junto com o pedido.</p>
+          <p className="rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Espeto com acompanhamento vai com arroz, vinagrete, farofa e purê.</p>
           {drinks.length > 0 && (
             <div>
               <h2 className="mb-3 text-[17px] font-semibold">Que tal uma bebida?</h2>
@@ -704,7 +704,7 @@ export function PublicMenuApp() {
             <h2 className="text-[19px] font-semibold">Resumo do pedido</h2>
             {cartError && <Alert>{cartError}</Alert>}
             {cartLines(true)}
-            <p className="rounded-md border border-line bg-canvas px-3 py-2 text-[13px] text-ink-secondary">Os acompanhamentos da casa já vão junto com o pedido.</p>
+            <p className="rounded-md border border-line bg-canvas px-3 py-2 text-[13px] text-ink-secondary">Espeto com acompanhamento vai com arroz, vinagrete, farofa e purê.</p>
             {totals(22)}
             {closedNotice}
             {formError && <Alert>{formError}</Alert>}

@@ -43,7 +43,7 @@ Referência visual: telas 1a, 1b e 1c do protótipo "Melhorias Layout".
 - [x] Carrinho com título "Sua sacola" (o acompanhamento continua "Seu pedido").
 - [x] Raios: `rounded-xl`/`rounded-2xl` em avisos → `rounded-md`; `bg-white` → `bg-surface`.
 - [x] Telefone: recuse DDD inválido (menor que 11) e números repetidos (00000000000) com a mensagem "Confira o WhatsApp com DDD".
-- [ ] Texto do combo: mostre os acompanhamentos que realmente vão, ou peça ao dono para confirmar a frase antes de mudar. **(Aguardando o dono confirmar quais acompanhamentos vão.)**
+- [x] Texto do combo: mostre os acompanhamentos que realmente vão, ou peça ao dono para confirmar a frase antes de mudar. (confirmado pelo dono: arroz, vinagrete, farofa e purê)
 
 ## 5.5 Fechamento de conta (`src/features/cashier/TableSettlementModal.tsx`)
 - [ ] `bg-white` → `bg-surface`, `border-stone-*` → `border-line`, `rounded-xl` → `rounded-md`.
