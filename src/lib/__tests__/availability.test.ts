@@ -36,6 +36,10 @@ describe('Delivery status presentation', () => {
   it('does not describe cancelled or delivered orders as still being prepared', () => {
     expect(getDeliveryStatusConfig('CANCELLED').label).toBe('Cancelado');
     expect(getDeliveryStatusConfig('DELIVERED').label).toBe('Entregue');
-    expect(getDeliveryStatusConfig('OUT_FOR_DELIVERY').label).toBe('A caminho');
+    expect(getDeliveryStatusConfig('OUT_FOR_DELIVERY').label).toBe('Saiu para entrega');
+    // Mesmo nome de etapa no cliente, no painel e no garçom
+    expect(getDeliveryStatusConfig('CONFIRMED').label).toBe('Recebido');
+    expect(getDeliveryStatusConfig('PREPARING').label).toBe('Na brasa');
+    expect(getDeliveryStatusConfig('READY', 'PICKUP').label).toBe('Pronto');
   });
 });

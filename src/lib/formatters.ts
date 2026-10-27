@@ -93,7 +93,7 @@ export function getOrderItemStatusConfig(status: OrderItemStatus): { label: stri
     case 'RECEIVED':
       return { label: 'Recebido', color: 'text-amber-800', bg: 'bg-amber-50 text-amber-800' };
     case 'IN_PREPARATION':
-      return { label: 'Em preparo', color: 'text-brand-700', bg: 'bg-brand-50 text-brand-800' };
+      return { label: 'Na brasa', color: 'text-brand-700', bg: 'bg-brand-50 text-brand-800' };
     case 'READY':
       return { label: 'Pronto', color: 'text-emerald-700', bg: 'bg-emerald-50 text-emerald-800' };
     case 'DELIVERED':

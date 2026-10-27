@@ -12,7 +12,7 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 const RANK: Record<ElapsedLevel, number> = { urgent: 0, warning: 1, ok: 2 };
 const DELIVERY_STAGE: Record<DeliveryStage, string> = {
   AWAITING_PAYMENT: 'aguardando PIX',
-  IN_PRODUCTION: 'em preparo',
+  IN_PRODUCTION: 'na brasa',
   READY: 'pronto',
   OUT_FOR_DELIVERY: 'saiu para entrega',
 };
@@ -44,7 +44,7 @@ export function LiveBoard({ now, openTabs, tabInfo, readyOldest, activeDeliverie
     const info = tabInfo(tab);
     const bill = table?.status === 'AGUARDANDO_CONTA';
     const level: ElapsedLevel = bill || (info.ready > 0 && readyOldest >= ALERT_LIMITS.readyNotServed) ? 'urgent' : info.ready > 0 ? 'warning' : 'ok';
-    const status = bill ? 'conta pedida' : info.ready > 0 ? `${info.ready} pronto${info.ready > 1 ? 's' : ''} para levar` : info.preparing > 0 ? `${info.preparing} em preparo` : info.itemCount ? 'consumindo' : 'sem pedido';
+    const status = bill ? 'conta pedida' : info.ready > 0 ? `${info.ready} pronto${info.ready > 1 ? 's' : ''} para levar` : info.preparing > 0 ? `${info.preparing} na brasa` : info.itemCount ? 'consumindo' : 'sem pedido';
     const name = tab.customer_name && tab.customer_name !== `Mesa ${table?.number}` ? ` · ${tab.customer_name}` : '';
     return {
       key: tab.id, level, status,

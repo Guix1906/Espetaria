@@ -21,7 +21,7 @@ function buildSteps(order: DeliveryOrder): { steps: Step[]; current: number } {
     { title: 'Confirmado pela loja', desc: order.payment_method === 'PIX' ? 'Pagamento conferido pela loja.' : 'A loja aceitou o seu pedido.', at: order.confirmed_at ?? o.preparing_at },
     { title: 'Na brasa', desc: 'Seu pedido está sendo preparado.', at: o.preparing_at },
     pickup
-      ? { title: 'Pronto para buscar', desc: 'Pode vir retirar no balcão.', at: order.ready_at }
+      ? { title: 'Pronto', desc: 'Pode vir retirar no balcão.', at: order.ready_at }
       : { title: 'Saiu para entrega', desc: order.driver_name ? `Entregador: ${order.driver_name}.` : 'O entregador está a caminho.', at: order.dispatched_at },
     { title: pickup ? 'Retirado' : 'Entregue', desc: 'Bom apetite!', at: order.delivered_at },
   ];
@@ -35,9 +35,9 @@ export function statusTitle(order: DeliveryOrder) {
   const pickup = isPickupOrder(order);
   switch (order.status) {
     case 'AWAITING_PAYMENT': return 'Aguardando o PIX';
-    case 'CONFIRMED': return 'Confirmado';
+    case 'CONFIRMED': return 'Recebido';
     case 'PREPARING': return 'Na brasa';
-    case 'READY': return pickup ? 'Pronto para buscar' : 'Na brasa';
+    case 'READY': return pickup ? 'Pronto' : 'Na brasa';
     case 'OUT_FOR_DELIVERY': return 'Saiu para entrega';
     case 'DELIVERED': return pickup ? 'Retirado' : 'Entregue';
     case 'CANCELLED': return 'Pedido cancelado';

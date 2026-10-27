@@ -16,6 +16,19 @@ export const STATUS_STYLES: Record<StatusKind, string> = {
   alert: 'bg-rose-600 text-white',
 };
 
+/**
+ * Um nome por etapa, igual para cliente, painel e garçom.
+ * Retirada só troca "Entregue" por "Retirado".
+ */
+export const STAGE_LABELS = {
+  received: 'Recebido',
+  onGrill: 'Na brasa',
+  ready: 'Pronto',
+  out: 'Saiu para entrega',
+  delivered: 'Entregue',
+  pickedUp: 'Retirado',
+} as const;
+
 /** Faixa no topo do cartão da mesa. */
 export const STATUS_TOP_BORDER: Record<StatusKind, string> = {
   free: 'border-t-emerald-600',

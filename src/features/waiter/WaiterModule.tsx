@@ -12,6 +12,7 @@ import { TableCard } from '../../components/ui/TableCard';
 import { formatBRL, formatDoneness, formatElapsedMinutes, getTableStatusConfig } from '../../lib/formatters';
 import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
 import { ALERT_LIMITS } from '../admin/dashboardMetrics';
+import { KDSElapsedTimer } from '../kds/KDSElapsedTimer';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
@@ -137,7 +138,8 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
       return { label: since >= 1 ? `Pronto há ${since} min` : 'Pronto agora', kind: (since >= ALERT_LIMITS.readyNotServed ? 'alert' : 'ready') as StatusKind, short: 'Pronto' };
     }
     if (table.status === 'AGUARDANDO_CONTA') return { label: 'Conta pedida', kind: 'bill' as StatusKind };
-    if (items.some(isPendingProduction)) return { label: 'Em preparo', kind: 'preparing' as StatusKind };
+    const onGrill = items.filter(isPendingProduction);
+    if (onGrill.length) return { label: 'Na brasa', kind: 'preparing' as StatusKind, since: onGrill.reduce((m, i) => (i.created_at < m ? i.created_at : m), onGrill[0]!.created_at) };
     if (!items.length) return { label: 'Sem pedido', kind: 'occupied' as StatusKind };
     return { label: 'Servido', kind: 'occupied' as StatusKind };
   };
@@ -225,7 +227,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
                   </span>
                   <span className="flex shrink-0 flex-col items-end gap-1">
                     <span className="font-mono text-base font-bold text-ink">{formatBRL(tab?.total)}</span>
-                    <StatusTag kind={chip.kind} className="font-semibold">{chip.label}</StatusTag>
+                    <StatusTag kind={chip.kind} className="font-semibold">{chip.label}{'since' in chip && chip.since && <> · <KDSElapsedTimer compact createdAt={chip.since} /></>}</StatusTag>
                   </span>
                 </button>
               </li>

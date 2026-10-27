@@ -15,7 +15,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: 'delivery', label: 'Delivery' }, { id: 'hours', label: 'Horários' }, { id: 'losses', label: 'Cancelamentos e perdas' }, { id: 'shifts', label: 'Turnos' },
 ];
 const SECTOR: Record<string, string> = { GRILL: 'Churrasqueira', KITCHEN: 'Cozinha', BAR: 'Bar', NONE: 'Outros' };
-const STATUS: Record<string, string> = { CONFIRMED: 'Confirmado', PREPARING: 'Em preparo', READY: 'Pronto', OUT_FOR_DELIVERY: 'Em entrega', DELIVERED: 'Entregue', CANCELLED: 'Cancelado', PENDING: 'Pendente', AWAITING_PAYMENT: 'Aguardando PIX' };
+const STATUS: Record<string, string> = { CONFIRMED: 'Recebido', PREPARING: 'Na brasa', READY: 'Pronto', OUT_FOR_DELIVERY: 'Saiu para entrega', DELIVERED: 'Entregue', CANCELLED: 'Cancelado', PENDING: 'Pendente', AWAITING_PAYMENT: 'Aguardando PIX' };
 const fmt = (iso: string) => new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 const day = (iso: string) => new Date(iso).toLocaleDateString('sv-SE');
 

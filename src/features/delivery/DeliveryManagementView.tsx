@@ -37,9 +37,9 @@ type DeliveryFilter = 'ALL_ACTIVE' | 'AWAITING_PAYMENT' | 'READY' | 'OUT_FOR_DEL
 const EVENT_LABEL: Record<WhatsAppMessage['event'], string> = {
   CONFIRMED: 'Confirmação',
   PAID: 'PIX recebido',
-  PREPARING: 'Em preparo',
+  PREPARING: 'Na brasa',
   READY: 'Pronto',
-  OUT_FOR_DELIVERY: 'Saiu p/ entrega',
+  OUT_FOR_DELIVERY: 'Saiu para entrega',
   DELIVERED: 'Entregue',
   CANCELLED: 'Cancelamento',
 };
@@ -125,7 +125,7 @@ function WhatsAppStatus({ messages, onRetry }: { messages: WhatsAppMessage[]; on
 }
 
 import { useCancelDeliveryOrder } from './useCancelDeliveryOrder';
-import { LEVEL_CARD, useNow } from '../kds/KDSElapsedTimer';
+import { KDSElapsedTimer, LEVEL_CARD, useNow } from '../kds/KDSElapsedTimer';
 
 export const DeliveryManagementView: React.FC = () => {
   const { requestText, notify } = useFeedback();
@@ -278,7 +278,6 @@ export const DeliveryManagementView: React.FC = () => {
             const isPickup = isPickupOrder(order);
             const status = getDeliveryStatusConfig(order.status, order.order_type);
             const isActive = order.status !== 'DELIVERED' && order.status !== 'CANCELLED';
-            const stageMin = minutesSince(stageStart(order), now);
             const eta = etaMaxMinutes(settings, isPickup);
             const elapsed = minutesSince(order.created_at, now);
             // Passou da previsão de Configurações (entrega ou retirada)
@@ -303,7 +302,7 @@ export const DeliveryManagementView: React.FC = () => {
 
                 {/* Etapa com tempo + tipo */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <StatusTag kind={status.kind} className="font-semibold">{status.label}{isActive ? ` · ${stageMin} min` : ''}</StatusTag>
+                  <StatusTag kind={status.kind} className="font-semibold">{status.label}{isActive && <> · <KDSElapsedTimer compact createdAt={stageStart(order)} /></>}</StatusTag>
                   {lateBy > 0 && <StatusTag kind="alert" className="font-semibold">Atrasado {lateBy} min</StatusTag>}
                   <span className="text-[15px] text-ink-secondary">{isPickup ? 'Retirada no balcão' : `Entrega · ${order.address_neighborhood || 'sem bairro'}`}</span>
                 </div>

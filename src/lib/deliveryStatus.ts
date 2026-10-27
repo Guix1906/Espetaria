@@ -1,23 +1,23 @@
-import { STATUS_STYLES, type StatusKind } from './statusStyles';
+import { STAGE_LABELS, STATUS_STYLES, type StatusKind } from './statusStyles';
 import type { DeliveryOrder, DeliveryOrderType, DeliveryPaymentMethod, DeliveryStatus } from '../types/domain';
 
 type StatusConfig = { label: string; description: string; kind: StatusKind; classes: string };
 
 const statuses: Record<DeliveryStatus, StatusConfig> = {
   AWAITING_PAYMENT: { label: 'Aguardando PIX', description: 'Pague o PIX abaixo. Assim que o pagamento for confirmado, seu pedido vai para a brasa.', kind: 'preparing', classes: STATUS_STYLES.preparing },
-  PENDING: { label: 'Aguardando confirmação', description: 'O pedido está aguardando confirmação da espetaria.', kind: 'bill', classes: STATUS_STYLES.bill },
-  CONFIRMED: { label: 'Confirmado', description: 'Recebemos seu pedido. Ele entrará na fila de preparo.', kind: 'occupied', classes: STATUS_STYLES.occupied },
-  PREPARING: { label: 'Na brasa', description: 'Seu pedido já está sendo preparado.', kind: 'preparing', classes: STATUS_STYLES.preparing },
-  READY: { label: 'Pronto', description: 'Seu pedido está pronto e sai para entrega em instantes.', kind: 'ready', classes: STATUS_STYLES.ready },
-  OUT_FOR_DELIVERY: { label: 'A caminho', description: 'Seu pedido saiu para entrega.', kind: 'occupied', classes: STATUS_STYLES.occupied },
-  DELIVERED: { label: 'Entregue', description: 'Entrega concluída. Bom apetite!', kind: 'occupied', classes: STATUS_STYLES.occupied },
+  PENDING: { label: STAGE_LABELS.received, description: 'O pedido está aguardando confirmação da espetaria.', kind: 'bill', classes: STATUS_STYLES.bill },
+  CONFIRMED: { label: STAGE_LABELS.received, description: 'Recebemos seu pedido. Ele entrará na fila de preparo.', kind: 'occupied', classes: STATUS_STYLES.occupied },
+  PREPARING: { label: STAGE_LABELS.onGrill, description: 'Seu pedido já está sendo preparado.', kind: 'preparing', classes: STATUS_STYLES.preparing },
+  READY: { label: STAGE_LABELS.ready, description: 'Seu pedido está pronto e sai para entrega em instantes.', kind: 'ready', classes: STATUS_STYLES.ready },
+  OUT_FOR_DELIVERY: { label: STAGE_LABELS.out, description: 'Seu pedido saiu para entrega.', kind: 'occupied', classes: STATUS_STYLES.occupied },
+  DELIVERED: { label: STAGE_LABELS.delivered, description: 'Entrega concluída. Bom apetite!', kind: 'occupied', classes: STATUS_STYLES.occupied },
   CANCELLED: { label: 'Cancelado', description: 'Este pedido foi cancelado. Entre em contato se precisar de ajuda.', kind: 'alert', classes: STATUS_STYLES.alert },
 };
 
 // Retirada no local: muda só o texto das etapas finais
 const pickupStatuses: Partial<Record<DeliveryStatus, Partial<StatusConfig>>> = {
-  READY: { label: 'Pronto para retirada', description: 'Seu pedido está pronto. Pode vir buscar!' },
-  DELIVERED: { label: 'Retirado', description: 'Pedido retirado. Bom apetite!' },
+  READY: { label: STAGE_LABELS.ready, description: 'Seu pedido está pronto. Pode vir buscar!' },
+  DELIVERED: { label: STAGE_LABELS.pickedUp, description: 'Pedido retirado. Bom apetite!' },
 };
 
 export function getDeliveryStatusConfig(status: DeliveryStatus, orderType: DeliveryOrderType = 'DELIVERY'): StatusConfig {

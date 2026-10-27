@@ -30,9 +30,23 @@ interface KDSElapsedTimerProps {
   createdAt: string;
   warningMinutes?: number;
   urgentMinutes?: number;
+  /** Versão em linha ("12 min" ou "1h05"), sem cor: tempo na etapa em mesas e delivery. */
+  compact?: boolean;
 }
 
-export function KDSElapsedTimer({ createdAt, warningMinutes = 10, urgentMinutes = 20 }: KDSElapsedTimerProps) {
+export function KDSElapsedTimer({ createdAt, warningMinutes = 10, urgentMinutes = 20, compact = false }: KDSElapsedTimerProps) {
+  if (compact) return <CompactElapsed createdAt={createdAt} />;
+  return <FullElapsed createdAt={createdAt} warningMinutes={warningMinutes} urgentMinutes={urgentMinutes} />;
+}
+
+function CompactElapsed({ createdAt }: { createdAt: string }) {
+  const now = useNow(30000);
+  const minutes = Math.max(0, Math.floor((now - new Date(createdAt).getTime()) / 60000));
+  const text = minutes < 60 ? `${minutes} min` : `${Math.floor(minutes / 60)}h${String(minutes % 60).padStart(2, '0')}`;
+  return <span className="tabular-nums" title={`Desde ${new Date(createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}>{text}</span>;
+}
+
+function FullElapsed({ createdAt, warningMinutes, urgentMinutes }: { createdAt: string; warningMinutes: number; urgentMinutes: number }) {
   const elapsed = () => Math.max(0, Math.floor((Date.now() - new Date(createdAt).getTime()) / 1000));
   const [elapsedSeconds, setElapsedSeconds] = useState(elapsed);
 

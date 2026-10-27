@@ -26,7 +26,7 @@ interface MasterDashboardViewProps {
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const STAGES: { key: DeliveryStage; label: string }[] = [
   { key: 'AWAITING_PAYMENT', label: 'Aguardando PIX' },
-  { key: 'IN_PRODUCTION', label: 'Em preparo' },
+  { key: 'IN_PRODUCTION', label: 'Na brasa' },
   { key: 'READY', label: 'Pronto' },
   { key: 'OUT_FOR_DELIVERY', label: 'Saiu para entrega' },
 ];

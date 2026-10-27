@@ -71,7 +71,7 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
 
   // Na tela de pedido começa recolhido numa linha; toca para ver os itens
   if (!compact && !expanded) {
-    const summary = [`${totalCount} na mesa`, preparingCount ? `${preparingCount} em preparo` : null, readyCount ? `${readyCount} ${readyCount === 1 ? 'pronto' : 'prontos'}` : null].filter(Boolean).join(' · ');
+    const summary = [`${totalCount} na mesa`, preparingCount ? `${preparingCount} na brasa` : null, readyCount ? `${readyCount} ${readyCount === 1 ? 'pronto' : 'prontos'}` : null].filter(Boolean).join(' · ');
     return (
       <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-3.5 py-2.5 text-left">
         <span className="min-w-0 truncate text-[17px] text-ink"><span className="font-semibold">{summary}</span></span>

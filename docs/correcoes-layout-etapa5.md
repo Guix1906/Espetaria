@@ -57,5 +57,5 @@ Referência visual: telas 1a, 1b e 1c do protótipo "Melhorias Layout".
 - [x] Hora de abertura sem segundos.
 
 ## 5.6 Em todas as telas
-- [ ] Um nome por etapa em cliente, painel e garçom: "Recebido", "Na brasa", "Pronto", "Saiu para entrega", "Entregue". Centralize em `src/lib/statusStyles.ts`.
-- [ ] Tempo na etapa com o mesmo componente (`KDSElapsedTimer`) em mesas e delivery.
+- [x] Um nome por etapa em cliente, painel e garçom: "Recebido", "Na brasa", "Pronto", "Saiu para entrega", "Entregue". Centralize em `src/lib/statusStyles.ts`.
+- [x] Tempo na etapa com o mesmo componente (`KDSElapsedTimer`) em mesas e delivery.
