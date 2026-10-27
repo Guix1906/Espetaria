@@ -24,15 +24,15 @@ Referência visual: telas 1a, 1b e 1c do protótipo "Melhorias Layout".
 - [x] Espeto **sem acompanhamento** que tem `allows_doneness` sempre abre o `WaiterDonenessModal` antes de entrar no carrinho (nada de "Mal passada" automático). Confira também o `+` do stepper, que repete a última linha.
 
 ## 5.3 Painel de delivery (`src/features/delivery/DeliveryManagementView.tsx`) — tela 1c
-- [ ] Remova os 3 `StatCard` do topo; os filtros já mostram a contagem. Filtros no formato "Prontos 2" (número em `font-mono`, sem parênteses).
-- [ ] Cartão em ordem: nº + cliente | total + hora → etiqueta de status com tempo na etapa ("Na brasa · 12 min") + "Entrega · Bairro" → endereço e telefone (15px) → linha "4 itens · Ver itens" (recolhida, abre a lista) → pagamento numa linha só → ação principal (48px) → WhatsApp + menu "mais".
-- [ ] Pagamento numa linha: "PIX · pago 20:06", "PIX · aguardando [PIX recebido]", "Dinheiro · troco p/ R$ 100 · receber na entrega". Tire o bloco "Forma:" e o fundo colorido (`bg-emerald-50`/`bg-amber-50`) da confirmação.
-- [ ] Pedido atrasado: passou da previsão (`settings.delivery_eta` / `pickup_eta`), mostra `StatusTag kind="alert"` "Atrasado X min".
-- [ ] "Cancelar" vai para o menu "mais" (com confirmação, como hoje).
-- [ ] Mensagens do WhatsApp ficam dentro de "Ver itens" (recolhidas).
-- [ ] Ícones: `MapPin` vermelho e `MessageCircle` verde passam para `text-ink-muted`.
-- [ ] Use só "Entregador" (tire "Motoboy").
-- [ ] "Aguardando PIX" ganha ação principal "Reenviar link do PIX".
+- [x] Remova os 3 `StatCard` do topo; os filtros já mostram a contagem. Filtros no formato "Prontos 2" (número em `font-mono`, sem parênteses).
+- [x] Cartão em ordem: nº + cliente | total + hora → etiqueta de status com tempo na etapa ("Na brasa · 12 min") + "Entrega · Bairro" → endereço e telefone (15px) → linha "4 itens · Ver itens" (recolhida, abre a lista) → pagamento numa linha só → ação principal (48px) → WhatsApp + menu "mais".
+- [x] Pagamento numa linha: "PIX · pago 20:06", "PIX · aguardando [PIX recebido]", "Dinheiro · troco p/ R$ 100 · receber na entrega". Tire o bloco "Forma:" e o fundo colorido (`bg-emerald-50`/`bg-amber-50`) da confirmação.
+- [x] Pedido atrasado: passou da previsão (`settings.delivery_eta` / `pickup_eta`), mostra `StatusTag kind="alert"` "Atrasado X min".
+- [x] "Cancelar" vai para o menu "mais" (com confirmação, como hoje).
+- [x] Mensagens do WhatsApp ficam dentro de "Ver itens" (recolhidas).
+- [x] Ícones: `MapPin` vermelho e `MessageCircle` verde passam para `text-ink-muted`.
+- [x] Use só "Entregador" (tire "Motoboy").
+- [x] "Aguardando PIX" ganha ação principal "Reenviar link do PIX".
 
 ## 5.4 Cardápio digital (`PublicMenuApp.tsx`, `OrderStatusView.tsx`)
 - [ ] `OrderStatusView`: a previsão "Chega entre…" / "Pronto entre…" usa `settings.delivery_eta` / `pickup_eta` (hoje fixo em 40–55 / 30–40). Crie um helper que lê "40–55 min" e devolve os dois números.

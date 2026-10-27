@@ -169,7 +169,8 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       const html = renderWithFeedback(<DeliveryManagementView />);
       expect(html).toContain('Delivery');
       expect(html).toContain('Em produção');
-      expect(html).toContain('Em rota de entrega');
+      expect(html).toContain('Em entrega');
+      expect(html).not.toContain('Em rota de entrega');
     });
 
     it('1.10 DeliveryCatalogView (Cardápio Digital) deve abrir e renderizar sem erros', () => {
