@@ -1,5 +1,6 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import { Button } from '../../components/ui/Button';
+import { DEFAULT_DELIVERY_ETA, DEFAULT_PICKUP_ETA } from '../../lib/eta';
 import { ChevronDown, ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
@@ -82,8 +83,27 @@ function loadCustomer(): Customer {
   catch { return { name: '', phone: '', neighborhood: '', street: '', number: '', complement: '' }; }
 }
 
+/** Celular com DDD (11 dígitos, ou com 55 na frente) e sem número repetido tipo 00000000000. */
+export function isValidWhatsApp(phone: string) {
+  const digits = phone.replace(/\D/g, '').replace(/^55(?=\d{11}$)/, '');
+  return digits.length === 11 && !/^(\d)\1+$/.test(digits);
+}
+
+/** Centraliza o elemento no painel que rola (sem scrollIntoView, que mexe na página inteira). */
+function scrollToCenter(el: HTMLElement | null) {
+  if (!el) return;
+  let box: HTMLElement | null = el.parentElement;
+  while (box && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+  if (!box) { window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - window.innerHeight / 2, behavior: 'smooth' }); return; }
+  const top = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - box.clientHeight / 2 + el.clientHeight / 2;
+  box.scrollTo({ top, behavior: 'smooth' });
+}
+
+/** Aviso de loja fechada: o mesmo no cardápio e na sacola. */
+const ClosedNotice = () => <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-[14px] text-amber-900">A loja está fechada agora. Você pode olhar o cardápio, mas os pedidos só são aceitos no horário de funcionamento.</p>;
+
 /* ---------- peças visuais ---------- */
-const inputCls = 'h-12 w-full rounded-md border border-line bg-white px-3.5 text-[16px] text-ink placeholder:text-ink-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-50';
+const inputCls = 'h-12 w-full rounded-md border border-line bg-surface px-3.5 text-[16px] text-ink placeholder:text-ink-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-50';
 const labelCls = 'mb-1.5 block text-[14px] font-medium text-ink-secondary';
 
 function Photo({ product, className }: { product: Product; className: string }) {
@@ -96,7 +116,7 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
     <div role="radiogroup" aria-label={label} className="flex rounded-md bg-surface-muted p-1">
       {options.map((o) => (
         <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}
-          className={`min-h-[40px] flex-1 rounded-md px-2 text-[15px] ${value === o.id ? 'bg-white font-semibold text-ink shadow-[0_1px_2px_rgba(43,33,28,.08)]' : 'font-medium text-ink-muted'}`}>{o.label}</button>
+          className={`min-h-[40px] flex-1 rounded-md px-2 text-[15px] ${value === o.id ? 'bg-surface font-semibold text-ink shadow-[0_1px_2px_rgba(43,33,28,.08)]' : 'font-medium text-ink-muted'}`}>{o.label}</button>
       ))}
     </div>
   );
@@ -104,7 +124,7 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
 
 function Stepper({ qty, onMinus, onPlus, size = 40 }: { qty: number; onMinus: () => void; onPlus: () => void; size?: number }) {
   return (
-    <div className="flex items-center rounded-md border border-line-strong bg-white" style={{ height: size }}>
+    <div className="flex items-center rounded-md border border-line-strong bg-surface" style={{ height: size }}>
       <button type="button" onClick={onMinus} aria-label="Diminuir" className="flex h-full w-10 items-center justify-center text-ink-muted"><Minus className="h-4 w-4" /></button>
       <span className="min-w-[20px] text-center text-[15px] font-semibold tabular-nums">{qty}</span>
       <button type="button" onClick={onPlus} aria-label="Aumentar" className="flex h-full w-10 items-center justify-center text-brand-500"><Plus className="h-4 w-4" /></button>
@@ -113,7 +133,7 @@ function Stepper({ qty, onMinus, onPlus, size = 40 }: { qty: number; onMinus: ()
 }
 
 function Radio({ on }: { on: boolean }) {
-  return <span aria-hidden="true" className={`block h-[22px] w-[22px] shrink-0 rounded-full bg-white ${on ? 'border-[7px] border-brand-500' : 'border-2 border-line-strong'}`} />;
+  return <span aria-hidden="true" className={`block h-[22px] w-[22px] shrink-0 rounded-full bg-surface ${on ? 'border-[7px] border-brand-500' : 'border-2 border-line-strong'}`} />;
 }
 
 function TopBar({ title, onBack }: { title: string; onBack: () => void }) {
@@ -162,7 +182,7 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
     // Falta o ponto: rola até o grupo e destaca (o botão parece desabilitado, mas responde ao toque)
     if (missingDoneness) {
       setFlagDoneness(true);
-      donenessRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      scrollToCenter(donenessRef.current);
       return;
     }
     const e = onAdd(qty, doneness, notes); if (e) setErr(e); };
@@ -182,14 +202,14 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
               {product.description && <p className="mt-2 text-[15px] leading-snug text-ink-muted">{product.description}</p>}
             </div>
             {needsDoneness && (
-              <fieldset ref={donenessRef} className={`rounded-md border-2 border-[#B5502E] bg-[#FBEFE8] px-4 pb-2 pt-3 ${flagDoneness && missingDoneness ? 'ring-4 ring-[#B5502E]/30' : ''}`}>
+              <fieldset ref={donenessRef} className={`rounded-md border-2 border-brand-500 bg-brand-50 px-4 pb-2 pt-3 ${flagDoneness && missingDoneness ? 'ring-4 ring-brand-500/30' : ''}`}>
                 <legend className="sr-only">Ponto da carne</legend>
-                <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"><span className="text-[17px] font-semibold">Ponto da carne</span><span className="text-[13px] font-semibold text-[#B5502E]">Escolha 1 · obrigatório</span></p>
+                <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"><span className="text-[17px] font-semibold">Ponto da carne</span><span className="text-[13px] font-semibold text-brand-700">Escolha 1 · obrigatório</span></p>
                 {flagDoneness && missingDoneness && <p role="alert" className="mt-1 text-[14px] font-semibold text-rose-700">Escolha o ponto da carne para continuar.</p>}
-                <div className="mt-1 divide-y divide-[#B5502E]/15 lg:mt-3 lg:grid lg:grid-cols-3 lg:gap-2 lg:divide-y-0">
+                <div className="mt-1 divide-y divide-brand-500/15 lg:mt-3 lg:grid lg:grid-cols-3 lg:gap-2 lg:divide-y-0">
                   {DONENESS.map((d) => (
                     <button key={d.id} type="button" role="radio" aria-checked={doneness === d.id} onClick={() => { setDoneness(d.id); setErr(null); setFlagDoneness(false); }}
-                      className={`flex h-12 w-full items-center gap-3 text-left text-[16px] lg:justify-center lg:rounded-md lg:border lg:text-[15px] ${doneness === d.id ? 'lg:border-2 lg:border-brand-500 lg:bg-brand-50 lg:font-semibold' : 'lg:border-line-strong lg:bg-white'}`}>
+                      className={`flex h-12 w-full items-center gap-3 text-left text-[16px] lg:justify-center lg:rounded-md lg:border lg:text-[15px] ${doneness === d.id ? 'lg:border-2 lg:border-brand-500 lg:bg-brand-50 lg:font-semibold' : 'lg:border-line-strong lg:bg-surface'}`}>
                       <span className="shrink-0 lg:hidden"><Radio on={doneness === d.id} /></span>{d.label}
                     </button>
                   ))}
@@ -197,16 +217,16 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
               </fieldset>
             )}
             <div><label htmlFor="pm-notes" className="mb-2 block text-[17px] font-semibold">Observação</label><input id="pm-notes" value={notes} onChange={(e) => setNotes(e.target.value)}
-              onFocus={(e) => { const el = e.currentTarget; window.setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); }} placeholder="Ex.: pouco sal" className={inputCls} /></div>
+              onFocus={(e) => { const el = e.currentTarget; window.setTimeout(() => scrollToCenter(el), 300); }} placeholder="Ex.: pouco sal" className={inputCls} /></div>
             {err && <Alert>{err}</Alert>}
           </div>
           <div className="flex items-center gap-3 border-t border-line px-5 pt-3 lg:px-7 lg:pb-5" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
-            <div className="flex h-[52px] shrink-0 items-center rounded-md border border-line-strong bg-white">
+            <div className="flex h-[52px] shrink-0 items-center rounded-md border border-line-strong bg-surface">
               <button type="button" aria-label="Diminuir" onClick={() => setQty((q) => Math.max(1, q - 1))} className="flex h-[52px] w-11 items-center justify-center text-ink-muted"><Minus className="h-5 w-5" /></button>
               <span className="w-9 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
               <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-[52px] w-11 items-center justify-center text-brand-500"><Plus className="h-5 w-5" /></button>
             </div>
-            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness} className={`px-3 text-[15px] font-semibold leading-tight ${missingDoneness ? '!bg-ink-muted' : 'whitespace-nowrap'}`}>{missingDoneness ? 'Escolha o ponto da carne' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
+            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness} className={`px-3 text-[15px] font-semibold leading-tight ${missingDoneness ? '' : 'whitespace-nowrap'}`}>{missingDoneness ? 'Escolha o ponto da carne' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
           </div>
         </div>
       </div>
@@ -220,8 +240,8 @@ export function PublicMenuApp() {
   const { cart, addToCart, updateCartQuantity, submitDeliveryOrder, zones, activeTrackingOrder } = useDeliveryStore();
   const { currentShift } = useShiftStore();
   const settings = useSettingsStore((s) => s.settings);
-  const deliveryEta = settings.delivery_eta?.trim() || '40–55 min';
-  const pickupEta = settings.pickup_eta?.trim() || '30–40 min';
+  const deliveryEta = settings.delivery_eta?.trim() || DEFAULT_DELIVERY_ETA;
+  const pickupEta = settings.pickup_eta?.trim() || DEFAULT_PICKUP_ETA;
   const isDesktop = useIsDesktop();
   const isOpen = currentShift?.status === 'ABERTO';
 
@@ -321,7 +341,7 @@ export function PublicMenuApp() {
 
   const validateDelivery = () => {
     if (!customer.name.trim()) return 'Informe o seu nome.';
-    if (customer.phone.replace(/\D/g, '').length < 10) return 'Informe o WhatsApp com DDD.';
+    if (!isValidWhatsApp(customer.phone)) return 'Confira o WhatsApp com DDD.';
     if (!isPickup) {
       if (!zone) return 'Escolha o bairro de entrega.';
       if (!customer.street.trim() || !customer.number.trim()) return 'Preencha rua e número.';
@@ -380,7 +400,7 @@ export function PublicMenuApp() {
     <label className="relative block">
       <span className="sr-only">Buscar no cardápio</span>
       <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-[18px] w-[18px] -translate-y-1/2 text-ink-muted" />
-      <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar no cardápio" className="h-11 w-full rounded-md border border-line bg-white pl-10 pr-3 text-[16px] placeholder:text-ink-muted focus:border-brand-500 focus:outline-none" />
+      <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar no cardápio" className="h-11 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-[16px] placeholder:text-ink-muted focus:border-brand-500 focus:outline-none" />
     </label>
   );
 
@@ -413,7 +433,7 @@ export function PublicMenuApp() {
     const q = qtyInCart(p.id);
     return (
       <button key={p.id} type="button" disabled={!isAvailable} onClick={() => (p.allows_doneness ? setSheetProduct(p) : onPlus(p))}
-        className={`relative flex gap-3.5 rounded-md bg-white p-3.5 text-left transition hover:shadow-[0_2px_8px_rgba(43,33,28,.08)] disabled:cursor-not-allowed ${q > 0 ? 'border-2 border-ink' : 'border border-line'}`}>
+        className={`relative flex gap-3.5 rounded-md bg-surface p-3.5 text-left transition hover:shadow-[0_2px_8px_rgba(43,33,28,.08)] disabled:cursor-not-allowed ${q > 0 ? 'border-2 border-ink' : 'border border-line'}`}>
         <div className="flex min-w-0 flex-1 flex-col">
           <h3 className="text-[17px] font-semibold leading-snug">{p.name}</h3>
           {p.description && !(categoryOf(p, catName.get(p.category_id)) === COMBOS && isSidesDescription(p.description)) && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{p.description}</p>}
@@ -454,7 +474,7 @@ export function PublicMenuApp() {
         <p className="mt-1.5 text-[13px] text-ink-muted">Enviamos a confirmação e o link de acompanhamento.</p>
       </div>
       {isPickup ? (
-        <p className={`rounded-2xl border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary ${twoCols ? 'col-span-2' : ''}`}>Avisamos no WhatsApp quando estiver pronto para buscar.{settings.address && <> Retire em: <strong className="font-semibold">{settings.address}</strong></>}</p>
+        <p className={`rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary ${twoCols ? 'col-span-2' : ''}`}>Avisamos no WhatsApp quando estiver pronto para buscar.{settings.address && <> Retire em: <strong className="font-semibold">{settings.address}</strong></>}</p>
       ) : (
         <>
           <div className={twoCols ? 'col-span-2' : ''}>
@@ -482,7 +502,7 @@ export function PublicMenuApp() {
       {PAYMENTS.map((m) => {
         const on = payment === m.id;
         return (
-          <div key={m.id} className={`rounded-md bg-white ${on ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}>
+          <div key={m.id} className={`rounded-md bg-surface ${on ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}>
             <button type="button" role="radio" aria-checked={on} onClick={() => { setPayment(m.id); setFormError(null); }} className="flex w-full items-start gap-3 text-left">
               <Radio on={on} />
               <span><span className="block text-[16px] font-semibold">{m.id === 'CARTAO_ENTREGA' && isPickup ? 'Cartão na retirada' : m.label}</span><span className="mt-0.5 block text-[14px] text-ink-muted">{m.id === 'DINHEIRO' && isPickup ? 'Pague no balcão' : m.hint}</span></span>
@@ -499,7 +519,7 @@ export function PublicMenuApp() {
   const pickedNote = !noChange && !otherChange ? suggestions.find((v) => parseMoney(changeFor) === v) : undefined;
   const changeChip = (on: boolean, label: string, onClick: () => void) => (
     <button key={label} type="button" role="radio" aria-checked={on} onClick={() => { onClick(); setFormError(null); }}
-      className={`min-h-[44px] rounded-md px-3.5 text-[15px] ${on ? 'border-2 border-brand-500 bg-brand-50 font-semibold text-ink' : 'border border-line-strong bg-white font-medium text-ink-secondary'}`}>{label}</button>
+      className={`min-h-[44px] rounded-md px-3.5 text-[15px] ${on ? 'border-2 border-brand-500 bg-brand-50 font-semibold text-ink' : 'border border-line-strong bg-surface font-medium text-ink-secondary'}`}>{label}</button>
   );
   const cashFields = (
     <div className="mt-4 space-y-3 border-t border-surface-muted pt-4">
@@ -526,10 +546,10 @@ export function PublicMenuApp() {
     </div>
   );
 
-  const closedNotice = !isOpen && <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-[14px] text-amber-900">A loja está fechada agora. Você pode olhar o cardápio, mas os pedidos só são aceitos no horário de funcionamento.</p>;
+  const closedNotice = !isOpen && <ClosedNotice />;
 
   const trackingBanner = tracking && (
-    <button type="button" onClick={() => go('sent')} className="flex w-full items-center justify-between gap-3 rounded-md border border-line bg-white px-4 py-3 text-left">
+    <button type="button" onClick={() => go('sent')} className="flex w-full items-center justify-between gap-3 rounded-md border border-line bg-surface px-4 py-3 text-left">
       <span><span className="block font-mono text-[12px] text-ink-muted">Pedido #{tracking.order_number}</span><span className="block text-[15px] font-semibold">Acompanhar o seu pedido</span></span>
       <span className="text-[14px] font-semibold text-brand-700">Ver</span>
     </button>
@@ -542,7 +562,7 @@ export function PublicMenuApp() {
     const showPixColumn = o.payment_method === 'PIX' && !o.paid_at && !['DELIVERED', 'CANCELLED'].includes(o.status);
     screen = isDesktop ? (
       <div className="min-h-screen px-12 py-10">
-        <div className={`mx-auto grid max-w-[1000px] gap-10 rounded-2xl border border-line bg-white p-8 ${showPixColumn ? 'grid-cols-[420px_1fr]' : 'max-w-[620px]'}`}>
+        <div className={`mx-auto grid max-w-[1000px] gap-10 rounded-2xl border border-line bg-surface p-8 ${showPixColumn ? 'grid-cols-[420px_1fr]' : 'max-w-[620px]'}`}>
           {showPixColumn && <div className="space-y-4 border-r border-surface-muted pr-10"><h2 className="text-[24px] font-semibold">Falta só o pagamento</h2><p className="text-[15px] text-ink-muted">Pague pelo app do seu banco. A brasa começa assim que a loja confirmar o PIX.</p><OrderPixBlock order={o} /></div>}
           <div>
             <OrderStatusView order={o} showPix={false} />
@@ -569,20 +589,13 @@ export function PublicMenuApp() {
   } else if (step === 'cart') {
     screen = (
       <div className="mx-auto max-w-xl pb-44">
-        <TopBar title="Seu pedido" onBack={back} />
+        <TopBar title="Sua sacola" onBack={back} />
         <div className="space-y-5 px-5 pt-2">
           {cartError && <div className="pt-3"><Alert>{cartError}</Alert></div>}
-          {!isOpen && (
-            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
-              <p className="font-semibold text-[15px]">Loja fechada no momento</p>
-              <p className="mt-1 text-[13px] text-amber-900 leading-relaxed">
-                Você pode olhar o cardápio e escolher seus itens favoritos, mas os pedidos só podem ser enviados com o restaurante aberto.
-              </p>
-            </div>
-          )}
-          {cart.length ? cartLines() : <p className="py-10 text-center text-[15px] text-ink-muted">Seu pedido está vazio.</p>}
+          {closedNotice}
+          {cart.length ? cartLines() : <p className="py-10 text-center text-[15px] text-ink-muted">Sua sacola está vazia.</p>}
           <button type="button" onClick={back} className="flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-brand-700"><Plus className="h-4 w-4" />Adicionar mais itens</button>
-          <p className="rounded-2xl border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Os acompanhamentos da casa já vão junto com o pedido.</p>
+          <p className="rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Os acompanhamentos da casa já vão junto com o pedido.</p>
           {drinks.length > 0 && (
             <div>
               <h2 className="mb-3 text-[17px] font-semibold">Que tal uma bebida?</h2>
@@ -591,7 +604,7 @@ export function PublicMenuApp() {
                   const q = qtyInCart(d.id);
                   return (
                     <li key={d.id} className="w-[132px] shrink-0 snap-start">
-                      <button type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="relative block w-full overflow-hidden rounded-md border border-line bg-white text-left">
+                      <button type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="relative block w-full overflow-hidden rounded-md border border-line bg-surface text-left">
                         <Photo product={d} className="h-[90px] w-full" />
                         <span className="block p-2.5 pr-11"><span className="line-clamp-2 block min-h-[2.5em] text-[14px] font-semibold leading-snug">{d.name}</span><span className="mt-1 block whitespace-nowrap text-[14px] font-semibold tabular-nums">{formatBRL(d.price)}</span></span>
                         <span aria-hidden="true" className={`absolute bottom-2.5 right-2.5 flex h-[34px] min-w-[34px] items-center justify-center rounded-full px-1.5 text-[14px] font-semibold text-white ${q > 0 ? 'bg-ink' : 'bg-brand-500'}`}>{q > 0 ? q : <Plus className="h-[18px] w-[18px]" />}</span>
@@ -681,17 +694,17 @@ export function PublicMenuApp() {
             <section>
               <h2 className="mb-4 flex items-center gap-3 text-[20px] font-semibold">{num(1)}Como você quer receber?</h2>
               <div className="mb-5 grid grid-cols-2 gap-3">
-                {(['DELIVERY', 'PICKUP'] as const).map((t) => <button key={t} type="button" role="radio" aria-checked={orderType === t} onClick={() => setOrderType(t)} className={`flex items-center gap-3 rounded-md bg-white text-left ${orderType === t ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}><Radio on={orderType === t} /><span><span className="block text-[16px] font-semibold">{t === 'DELIVERY' ? 'Entrega' : 'Retirar no local'}</span><span className="block text-[14px] text-ink-muted">{t === 'DELIVERY' ? `${deliveryEta}${zones.length ? ` · a partir de ${formatBRL(minFee)}` : ''}` : `${pickupEta} · sem taxa`}</span></span></button>)}
+                {(['DELIVERY', 'PICKUP'] as const).map((t) => <button key={t} type="button" role="radio" aria-checked={orderType === t} onClick={() => setOrderType(t)} className={`flex items-center gap-3 rounded-md bg-surface text-left ${orderType === t ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}><Radio on={orderType === t} /><span><span className="block text-[16px] font-semibold">{t === 'DELIVERY' ? 'Entrega' : 'Retirar no local'}</span><span className="block text-[14px] text-ink-muted">{t === 'DELIVERY' ? `${deliveryEta}${zones.length ? ` · a partir de ${formatBRL(minFee)}` : ''}` : `${pickupEta} · sem taxa`}</span></span></button>)}
               </div>
               {deliveryFields(true)}
             </section>
             <section><h2 className="mb-4 flex items-center gap-3 text-[20px] font-semibold">{num(2)}Pagamento</h2>{paymentOptions(true)}</section>
           </div>
-          <aside className="sticky top-6 h-fit space-y-4 rounded-md border border-line bg-white p-5">
+          <aside className="sticky top-6 h-fit space-y-4 rounded-md border border-line bg-surface p-5">
             <h2 className="text-[19px] font-semibold">Resumo do pedido</h2>
             {cartError && <Alert>{cartError}</Alert>}
             {cartLines(true)}
-            <p className="rounded-2xl border border-line bg-canvas px-3 py-2 text-[13px] text-ink-secondary">Os acompanhamentos da casa já vão junto com o pedido.</p>
+            <p className="rounded-md border border-line bg-canvas px-3 py-2 text-[13px] text-ink-secondary">Os acompanhamentos da casa já vão junto com o pedido.</p>
             {totals(22)}
             {closedNotice}
             {formError && <Alert>{formError}</Alert>}
@@ -729,8 +742,8 @@ export function PublicMenuApp() {
               </section>
             ))}
           </main>
-          <aside className="sticky top-[76px] flex h-[calc(100vh-76px)] flex-col border-l border-line bg-white">
-            <h2 className="px-5 pb-2 pt-6 text-[19px] font-semibold">Seu pedido</h2>
+          <aside className="sticky top-[76px] flex h-[calc(100vh-76px)] flex-col border-l border-line bg-surface">
+            <h2 className="px-5 pb-2 pt-6 text-[19px] font-semibold">Sua sacola</h2>
             <div className="flex-1 overflow-y-auto px-5">
               {cartError && <Alert>{cartError}</Alert>}
               {cart.length ? cartLines(true) : <p className="py-10 text-center text-[15px] text-ink-muted">Escolha os itens no cardápio.</p>}
@@ -755,7 +768,7 @@ export function PublicMenuApp() {
           </div>
         </header>
         <nav aria-label="Categorias" className="no-scrollbar sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-surface-muted bg-surface px-5 py-3">
-          {groups.map((g) => <button id={`chip-${slug(g.name)}`} key={g.name} type="button" onClick={() => jumpTo(g.name)} aria-current={activeCat === g.name ? 'true' : undefined} className={`h-9 shrink-0 rounded-2xl border px-3.5 text-[14px] ${activeCat === g.name ? 'border-ink bg-ink font-semibold text-surface' : 'border-line-strong bg-white font-medium text-ink-secondary'}`}>{g.name}</button>)}
+          {groups.map((g) => <button id={`chip-${slug(g.name)}`} key={g.name} type="button" onClick={() => jumpTo(g.name)} aria-current={activeCat === g.name ? 'true' : undefined} className={`h-9 shrink-0 rounded-2xl border px-3.5 text-[14px] ${activeCat === g.name ? 'border-ink bg-ink font-semibold text-surface' : 'border-line-strong bg-surface font-medium text-ink-secondary'}`}>{g.name}</button>)}
         </nav>
         <main className="space-y-6 px-5 pt-4">
           {trackingBanner}

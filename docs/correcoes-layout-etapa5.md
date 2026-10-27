@@ -35,15 +35,15 @@ Referência visual: telas 1a, 1b e 1c do protótipo "Melhorias Layout".
 - [x] "Aguardando PIX" ganha ação principal "Reenviar link do PIX".
 
 ## 5.4 Cardápio digital (`PublicMenuApp.tsx`, `OrderStatusView.tsx`)
-- [ ] `OrderStatusView`: a previsão "Chega entre…" / "Pronto entre…" usa `settings.delivery_eta` / `pickup_eta` (hoje fixo em 40–55 / 30–40). Crie um helper que lê "40–55 min" e devolve os dois números.
-- [ ] Troque `#B5502E` e `#FBEFE8` do quadro do ponto por `border-brand-500` / `bg-brand-50` / `ring-brand-500/30`.
-- [ ] Troque os 2 `scrollIntoView` (ponto obrigatório e campo de observação) por `window.scrollTo` / `element.scrollTo`.
-- [ ] Botão sem ponto escolhido: tire o `!bg-ink-muted`; fica terracota com o texto "Escolha o ponto da carne".
-- [ ] Aviso de loja fechada: um só componente, igual no cardápio e no carrinho (`rounded-md`, tons amber do mapa).
-- [ ] Carrinho com título "Sua sacola" (o acompanhamento continua "Seu pedido").
-- [ ] Raios: `rounded-xl`/`rounded-2xl` em avisos → `rounded-md`; `bg-white` → `bg-surface`.
-- [ ] Telefone: recuse DDD inválido (menor que 11) e números repetidos (00000000000) com a mensagem "Confira o WhatsApp com DDD".
-- [ ] Texto do combo: mostre os acompanhamentos que realmente vão, ou peça ao dono para confirmar a frase antes de mudar.
+- [x] `OrderStatusView`: a previsão "Chega entre…" / "Pronto entre…" usa `settings.delivery_eta` / `pickup_eta` (hoje fixo em 40–55 / 30–40). Crie um helper que lê "40–55 min" e devolve os dois números.
+- [x] Troque `#B5502E` e `#FBEFE8` do quadro do ponto por `border-brand-500` / `bg-brand-50` / `ring-brand-500/30`.
+- [x] Troque os 2 `scrollIntoView` (ponto obrigatório e campo de observação) por `window.scrollTo` / `element.scrollTo`.
+- [x] Botão sem ponto escolhido: tire o `!bg-ink-muted`; fica terracota com o texto "Escolha o ponto da carne".
+- [x] Aviso de loja fechada: um só componente, igual no cardápio e no carrinho (`rounded-md`, tons amber do mapa).
+- [x] Carrinho com título "Sua sacola" (o acompanhamento continua "Seu pedido").
+- [x] Raios: `rounded-xl`/`rounded-2xl` em avisos → `rounded-md`; `bg-white` → `bg-surface`.
+- [x] Telefone: recuse DDD inválido (menor que 11) e números repetidos (00000000000) com a mensagem "Confira o WhatsApp com DDD".
+- [ ] Texto do combo: mostre os acompanhamentos que realmente vão, ou peça ao dono para confirmar a frase antes de mudar. **(Aguardando o dono confirmar quais acompanhamentos vão.)**
 
 ## 5.5 Fechamento de conta (`src/features/cashier/TableSettlementModal.tsx`)
 - [ ] `bg-white` → `bg-surface`, `border-stone-*` → `border-line`, `rounded-xl` → `rounded-md`.

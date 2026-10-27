@@ -2,6 +2,7 @@ import { Check } from 'lucide-react';
 import { isPickupOrder } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { useSettingsStore } from '../../stores/useSettingsStore';
+import { DEFAULT_DELIVERY_ETA, DEFAULT_PICKUP_ETA, parseEta } from '../../lib/eta';
 import type { DeliveryOrder } from '../../types/domain';
 import { AutoPixPanel, DeliveryPixPanel, openRestaurantWhatsApp } from './DeliveryTrackingModal';
 
@@ -59,7 +60,10 @@ export function OrderPixBlock({ order }: { order: DeliveryOrder }) {
 /** Acompanhamento: status grande, faixa de horário, linha do tempo e resumo. */
 export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrder; showPix?: boolean }) {
   const restaurantAddress = useSettingsStore((s) => s.settings.address);
+  const etaText = useSettingsStore((s) => (isPickupOrder(order) ? s.settings.pickup_eta : s.settings.delivery_eta));
   const pickup = isPickupOrder(order);
+  // Previsão de Configurações (ex.: "40–55 min")
+  const eta = parseEta(etaText, pickup ? DEFAULT_PICKUP_ETA : DEFAULT_DELIVERY_ETA);
   const { steps, current } = buildSteps(order);
   const cancelled = order.status === 'CANCELLED';
   const done = order.status === 'DELIVERED';
@@ -72,7 +76,7 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
         <h2 className={`mt-1 text-[28px] font-semibold leading-tight ${cancelled ? 'text-rose-600' : ''}`}>{awaitingPix ? 'Aguardando o PIX' : statusTitle(order)}</h2>
         {!cancelled && !done && !awaitingPix && (
           <p className="mt-1 text-[15px] text-ink-muted">
-            {pickup ? `Pronto entre ${hhmm(addMin(order.created_at, 30))} e ${hhmm(addMin(order.created_at, 40))}` : `Chega entre ${hhmm(addMin(order.created_at, 40))} e ${hhmm(addMin(order.created_at, 55))}`}
+            {`${pickup ? 'Pronto' : 'Chega'} entre ${hhmm(addMin(order.created_at, eta[0]))} e ${hhmm(addMin(order.created_at, eta[1]))}`}
           </p>
         )}
         {cancelled && order.cancel_reason && <p className="mt-1 text-[15px] text-ink-muted">Motivo: {order.cancel_reason}</p>}
@@ -101,7 +105,7 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
                 </span>}
                 <span aria-hidden="true" className="relative z-10 mt-0.5 flex h-5 w-5 shrink-0">
                   {isCurrent && <span className="pm-step-halo absolute inset-0 rounded-full bg-brand-500" />}
-                  <span className={`relative flex h-5 w-5 items-center justify-center rounded-full ${isDone ? 'bg-emerald-600 text-white' : isCurrent ? 'border-[6px] border-brand-500 bg-white' : 'border-2 border-line-strong bg-white'}`}>
+                  <span className={`relative flex h-5 w-5 items-center justify-center rounded-full ${isDone ? 'bg-emerald-600 text-white' : isCurrent ? 'border-[6px] border-brand-500 bg-surface' : 'border-2 border-line-strong bg-surface'}`}>
                     {isDone && <Check className="h-3 w-3" strokeWidth={3} />}
                   </span>
                 </span>
@@ -120,7 +124,7 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
 
       {showPix && order.status !== 'AWAITING_PAYMENT' && <OrderPixBlock order={order} />}
 
-      <section className="rounded-md border border-line bg-white p-4">
+      <section className="rounded-md border border-line bg-surface p-4">
         <ul className="space-y-2">
           {order.items.map((item) => (
             <li key={item.id} className="flex justify-between gap-3 text-[15px]">
@@ -142,7 +146,7 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
 
       {/* Rodapé fixo com safe-area: nunca fica atrás da barra do navegador */}
       <div className="sticky bottom-0 z-10 -mx-5 bg-surface px-5 pt-3" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
-        <button type="button" onClick={() => openRestaurantWhatsApp(order)} className="flex h-[52px] w-full items-center justify-center rounded-md border border-line-strong bg-white text-[16px] font-semibold text-ink hover:bg-canvas">Falar com a loja no WhatsApp</button>
+        <button type="button" onClick={() => openRestaurantWhatsApp(order)} className="flex h-[52px] w-full items-center justify-center rounded-md border border-line-strong bg-surface text-[16px] font-semibold text-ink hover:bg-canvas">Falar com a loja no WhatsApp</button>
       </div>
     </div>
   );
