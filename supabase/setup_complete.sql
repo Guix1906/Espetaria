@@ -7095,3 +7095,17 @@ $$;
 
 REVOKE ALL ON FUNCTION set_tab_discount_reason(UUID, TEXT) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION set_tab_discount_reason(UUID, TEXT) TO authenticated;
+
+-- ============================================================================
+-- 00045_activate_delivery_zones_and_phone.sql
+-- ============================================================================
+
+-- 1. Ativação de todos os 23 bairros de entrega em delivery_zones
+UPDATE delivery_zones
+SET active = true;
+
+-- 2. Atualização do telefone oficial da Espetaria Sabor da Carne
+UPDATE restaurant_settings
+SET phone = '(99) 98820-2197',
+    updated_at = now();
+
