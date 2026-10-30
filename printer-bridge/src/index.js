@@ -14,6 +14,7 @@ export function createStatusServer(worker, config) {
         mode: config.mode,
         worker: config.workerName,
         printers: Object.fromEntries(Object.entries(config.printers).map(([k, v]) => [k, v?.label ?? null])),
+        probe: worker?.latestProbe ?? null,
         stats: worker?.stats ?? null,
       }, null, 2));
       return;

@@ -1,4 +1,5 @@
-import { AlertCircle, CheckCircle2, Coins, Flame, History, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Coins, Flame, History, X, Printer } from 'lucide-react';
+import { usePrinterHealth } from '../../components/layout/PrinterStatusWidget';
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { formatBRL } from '../../lib/formatters';
@@ -24,6 +25,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   const { products, categories } = useStockStore();
   const { openShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
+  const { isBridgeAlive, isGrillOk, isKitchenOk, allOk } = usePrinterHealth();
 
   const [shiftName, setShiftName] = useState<string>(`${new Date().toLocaleDateString('pt-BR')} — Noite`);
   const [cashStart, setCashStart] = useState<string>('');
@@ -181,6 +183,36 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             </button>
           </div>
           {repeatState.message && <p className="-mt-3 text-sm text-ink-secondary" role="status">{repeatState.message}</p>}
+
+          {/* Checagem automática das impressoras na abertura de turno */}
+          <div className="rounded-2xl border border-line bg-surface-soft p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Printer className="w-4 h-4 text-brand-700" />
+                <span className="font-bold text-sm text-ink">Impressoras de Produção</span>
+              </div>
+              <span className={`status-badge text-[11px] font-bold ${allOk ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                {allOk ? 'Cozinha e Churrasqueira OK' : 'Atenção na Impressão'}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+              <div className={`p-2.5 rounded-xl border flex items-center justify-between ${isKitchenOk ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50'}`}>
+                <span className="font-semibold text-ink">Cozinha (192.168.3.12)</span>
+                <span className={`font-bold ${isKitchenOk ? 'text-emerald-700' : 'text-rose-700'}`}>{isKitchenOk ? '✔ Online' : '✖ Offline'}</span>
+              </div>
+              <div className={`p-2.5 rounded-xl border flex items-center justify-between ${isGrillOk ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50'}`}>
+                <span className="font-semibold text-ink">Churrasqueira (192.168.3.17)</span>
+                <span className={`font-bold ${isGrillOk ? 'text-emerald-700' : 'text-rose-700'}`}>{isGrillOk ? '✔ Online' : '✖ Offline'}</span>
+              </div>
+            </div>
+            {!allOk && (
+              <p className="text-xs text-rose-700 font-medium">
+                {!isBridgeAlive 
+                  ? 'Atenção: O computador da loja não está conectado ao serviço de impressão. Ligue o PC da loja antes de abrir o turno.' 
+                  : 'Verifique se os cabos de rede e energia das impressoras estão conectados antes de começar o turno.'}
+              </p>
+            )}
+          </div>
 
           {errorMsg && (
             <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-2.5" role="alert">

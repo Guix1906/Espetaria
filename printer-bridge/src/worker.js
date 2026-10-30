@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { resolvePrinter } from './config.js';
 import { buildTicket } from './tickets.js';
-import { sendRaw, writeSimulated } from './transport.js';
+import { sendRaw, writeSimulated, probe } from './transport.js';
 
 const log = (...args) => console.log(new Date().toLocaleTimeString('pt-BR'), ...args);
 
@@ -65,6 +65,8 @@ export class PrintWorker {
     this.busy = false;
     this.again = false;
     this.stats = { printed: 0, failed: 0, lastError: null, lastJobAt: null, startedAt: new Date().toISOString() };
+    this.latestProbe = null;
+    this.heartbeatTimer = null;
   }
 
   async start() {
@@ -99,13 +101,70 @@ export class PrintWorker {
       });
 
     this.timer = setInterval(() => this.tick(), this.config.pollIntervalMs);
+
+    // 1. Teste de conexão inicial com as impressoras ao iniciar o bridge
+    log('[bridge] 🔍 Testando conexão com as impressoras (Cozinha e Churrasqueira)...');
+    try {
+      const initialStatus = await this.probeAndReportHeartbeat();
+      if (initialStatus) {
+        const grill = initialStatus.grill_online ? `ONLINE (${initialStatus.grill_latency_ms}ms)` : `OFFLINE (${initialStatus.grill_error || 'sem sinal'})`;
+        const kitchen = initialStatus.kitchen_online ? `ONLINE (${initialStatus.kitchen_latency_ms}ms)` : `OFFLINE (${initialStatus.kitchen_error || 'sem sinal'})`;
+        log(`[bridge] 🖨️  Churrasqueira: ${grill} | Cozinha: ${kitchen}`);
+      }
+    } catch (e) {
+      log('[bridge] Erro no teste inicial:', e.message);
+    }
+
+    // 2. Monitoramento contínuo das impressoras a cada 20 segundos
+    this.heartbeatTimer = setInterval(() => this.probeAndReportHeartbeat(), 20000);
+
     await this.tick();
   }
 
   async stop() {
     this.running = false;
     clearInterval(this.timer);
+    if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     if (this.channel) await this.supabase.removeChannel(this.channel);
+  }
+
+  /** Testa o socket TCP de cada impressora e publica o status em tempo real no Supabase. */
+  async probeAndReportHeartbeat() {
+    try {
+      const grillResult = this.config.printers.GRILL ? await probe(this.config.printers.GRILL) : { ok: false, error: 'não configurada' };
+      const kitchenResult = this.config.printers.KITCHEN ? await probe(this.config.printers.KITCHEN) : { ok: false, error: 'não configurada' };
+
+      this.latestProbe = {
+        GRILL: { address: this.config.printers.GRILL?.label ?? null, ...grillResult },
+        KITCHEN: { address: this.config.printers.KITCHEN?.label ?? null, ...kitchenResult },
+        at: new Date().toISOString(),
+      };
+
+      const payload = {
+        id: 'default',
+        worker_name: this.config.workerName,
+        mode: this.config.mode,
+        last_heartbeat: new Date().toISOString(),
+        grill_online: Boolean(grillResult.ok),
+        grill_ip: this.config.printers.GRILL?.label ?? null,
+        grill_latency_ms: grillResult.ms ?? null,
+        grill_error: grillResult.error ? String(grillResult.error) : null,
+        kitchen_online: Boolean(kitchenResult.ok),
+        kitchen_ip: this.config.printers.KITCHEN?.label ?? null,
+        kitchen_latency_ms: kitchenResult.ms ?? null,
+        kitchen_error: kitchenResult.error ? String(kitchenResult.error) : null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await this.supabase.from('printer_status').upsert(payload);
+      if (error) {
+        log('[bridge] Falha ao gravar status no banco:', error.message);
+      }
+      return payload;
+    } catch (err) {
+      log('[bridge] Erro no teste de conexao das impressoras:', err.message);
+      return null;
+    }
   }
 
   async tick() {

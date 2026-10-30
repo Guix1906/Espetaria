@@ -9,7 +9,7 @@ import { useAuthStore } from '../stores/useAuthStore';
 import { usePrintStore } from '../stores/usePrintStore';
 import { useDeliveryStore } from '../stores/useDeliveryStore';
 import { useSettingsStore } from '../stores/useSettingsStore';
-import type { RestaurantTable, Tab, Order, OrderItem, DailyPrepStock, Shift, Payment, Product, WhatsAppMessage, Category } from '../types/domain';
+import type { RestaurantTable, Tab, Order, OrderItem, DailyPrepStock, Shift, Payment, Product, WhatsAppMessage, Category, PrinterStatusRecord } from '../types/domain';
 
 class SyncService {
   private channel: RealtimeChannel | null = null;
@@ -196,6 +196,7 @@ class SyncService {
         useSettingsStore.getState().loadRemoteSettings(),
         useDeliveryStore.getState().loadWhatsAppMessages(),
         usePrintStore.getState().loadRemoteJobs(),
+        usePrintStore.getState().loadPrinterStatus(),
         useDeliveryStore.getState().loadRemoteDeliveryOrders(),
       ]);
 
@@ -276,6 +277,16 @@ class SyncService {
               const id = (payload.old as { id?: string } | null)?.id;
               if (id) usePrintStore.getState().removeRemoteJob(id);
             } else usePrintStore.getState().applyRemoteJob(payload.new as Record<string, unknown>);
+          }
+        )
+        // 3a-2. Status em tempo real das impressoras e do PC da loja
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'printer_status' },
+          (payload) => {
+            if (payload.new) {
+              usePrintStore.getState().applyRemotePrinterStatus(payload.new as PrinterStatusRecord);
+            }
           }
         )
         // 3c. Pedidos do cardápio digital

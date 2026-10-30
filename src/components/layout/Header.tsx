@@ -6,6 +6,7 @@ import { formatRole } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { BrandMark } from './BrandMark';
+import { PrinterStatusWidget, PrinterAlertBanner } from './PrinterStatusWidget';
 import { PAGE_TITLES, type ActiveTab } from './navigation';
 
 interface HeaderProps {
@@ -73,6 +74,7 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
         </div>
 
         <div className="hidden flex-wrap items-center gap-2 sm:flex">
+          <PrinterStatusWidget />
           {currentShift?.status === 'ABERTO' ? (
             <div className="status-badge max-w-full bg-emerald-50 py-2 text-emerald-800" title={currentShift.name}>
               <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-600" aria-hidden="true" />
@@ -99,6 +101,9 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
           >
             {isAudioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </button>
+        </div>
+        <div className="flex items-center gap-2 sm:hidden">
+          <PrinterStatusWidget />
         </div>
         <div ref={profileRef} className="relative shrink-0">
           <button ref={profileButtonRef} type="button" aria-label={`Perfil: ${currentProfile.name}. Trocar perfil operacional`} aria-expanded={roleDropdownOpen} aria-controls={profileId} onClick={() => setRoleDropdownOpen(!roleDropdownOpen)} className="flex items-center gap-2.5 rounded-xl border border-line bg-surface p-1.5 pr-2.5 text-left hover:bg-surface-soft">
@@ -134,6 +139,7 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
           )}
         </div>
       </div>
+      <PrinterAlertBanner />
       {!isOnline && <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-sm font-semibold text-white" role="alert"><WifiOff className="h-4 w-4" aria-hidden="true" />Sem conexão</div>}
     </header>
   );

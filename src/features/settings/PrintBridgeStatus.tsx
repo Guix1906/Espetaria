@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Copy, Link2, MessageCircle, Server } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, Link2, MessageCircle, Server, Printer, RefreshCw } from 'lucide-react';
+import { usePrintStore } from '../../stores/usePrintStore';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import type { PrintJob } from '../../types/domain';
 import { publicAppUrl } from '../../lib/publicUrl';
@@ -39,6 +40,16 @@ export function PrinterHealthTag({ jobs, sector }: { jobs: PrintJob[]; sector: P
  */
 export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
   const [now, setNow] = useState(() => Date.now());
+  const { printerStatus, loadPrinterStatus, sendTestPrintAll } = usePrintStore();
+  const [testingAll, setTestingAll] = useState(false);
+  const [testSuccess, setTestSuccess] = useState<string | null>(null);
+
+  const heartbeatAgeSeconds = printerStatus?.last_heartbeat
+    ? Math.max(0, Math.floor((now - new Date(printerStatus.last_heartbeat).getTime()) / 1000))
+    : 999;
+  const isBridgeAlive = heartbeatAgeSeconds < 60;
+  const isGrillOk = isBridgeAlive && Boolean(printerStatus?.grill_online);
+  const isKitchenOk = isBridgeAlive && Boolean(printerStatus?.kitchen_online);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 10_000);
     return () => window.clearInterval(timer);
@@ -77,6 +88,78 @@ export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
           </p>
         </div>
       </div>
+      {/* Monitoramento em Tempo Real do Hardware (Bridge + Impressoras de Rede) */}
+      <div className="rounded-xl border border-line bg-surface-soft p-3.5 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Printer className="w-4 h-4 text-brand-700" />
+            <span className="text-xs font-bold uppercase tracking-wider text-ink">Conexão de Hardware (Tempo Real)</span>
+          </div>
+          <span className="text-[11px] text-ink-muted">
+            {isBridgeAlive ? `PC da Loja online (sinal há ${heartbeatAgeSeconds}s)` : 'PC da Loja desconectado'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${isKitchenOk ? 'border-emerald-200 bg-emerald-50/60' : 'border-rose-200 bg-rose-50/60'}`}>
+            <div>
+              <p className="font-bold text-ink">Cozinha (Acompanhamentos)</p>
+              <p className="font-mono text-[11px] text-ink-muted">IP: {printerStatus?.kitchen_ip ?? '192.168.3.12:9100'}</p>
+            </div>
+            <span className={`status-badge font-bold text-[10px] ${isKitchenOk ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+              {isKitchenOk ? `Online (${printerStatus?.kitchen_latency_ms ?? 2}ms)` : 'Sem Sinal'}
+            </span>
+          </div>
+
+          <div className={`p-2.5 rounded-xl border flex items-center justify-between ${isGrillOk ? 'border-emerald-200 bg-emerald-50/60' : 'border-rose-200 bg-rose-50/60'}`}>
+            <div>
+              <p className="font-bold text-ink">Churrasqueira (Espetos)</p>
+              <p className="font-mono text-[11px] text-ink-muted">IP: {printerStatus?.grill_ip ?? '192.168.3.17:9100'}</p>
+            </div>
+            <span className={`status-badge font-bold text-[10px] ${isGrillOk ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'}`}>
+              {isGrillOk ? `Online (${printerStatus?.grill_latency_ms ?? 3}ms)` : 'Sem Sinal'}
+            </span>
+          </div>
+        </div>
+
+        {testSuccess && (
+          <p className="text-xs font-semibold text-emerald-800 bg-emerald-100 p-2 rounded-lg">{testSuccess}</p>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <button
+            type="button"
+            disabled={testingAll}
+            onClick={async () => {
+              setTestingAll(true);
+              setTestSuccess(null);
+              try {
+                await sendTestPrintAll();
+                setTestSuccess('Cupom de teste enviado para a Cozinha e Churrasqueira!');
+                setTimeout(() => setTestSuccess(null), 5000);
+              } catch (e: any) {
+                alert('Erro ao disparar teste: ' + (e.message || 'Erro desconhecido'));
+              } finally {
+                setTestingAll(false);
+              }
+            }}
+            className="btn-primary py-2 text-xs font-bold flex items-center justify-center gap-1.5 flex-1"
+          >
+            <Printer className="w-3.5 h-3.5" />
+            {testingAll ? 'Enviando teste...' : 'Imprimir Teste nas Duas Impressoras'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => loadPrinterStatus()}
+            className="btn-secondary py-2 text-xs font-semibold flex items-center justify-center gap-1 shrink-0"
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+            Atualizar Status
+          </button>
+        </div>
+      </div>
+
       <ul className="grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
         {bySector.map((s) => (
           <li key={s.sector} className="rounded-lg border border-line bg-surface p-2">

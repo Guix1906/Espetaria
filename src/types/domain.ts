@@ -369,3 +369,20 @@ export interface PrintJob {
   updated_at: string;
   printed_at?: string;
 }
+
+
+export interface PrinterStatusRecord {
+  id: string;
+  worker_name: string;
+  mode: string;
+  last_heartbeat: string;
+  grill_online: boolean;
+  grill_ip: string | null;
+  grill_latency_ms: number | null;
+  grill_error: string | null;
+  kitchen_online: boolean;
+  kitchen_ip: string | null;
+  kitchen_latency_ms: number | null;
+  kitchen_error: string | null;
+  updated_at: string;
+}

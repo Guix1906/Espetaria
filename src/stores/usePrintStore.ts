@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { PrintJob, PrintJobItem } from '../types/domain';
+import { PrintJob, PrintJobItem, PrinterStatusRecord } from '../types/domain';
 import { ProductionSector } from '../types/enums';
 import { generateId } from '../lib/utils';
 import { logger } from '../lib/logger';
@@ -39,7 +39,11 @@ interface PrintState {
   /** Aplica INSERT/UPDATE vindo do Realtime (modo Supabase). */
   applyRemoteJob: (row: Record<string, unknown>) => void;
   /** Cupom de teste real para o setor (NONE = caixa/expedição). */
+  printerStatus: PrinterStatusRecord | null;
+  loadPrinterStatus: () => Promise<void>;
+  applyRemotePrinterStatus: (status: PrinterStatusRecord) => void;
   sendTestPrint: (sector: ProductionSector) => Promise<void>;
+  sendTestPrintAll: () => Promise<void>;
   /** Imprime a conta da mesa (conferência) na churrasqueira. Retorna false se o banco recusar. */
   printBill: (tableId: string) => Promise<boolean>;
   enqueuePrintJob: (input: CreatePrintJobInput) => { job: PrintJob; isDuplicate: boolean };
@@ -98,6 +102,28 @@ const saveQueue = (jobs: PrintJob[]) => {
 export const usePrintStore = create<PrintState>((set, get) => ({
   // Com Supabase, a fila oficial é a tabela print_queue (gerada pelo banco)
   jobs: isSupabaseConfigured ? [] : loadInitialQueue(),
+  printerStatus: null,
+
+  loadPrinterStatus: async () => {
+    if (!isSupabaseConfigured) return;
+    const { data, error } = await supabase.from('printer_status').select('*').eq('id', 'default').maybeSingle();
+    if (!error && data) {
+      set({ printerStatus: data as PrinterStatusRecord });
+    }
+  },
+
+  applyRemotePrinterStatus: (status) => {
+    set({ printerStatus: status });
+  },
+
+  sendTestPrintAll: async () => {
+    if (!isSupabaseConfigured) {
+      await get().sendTestPrint('GRILL');
+      await get().sendTestPrint('KITCHEN');
+      return;
+    }
+    await callRpc('enqueue_test_print_all', {}, 'PrintStore');
+  },
 
   loadRemoteJobs: async () => {
     if (!isSupabaseConfigured) return;
