@@ -44,7 +44,7 @@ export function TableCard({ table, tab, onOpen, onOrder, onBill, disabled = fals
     <article className={`table-card ${STATUS_TOP_BORDER[tableStatusKind(table.status)]}`} aria-label={`Mesa ${table.number}, ${status.label}`}>
       {content}
       <div className="mx-3.5 mb-3.5 flex flex-col gap-2 sm:flex-row border-t border-line pt-3 sm:mx-4 sm:mb-4">
-        {isFree ? <button type="button" disabled={disabled} onClick={onOpen} className="btn-secondary w-full px-2 text-base text-brand-800"><Plus className="h-4 w-4" aria-hidden="true" />Abrir comanda</button> : <><button type="button" onClick={onOrder} className="btn-primary flex-1 px-2 text-base"><ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />Pedir</button><button type="button" onClick={onBill} className="btn-secondary flex-1 px-2 text-base"><Receipt className="h-3.5 w-3.5" aria-hidden="true" />Conta</button></>}
+        {isFree ? <button type="button" disabled={disabled} onClick={onOpen} className="btn-secondary w-full px-2 text-base text-brand-800"><Plus className="h-4 w-4" aria-hidden="true" />Abrir comanda</button> : <><button type="button" onClick={onOrder} className="btn-primary flex-1 px-2 text-base"><ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />Pedir</button><button type="button" onClick={onBill} className="btn-secondary flex-1 px-2 text-base"><Receipt className="h-3.5 w-3.5" aria-hidden="true" />Cobrar</button></>}
       </div>
     </article>
   );
