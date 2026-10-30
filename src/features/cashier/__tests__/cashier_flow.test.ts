@@ -298,4 +298,41 @@ describe('ETAPA 5: Módulo do Caixa & Fechamento de Mesas', () => {
     expect(table.status).toBe('OCUPADA');
     expect(table.current_tab?.id).toBe(tab.id);
   });
+
+  it('6. Quitação rápida em 1 clique encerra a comanda com pagamento total e cálculo de troco', () => {
+    const tableId = useTableStore.getState().tables[5]!.id; // Mesa 6
+    const tab = useTableStore.getState().openTab(tableId, 'Mesa 6 Rapida', 2, '', userId, shiftId);
+
+    // Lança pedido de R$ 50
+    useTableStore.getState().addOrderAtomic(
+      shiftId,
+      tab.id,
+      [{ productId: MOCK_PRODUCT_A.id, quantity: 2 }], // 2 x 20 = 40 + 10% = 44
+      userId
+    );
+
+    const currentTab = useTableStore.getState().tabs.find((t) => t.id === tab.id)!;
+    expect(currentTab.total).toBe(44.0);
+
+    // Simula a quitação rápida em dinheiro com nota de R$ 50 (troco R$ 6)
+    const tendered = 50.0;
+    const change = Math.round((tendered - currentTab.total) * 100) / 100;
+    useTableStore.getState().addPaymentAtomic(
+      shiftId,
+      tab.id,
+      currentTab.total,
+      'DINHEIRO',
+      userId,
+      `Recebido: R$ ${tendered.toFixed(2)} • Troco: R$ ${change.toFixed(2)}`
+    );
+
+    const receipt = useTableStore.getState().closeTabAtomic(shiftId, tab.id, userId);
+
+    expect(receipt.tab.status).toBe('CLOSED');
+    expect(receipt.payments[0]!.amount).toBe(44.0);
+    expect(receipt.payments[0]!.notes).toContain('Troco: R$ 6.00');
+
+    const tableAfter = useTableStore.getState().tables.find((t) => t.id === tableId)!;
+    expect(tableAfter.status).toBe('LIVRE');
+  });
 });

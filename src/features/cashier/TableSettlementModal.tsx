@@ -12,7 +12,8 @@ import {
   Receipt,
   Trash2,
   Users,
-  X
+  X,
+  Zap
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
@@ -180,6 +181,54 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     setPaymentMethod(m);
     if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
       setPaymentAmount(remainingDue > 0 ? remainingDue.toFixed(2) : '');
+    }
+  };
+
+  // Sugestões de notas de dinheiro comuns acima do saldo devido para troco imediato
+  const commonBanknotes = [10, 20, 50, 100, 200];
+  const roundedTen = Math.ceil(remainingDue / 10) * 10;
+  const noteSuggestions = Array.from(new Set([
+    ...(roundedTen > remainingDue ? [roundedTen] : []),
+    ...commonBanknotes.filter((n) => n > remainingDue),
+  ])).slice(0, 3);
+
+  // Quitação rápida em 1 clique (Total ou Restante)
+  const handleQuickPay = (method: PaymentMethod, tendered?: number) => {
+    if (!currentShift || !currentTab) return;
+    if (remainingDue <= 0) {
+      handleFinalizeClosure();
+      return;
+    }
+    setErrorMessage(null);
+    try {
+      const given = tendered && tendered > remainingDue ? tendered : remainingDue;
+      const change = tendered && tendered > remainingDue ? Math.round((tendered - remainingDue) * 100) / 100 : 0;
+      let notes = `Quitação total via ${METHOD_LABELS[method] ?? method}`;
+      if (change > 0) {
+        notes = `Recebido: ${formatBRL(given)} • Troco: ${formatBRL(change)}`;
+      }
+
+      addPaymentAtomic(
+        currentShift.id,
+        currentTab.id,
+        remainingDue,
+        method,
+        currentProfile.id,
+        notes
+      );
+
+      const result = closeTabAtomic(currentShift.id, currentTab.id, currentProfile.id);
+
+      setReceiptData({
+        tab: result.tab,
+        table,
+        items: result.items,
+        payments: result.payments,
+        cashChange: change,
+      });
+      notify(`Mesa ${table.number} encerrada com sucesso! Pagamento via ${METHOD_LABELS[method] ?? method}.`, 'success');
+    } catch (err) {
+      setErrorMessage((err as Error).message);
     }
   };
 
@@ -504,13 +553,124 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
               {/* Status do Saldo da Conta */}
               <div
                 className={`p-3 rounded-2xl border flex items-center justify-between text-xs tabular-nums font-bold ${isFullyPaid
-                    ? 'bg-emerald-50 text-emerald-800'
-                    : 'bg-amber-50 text-amber-800'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 border-amber-200'
                   }`}
               >
-                <span>{isFullyPaid ? 'Conta quitada' : 'Saldo a pagar'}</span>
-                <span className="text-lg">{formatBRL(remainingDue)}</span>
+                <div>
+                  <span className="block text-xs font-semibold">{isFullyPaid ? 'Conta quitada' : 'Saldo a pagar'}</span>
+                  {currentTab.people_count > 1 && !isFullyPaid && (
+                    <span className="text-[11px] font-normal text-amber-900/80">
+                      ({currentTab.people_count} pessoas = {formatBRL(remainingDue / currentTab.people_count)} cada)
+                    </span>
+                  )}
+                </div>
+                <span className="text-xl font-black">{formatBRL(remainingDue)}</span>
               </div>
+
+              {/* BLOCO DE QUITAÇÃO RÁPIDA EM 1 CLIQUE */}
+              {!isFullyPaid && remainingDue > 0 && (
+                <div className="bg-gradient-to-br from-brand-50/70 via-surface to-surface p-3.5 rounded-2xl border-2 border-brand-300 shadow-sm space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase tracking-wider text-brand-900 flex items-center gap-1.5 font-sans">
+                      <Zap className="w-4 h-4 text-amber-500 fill-amber-500" />
+                      <span>Quitar em 1 Clique (sem formulário)</span>
+                    </span>
+                    <span className="text-[11px] font-bold text-brand-700 bg-brand-100/90 px-2 py-0.5 rounded-full">
+                      Encerra e libera a mesa
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleQuickPay('PIX')}
+                      className="min-h-[58px] p-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-bold transition flex flex-col items-center justify-center gap-0.5 shadow-sm border border-emerald-500 text-center"
+                      title={`Quitar valor total de ${formatBRL(remainingDue)} via PIX`}
+                    >
+                      <div className="flex items-center gap-1 text-xs">
+                        <QrCode className="w-3.5 h-3.5" />
+                        <span>PIX</span>
+                      </div>
+                      <span className="text-sm tabular-nums font-black">{formatBRL(remainingDue)}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickPay('DEBITO')}
+                      className="min-h-[58px] p-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-[0.98] text-white font-bold transition flex flex-col items-center justify-center gap-0.5 shadow-sm border border-blue-500 text-center"
+                      title={`Quitar valor total de ${formatBRL(remainingDue)} via Cartão de Débito`}
+                    >
+                      <div className="flex items-center gap-1 text-xs">
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>DÉBITO</span>
+                      </div>
+                      <span className="text-sm tabular-nums font-black">{formatBRL(remainingDue)}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickPay('CREDITO')}
+                      className="min-h-[58px] p-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] text-white font-bold transition flex flex-col items-center justify-center gap-0.5 shadow-sm border border-indigo-500 text-center"
+                      title={`Quitar valor total de ${formatBRL(remainingDue)} via Cartão de Crédito`}
+                    >
+                      <div className="flex items-center gap-1 text-xs">
+                        <CreditCard className="w-3.5 h-3.5" />
+                        <span>CRÉDITO</span>
+                      </div>
+                      <span className="text-sm tabular-nums font-black">{formatBRL(remainingDue)}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuickPay('DINHEIRO')}
+                      className="min-h-[58px] p-2 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-[0.98] text-white font-bold transition flex flex-col items-center justify-center gap-0.5 shadow-sm border border-amber-500 text-center"
+                      title={`Quitar valor total de ${formatBRL(remainingDue)} em Dinheiro`}
+                    >
+                      <div className="flex items-center gap-1 text-xs">
+                        <Banknote className="w-3.5 h-3.5" />
+                        <span>DINHEIRO</span>
+                      </div>
+                      <span className="text-sm tabular-nums font-black">{formatBRL(remainingDue)}</span>
+                    </button>
+                  </div>
+
+                  {noteSuggestions.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-brand-200/60 text-xs">
+                      <span className="font-semibold text-ink-secondary text-[11px] flex items-center gap-1">
+                        <Coins className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Dinheiro com troco:</span>
+                      </span>
+                      {noteSuggestions.map((note) => {
+                        const change = Math.round((note - remainingDue) * 100) / 100;
+                        return (
+                          <button
+                            key={note}
+                            type="button"
+                            onClick={() => handleQuickPay('DINHEIRO', note)}
+                            className="px-2.5 py-1 rounded-lg bg-surface border border-line-strong hover:bg-amber-50 hover:border-amber-400 hover:text-amber-900 transition text-[11px] font-bold tabular-nums text-ink flex items-center gap-1 shadow-xs"
+                            title={`Receber nota de ${formatBRL(note)} e registrar troco de ${formatBRL(change)}`}
+                          >
+                            <span>Nota {formatBRL(note)}</span>
+                            <span className="text-emerald-700 font-semibold">(troco {formatBRL(change)})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Divisor para pagamento parcial / multimeios */}
+              {!isFullyPaid && remainingDue > 0 && (
+                <div className="relative flex py-1 items-center">
+                  <div className="flex-grow border-t border-line"></div>
+                  <span className="flex-shrink mx-3 text-[11px] uppercase tracking-wider text-ink-muted font-bold">
+                    Ou dividir pagamento / registrar parcial
+                  </span>
+                  <div className="flex-grow border-t border-line"></div>
+                </div>
+              )}
 
               {/* Formulário para Adicionar Pagamento */}
               {!isFullyPaid && (

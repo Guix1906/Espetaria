@@ -3,6 +3,7 @@ import {
   Printer,
   Receipt,
   Users,
+  CreditCard,
   X,
 } from 'lucide-react';
 import React from 'react';
@@ -12,6 +13,7 @@ import { usePrintStore } from '../../stores/usePrintStore';
 import { formatBRL } from '../../lib/formatters';
 import { isFreshReady } from '../../lib/productionStatus';
 import { useTableStore } from '../../stores/useTableStore';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { TabItemsPanel } from './TabItemsPanel';
 import { RestaurantTable } from '../../types/domain';
 
@@ -20,6 +22,7 @@ interface WaiterViewTabProps {
   isOpen: boolean;
   onClose: () => void;
   onRequestBill: () => void;
+  onSettleTab?: () => void;
 }
 
 export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
@@ -27,9 +30,12 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
   isOpen,
   onClose,
   onRequestBill,
+  onSettleTab,
 }) => {
   const { tabs, getTabOrderItems } = useTableStore();
   const { notify } = useFeedback();
+  const { currentProfile } = useAuthStore();
+  const canSettle = ['MASTER', 'GERENTE', 'CAIXA'].includes(currentProfile.role);
   const [printing, setPrinting] = React.useState(false);
 
   const reprintBill = async () => {
@@ -125,6 +131,19 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
             </div>
 
             {/* Botão de Solicitar Fechamento (já imprime a conta na churrasqueira) */}
+            {canSettle && onSettleTab && (
+              <button
+                onClick={() => {
+                  onClose();
+                  onSettleTab();
+                }}
+                className="w-full py-3.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-bold transition flex items-center justify-center gap-2 shadow-sm text-base"
+                type="button">
+                <CreditCard className="w-5 h-5" />
+                <span>Receber e Encerrar Conta</span>
+              </button>
+            )}
+
             <div className="pt-2 space-y-2">
               {table.status === 'AGUARDANDO_CONTA' && (
                 <button

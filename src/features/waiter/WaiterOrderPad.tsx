@@ -16,6 +16,7 @@ import { ProductFormModal } from '../products/ProductFormModal';
 import { WaiterCartDrawer } from './WaiterCartDrawer';
 import { WaiterDonenessModal } from './WaiterDonenessModal';
 import { WaiterViewTab } from './WaiterViewTab';
+import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { TabItemsPanel } from './TabItemsPanel';
 
 const TOP = 'TOP';
@@ -44,6 +45,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [isViewTabOpen, setIsViewTabOpen] = useState(false);
+  const [isSettlementOpen, setIsSettlementOpen] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
   const [billRequested, setBillRequested] = useState(false);
   const [swapping, setSwapping] = useState<string | null>(null);
@@ -235,7 +237,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
       )}
       <WaiterDonenessModal product={modalProduct} isOpen={!!modalProduct} onClose={() => setModalProduct(null)} onConfirm={handleDonenessConfirm} maxQuantity={(() => { if (!modalProduct) return undefined; const left = remainingFor(modalProduct, products, dailyPrepStock, cart); return left === null ? undefined : Math.max(1, left); })()} />
       <WaiterCartDrawer table={table} isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} onSuccess={() => setOrderSent(true)} />
-      <WaiterViewTab table={table} isOpen={isViewTabOpen} onClose={() => setIsViewTabOpen(false)} onRequestBill={() => { useTableStore.getState().requestBill(table.id); setBillRequested(true); setIsViewTabOpen(false); }} />
+      <WaiterViewTab table={table} isOpen={isViewTabOpen} onClose={() => setIsViewTabOpen(false)} onRequestBill={() => { useTableStore.getState().requestBill(table.id); setBillRequested(true); setIsViewTabOpen(false); }} onSettleTab={() => setIsSettlementOpen(true)} />
+      {isSettlementOpen && <TableSettlementModal table={table} isOpen={isSettlementOpen} onClose={() => setIsSettlementOpen(false)} />}
       {canManageProducts && <ProductFormModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} />}
     </div>
   );
