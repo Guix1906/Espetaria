@@ -58,7 +58,8 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     addPaymentAtomic,
     removePayment,
     cancelOrderItemAtomic,
-    closeTabAtomic
+    closeTabAtomic,
+    quickCloseTabAtomic
   } = useTableStore();
   const { currentShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
@@ -208,7 +209,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
         notes = `Recebido: ${formatBRL(given)} • Troco: ${formatBRL(change)}`;
       }
 
-      addPaymentAtomic(
+      const result = quickCloseTabAtomic(
         currentShift.id,
         currentTab.id,
         remainingDue,
@@ -216,8 +217,6 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
         currentProfile.id,
         notes
       );
-
-      const result = closeTabAtomic(currentShift.id, currentTab.id, currentProfile.id);
 
       setReceiptData({
         tab: result.tab,

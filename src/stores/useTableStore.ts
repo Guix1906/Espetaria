@@ -83,6 +83,14 @@ interface TableState {
   removePayment: (paymentId: string) => void;
   getTabPayments: (tabId: string) => Payment[];
   closeTabAtomic: (shiftId: string, tabId: string, userId: string) => { tab: Tab; payments: Payment[]; items: OrderItem[] };
+  quickCloseTabAtomic: (
+    shiftId: string,
+    tabId: string,
+    amount: number,
+    method: PaymentMethod,
+    userId: string,
+    notes?: string
+  ) => { tab: Tab; payments: Payment[]; items: OrderItem[] };
   reopenTabAtomic: (tabId: string, userId: string, reason: string) => void;
   /** Anula a comanda inteira (lançamento de teste/engano): cancela itens, estorna pagamentos e libera a mesa. */
   voidTabAtomic: (tabId: string, reason: string, userId: string, returnStock?: boolean) => void;
@@ -704,6 +712,89 @@ export const useTableStore = create<TableState>((set, get) => ({
     return {
       tab: updatedTab,
       payments: tabPayments,
+      items,
+    };
+  },
+
+  quickCloseTabAtomic: (shiftId, tabId, amount, method, userId, notes) => {
+    const tab = get().tabs.find((t) => t.id === tabId);
+    if (!tab) throw new Error('Comanda não encontrada.');
+    if (tab.status === 'CLOSED') throw new Error('Esta comanda já foi encerrada anteriormente.');
+
+    const now = new Date().toISOString();
+    const paymentId = generateId();
+    const validAmount = fromCents(toCents(amount));
+
+    const newPayment: Payment = {
+      id: paymentId,
+      shift_id: shiftId,
+      tab_id: tabId,
+      amount: validAmount,
+      method,
+      status: 'PAID',
+      external_reference: null,
+      notes: notes ?? null,
+      received_by: userId,
+      paid_at: now,
+    };
+
+    const existingPayments = get().payments.filter((p) => p.tab_id === tabId && p.status === 'PAID');
+    const allPayments = validAmount > 0 ? [...existingPayments, newPayment] : existingPayments;
+    const totalPaid = sumMoney(allPayments.map((p) => p.amount));
+
+    // Validação em centavos: total pago deve cobrir o total devido
+    if (toCents(totalPaid) < toCents(tab.total)) {
+      const missing = fromCents(toCents(tab.total) - toCents(totalPaid));
+      throw new Error(
+        `Pagamento insuficiente. Total devido: R$ ${tab.total.toFixed(2)}, Total pago: R$ ${totalPaid.toFixed(2)}. Faltam R$ ${missing.toFixed(2)}.`
+      );
+    }
+
+    const updatedTab: Tab = {
+      ...tab,
+      status: 'CLOSED',
+      closed_by: userId,
+      closed_at: now,
+      updated_at: now,
+      updated_by: userId,
+      version: (tab.version || 0) + 1,
+    };
+
+    const table = get().tables.find((t) => t.id === tab.table_id);
+    const updatedTables = get().tables.map((t) =>
+      t.id === tab.table_id ? { ...t, status: 'LIVRE' as const, current_tab: undefined, updated_at: now, updated_by: t.updated_by, version: (t.version || 0) + 1 } : t
+    );
+
+    const updatedOrders = get().orders.map((o) =>
+      o.tab_id === tabId ? { ...o, status: 'CLOSED' as const, updated_at: now, updated_by: userId, version: (o.version || 0) + 1 } : o
+    );
+
+    set({
+      payments: validAmount > 0 ? [...get().payments, newPayment] : get().payments,
+      tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
+      tables: updatedTables,
+      orders: updatedOrders,
+    });
+
+    // Chamada RPC atômica única: insere pagamento e fecha a comanda na mesma transação no PostgreSQL
+    void callRpc('close_tab_with_payment', {
+      p_payment_id: paymentId,
+      p_tab_id: tabId,
+      p_amount: validAmount,
+      p_method: method,
+      p_notes: notes ?? null,
+    }, 'TableStore');
+
+    const items = get().getTabOrderItems(tabId);
+
+    logger.info({
+      context: 'TableStore',
+      message: `Comanda da Mesa ${table?.number ?? '??'} quitada e encerrada via RPC atômico. Total: R$ ${tab.total.toFixed(2)}, Pago: R$ ${totalPaid.toFixed(2)} (${method}).`,
+    });
+
+    return {
+      tab: updatedTab,
+      payments: allPayments,
       items,
     };
   },
