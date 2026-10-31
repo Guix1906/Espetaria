@@ -6,6 +6,7 @@ import type { Product } from '../../types/domain';
 import type { MeatDoneness } from '../../types/enums';
 import { WaiterSheet } from './WaiterSheet';
 import { triggerHaptic } from '../../lib/haptics';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 
 export interface MultiDonenessItem {
   doneness: MeatDoneness;
@@ -36,8 +37,6 @@ export const DONENESS_OPTIONS: { value: MeatDoneness; label: string; description
 ];
 const COMMON_NOTES = ['Sem sal grosso', 'Pouco sal', 'Mais torradinho', 'Cortar em aperitivo', 'Farofa à parte'];
 const ACOMPANHAMENTO_NOTES = ['Com arroz', 'Com baião', 'Com purê', 'Arroz e purê', 'Baião e purê', 'Sem cebola', 'Farofa à parte'];
-const RICE_OPTIONS = ['Arroz branco', 'Arroz integral', 'Baião de dois', 'Arroz de alho', 'Sem arroz'];
-const JUICE_FLAVORS = ['Laranja', 'Limão', 'Maracujá', 'Abacaxi', 'Goiaba', 'Manga', 'Morango', 'Uva', 'Caju', 'Tangerina'];
 
 /** Detecta se o produto é um suco/bebida que precisa de escolha de sabor. */
 function isJuiceProduct(product: Product): boolean {
@@ -46,6 +45,16 @@ function isJuiceProduct(product: Product): boolean {
 
 function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { product: Product; onClose: () => void; onConfirm: WaiterDonenessModalProps['onConfirm']; maxQuantity?: number; initial?: WaiterDonenessModalProps['initial'] }) {
   const isEditing = !!initial;
+  const { settings } = useSettingsStore();
+
+  const riceOptions = (settings.daily_rice_flavors && settings.daily_rice_flavors.length > 0)
+    ? settings.daily_rice_flavors
+    : ['Arroz Branco', 'Arroz Carreteiro', 'Arroz com Brócolis', 'Baião de Dois'];
+
+  const juiceFlavors = (settings.daily_juice_flavors && settings.daily_juice_flavors.length > 0)
+    ? settings.daily_juice_flavors
+    : ['Laranja', 'Maracujá', 'Limão', 'Abacaxi com Hortelã', 'Acerola'];
+
   const [selectedDoneness, setSelectedDoneness] = useState<MeatDoneness | null>(initial?.doneness ?? null);
   const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
   const [donenessCounts, setDonenessCounts] = useState<Record<string, number>>(() => {
@@ -63,11 +72,13 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
     };
   });
   const [notes, setNotes] = useState(initial?.notes ?? '');
-  const showNotesDefault = !product.allows_doneness || !!initial?.notes || isJuiceProduct(product);
+  const isCombo = /acompanhamento/i.test(product.name);
+  const isRiceOnly = /arroz/i.test(product.name) && !isCombo;
+  const isRiceOrCombo = isCombo || isRiceOnly;
+  const isJuice = isJuiceProduct(product) || (product.sector === 'KITCHEN' && product.type === 'BEBIDA');
+  const showNotesDefault = !product.allows_doneness || !!initial?.notes || isJuice || isRiceOrCombo;
   const [showNotes, setShowNotes] = useState(showNotesDefault);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const isCombo = /acompanhamento/i.test(product.name);
-  const isJuice = isJuiceProduct(product);
   const suggestedNotes = isJuice ? [] : isCombo ? ACOMPANHAMENTO_NOTES : COMMON_NOTES;
   const noteTags = notes.split(',').map((note) => note.trim()).filter(Boolean);
 
@@ -114,7 +125,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
 
   /** Seleciona exclusivamente um tipo de arroz (só um pode estar ativo por vez). */
   const selectRice = (rice: string) => {
-    const withoutRice = noteTags.filter((t) => !RICE_OPTIONS.includes(t));
+    const withoutRice = noteTags.filter((t) => !riceOptions.includes(t) && t !== 'Sem arroz');
     const alreadySelected = noteTags.includes(rice);
     const next = alreadySelected ? withoutRice : [...withoutRice, rice];
     setNotes(next.join(', '));
@@ -122,7 +133,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
 
   /** Seleciona exclusivamente um sabor de suco (só um pode estar ativo por vez). */
   const selectFlavor = (flavor: string) => {
-    const withoutFlavor = noteTags.filter((t) => !JUICE_FLAVORS.includes(t));
+    const withoutFlavor = noteTags.filter((t) => !juiceFlavors.includes(t));
     const alreadySelected = noteTags.includes(flavor);
     const next = alreadySelected ? withoutFlavor : [...withoutFlavor, flavor];
     setNotes(next.join(', '));
@@ -236,36 +247,66 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
             );
           })}
         </fieldset>}
-        {/* Chips de tipo de arroz para espetos com acompanhamento */}
-        {isCombo && (
+        {/* Chips de tipo de arroz do dia para espetos com acompanhamento e porções de arroz */}
+        {isRiceOrCombo && (
           <fieldset className="space-y-2">
-            <legend className="text-base font-semibold text-ink">Tipo de arroz</legend>
+            <div className="flex items-center justify-between">
+              <legend className="text-base font-semibold text-ink">🍚 Sabores de Arroz do Dia</legend>
+              <span className="text-xs text-brand-600 font-medium">Toque para escolher</span>
+            </div>
             <div className="flex flex-wrap gap-1.5">
-              {RICE_OPTIONS.map((rice) => (
+              {riceOptions.map((rice) => (
                 <button
                   key={rice}
                   type="button"
                   aria-pressed={noteTags.includes(rice)}
                   onClick={() => selectRice(rice)}
-                  className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(rice) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>
+                  className={`min-h-[40px] rounded-lg border px-3 text-base font-semibold transition ${
+                    noteTags.includes(rice)
+                      ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+                      : 'border-line bg-white text-ink hover:bg-surface-muted'
+                  }`}
+                >
                   {rice}
                 </button>
               ))}
+              {isCombo && (
+                <button
+                  type="button"
+                  aria-pressed={noteTags.includes('Sem arroz')}
+                  onClick={() => selectRice('Sem arroz')}
+                  className={`min-h-[40px] rounded-lg border px-3 text-base font-semibold transition ${
+                    noteTags.includes('Sem arroz')
+                      ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+                      : 'border-dashed border-line-strong bg-white text-ink-secondary hover:bg-surface-muted'
+                  }`}
+                >
+                  Sem arroz
+                </button>
+              )}
             </div>
           </fieldset>
         )}
-        {/* Chips de sabor para sucos */}
+        {/* Chips de sabor do dia para sucos */}
         {isJuice && (
           <fieldset className="space-y-2">
-            <legend className="text-base font-semibold text-ink">Sabor do suco</legend>
+            <div className="flex items-center justify-between">
+              <legend className="text-base font-semibold text-ink">🍹 Sabores de Sucos do Dia</legend>
+              <span className="text-xs text-amber-700 font-medium">Toque para escolher</span>
+            </div>
             <div className="flex flex-wrap gap-1.5">
-              {JUICE_FLAVORS.map((flavor) => (
+              {juiceFlavors.map((flavor) => (
                 <button
                   key={flavor}
                   type="button"
                   aria-pressed={noteTags.includes(flavor)}
                   onClick={() => selectFlavor(flavor)}
-                  className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(flavor) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>
+                  className={`min-h-[40px] rounded-lg border px-3 text-base font-semibold transition ${
+                    noteTags.includes(flavor)
+                      ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
+                      : 'border-line bg-white text-ink hover:bg-surface-muted'
+                  }`}
+                >
                   {flavor}
                 </button>
               ))}

@@ -186,7 +186,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
   const handleAdd = (product: Product) => {
     setOrderSent(false);
     setSwapping(null);
-    if (product.allows_doneness || /acompanhamento|suco/i.test(product.name)) {
+    if (product.allows_doneness || /acompanhamento|arroz|suco|refresco|jarra/i.test(product.name)) {
       triggerHaptic(25);
       setModalProduct(product);
     } else {

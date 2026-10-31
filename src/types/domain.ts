@@ -335,6 +335,10 @@ export interface RestaurantSettings {
   whatsapp_bot?: Partial<import('../lib/whatsappBot').BotSettings> | null;
   /** Modelos de impressão (churrasqueira, cozinha, etiqueta de delivery). null = padrão. */
   print_templates?: Partial<import('../lib/printTemplates').PrintTemplates> | null;
+  /** Sabores de arroz do dia cadastrados pelo proprietário. */
+  daily_rice_flavors?: string[];
+  /** Sabores de suco do dia cadastrados pelo proprietário. */
+  daily_juice_flavors?: string[];
   updated_at: string;
 }
 

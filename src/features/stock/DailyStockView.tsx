@@ -1,4 +1,4 @@
-﻿import { Ban, CheckCircle, Clock, Flame, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Ban, CheckCircle, Clock, Flame, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import React, { useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -12,6 +12,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { DailyPrepStock, Product } from '../../types/domain';
+import { DailyFlavorsManager } from './DailyFlavorsManager';
 
 interface DailyStockViewProps {
   onOpenShiftClick: () => void;
@@ -82,6 +83,9 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
         <StatCard label="Estoque baixo" value={dailyPrepStock.filter(isLow).length} hint="No limite de cada produto" icon={SlidersHorizontal} tone="warning" />
         <StatCard label="Produtos esgotados" value={dailyPrepStock.filter(isOut).length} hint="Bloqueados para novos pedidos" icon={Ban} tone="danger" />
       </div>
+      {/* Cadastro de sabores do dia para os garçons */}
+      <DailyFlavorsManager />
+
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="filter-bar" aria-label="Setor do estoque">{(['ALL', 'GRILL', 'KITCHEN', 'BAR'] as const).map((sector) => <FilterChip key={sector} active={selectedSector === sector} onClick={() => setSelectedSector(sector)}>{sector === 'ALL' ? 'Todos os setores' : sector === 'KITCHEN' ? 'Cozinha e cubas' : SECTOR_LABEL[sector]}</FilterChip>)}</div>
         <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar produto no estoque" placeholder="Buscar espeto, porção ou bebida" className="w-full lg:w-72" />
