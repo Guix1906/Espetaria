@@ -28,9 +28,11 @@ export async function printJob(job, config) {
  */
 export function sideDishCopy(job) {
   if (job.sector !== 'GRILL' || !['ORDER', 'CANCEL'].includes(job.kind)) return null;
-  const items = (job.items || []).filter((item) => /acompanhamento/i.test(item.name || ''));
+  const items = (job.items || []).filter((item) =>
+    /acompanhamento/i.test(item.name || '') ||
+    /(?:arroz|bai[aã]o|pur[eê]|vinagrete|farofa|salada|mandioca|batata|fritas)/i.test(item.notes || '')
+  );
   if (!items.length) return null;
-  // Mesmo item do cupom da churrasqueira, sem texto extra
   return { ...job, id: `${job.id}-acomp`, sector: 'KITCHEN', items };
 }
 

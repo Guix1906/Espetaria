@@ -34,6 +34,7 @@ export const DONENESS_OPTIONS: { value: MeatDoneness; label: string; description
   { value: 'BEM_PASSADA', label: 'Bem passada', description: 'Totalmente cozida e bem tostada.', swatch: '#5A4A42' },
 ];
 const COMMON_NOTES = ['Sem sal grosso', 'Pouco sal', 'Mais torradinho', 'Cortar em aperitivo', 'Farofa à parte'];
+const ACOMPANHAMENTO_NOTES = ['Com arroz', 'Com baião', 'Com purê', 'Arroz e purê', 'Baião e purê', 'Sem cebola', 'Farofa à parte'];
 
 function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { product: Product; onClose: () => void; onConfirm: WaiterDonenessModalProps['onConfirm']; maxQuantity?: number; initial?: WaiterDonenessModalProps['initial'] }) {
   const isEditing = !!initial;
@@ -47,6 +48,8 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [showNotes, setShowNotes] = useState(!product.allows_doneness || !!initial?.notes);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isCombo = /acompanhamento/i.test(product.name);
+  const suggestedNotes = isCombo ? ACOMPANHAMENTO_NOTES : COMMON_NOTES;
   const noteTags = notes.split(',').map((note) => note.trim()).filter(Boolean);
 
   const totalDonenessQuantity = Object.values(donenessCounts).reduce((sum, n) => sum + (n || 0), 0);
@@ -190,8 +193,8 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
         </fieldset>}
         {product.allows_notes && (showNotes ? <div>
           <label htmlFor="doneness-notes" className="mb-2 block text-base font-semibold text-ink">Alguma observação?</label>
-          {product.allows_doneness && <div className="mb-2 flex flex-wrap gap-1.5">{COMMON_NOTES.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(tag) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>{tag}</button>)}</div>}
-          <textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Ex.: Sem cebola, gelo à parte..." className="w-full rounded-lg border border-line-strong bg-white p-3 text-base" />
+          {(product.allows_doneness || isCombo) && <div className="mb-2 flex flex-wrap gap-1.5">{suggestedNotes.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(tag) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>{tag}</button>)}</div>}
+          <textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={isCombo ? "Ex.: Arroz, baião, purê, sem cebola..." : "Ex.: Sem cebola, gelo à parte..."} className="w-full rounded-lg border border-line-strong bg-white p-3 text-base" />
         </div> : <button type="button" onClick={() => setShowNotes(true)} className="min-h-[44px] text-base font-semibold text-brand-500">+ Adicionar observação</button>)}
       </div>
       <div className="shrink-0 border-t border-line px-4 pt-3" style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom))' }}>

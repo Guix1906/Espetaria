@@ -87,8 +87,8 @@ describe('Roteamento e cupons', () => {
     expect(text).toContain('CHURRASQUEIRA');
     expect(text).toContain('MESA 5');
     expect(text).toContain('2x ESPETO DE PICANHA');
-    expect(text).toContain('PONTO: AO PONTO');
-    expect(text).toContain('OBS: Sem sal');
+    expect(text).toContain('PONTO: [ AO PONTO ]');
+    expect(text).toContain('*** OBS: SEM SAL ***');
   });
 
   it('cupom de cancelamento e 2ª via são destacados', () => {

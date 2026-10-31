@@ -95,8 +95,8 @@ export function previewSectorTicket(
   out.push('-'.repeat(w));
   for (const item of opts.items) {
     out.push(`${item.quantity}x ${item.name.toUpperCase()}${tpl.item_size === 3 ? '  (grande)' : ''}`);
-    if (tpl.show_doneness && item.doneness) out.push(`   PONTO: ${item.doneness}`);
-    if (tpl.show_notes && item.notes) out.push(`   OBS: ${item.notes}`);
+    if (tpl.show_doneness && item.doneness) out.push(`   PONTO: [ ${item.doneness} ]`);
+    if (tpl.show_notes && item.notes) out.push(`   *** OBS: ${item.notes.toUpperCase()} ***`);
   }
   out.push('-'.repeat(w));
   if (tpl.footer) out.push(center(tpl.footer, w));
@@ -141,8 +141,8 @@ function previewAnota(
     const name = `(${item.quantity}) ${item.name}`;
     const price = complete && item.price != null ? brl(item.price * item.quantity) : '';
     out.push(price ? name.padEnd(w - price.length) + price : name);
-    if (tpl.show_doneness && item.doneness) out.push(`    Ponto: ${item.doneness}`);
-    if (tpl.show_notes && item.notes) out.push(`    Obs: ${item.notes}`);
+    if (tpl.show_doneness && item.doneness) out.push(`    Ponto: [ ${item.doneness} ]`);
+    if (tpl.show_notes && item.notes) out.push(`   *** OBS: ${item.notes.toUpperCase()} ***`);
     if (i < opts.items.length - 1) out.push(center('--------', w));
   });
   if (complete) {

@@ -50,8 +50,8 @@ function header(r, job, config) {
 function productionItems(r, items) {
   for (const item of items || []) {
     r.size(3).bold().line(`${item.quantity}x ${String(item.name).toUpperCase()}`).bold(false).size(1);
-    if (item.doneness) r.line(`   PONTO: ${DONENESS[item.doneness] || item.doneness}`);
-    if (item.notes) r.line(`   OBS: ${item.notes}`);
+    if (item.doneness) r.bold().line(`   PONTO: [ ${DONENESS[item.doneness] || item.doneness} ]`).bold(false);
+    if (item.notes) r.size(3).bold().line(`   *** OBS: ${String(item.notes).toUpperCase()} ***`).bold(false).size(1);
   }
 }
 
@@ -122,8 +122,8 @@ export function buildTicket(job, config) {
     r.divider();
     for (const item of job.items || []) {
       r.pair(`${item.quantity}x ${item.name}`.slice(0, config.paperColumns - 12), brl(item.unit_price * item.quantity));
-      if (item.doneness) r.line(`   PONTO: ${DONENESS[item.doneness] || item.doneness}`);
-      if (item.notes) r.line(`   OBS: ${item.notes}`);
+      if (item.doneness) r.bold().line(`   PONTO: [ ${DONENESS[item.doneness] || item.doneness} ]`).bold(false);
+      if (item.notes) r.bold().line(`   *** OBS: ${String(item.notes).toUpperCase()} ***`).bold(false);
     }
     r.divider();
     r.pair('Subtotal', brl(o.subtotal));
@@ -135,7 +135,7 @@ export function buildTicket(job, config) {
     if (o.payment_method === 'DINHEIRO' && o.cash_change_for) {
       r.line(`Troco para ${brl(o.cash_change_for)} (levar ${brl(o.cash_change_for - o.total)})`);
     }
-    if (o.notes) r.divider().line(`OBS DO PEDIDO: ${o.notes}`);
+    if (o.notes) r.divider('=').bold().size(2).line(`OBS: ${String(o.notes).toUpperCase()}`).bold(false).size(1).divider('=');
     return r.feed(3).cut();
   }
 
@@ -163,11 +163,11 @@ export function compactDeliveryTicket(r, job, config, tpl) {
   r.divider();
   for (const item of job.items || []) {
     r.bold().line(`(${item.quantity}) ${item.name}`).bold(false);
-    if (tpl.show_doneness !== false && item.doneness) r.line(`  Ponto: ${DONENESS[item.doneness] || item.doneness}`);
-    if (tpl.show_notes !== false && item.notes) r.line(`  Obs: ${item.notes}`);
+    if (tpl.show_doneness !== false && item.doneness) r.bold().line(`  Ponto: [ ${DONENESS[item.doneness] || item.doneness} ]`).bold(false);
+    if (tpl.show_notes !== false && item.notes) r.bold().line(`  *** OBS: ${String(item.notes).toUpperCase()} ***`).bold(false);
   }
   const orderNotes = payload.order_notes || d.notes;
-  if (orderNotes) r.line(`Obs: ${orderNotes}`);
+  if (orderNotes) r.divider('=').bold().line(`*** OBS DO PEDIDO: ${String(orderNotes).toUpperCase()} ***`).bold(false).divider('=');
   r.divider();
   const name = d.customer_name || job.customer_name || '';
   r.bold().line([name, d.phone].filter(Boolean).join(' - ')).bold(false);
@@ -222,11 +222,11 @@ function productionTicket(r, job, config, tpl, label) {
   r.divider();
   for (const item of job.items || []) {
     r.size(Number(tpl.item_size) || 3).bold().line(`${item.quantity}x ${String(item.name).toUpperCase()}`).bold(false).size(1);
-    if (tpl.show_doneness && item.doneness) r.line(`   PONTO: ${DONENESS[item.doneness] || item.doneness}`);
-    if (tpl.show_notes && item.notes) r.line(`   OBS: ${item.notes}`);
+    if (tpl.show_doneness !== false && item.doneness) r.bold().line(`   PONTO: [ ${DONENESS[item.doneness] || item.doneness} ]`).bold(false);
+    if (tpl.show_notes !== false && item.notes) r.size(3).bold().line(`   *** OBS: ${String(item.notes).toUpperCase()} ***`).bold(false).size(1);
   }
   const orderNotes = payload.order_notes || job.delivery?.notes;
-  if (tpl.show_notes && orderNotes) r.divider().bold().line(`OBS: ${orderNotes}`).bold(false);
+  if (tpl.show_notes !== false && orderNotes) r.divider('=').bold().size(2).line(`OBS: ${String(orderNotes).toUpperCase()}`).bold(false).size(1).divider('=');
   r.divider();
   if (tpl.footer) r.align('center').line(tpl.footer).align('left');
   if (tpl.beep || config.beepOnOrder) r.beep();
@@ -252,6 +252,7 @@ export function billTicket(r, job, config) {
     const price = brl(num(item.unit_price) * num(item.quantity));
     r.pair(`${item.quantity}x ${item.name}`.slice(0, config.paperColumns - price.length - 1), price);
     if (num(item.quantity) > 1) r.line(`   (${brl(item.unit_price)} cada)`);
+    if (item.notes) r.line(`   (Obs: ${item.notes})`);
   }
   r.divider();
   r.pair('Subtotal', brl(o.subtotal));
@@ -288,9 +289,9 @@ export function driverTicket(r, job, config) {
   for (const item of job.items || []) {
     const price = brl(Number(item.unit_price || 0) * Number(item.quantity || 0));
     r.pair(`${item.quantity}x ${item.name}`.slice(0, config.paperColumns - price.length - 1), price);
-    if (item.notes) r.line(`   OBS: ${item.notes}`);
+    if (item.notes) r.bold().line(`   *** OBS: ${String(item.notes).toUpperCase()} ***`).bold(false);
   }
-  if (o.notes) r.line(`OBS DO PEDIDO: ${o.notes}`);
+  if (o.notes) r.divider('=').bold().line(`OBS DO PEDIDO: ${String(o.notes).toUpperCase()}`).bold(false).divider('=');
   r.divider();
   r.pair('Subtotal', brl(o.subtotal));
   r.pair('Taxa de entrega', brl(o.delivery_fee));
@@ -342,12 +343,18 @@ export function anotaTicket(r, job, config, tpl, { complete, data }) {
     if (Number(tpl.item_size) === 3 && !complete) r.size(3).bold().line(name).bold(false).size(1);
     else if (price) r.pair(name.slice(0, config.paperColumns - price.length - 1), price);
     else r.line(name);
-    if (tpl.show_doneness !== false && item.doneness) r.line(`    Ponto: ${DONENESS[item.doneness] || item.doneness}`);
-    if (tpl.show_notes !== false && item.notes) r.line(`    Obs: ${item.notes}`);
+    if (tpl.show_doneness !== false && item.doneness) r.bold().line(`    Ponto: [ ${DONENESS[item.doneness] || item.doneness} ]`).bold(false);
+    if (tpl.show_notes !== false && item.notes) {
+      if (!complete) {
+        r.size(3).bold().line(`   *** OBS: ${String(item.notes).toUpperCase()} ***`).bold(false).size(1);
+      } else {
+        r.bold().line(`   *** OBS: ${String(item.notes).toUpperCase()} ***`).bold(false);
+      }
+    }
     if (index < items.length - 1) r.align('center').line('--------').align('left');
   });
   const orderNotes = payload.order_notes || d.notes;
-  if (tpl.show_notes !== false && orderNotes) r.divider().line(`Obs do pedido: ${orderNotes}`);
+  if (tpl.show_notes !== false && orderNotes) r.divider('=').bold().size(2).line(`OBS: ${String(orderNotes).toUpperCase()}`).bold(false).size(1).divider('=');
 
   if (complete) {
     const name = d.customer_name || job.customer_name;
