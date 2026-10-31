@@ -38,8 +38,64 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const { tables, tabs, openTab, orders, orderItems } = useTableStore();
   const { currentShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
-  // Vindo da Visão geral com uma mesa escolhida, já abre nela
-  const [selectedTableId, setSelectedTableId] = useState<string | null>(() => useNavFocusStore.getState().tableId);
+  // Vindo da Visão geral com uma mesa escolhida ou restaurando sessão após atualização
+  const [selectedTableId, setSelectedTableIdState] = useState<string | null>(() => {
+    const focusId = useNavFocusStore.getState().tableId;
+    if (focusId) return focusId;
+    try {
+      const saved = sessionStorage.getItem('ponto_selected_table_id');
+      if (saved && useTableStore.getState().tables.some((t) => t.id === saved)) {
+        return saved;
+      }
+    } catch {}
+    return null;
+  });
+
+  const setSelectedTableId = (id: string | null) => {
+    setSelectedTableIdState(id);
+    try {
+      if (id) {
+        sessionStorage.setItem('ponto_selected_table_id', id);
+        if (!window.history.state?.tableSelected) {
+          window.history.pushState({ tableSelected: id }, '');
+        }
+      } else {
+        sessionStorage.removeItem('ponto_selected_table_id');
+        if (window.history.state?.tableSelected) {
+          window.history.back();
+        }
+      }
+    } catch {}
+  };
+
+  // Suporte ao botão Voltar do celular (Android gestos / navegador)
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      if (!e.state?.tableSelected && selectedTableId) {
+        setSelectedTableIdState(null);
+        try { sessionStorage.removeItem('ponto_selected_table_id'); } catch {}
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [selectedTableId]);
+
+  // Se outro componente (ex: Visão Geral) focar uma mesa ou aba com o WaiterModule já montado
+  useEffect(() => {
+    return useNavFocusStore.subscribe((state) => {
+      if (state.tableId) {
+        setSelectedTableIdState(state.tableId);
+        try { sessionStorage.setItem('ponto_selected_table_id', state.tableId); } catch {}
+        useNavFocusStore.getState().clear();
+      }
+      if (state.readySection) {
+        setSection('ready');
+        setFilter('READY');
+        useNavFocusStore.getState().clear();
+      }
+    });
+  }, []);
+
   useEffect(() => { useNavFocusStore.getState().clear(); }, []);
   const [filter, setFilter] = useState<'ALL' | 'READY' | TableStatus>(() => (useNavFocusStore.getState().readySection ? 'READY' : 'ALL'));
   const [chosenFilter, setTableFilter] = useState<TableFilter | null>(null);

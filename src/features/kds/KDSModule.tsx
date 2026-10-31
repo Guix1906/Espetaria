@@ -19,7 +19,20 @@ export function KDSModule() {
   const grillCount = orderItems.filter(isPendingProduction).length + deliveryOrders
     .filter((o) => o.status === 'PREPARING' || o.status === 'CONFIRMED')
     .reduce((sum, o) => sum + o.items.filter((i) => i.sector === 'GRILL').length, 0);
-  const [activeSector, setActiveSector] = useState<KDSSubSector>(() => currentProfile.role === 'COZINHA' ? 'kitchen' : 'grill');
+  const [activeSector, setActiveSectorState] = useState<KDSSubSector>(() => {
+    try {
+      const saved = localStorage.getItem('ponto_active_kds_sector') as KDSSubSector;
+      if (saved === 'grill' || saved === 'kitchen') return saved;
+    } catch {}
+    return currentProfile.role === 'COZINHA' ? 'kitchen' : 'grill';
+  });
+
+  const setActiveSector = (sector: KDSSubSector) => {
+    setActiveSectorState(sector);
+    try {
+      localStorage.setItem('ponto_active_kds_sector', sector);
+    } catch {}
+  };
 
   useEffect(() => {
     if (currentProfile.role === 'COZINHA') setActiveSector('kitchen');

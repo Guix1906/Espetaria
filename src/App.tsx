@@ -70,10 +70,46 @@ export function App() {
   );
 }
 
+const TAB_HASH_MAP: Record<ActiveTab, string> = {
+  master: '#/painel/visao-geral',
+  finance: '#/painel/financeiro',
+  reports: '#/painel/relatorios',
+  waiter: '#/painel/salao',
+  tables: '#/painel/mesas',
+  kds: '#/painel/producao',
+  cashier: '#/painel/caixa',
+  delivery: '#/painel/delivery',
+  menu: '#/painel/cardapio-digital',
+  products: '#/painel/produtos',
+  stock: '#/painel/estoque',
+  audit: '#/painel/auditoria',
+  team: '#/painel/equipe',
+  settings: '#/painel/configuracoes',
+};
+
+const HASH_TO_TAB: Record<string, ActiveTab> = Object.entries(TAB_HASH_MAP).reduce((acc, [tab, hash]) => {
+  acc[hash] = tab as ActiveTab;
+  return acc;
+}, {} as Record<string, ActiveTab>);
+
+function getInitialAdminTab(allowedTabs: ActiveTab[]): ActiveTab {
+  if (typeof window !== 'undefined') {
+    const currentHash = window.location.hash.toLowerCase();
+    const tabFromHash = HASH_TO_TAB[currentHash];
+    if (tabFromHash && allowedTabs.includes(tabFromHash)) return tabFromHash;
+
+    try {
+      const saved = localStorage.getItem('ponto_active_admin_tab') as ActiveTab;
+      if (saved && allowedTabs.includes(saved)) return saved;
+    } catch {}
+  }
+  return allowedTabs[0] ?? 'waiter';
+}
+
 function AdminWorkspace() {
   const currentProfile = useAuthStore((s) => s.currentProfile);
   const allowedTabs = tabsForRole(currentProfile.role);
-  const [requestedTab, setActiveTab] = useState<ActiveTab>(() => allowedTabs[0] ?? 'waiter');
+  const [requestedTab, setRequestedTab] = useState<ActiveTab>(() => getInitialAdminTab(allowedTabs));
   // Nunca renderiza uma tela fora das permissões do papel atual
   const activeTab: ActiveTab = allowedTabs.includes(requestedTab) ? requestedTab : (allowedTabs[0] ?? 'waiter');
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
@@ -81,9 +117,36 @@ function AdminWorkspace() {
   const mainRef = useRef<HTMLElement>(null);
   const previousTab = useRef(activeTab);
 
+  const setActiveTab = (tab: ActiveTab) => {
+    setRequestedTab(tab);
+    try {
+      localStorage.setItem('ponto_active_admin_tab', tab);
+      const targetHash = TAB_HASH_MAP[tab];
+      if (targetHash && window.location.hash !== targetHash) {
+        window.history.replaceState(null, '', targetHash);
+      }
+    } catch {}
+  };
+
+  // Se o usuário clicar em Voltar/Avançar no navegador, sincroniza a tela
   useEffect(() => {
-    setActiveTab(tabsForRole(currentProfile.role)[0] ?? 'waiter');
-  }, [currentProfile.role]);
+    const handleHash = () => {
+      const h = window.location.hash.toLowerCase();
+      const tab = HASH_TO_TAB[h];
+      if (tab && allowedTabs.includes(tab) && tab !== activeTab) {
+        setRequestedTab(tab);
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, [activeTab, allowedTabs]);
+
+  // Se o papel do usuário mudar e a tela atual não for permitida, redireciona para a permitida
+  useEffect(() => {
+    if (!allowedTabs.includes(requestedTab)) {
+      setActiveTab(allowedTabs[0] ?? 'waiter');
+    }
+  }, [allowedTabs, requestedTab]);
 
   useEffect(() => {
     document.title = `${PAGE_TITLES[activeTab]} | Ponto`;

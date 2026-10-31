@@ -51,6 +51,15 @@ export const CashierModule: React.FC = () => {
     const id = useNavFocusStore.getState().tableId;
     return id ? useTableStore.getState().tables.find((t) => t.id === id) ?? null : null;
   });
+  useEffect(() => {
+    return useNavFocusStore.subscribe((state) => {
+      if (state.tableId) {
+        const table = useTableStore.getState().tables.find((t) => t.id === state.tableId);
+        if (table) setSelectedTableForCheckout(table);
+        useNavFocusStore.getState().clear();
+      }
+    });
+  }, []);
   useEffect(() => { useNavFocusStore.getState().clear(); }, []);
   const [selectedClosedTabForReceipt, setSelectedClosedTabForReceipt] = useState<Tab | null>(null);
 

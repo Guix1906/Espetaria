@@ -29,7 +29,15 @@ export function Dialog({ label, onClose, children, placement = 'center' }: Dialo
     }
     openDialogCount += 1;
 
+    // Fecha o modal suavemente ao receber o evento cancel (tecla Esc ou gesto Voltar nativo)
+    const handleCancel = (e: Event) => {
+      e.preventDefault();
+      onCloseRef.current();
+    };
+    dialog.addEventListener('cancel', handleCancel);
+
     return () => {
+      dialog.removeEventListener('cancel', handleCancel);
       dialog.close();
       openDialogCount -= 1;
       if (openDialogCount === 0) document.body.style.overflow = previousOverflow;
