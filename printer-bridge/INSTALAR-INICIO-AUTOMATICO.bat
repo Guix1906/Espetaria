@@ -1,0 +1,52 @@
+@echo off
+chcp 65001 >nul
+cd /d "%~dp0"
+
+echo ================================================================
+echo   CONFIGURANDO IMPRESSAO AUTOMATICA INVISIVEL NO WINDOWS
+echo ================================================================
+echo.
+
+:: 1. Verifica Node.js
+where node >nul 2>&1
+if %errorlevel% neq 0 (
+  if not exist "C:\Program Files\nodejs\node.exe" (
+    echo [ERRO] O Node.js nao foi encontrado neste computador!
+    echo Por favor, instale o Node.js (https://nodejs.org) antes de continuar.
+    echo.
+    pause
+    exit /b 1
+  )
+)
+
+:: 2. Instala dependencias se for a primeira vez
+if not exist node_modules (
+  echo Instalando dependencias necessarias pela primeira vez, aguarde...
+  call npm install --omit=dev
+)
+
+:: 3. Cria atalho na pasta Inicializar do Windows
+set "STARTUP_FOLDER=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
+set "SHORTCUT_PATH=%STARTUP_FOLDER%\Ponto-Impressao-Oculto.lnk"
+set "TARGET_VBS=%~dp0iniciar-oculto.vbs"
+
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ws = New-Object -ComObject WScript.Shell; $s = $ws.CreateShortcut('%SHORTCUT_PATH%'); $s.TargetPath = 'wscript.exe'; $s.Arguments = '\"%TARGET_VBS%\"'; $s.WorkingDirectory = '%~dp0'; $s.Description = 'Impressao Automatica Loja Espetaria'; $s.Save()"
+
+:: 4. Encerra qualquer instancia anterior para nao duplicar
+powershell -NoProfile -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*runner.js*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
+
+:: 5. Inicia agora mesmo em segundo plano (invisivel)
+wscript.exe "%TARGET_VBS%"
+
+echo.
+echo ================================================================
+echo   [SUCESSO] IMPRESSAO AUTOMATICA INVISIVEL CONFIGURADA!
+echo ================================================================
+echo.
+echo  1. O servico ja esta rodando AGORA em segundo plano (invisivel).
+echo  2. Toda vez que ligar o computador, ele ligara sozinho.
+echo  3. Nao precisa deixar nenhuma janela preta aberta na tela.
+echo.
+echo ================================================================
+pause
