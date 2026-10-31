@@ -250,11 +250,11 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
               <button
                 type="button"
                 onClick={() => setIsTransferModalOpen(true)}
-                className="flex h-11 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-2.5 text-ink hover:bg-surface-soft active:scale-95 transition font-semibold text-xs sm:text-sm shadow-sm"
+                className="flex h-11 items-center gap-1.5 rounded-xl border border-line-strong bg-amber-50 border-amber-300 px-3 text-amber-900 hover:bg-amber-100 active:scale-95 transition font-bold text-xs sm:text-sm shadow-sm"
                 aria-label="Trocar de mesa"
               >
-                <ArrowLeftRight className="h-4 w-4 text-brand-700" />
-                <span className="hidden xs:inline">Trocar mesa</span>
+                <ArrowLeftRight className="h-4 w-4 text-amber-800 shrink-0" />
+                <span className="whitespace-nowrap">Trocar mesa</span>
               </button>
             )}
             <button type="button" onClick={() => setIsViewTabOpen(true)} className="flex min-h-[44px] shrink-0 flex-col items-end justify-center rounded-md border border-line-strong bg-surface px-2.5 py-1 text-right active:bg-surface-muted" aria-label={`Ver consumo e conta: ${formatBRL(activeTab?.total)}`}>
