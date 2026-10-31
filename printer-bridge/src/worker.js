@@ -172,6 +172,16 @@ export class PrintWorker {
   async tick() {
     if (!this.running) return;
     if (this.busy) { this.again = true; return; }
+
+    // Salvaguarda: em modo LIVE, se nenhuma impressora física responder ao teste na rede local,
+    // NÃO consome a fila. Isso evita que um computador fora da rede da loja (ex.: notebook em casa)
+    // sequestre os cupons e marque pedidos como FAILED após 3 tentativas de timeout.
+    if (this.config.mode === 'live' && this.latestProbe) {
+      const anyOnline = Object.values(this.latestProbe).some((p) => p && typeof p === 'object' && p.ok);
+      if (!anyOnline) {
+        return;
+      }
+    }
     this.busy = true;
     try {
       do {

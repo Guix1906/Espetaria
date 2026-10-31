@@ -14,6 +14,7 @@ import type { RestaurantTable, Tab, Order, OrderItem, DailyPrepStock, Shift, Pay
 class SyncService {
   private channel: RealtimeChannel | null = null;
   private isHydrated = false;
+  private isHydrating = false;
   private isSubscribed = false;
   private hadConnectionLoss = false;
   private removeResyncListeners: (() => void) | null = null;
@@ -23,6 +24,10 @@ class SyncService {
    * Carrega turno aberto, mesas, comandas ativas, pedidos, itens e estoque diário.
    */
   public async hydrateAll(): Promise<void> {
+    if (this.isHydrating) {
+      logger.debug({ context: 'SyncService', message: 'Hidratação já em andamento, ignorando chamada concorrente.' });
+      return;
+    }
     if (!isSupabaseConfigured) {
       logger.debug({
         context: 'SyncService',
@@ -38,6 +43,7 @@ class SyncService {
       return;
     }
 
+    this.isHydrating = true;
     try {
       logger.info({ context: 'SyncService', message: 'Iniciando sincronização e hidratação de dados remotos...' });
 
@@ -204,6 +210,8 @@ class SyncService {
       logger.info({ context: 'SyncService', message: 'Hidratação de dados remotos concluída com sucesso.' });
     } catch (err) {
       logger.error({ context: 'SyncService', message: 'Erro ao hidratar dados do Supabase', error: err });
+    } finally {
+      this.isHydrating = false;
     }
   }
 
