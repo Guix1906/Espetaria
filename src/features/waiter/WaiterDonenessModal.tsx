@@ -5,6 +5,7 @@ import { formatBRL, formatDoneness } from '../../lib/formatters';
 import type { Product } from '../../types/domain';
 import type { MeatDoneness } from '../../types/enums';
 import { WaiterSheet } from './WaiterSheet';
+import { triggerHaptic } from '../../lib/haptics';
 
 export interface MultiDonenessItem {
   doneness: MeatDoneness;
@@ -47,11 +48,20 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const isEditing = !!initial;
   const [selectedDoneness, setSelectedDoneness] = useState<MeatDoneness | null>(initial?.doneness ?? null);
   const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
-  const [donenessCounts, setDonenessCounts] = useState<Record<string, number>>(() => ({
-    MAL_PASSADA: 0,
-    AO_PONTO: 0,
-    BEM_PASSADA: 0,
-  }));
+  const [donenessCounts, setDonenessCounts] = useState<Record<string, number>>(() => {
+    if (initial?.doneness) {
+      return {
+        MAL_PASSADA: initial.doneness === 'MAL_PASSADA' ? initial.quantity : 0,
+        AO_PONTO: initial.doneness === 'AO_PONTO' ? initial.quantity : 0,
+        BEM_PASSADA: initial.doneness === 'BEM_PASSADA' ? initial.quantity : 0,
+      };
+    }
+    return {
+      MAL_PASSADA: 0,
+      AO_PONTO: 1,
+      BEM_PASSADA: 0,
+    };
+  });
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const showNotesDefault = !product.allows_doneness || !!initial?.notes || isJuiceProduct(product);
   const [showNotes, setShowNotes] = useState(showNotesDefault);
@@ -72,6 +82,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const needsDoneness = product.allows_doneness && (isEditing ? !selectedDoneness : totalDonenessQuantity === 0);
 
   const updateDonenessCount = (d: MeatDoneness, delta: number) => {
+    triggerHaptic(25);
     setErrorMessage(null);
     setDonenessCounts((prev) => {
       const current = prev[d] || 0;
@@ -84,7 +95,15 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   };
 
   const handleRowClick = (d: MeatDoneness) => {
-    if (totalDonenessQuantity === 0) {
+    triggerHaptic(25);
+    if (totalDonenessQuantity <= 1) {
+      setErrorMessage(null);
+      setDonenessCounts({
+        MAL_PASSADA: d === 'MAL_PASSADA' ? 1 : 0,
+        AO_PONTO: d === 'AO_PONTO' ? 1 : 0,
+        BEM_PASSADA: d === 'BEM_PASSADA' ? 1 : 0,
+      });
+    } else {
       updateDonenessCount(d, 1);
     }
   };
@@ -110,6 +129,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   };
 
   const handleConfirm = () => {
+    triggerHaptic(40);
     if (needsDoneness) {
       setErrorMessage('Escolha o ponto da carne para continuar.');
       return;

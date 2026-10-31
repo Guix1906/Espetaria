@@ -10,6 +10,8 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useCartStore } from '../../stores/useCartStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { triggerHaptic } from '../../lib/haptics';
 import type { Product, RestaurantTable } from '../../types/domain';
 import type { MeatDoneness } from '../../types/enums';
 import { ProductFormModal } from '../products/ProductFormModal';
@@ -21,6 +23,16 @@ import { TabItemsPanel } from './TabItemsPanel';
 import { optimizeThumbnailUrl } from '../../lib/imageOptimization';
 
 const TOP = 'TOP';
+function isEspetoProduct(p: Product) {
+  return p.sector === 'GRILL' || /espeto/i.test(p.name);
+}
+function isBebidaProduct(p: Product) {
+  return p.sector === 'BAR' || p.type === 'BEBIDA' || /bebida|cerveja|suco|refresco|jarra|refrigerante|água|drink|gin|dose|whisky|original|heineken|skol|long neck|red bull/i.test(p.name);
+}
+function isPorcaoProduct(p: Product) {
+  return !isEspetoProduct(p) && !isBebidaProduct(p);
+}
+
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 /** Nomes curtos para os chips de categoria (cabem sem rolagem lateral). */
@@ -38,8 +50,9 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
   const { currentProfile } = useAuthStore();
   const canManageProducts = !dedicated && ['MASTER', 'GERENTE'].includes(currentProfile.role);
   const { products, dailyPrepStock, categories: storeCategories } = useStockStore();
-  const { addItem, updateQuantity, getCart, getCartItemsCount, getCartTotal } = useCartStore();
-  const { tabs, orderItems } = useTableStore();
+  const { addItem, updateQuantity, getCart, getCartItemsCount, getCartTotal, clearCart } = useCartStore();
+  const { tabs, orderItems, addOrderAtomic } = useTableStore();
+  const { currentShift } = useShiftStore();
   const [selectedCategory, setSelectedCategory] = useState(TOP);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalProduct, setModalProduct] = useState<Product | null>(null);
@@ -60,6 +73,50 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
       return next;
     });
   };
+
+  const [isSendingQuick, setIsSendingQuick] = useState(false);
+  const handleQuickSend = () => {
+    if (isSendingQuick) return;
+    if (!currentShift || currentShift.status !== 'ABERTO') {
+      notify('O turno precisa estar aberto para enviar o pedido.', 'error');
+      return;
+    }
+    if (!activeTab) {
+      notify('Comanda não encontrada para esta mesa.', 'error');
+      return;
+    }
+    const cartItems = getCart(table.id);
+    if (!cartItems.length) {
+      notify('Adicione pelo menos um item ao pedido.', 'error');
+      return;
+    }
+
+    setIsSendingQuick(true);
+    triggerHaptic(30);
+    try {
+      addOrderAtomic(
+        currentShift.id,
+        activeTab.id,
+        cartItems.map((item) => ({
+          productId: item.product.id,
+          quantity: item.quantity,
+          doneness: item.doneness,
+          notes: item.notes || undefined,
+        })),
+        currentProfile.id
+      );
+      clearCart(table.id);
+      triggerHaptic(60);
+      setOrderSent(true);
+      notify('Pedido enviado à produção com sucesso!', 'success');
+    } catch (err: unknown) {
+      triggerHaptic(80);
+      notify(err instanceof Error ? err.message : 'Não foi possível enviar o pedido.', 'error');
+    } finally {
+      setIsSendingQuick(false);
+    }
+  };
+
   const activeTab = tabs.find((tab) => tab.table_id === table.id && tab.status === 'OPEN');
   // Abrir a mesa conta como "levou à mesa": o aviso de pronto some sem o botão "Servir"
   useEffect(() => {
@@ -99,9 +156,15 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
     ? [{ id: 'search', title: 'Resultados', rows: sortRows(activeProducts.filter((p) => p.name.toLocaleLowerCase('pt-BR').includes(query)).sort(byOrder)) }]
     : selectedCategory === TOP
       ? [{ id: TOP, title: 'Mais pedidos', rows: sortRows(topProducts) }]
-      : selectedCategory === 'ALL'
-        ? categories.map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }))
-        : categories.filter((c) => c.id === selectedCategory).map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }));
+      : selectedCategory === 'GROUP_ESPETOS'
+        ? [{ id: 'GROUP_ESPETOS', title: 'Espetos', rows: sortRows(activeProducts.filter(isEspetoProduct).sort(byOrder)) }]
+        : selectedCategory === 'GROUP_BEBIDAS'
+          ? [{ id: 'GROUP_BEBIDAS', title: 'Bebidas', rows: sortRows(activeProducts.filter(isBebidaProduct).sort(byOrder)) }]
+          : selectedCategory === 'GROUP_PORCOES'
+            ? [{ id: 'GROUP_PORCOES', title: 'Porções & Acompanhamentos', rows: sortRows(activeProducts.filter(isPorcaoProduct).sort(byOrder)) }]
+            : selectedCategory === 'ALL'
+              ? categories.map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }))
+              : categories.filter((c) => c.id === selectedCategory).map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }));
 
   const { notify, requestChoice } = useFeedback();
   /** Rola até a busca do cardápio, descontando o cabeçalho fixo (sem scrollIntoView). */
@@ -112,18 +175,37 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
     window.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + window.scrollY - header - 8), behavior: 'smooth' });
   };
   const tryAdd = (action: () => void) => {
-    try { action(); } catch (error: unknown) { notify(error instanceof Error ? error.message : 'Estoque insuficiente.', 'error'); }
+    try {
+      action();
+      triggerHaptic(30);
+    } catch (error: unknown) {
+      triggerHaptic(80);
+      notify(error instanceof Error ? error.message : 'Estoque insuficiente.', 'error');
+    }
   };
   const handleAdd = (product: Product) => {
     setOrderSent(false);
     setSwapping(null);
-    if (product.allows_doneness || /acompanhamento|suco/i.test(product.name)) setModalProduct(product);
-    else tryAdd(() => addItem(table.id, product, 1));
+    if (product.allows_doneness || /acompanhamento|suco/i.test(product.name)) {
+      triggerHaptic(25);
+      setModalProduct(product);
+    } else {
+      tryAdd(() => addItem(table.id, product, 1));
+    }
   };
-  // No stepper: + repete a última linha do produto (mesmo ponto); − tira da última
   const lastLine = (product: Product) => [...cart].reverse().find((item) => item.product.id === product.id);
-  const increment = (product: Product) => { const line = lastLine(product); if (line) tryAdd(() => updateQuantity(table.id, line.id, 1)); else handleAdd(product); };
-  const decrement = (product: Product) => { const line = lastLine(product); if (line) updateQuantity(table.id, line.id, -1); };
+  const increment = (product: Product) => {
+    const line = lastLine(product);
+    if (line) tryAdd(() => updateQuantity(table.id, line.id, 1));
+    else handleAdd(product);
+  };
+  const decrement = (product: Product) => {
+    const line = lastLine(product);
+    if (line) {
+      triggerHaptic(25);
+      updateQuantity(table.id, line.id, -1);
+    }
+  };
   const handleDonenessConfirm = (doneness: MeatDoneness | null, notes: string, quantity: number, multiDoneness?: { doneness: MeatDoneness; quantity: number }[]) => {
     if (!modalProduct) return;
     if (multiDoneness && multiDoneness.length > 0) {
@@ -161,13 +243,41 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
             <span className="font-mono text-[17px] font-bold text-ink">{formatBRL(activeTab?.total)}</span>
           </button>
         </div>
-        <div className="mx-auto mt-2 flex max-w-5xl flex-nowrap gap-1.5 overflow-x-auto pb-0.5" aria-label="Categorias do cardápio">
-          {[{ id: TOP, name: 'Mais pedidos' }, ...categories, { id: 'ALL', name: 'Todos' }].map((category) => (
-            <button key={category.id} type="button" aria-pressed={selectedCategory === category.id && !query} onClick={() => { setSelectedCategory(category.id); setSearchQuery(''); scrollToCatalog(); }}
-              className={`h-12 shrink-0 whitespace-nowrap rounded-md border px-4 text-[18px] font-semibold ${selectedCategory === category.id && !query ? 'border-ink bg-ink text-white' : 'border-line bg-surface text-ink'}`}>
-              {category.id === TOP ? category.name : shortCategoryName(category.name)}
-            </button>
-          ))}
+        {/* 4 Botões Principais Fixos (Acesso Imediato com o Polegar) */}
+        <div className="mx-auto mt-2 grid grid-cols-4 gap-1.5 max-w-5xl" aria-label="Grupos principais">
+          {[
+            { id: TOP, label: '⭐ Pedidos' },
+            { id: 'GROUP_ESPETOS', label: '🔥 Espetos' },
+            { id: 'GROUP_BEBIDAS', label: '🍺 Bebidas' },
+            { id: 'GROUP_PORCOES', label: '🍟 Porções' },
+          ].map((grp) => {
+            const isGroupActive = selectedCategory === grp.id && !query;
+            return (
+              <button
+                key={grp.id}
+                type="button"
+                onClick={() => { triggerHaptic(20); setSelectedCategory(grp.id); setSearchQuery(''); scrollToCatalog(); }}
+                className={`h-11 rounded-xl text-center text-[15px] font-bold border transition ${isGroupActive ? 'bg-ink text-white border-ink shadow-sm' : 'bg-surface text-ink border-line hover:border-line-strong active:bg-surface-muted'}`}>
+                {grp.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Subcategorias em formato de pílulas rápidas */}
+        <div className="mx-auto mt-1.5 flex max-w-5xl flex-nowrap gap-1 overflow-x-auto pb-0.5" aria-label="Subcategorias do cardápio">
+          {[{ id: 'ALL', name: 'Todos' }, ...categories].map((category) => {
+            const isSubActive = selectedCategory === category.id && !query;
+            return (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => { triggerHaptic(15); setSelectedCategory(category.id); setSearchQuery(''); scrollToCatalog(); }}
+                className={`h-8 shrink-0 whitespace-nowrap rounded-lg border px-2.5 text-xs font-semibold ${isSubActive ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line bg-surface text-ink-muted active:bg-surface-muted'}`}>
+                {category.id === 'ALL' ? 'Todos' : shortCategoryName(category.name)}
+              </button>
+            );
+          })}
         </div>
       </div>
       <div className="mx-auto max-w-5xl space-y-3 px-3 pt-3 sm:px-6">
@@ -214,7 +324,14 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
                 const blocked = !activeTab || (out && inCart === 0);
                 const tag = stockText(level, left, inCart);
                 return (
-                  <li key={product.id} className="flex min-h-[88px] items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3">
+                  <li
+                    key={product.id}
+                    onClick={() => {
+                      if (blocked || out) return;
+                      handleAdd(product);
+                    }}
+                    className={`flex min-h-[88px] items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 transition select-none ${!blocked && !out ? 'cursor-pointer active:bg-surface-muted hover:border-line-strong' : ''}`}
+                  >
                     {showPhotos && product.image_url && (
                       <img
                         src={optimizeThumbnailUrl(product.image_url, 112)}
@@ -223,7 +340,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
                         decoding="async"
                         width={56}
                         height={56}
-                        className={`h-14 w-14 shrink-0 rounded-md object-cover ${out && !inCart ? 'opacity-50 grayscale' : ''}`}
+                        className={`h-14 w-14 shrink-0 rounded-md object-cover pointer-events-none ${out && !inCart ? 'opacity-50 grayscale' : ''}`}
                         onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                       />
                     )}
@@ -234,18 +351,24 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
                         {tag && (out && !inCart ? <StatusTag kind="alert" className="font-semibold">{tag.text}</StatusTag> : <span className={tag.cls}>{tag.text}</span>)}
                       </p>
                     </div>
-                    {inCart > 0 ? (
-                      <div className="flex h-12 shrink-0 items-center rounded-md bg-brand-500 text-white">
-                        <button type="button" className="flex h-12 w-11 items-center justify-center" onClick={() => decrement(product)} aria-label={`Tirar 1 ${product.name}`}><Minus className="h-5 w-5" /></button>
-                        <output className="min-w-[1.75rem] text-center font-mono text-lg font-bold" aria-live="polite" aria-label={`${inCart} no pedido`}>{inCart}</output>
-                        <button type="button" className="flex h-12 w-11 items-center justify-center disabled:opacity-40" disabled={blocked || out} onClick={() => increment(product)} aria-label={`Mais 1 ${product.name}`}><Plus className="h-5 w-5" /></button>
-                      </div>
-                    ) : !out && (
-                      <button type="button" disabled={blocked} onClick={() => handleAdd(product)} className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md border-2 border-brand-500 text-brand-500 active:bg-brand-50 disabled:opacity-40"
-                        aria-label={`Adicionar ${product.name}, ${formatBRL(product.price)}${level === 'low' ? `. Restam ${left}` : ''}`}>
-                        <Plus className="h-5 w-5" />
-                      </button>
-                    )}
+                    <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                      {inCart > 0 ? (
+                        <div className="flex h-12 items-center rounded-md bg-brand-500 text-white">
+                          <button type="button" className="flex h-12 w-11 items-center justify-center active:bg-brand-600" onClick={() => decrement(product)} aria-label={`Tirar 1 ${product.name}`}><Minus className="h-5 w-5" /></button>
+                          <output className="min-w-[1.75rem] text-center font-mono text-lg font-bold" aria-live="polite" aria-label={`${inCart} no pedido`}>{inCart}</output>
+                          <button type="button" className="flex h-12 w-11 items-center justify-center disabled:opacity-40 active:bg-brand-600" disabled={blocked || out} onClick={() => increment(product)} aria-label={`Mais 1 ${product.name}`}><Plus className="h-5 w-5" /></button>
+                        </div>
+                      ) : !out && (
+                        <button
+                          type="button"
+                          disabled={blocked}
+                          onClick={(e) => { e.stopPropagation(); handleAdd(product); }}
+                          className="flex h-12 w-12 items-center justify-center rounded-md border-2 border-brand-500 text-brand-500 active:bg-brand-50 disabled:opacity-40"
+                          aria-label={`Adicionar ${product.name}, ${formatBRL(product.price)}${level === 'low' ? `. Restam ${left}` : ''}`}>
+                          <Plus className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
                   </li>
                 );
               })}
@@ -271,12 +394,42 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
       </div>
       {cartCount > 0 && (
         <div className="fixed inset-x-3 z-30 mx-auto max-w-2xl" style={{ bottom: 'max(26px, calc(env(safe-area-inset-bottom) + 12px))' }}>
-          <button type="button" onClick={() => setIsCartDrawerOpen(true)} className="flex h-[62px] w-full items-center gap-3 rounded-2xl bg-brand-500 px-3.5 text-white shadow-[0_8px_24px_rgba(80,30,10,0.3)] active:bg-brand-700">
-            <span className="flex h-8 min-w-[32px] items-center justify-center rounded-md bg-white px-1.5 font-mono text-base font-bold text-brand-500">{cartCount}</span>
-            <span className="min-w-0 flex-1 whitespace-nowrap text-left text-[17px] font-semibold xs:text-[17px]">Revisar e enviar</span>
-            <span className="whitespace-nowrap font-mono text-[17px] font-bold xs:text-[17px]">{formatBRL(cartTotal)}</span>
-            <ArrowRight className="h-5 w-5" aria-hidden="true" />
-          </button>
+          <div className="flex h-[62px] w-full items-center justify-between gap-2 rounded-2xl bg-brand-500 p-2 text-white shadow-[0_8px_24px_rgba(80,30,10,0.3)]">
+            <button
+              type="button"
+              onClick={() => setIsCartDrawerOpen(true)}
+              className="flex min-w-0 flex-1 items-center gap-2.5 rounded-xl px-2 py-1 text-left active:bg-brand-600 transition"
+              aria-label={`Ver carrinho: ${cartCount} itens por ${formatBRL(cartTotal)}`}
+            >
+              <span className="flex h-8 min-w-[32px] items-center justify-center rounded-lg bg-white px-1.5 font-mono text-base font-bold text-brand-500">
+                {cartCount}
+              </span>
+              <div className="min-w-0 flex-1">
+                <span className="block truncate font-mono text-base font-bold leading-tight">
+                  {formatBRL(cartTotal)}
+                </span>
+                <span className="block truncate text-xs text-brand-100 font-medium">
+                  Ver itens ›
+                </span>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleQuickSend}
+              disabled={isSendingQuick}
+              className="flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-white px-4 text-base font-bold text-brand-700 shadow-sm active:bg-brand-50 disabled:opacity-50 transition"
+            >
+              {isSendingQuick ? (
+                <span>Enviando...</span>
+              ) : (
+                <>
+                  <span>⚡ Enviar</span>
+                  <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
       <WaiterDonenessModal product={modalProduct} isOpen={!!modalProduct} onClose={() => setModalProduct(null)} onConfirm={handleDonenessConfirm} maxQuantity={(() => { if (!modalProduct) return undefined; const left = remainingFor(modalProduct, products, dailyPrepStock, cart); return left === null ? undefined : Math.max(1, left); })()} />
