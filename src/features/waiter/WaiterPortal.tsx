@@ -44,14 +44,26 @@ export function WaiterPortal() {
   const [password, setPassword] = useState('');
   const [profileId, setProfileId] = useState('');
   // E-mail usado por vários garçons: cada um escolhe o próprio nome (login interno garcon+nome@...)
-  const [sharedLogins, setSharedLogins] = useState<{ name: string; login: string }[]>([]);
+  const [sharedLogins, setSharedLogins] = useState<{ name: string; login: string }[]>(() => {
+    try {
+      const e = rememberedEmail('waiter').trim().toLowerCase();
+      if (e) {
+        const cached = localStorage.getItem(`ponto_waiter_logins_${e}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 1) return parsed;
+        }
+      }
+    } catch {}
+    return [];
+  });
   const [login, setLogin] = useState(() => rememberedEmail('waiter-login'));
   useEffect(() => {
     if (!isSupabaseConfigured || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setSharedLogins([]); return; }
     let cancelled = false;
     const timer = window.setTimeout(() => {
       staffApi.sharedLogins(email).then((list) => { if (!cancelled) setSharedLogins(list.length > 1 ? list : []); }).catch(() => undefined);
-    }, 400);
+    }, 100);
     return () => { cancelled = true; window.clearTimeout(timer); };
   }, [email]);
   const [busy, setBusy] = useState(false);

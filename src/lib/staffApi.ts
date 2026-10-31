@@ -61,11 +61,40 @@ export const staffApi = {
     await invoke({ action: 'setup_first_admin', ...input });
   },
 
-  /** Colaboradores que entram com o mesmo e-mail (ex.: garcon@loja): nome e login de cada um. */
+  /** Colaboradores que entram com o mesmo e-mail (ex.: garcon@loja): nome e login de cada um.
+   * Utiliza RPC direto no Postgres (5ms) + cache local para resposta imediata sem espera. */
   async sharedLogins(email: string): Promise<{ name: string; login: string }[]> {
     if (!isSupabaseConfigured || !email.includes('@')) return [];
-    const { logins } = await invoke<{ logins: { name: string; login: string }[] }>({ action: 'shared_logins', email: email.trim() });
-    return logins ?? [];
+    const cleanEmail = email.trim().toLowerCase();
+    const cacheKey = `ponto_waiter_logins_${cleanEmail}`;
+
+    try {
+      const { data, error } = await supabase.rpc('get_shared_waiter_logins', { p_email: cleanEmail });
+      if (!error && Array.isArray(data) && data.length > 0) {
+        try { localStorage.setItem(cacheKey, JSON.stringify(data)); } catch {}
+        return data as { name: string; login: string }[];
+      }
+    } catch {
+      // continua para fallback
+    }
+
+    try {
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+
+    try {
+      const { logins } = await invoke<{ logins: { name: string; login: string }[] }>({ action: 'shared_logins', email: cleanEmail });
+      if (logins && logins.length > 0) {
+        try { localStorage.setItem(cacheKey, JSON.stringify(logins)); } catch {}
+        return logins;
+      }
+    } catch {}
+
+    return [];
   },
 
   async list(): Promise<StaffMember[]> {

@@ -18,6 +18,7 @@ import { WaiterDonenessModal } from './WaiterDonenessModal';
 import { WaiterViewTab } from './WaiterViewTab';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { TabItemsPanel } from './TabItemsPanel';
+import { optimizeThumbnailUrl } from '../../lib/imageOptimization';
 
 const TOP = 'TOP';
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -49,6 +50,16 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
   const [orderSent, setOrderSent] = useState(false);
   const [billRequested, setBillRequested] = useState(false);
   const [swapping, setSwapping] = useState<string | null>(null);
+  const [showPhotos, setShowPhotos] = useState(() => {
+    try { return localStorage.getItem('ponto_waiter_show_photos') !== 'false'; } catch { return true; }
+  });
+  const togglePhotos = () => {
+    setShowPhotos((prev) => {
+      const next = !prev;
+      try { localStorage.setItem('ponto_waiter_show_photos', String(next)); } catch {}
+      return next;
+    });
+  };
   const activeTab = tabs.find((tab) => tab.table_id === table.id && tab.status === 'OPEN');
   // Abrir a mesa conta como "levou à mesa": o aviso de pronto some sem o botão "Servir"
   useEffect(() => {
@@ -87,8 +98,10 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
   const sections: { id: string; title: string; rows: ReturnType<typeof rowFor>[] }[] = query
     ? [{ id: 'search', title: 'Resultados', rows: sortRows(activeProducts.filter((p) => p.name.toLocaleLowerCase('pt-BR').includes(query)).sort(byOrder)) }]
     : selectedCategory === TOP
-      ? [{ id: TOP, title: 'Mais pedidos', rows: sortRows(topProducts) }, ...categories.map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }))]
-      : categories.filter((c) => c.id === selectedCategory).map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }));
+      ? [{ id: TOP, title: 'Mais pedidos', rows: sortRows(topProducts) }]
+      : selectedCategory === 'ALL'
+        ? categories.map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }))
+        : categories.filter((c) => c.id === selectedCategory).map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }));
 
   const { notify, requestChoice } = useFeedback();
   /** Rola até a busca do cardápio, descontando o cabeçalho fixo (sem scrollIntoView). */
@@ -149,7 +162,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
           </button>
         </div>
         <div className="mx-auto mt-2 flex max-w-5xl flex-nowrap gap-1.5 overflow-x-auto pb-0.5" aria-label="Categorias do cardápio">
-          {[{ id: TOP, name: 'Mais pedidos' }, ...categories].map((category) => (
+          {[{ id: TOP, name: 'Mais pedidos' }, ...categories, { id: 'ALL', name: 'Todos' }].map((category) => (
             <button key={category.id} type="button" aria-pressed={selectedCategory === category.id && !query} onClick={() => { setSelectedCategory(category.id); setSearchQuery(''); scrollToCatalog(); }}
               className={`h-12 shrink-0 whitespace-nowrap rounded-md border px-4 text-[18px] font-semibold ${selectedCategory === category.id && !query ? 'border-ink bg-ink text-white' : 'border-line bg-surface text-ink'}`}>
               {category.id === TOP ? category.name : shortCategoryName(category.name)}
@@ -183,6 +196,13 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
             <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar item" className="h-11 w-full rounded-lg border border-line-strong bg-surface pl-10 pr-3 text-base placeholder:text-ink-muted" />
           </label>
+          <button
+            type="button"
+            onClick={togglePhotos}
+            className={`h-11 shrink-0 px-3 rounded-lg border text-sm font-semibold flex items-center gap-1.5 transition ${showPhotos ? 'border-line bg-surface text-ink-muted active:bg-surface-muted' : 'border-brand-500 bg-brand-50 text-brand-700 font-bold'}`}
+            title={showPhotos ? 'Ocultar fotos para carregamento instantâneo' : 'Exibir fotos dos produtos'}>
+            {showPhotos ? 'Ocultar fotos' : '⚡ Sem fotos'}
+          </button>
           {canManageProducts && <button type="button" onClick={() => setIsProductModalOpen(true)} className="btn-secondary h-11 shrink-0 px-3 text-base" title="Cadastrar novo produto no cardápio"><Plus className="h-4 w-4" /><span className="hidden sm:inline">Novo produto</span></button>}
         </div>
         {sections.every((s) => !s.rows.length) ? <EmptyState title="Nenhum produto encontrado" description="Tente outro nome ou escolha uma categoria diferente." action={<button type="button" className="btn-secondary" onClick={() => { setSelectedCategory(TOP); setSearchQuery(''); }}>Limpar busca</button>} /> : sections.filter((s) => s.rows.length).map((section) => (
@@ -195,9 +215,17 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
                 const tag = stockText(level, left, inCart);
                 return (
                   <li key={product.id} className="flex min-h-[88px] items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3">
-                    {product.image_url && (
-                      <img src={product.image_url} alt="" loading="lazy" className={`h-14 w-14 shrink-0 rounded-md object-cover ${out && !inCart ? 'opacity-50 grayscale' : ''}`}
-                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                    {showPhotos && product.image_url && (
+                      <img
+                        src={optimizeThumbnailUrl(product.image_url, 112)}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        width={56}
+                        height={56}
+                        className={`h-14 w-14 shrink-0 rounded-md object-cover ${out && !inCart ? 'opacity-50 grayscale' : ''}`}
+                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                      />
                     )}
                     <div className="min-w-0 flex-1">
                       <h3 className="text-[23px] font-bold leading-tight text-ink">{product.name}</h3>
@@ -222,6 +250,22 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
                 );
               })}
             </ul>
+            {section.id === TOP && !query && (
+              <div className="pt-2 pb-2 text-center">
+                <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">Ver outras categorias</p>
+                <div className="flex flex-wrap justify-center gap-1.5">
+                  {categories.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      onClick={() => { setSelectedCategory(c.id); scrollToCatalog(); }}
+                      className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-semibold text-ink active:bg-surface-muted">
+                      {shortCategoryName(c.name)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
         ))}
       </div>

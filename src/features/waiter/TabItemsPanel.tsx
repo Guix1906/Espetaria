@@ -36,6 +36,10 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
   const totalCount = active.reduce((s, i) => s + i.quantity, 0);
 
   const cancel = async (item: OrderItem, swap: boolean) => {
+    if (!isManager) {
+      notify('Garçom não tem permissão para cancelar ou alterar pedidos já lançados. Solicite ao gerente ou caixa.', 'error');
+      return;
+    }
     if (!currentShift) { notify('Turno fechado: não é possível alterar a comanda.', 'error'); return; }
     const reason = swap
       ? `Troca de item (${item.product_name})`
@@ -94,7 +98,8 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
         <ul className="divide-y divide-line rounded-lg border border-line">
           {active.map((item) => {
             const status = getOrderItemStatusConfig(item.status);
-            const canChange = item.status !== 'DELIVERED' || isManager;
+            // Somente gerência ou caixa pode alterar/cancelar itens já lançados; garçom nunca cancela após lançamento
+            const canChange = isManager && item.status !== 'DELIVERED';
             return (
               <li key={item.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 p-3">
                 <div className="min-w-0 flex-1">

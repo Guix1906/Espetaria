@@ -5,6 +5,7 @@ import { WaiterPortal, isWaiterProfile } from '../WaiterPortal';
 import { WaiterModule } from '../WaiterModule';
 import { WaiterOrderPad } from '../WaiterOrderPad';
 import { WaiterDonenessModal } from '../WaiterDonenessModal';
+import { TabItemsPanel } from '../TabItemsPanel';
 import { INITIAL_PROFILES, INITIAL_PRODUCTS, INITIAL_TABLES } from '../../../lib/mockData';
 import { useAuthStore } from '../../../stores/useAuthStore';
 import { useTableStore } from '../../../stores/useTableStore';
@@ -109,6 +110,22 @@ describe('Area dedicada do garcom', () => {
     expect(useTableStore.getState().orders).toHaveLength(0);
     expect(useTableStore.getState().getTabByTableId(table.id)?.subtotal).toBe(0);
     expect(useStockStore.getState().getProductDailyStock(product.id)?.current_quantity).toBe(1);
+  });
+
+  it('garcom nao tem permissao para cancelar ou trocar item ja lancado', () => {
+    useAuthStore.setState({ currentProfile: waiter });
+    const tab = useTableStore.getState().openTab(table.id, 'Cliente', 2, '', waiter.id, 'shift-test');
+    useStockStore.getState().initShiftStock('shift-test', [{ productId: product.id, quantity: 5 }], waiter.id);
+    useTableStore.getState().addOrderAtomic('shift-test', tab.id, [{ productId: product.id, quantity: 1 }], waiter.id);
+    const item = useTableStore.getState().orderItems[0]!;
+
+    // 1. Tentar chamar a store como garçom deve lançar erro
+    expect(() => useTableStore.getState().cancelOrderItemAtomic(item.id, 'Engano', waiter.id, 'shift-test')).toThrow(/Garçom não tem permissão/);
+
+    // 2. No HTML do painel de itens para o garçom, não pode existir botão de Trocar nem Lixeira
+    const html = renderToStaticMarkup(<FeedbackProvider><TabItemsPanel table={table} compact /></FeedbackProvider>);
+    expect(html).not.toContain('Trocar');
+    expect(html).not.toContain('Cancelar');
   });
 
   it('espeto com acompanhamento ocupa o espeto e o arroz no rascunho e na baixa', () => {

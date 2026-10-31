@@ -47,11 +47,19 @@ class SyncService {
     try {
       logger.info({ context: 'SyncService', message: 'Iniciando sincronização e hidratação de dados remotos...' });
 
-      // 0. Cardápio (IDs reais do banco; os IDs de demonstração não existem no Supabase)
-      const { data: dbProducts, error: productsError } = await supabase
-        .from('products')
-        .select('*')
-        .order('display_order', { ascending: true });
+      // 0. Carga inicial em paralelo: produtos, categorias, turno ativo e mesas
+      const [
+        { data: dbProducts, error: productsError },
+        { data: dbCategories, error: categoriesError },
+        { data: shiftData, error: shiftError },
+        { data: dbTables, error: tablesError },
+      ] = await Promise.all([
+        supabase.from('products').select('*').order('display_order', { ascending: true }),
+        supabase.from('categories').select('*').order('display_order', { ascending: true }),
+        supabase.from('shifts').select('*').eq('status', 'ABERTO').order('opened_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('restaurant_tables').select('*').eq('active', true).order('number', { ascending: true }),
+      ]);
+
       if (productsError) {
         logger.warn({ context: 'SyncService', message: 'Aviso ao buscar produtos', error: productsError });
       } else if (dbProducts && dbProducts.length > 0) {
@@ -60,38 +68,17 @@ class SyncService {
         });
       }
 
-      // 0b. Categorias reais (os filtros do garçom e do cadastro dependem dos IDs do banco)
-      const { data: dbCategories, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*')
-        .order('display_order', { ascending: true });
       if (categoriesError) {
         logger.warn({ context: 'SyncService', message: 'Aviso ao buscar categorias', error: categoriesError });
       } else if (dbCategories && dbCategories.length > 0) {
         useStockStore.setState({ categories: dbCategories as Category[] });
       }
 
-      // 1. Busca turno aberto
-      const { data: shiftData, error: shiftError } = await supabase
-        .from('shifts')
-        .select('*')
-        .eq('status', 'ABERTO')
-        .order('opened_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
       if (shiftError) {
         logger.warn({ context: 'SyncService', message: 'Aviso ao buscar turno ativo', error: shiftError });
       } else {
         useShiftStore.setState({ currentShift: (shiftData as Shift | null) ?? null });
       }
-
-      // 2. Busca mesas cadastradas
-      const { data: dbTables, error: tablesError } = await supabase
-        .from('restaurant_tables')
-        .select('*')
-        .eq('active', true)
-        .order('number', { ascending: true });
 
       if (tablesError) {
         logger.warn({ context: 'SyncService', message: 'Aviso ao buscar mesas', error: tablesError });
@@ -197,14 +184,24 @@ class SyncService {
         useStockStore.setState({ dailyPrepStock: [] });
       }
 
-      // 6. Fila de impressão e pedidos de delivery (cardápio digital)
-      await Promise.all([
+      // 6. Configurações e filas auxiliares (garçom no celular carrega apenas o essencial)
+      const currentRole = useAuthStore.getState().currentProfile?.role;
+      const isWaiter = currentRole === 'GARCOM';
+
+      const auxPromises: Promise<unknown>[] = [
         useSettingsStore.getState().loadRemoteSettings(),
-        useDeliveryStore.getState().loadWhatsAppMessages(),
-        usePrintStore.getState().loadRemoteJobs(),
         usePrintStore.getState().loadPrinterStatus(),
-        useDeliveryStore.getState().loadRemoteDeliveryOrders(),
-      ]);
+      ];
+
+      if (!isWaiter) {
+        auxPromises.push(
+          useDeliveryStore.getState().loadWhatsAppMessages(),
+          usePrintStore.getState().loadRemoteJobs(),
+          useDeliveryStore.getState().loadRemoteDeliveryOrders()
+        );
+      }
+
+      await Promise.all(auxPromises);
 
       this.isHydrated = true;
       logger.info({ context: 'SyncService', message: 'Hidratação de dados remotos concluída com sucesso.' });

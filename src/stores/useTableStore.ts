@@ -390,6 +390,10 @@ export const useTableStore = create<TableState>((set, get) => ({
   },
 
   cancelOrderItemAtomic: (orderItemId, reason, userId, shiftId, returnStock) => {
+    const currentRole = useAuthStore.getState().currentProfile?.role;
+    if (currentRole === 'GARCOM') {
+      throw new Error('Garçom não tem permissão para cancelar ou excluir itens da comanda.');
+    }
     const item = get().orderItems.find((i) => i.id === orderItemId);
     if (!item) throw new Error('Item não encontrado.');
     if (item.status === 'CANCELLED') throw new Error('Item já cancelado.');
