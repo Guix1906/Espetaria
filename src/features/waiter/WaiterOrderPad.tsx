@@ -1,6 +1,6 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
-import { ArrowLeft, ArrowRight, CheckCircle2, Minus, Plus, Search, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Minus, Plus, Search, X, ArrowLeftRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { formatBRL } from '../../lib/formatters';
@@ -19,6 +19,7 @@ import { WaiterCartDrawer } from './WaiterCartDrawer';
 import { WaiterDonenessModal } from './WaiterDonenessModal';
 import { WaiterViewTab } from './WaiterViewTab';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
+import { TableTransferModal } from './TableTransferModal';
 import { TabItemsPanel } from './TabItemsPanel';
 import { optimizeThumbnailUrl } from '../../lib/imageOptimization';
 
@@ -44,9 +45,14 @@ export function shortCategoryName(name: string) {
   return n.length > 22 ? `${n.slice(0, 21).trimEnd()}.` : n;
 }
 
-interface WaiterOrderPadProps { table: RestaurantTable; onBackToTables: () => void; dedicated?: boolean; }
+interface WaiterOrderPadProps {
+  table: RestaurantTable;
+  onBackToTables: () => void;
+  dedicated?: boolean;
+  onTableTransferred?: (newTable: RestaurantTable) => void;
+}
 
-export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: WaiterOrderPadProps) {
+export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTableTransferred }: WaiterOrderPadProps) {
   const { currentProfile } = useAuthStore();
   const canManageProducts = !dedicated && ['MASTER', 'GERENTE'].includes(currentProfile.role);
   const { products, dailyPrepStock, categories: storeCategories } = useStockStore();
@@ -59,6 +65,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState(false);
   const [isViewTabOpen, setIsViewTabOpen] = useState(false);
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isSettlementOpen, setIsSettlementOpen] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
   const [billRequested, setBillRequested] = useState(false);
@@ -238,10 +245,23 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
               {subtitle && <p className="truncate text-base text-ink-muted">{subtitle}</p>}
             </div>
           </div>
-          <button type="button" onClick={() => setIsViewTabOpen(true)} className="flex min-h-[44px] shrink-0 flex-col items-end justify-center rounded-md border border-line-strong bg-surface px-2.5 py-1 text-right active:bg-surface-muted" aria-label={`Ver consumo e conta: ${formatBRL(activeTab?.total)}`}>
-            <span className="text-base font-semibold text-brand-700">Ver conta ›</span>
-            <span className="font-mono text-[17px] font-bold text-ink">{formatBRL(activeTab?.total)}</span>
-          </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {activeTab && (
+              <button
+                type="button"
+                onClick={() => setIsTransferModalOpen(true)}
+                className="flex h-11 items-center gap-1.5 rounded-xl border border-line-strong bg-surface px-2.5 text-ink hover:bg-surface-soft active:scale-95 transition font-semibold text-xs sm:text-sm shadow-sm"
+                aria-label="Trocar de mesa"
+              >
+                <ArrowLeftRight className="h-4 w-4 text-brand-700" />
+                <span className="hidden xs:inline">Trocar mesa</span>
+              </button>
+            )}
+            <button type="button" onClick={() => setIsViewTabOpen(true)} className="flex min-h-[44px] shrink-0 flex-col items-end justify-center rounded-md border border-line-strong bg-surface px-2.5 py-1 text-right active:bg-surface-muted" aria-label={`Ver consumo e conta: ${formatBRL(activeTab?.total)}`}>
+              <span className="text-base font-semibold text-brand-700">Ver conta ›</span>
+              <span className="font-mono text-[17px] font-bold text-ink">{formatBRL(activeTab?.total)}</span>
+            </button>
+          </div>
         </div>
         {/* 4 Botões Principais Fixos (Acesso Imediato com o Polegar) */}
         <div className="mx-auto mt-2 grid grid-cols-4 gap-1.5 max-w-5xl" aria-label="Grupos principais">
@@ -434,7 +454,29 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
       )}
       <WaiterDonenessModal product={modalProduct} isOpen={!!modalProduct} onClose={() => setModalProduct(null)} onConfirm={handleDonenessConfirm} maxQuantity={(() => { if (!modalProduct) return undefined; const left = remainingFor(modalProduct, products, dailyPrepStock, cart); return left === null ? undefined : Math.max(1, left); })()} />
       <WaiterCartDrawer table={table} isOpen={isCartDrawerOpen} onClose={() => setIsCartDrawerOpen(false)} onSuccess={() => setOrderSent(true)} />
-      <WaiterViewTab table={table} isOpen={isViewTabOpen} onClose={() => setIsViewTabOpen(false)} onRequestBill={() => { useTableStore.getState().requestBill(table.id); setBillRequested(true); setIsViewTabOpen(false); }} onSettleTab={() => setIsSettlementOpen(true)} />
+      <WaiterViewTab
+        table={table}
+        isOpen={isViewTabOpen}
+        onClose={() => setIsViewTabOpen(false)}
+        onRequestBill={() => { useTableStore.getState().requestBill(table.id); setBillRequested(true); setIsViewTabOpen(false); }}
+        onSettleTab={() => setIsSettlementOpen(true)}
+        onTransferTable={() => { setIsViewTabOpen(false); setIsTransferModalOpen(true); }}
+      />
+      {activeTab && (
+        <TableTransferModal
+          sourceTable={table}
+          currentTab={activeTab}
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          onSuccess={(newTable) => {
+            if (onTableTransferred) {
+              onTableTransferred(newTable);
+            } else {
+              onBackToTables();
+            }
+          }}
+        />
+      )}
       {isSettlementOpen && <TableSettlementModal table={table} isOpen={isSettlementOpen} onClose={() => setIsSettlementOpen(false)} />}
       {canManageProducts && <ProductFormModal isOpen={isProductModalOpen} onClose={() => setIsProductModalOpen(false)} />}
     </div>

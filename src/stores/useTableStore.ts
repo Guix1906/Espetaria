@@ -94,6 +94,8 @@ interface TableState {
   reopenTabAtomic: (tabId: string, userId: string, reason: string) => void;
   /** Anula a comanda inteira (lançamento de teste/engano): cancela itens, estorna pagamentos e libera a mesa. */
   voidTabAtomic: (tabId: string, reason: string, userId: string, returnStock?: boolean) => void;
+  /** Garçom/Gerente transfere a comanda para outra mesa livre */
+  transferTableAtomic: (tabId: string, targetTableId: string, userId: string) => void;
   /** Garçom libera mesa aberta por engano: só comanda sem itens e sem pagamento (fica na auditoria). */
   releaseEmptyTab: (tabId: string, userId: string) => void;
   getTabByTableId: (tableId: string) => Tab | undefined;
@@ -906,6 +908,66 @@ export const useTableStore = create<TableState>((set, get) => ({
     void callRpc('void_tab_atomic', { p_tab_id: tabId, p_reason: reason, ...(returnStock === undefined ? {} : { p_return_stock: returnStock }) }, 'TableStore');
 
     logger.info({ context: 'TableStore', message: `Comanda ${tabId} anulada (${items.length} itens). Motivo: ${reason}` });
+  },
+
+  transferTableAtomic: (tabId, targetTableId, userId) => {
+    const tab = get().tabs.find((t) => t.id === tabId && t.status === 'OPEN');
+    if (!tab) throw new Error('Comanda não encontrada ou já encerrada.');
+
+    const sourceTable = get().tables.find((t) => t.id === tab.table_id);
+    const targetTable = get().tables.find((t) => t.id === targetTableId);
+    if (!targetTable) throw new Error('Mesa de destino não encontrada.');
+    if (sourceTable && sourceTable.id === targetTable.id) throw new Error('A comanda já está nesta mesa.');
+
+    const existingTab = get().tabs.find((t) => t.table_id === targetTableId && t.status === 'OPEN');
+    if (existingTab) throw new Error(`A Mesa ${targetTable.number} já está ocupada.`);
+
+    const now = new Date().toISOString();
+    const targetStatus = sourceTable?.status === 'AGUARDANDO_CONTA' ? 'AGUARDANDO_CONTA' : 'OCUPADA';
+
+    const updatedTab: Tab = {
+      ...tab,
+      table_id: targetTableId,
+      updated_at: now,
+      updated_by: userId,
+      version: (tab.version || 1) + 1,
+    };
+
+    set({
+      tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
+      orders: get().orders.map((o) => (o.tab_id === tabId ? { ...o, table_id: targetTableId, updated_at: now } : o)),
+      tables: get().tables.map((tbl) => {
+        if (tbl.id === tab.table_id) {
+          return { ...tbl, status: 'LIVRE' as const, current_tab: undefined, updated_at: now };
+        }
+        if (tbl.id === targetTableId) {
+          return { ...tbl, status: targetStatus, current_tab: updatedTab, updated_at: now };
+        }
+        return tbl;
+      }),
+    });
+
+    void (async () => {
+      try {
+        const res = await callRpc('transfer_table_atomic', { p_tab_id: tabId, p_target_table_id: targetTableId }, 'TableStore');
+        if (!res && isSupabaseConfigured) {
+          const { supabase } = await import('../lib/supabase');
+          await supabase.from('tabs').update({ table_id: targetTableId, updated_at: now, updated_by: userId }).eq('id', tabId);
+          await supabase.from('orders').update({ table_id: targetTableId, updated_at: now }).eq('tab_id', tabId);
+          if (sourceTable) {
+            await supabase.from('restaurant_tables').update({ status: 'LIVRE', updated_at: now }).eq('id', sourceTable.id);
+          }
+          await supabase.from('restaurant_tables').update({ status: targetStatus, updated_at: now }).eq('id', targetTableId);
+        }
+      } catch (err) {
+        logger.error({ context: 'TableStore', message: 'Erro ao persistir transferência de mesa', error: err });
+      }
+    })();
+
+    logger.info({
+      context: 'TableStore',
+      message: `Comanda ${tabId} transferida da Mesa ${sourceTable?.number ?? '?'} para a Mesa ${targetTable.number}`,
+    });
   },
 
   getTabByTableId: (tableId) => {

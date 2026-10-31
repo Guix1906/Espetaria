@@ -5,6 +5,7 @@ import {
   Users,
   CreditCard,
   X,
+  ArrowLeftRight,
 } from 'lucide-react';
 import React from 'react';
 import { Dialog } from '../../components/ui/Dialog';
@@ -23,6 +24,7 @@ interface WaiterViewTabProps {
   onClose: () => void;
   onRequestBill: () => void;
   onSettleTab?: () => void;
+  onTransferTable?: () => void;
 }
 
 export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
@@ -31,6 +33,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
   onClose,
   onRequestBill,
   onSettleTab,
+  onTransferTable,
 }) => {
   const { tabs, getTabOrderItems } = useTableStore();
   const { notify } = useFeedback();
@@ -129,6 +132,21 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
               <span className="whitespace-nowrap">Por pessoa ({currentTab.people_count})</span>
               <strong className="whitespace-nowrap text-base font-semibold text-brand-700 tabular-nums">{formatBRL(currentTab.total / Math.max(1, currentTab.people_count))}</strong>
             </div>
+
+            {/* Botão de Trocar Mesa */}
+            {onTransferTable && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onTransferTable();
+                }}
+                className="w-full py-3 rounded-xl border border-line bg-surface hover:bg-surface-soft active:scale-[0.98] font-semibold text-ink flex items-center justify-center gap-2 transition text-sm shadow-sm"
+              >
+                <ArrowLeftRight className="w-4 h-4 text-brand-700" />
+                <span>Trocar comanda de mesa</span>
+              </button>
+            )}
 
             {/* Botão de Solicitar Fechamento (já imprime a conta na churrasqueira) */}
             {canSettle && onSettleTab && (

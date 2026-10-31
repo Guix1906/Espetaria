@@ -127,7 +127,16 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const readyTables = activeTables.filter((table) => readyItemsOf(table.id).length > 0);
   const readyTableIds = new Set(readyTables.map((table) => table.id));
 
-  if (selectedTable) return <WaiterOrderPad table={selectedTable} dedicated={dedicated} onBackToTables={() => setSelectedTableId(null)} />;
+  if (selectedTable) {
+    return (
+      <WaiterOrderPad
+        table={selectedTable}
+        dedicated={dedicated}
+        onBackToTables={() => setSelectedTableId(null)}
+        onTableTransferred={(newTable) => setSelectedTableId(newTable.id)}
+      />
+    );
+  }
 
   const matches = (table: RestaurantTable) => {
     if (!query) return true;
