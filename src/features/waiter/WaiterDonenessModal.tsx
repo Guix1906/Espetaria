@@ -35,6 +35,13 @@ export const DONENESS_OPTIONS: { value: MeatDoneness; label: string; description
 ];
 const COMMON_NOTES = ['Sem sal grosso', 'Pouco sal', 'Mais torradinho', 'Cortar em aperitivo', 'Farofa à parte'];
 const ACOMPANHAMENTO_NOTES = ['Com arroz', 'Com baião', 'Com purê', 'Arroz e purê', 'Baião e purê', 'Sem cebola', 'Farofa à parte'];
+const RICE_OPTIONS = ['Arroz branco', 'Arroz integral', 'Baião de dois', 'Arroz de alho', 'Sem arroz'];
+const JUICE_FLAVORS = ['Laranja', 'Limão', 'Maracujá', 'Abacaxi', 'Goiaba', 'Manga', 'Morango', 'Uva', 'Caju', 'Tangerina'];
+
+/** Detecta se o produto é um suco/bebida que precisa de escolha de sabor. */
+function isJuiceProduct(product: Product): boolean {
+  return /suco|refresco|bebida/i.test(product.name);
+}
 
 function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { product: Product; onClose: () => void; onConfirm: WaiterDonenessModalProps['onConfirm']; maxQuantity?: number; initial?: WaiterDonenessModalProps['initial'] }) {
   const isEditing = !!initial;
@@ -46,10 +53,12 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
     BEM_PASSADA: 0,
   }));
   const [notes, setNotes] = useState(initial?.notes ?? '');
-  const [showNotes, setShowNotes] = useState(!product.allows_doneness || !!initial?.notes);
+  const showNotesDefault = !product.allows_doneness || !!initial?.notes || isJuiceProduct(product);
+  const [showNotes, setShowNotes] = useState(showNotesDefault);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const isCombo = /acompanhamento/i.test(product.name);
-  const suggestedNotes = isCombo ? ACOMPANHAMENTO_NOTES : COMMON_NOTES;
+  const isJuice = isJuiceProduct(product);
+  const suggestedNotes = isJuice ? [] : isCombo ? ACOMPANHAMENTO_NOTES : COMMON_NOTES;
   const noteTags = notes.split(',').map((note) => note.trim()).filter(Boolean);
 
   const totalDonenessQuantity = Object.values(donenessCounts).reduce((sum, n) => sum + (n || 0), 0);
@@ -80,6 +89,26 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
     }
   };
 
+  const toggleNote = (tag: string) => {
+    setNotes((noteTags.includes(tag) ? noteTags.filter((note) => note !== tag) : [...noteTags, tag]).join(', '));
+  };
+
+  /** Seleciona exclusivamente um tipo de arroz (só um pode estar ativo por vez). */
+  const selectRice = (rice: string) => {
+    const withoutRice = noteTags.filter((t) => !RICE_OPTIONS.includes(t));
+    const alreadySelected = noteTags.includes(rice);
+    const next = alreadySelected ? withoutRice : [...withoutRice, rice];
+    setNotes(next.join(', '));
+  };
+
+  /** Seleciona exclusivamente um sabor de suco (só um pode estar ativo por vez). */
+  const selectFlavor = (flavor: string) => {
+    const withoutFlavor = noteTags.filter((t) => !JUICE_FLAVORS.includes(t));
+    const alreadySelected = noteTags.includes(flavor);
+    const next = alreadySelected ? withoutFlavor : [...withoutFlavor, flavor];
+    setNotes(next.join(', '));
+  };
+
   const handleConfirm = () => {
     if (needsDoneness) {
       setErrorMessage('Escolha o ponto da carne para continuar.');
@@ -100,10 +129,6 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : 'Não foi possível adicionar este produto. Tente novamente.');
     }
-  };
-
-  const toggleNote = (tag: string) => {
-    setNotes((noteTags.includes(tag) ? noteTags.filter((note) => note !== tag) : [...noteTags, tag]).join(', '));
   };
 
   return (
@@ -191,10 +216,46 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
             );
           })}
         </fieldset>}
+        {/* Chips de tipo de arroz para espetos com acompanhamento */}
+        {isCombo && (
+          <fieldset className="space-y-2">
+            <legend className="text-base font-semibold text-ink">Tipo de arroz</legend>
+            <div className="flex flex-wrap gap-1.5">
+              {RICE_OPTIONS.map((rice) => (
+                <button
+                  key={rice}
+                  type="button"
+                  aria-pressed={noteTags.includes(rice)}
+                  onClick={() => selectRice(rice)}
+                  className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(rice) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>
+                  {rice}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
+        {/* Chips de sabor para sucos */}
+        {isJuice && (
+          <fieldset className="space-y-2">
+            <legend className="text-base font-semibold text-ink">Sabor do suco</legend>
+            <div className="flex flex-wrap gap-1.5">
+              {JUICE_FLAVORS.map((flavor) => (
+                <button
+                  key={flavor}
+                  type="button"
+                  aria-pressed={noteTags.includes(flavor)}
+                  onClick={() => selectFlavor(flavor)}
+                  className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(flavor) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>
+                  {flavor}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        )}
         {product.allows_notes && (showNotes ? <div>
           <label htmlFor="doneness-notes" className="mb-2 block text-base font-semibold text-ink">Alguma observação?</label>
-          {(product.allows_doneness || isCombo) && <div className="mb-2 flex flex-wrap gap-1.5">{suggestedNotes.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(tag) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>{tag}</button>)}</div>}
-          <textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={isCombo ? "Ex.: Arroz, baião, purê, sem cebola..." : "Ex.: Sem cebola, gelo à parte..."} className="w-full rounded-lg border border-line-strong bg-white p-3 text-base" />
+          {(product.allows_doneness || isCombo) && !isJuice && <div className="mb-2 flex flex-wrap gap-1.5">{suggestedNotes.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(tag) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>{tag}</button>)}</div>}
+          <textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={isJuice ? "Ex.: Com gelo, sem açúcar..." : isCombo ? "Ex.: Arroz, baião, purê, sem cebola..." : "Ex.: Sem cebola, gelo à parte..."} className="w-full rounded-lg border border-line-strong bg-white p-3 text-base" />
         </div> : <button type="button" onClick={() => setShowNotes(true)} className="min-h-[44px] text-base font-semibold text-brand-500">+ Adicionar observação</button>)}
       </div>
       <div className="shrink-0 border-t border-line px-4 pt-3" style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom))' }}>

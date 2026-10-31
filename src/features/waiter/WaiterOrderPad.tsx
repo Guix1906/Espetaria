@@ -104,7 +104,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false }: Wai
   const handleAdd = (product: Product) => {
     setOrderSent(false);
     setSwapping(null);
-    if (product.allows_doneness || /acompanhamento/i.test(product.name)) setModalProduct(product);
+    if (product.allows_doneness || /acompanhamento|suco/i.test(product.name)) setModalProduct(product);
     else tryAdd(() => addItem(table.id, product, 1));
   };
   // No stepper: + repete a última linha do produto (mesmo ponto); − tira da última
