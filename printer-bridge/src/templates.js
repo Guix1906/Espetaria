@@ -20,7 +20,7 @@ export const DEFAULT_TEMPLATES = {
   },
   KITCHEN: {
     layout: 'ANOTA_PRODUCAO',
-    title: 'COZINHA - ACOMPANHAMENTOS',
+    title: 'COZINHA',
     show_restaurant_name: true,
     item_size: 3,
     show_doneness: false,

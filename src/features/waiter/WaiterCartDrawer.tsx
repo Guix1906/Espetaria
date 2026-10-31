@@ -29,12 +29,19 @@ export function WaiterCartDrawer({ table, isOpen, onClose, onSuccess }: WaiterCa
   const count = items.reduce((sum, item) => sum + item.quantity, 0);
   const activeTab = getTabByTableId(table.id);
   const editing = items.find((item) => item.id === editingId) ?? null;
-  // Para onde vai cada cupom (mesma regra do printer-bridge: "com acompanhamento" também sai na cozinha;
-  // a loja não tem impressora do bar, então bebidas saem na churrasqueira)
+  // Para onde vai cada cupom (mesma regra do printer-bridge: "com acompanhamento" e sucos saem na cozinha para preparo)
+  const isJuice = (name: string) => /suco|refresco|jarra/i.test(name);
   const sectorSummary = ([['GRILL', 'churrasqueira'], ['KITCHEN', 'cozinha']] as const)
     .map(([sector, label]) => {
-      const units = items.filter((i) => i.product.sector === sector || (sector === 'GRILL' && i.product.sector === 'BAR') || (sector === 'KITCHEN' && i.product.sector === 'GRILL' && /acompanhamento/i.test(i.product.name)))
-        .reduce((sum, i) => sum + i.quantity, 0);
+      const units = items.filter((i) => {
+        if (isJuice(i.product.name)) {
+          return sector === 'KITCHEN';
+        }
+        if (sector === 'KITCHEN') {
+          return i.product.sector === 'KITCHEN' || (i.product.sector === 'GRILL' && /acompanhamento/i.test(i.product.name));
+        }
+        return i.product.sector === 'GRILL' || i.product.sector === 'BAR';
+      }).reduce((sum, i) => sum + i.quantity, 0);
       return units ? `${label} (${units})` : null;
     })
     .filter(Boolean).join(' · ');

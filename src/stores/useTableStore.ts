@@ -205,13 +205,13 @@ export const useTableStore = create<TableState>((set, get) => ({
         quantity: i.quantity,
         doneness: i.doneness ?? null,
         notes: i.notes ?? null,
-        sector: prod.sector,
+        sector: /suco|refresco|jarra/i.test(prod.name) ? 'KITCHEN' : prod.sector,
         // Espeto enviado já está "Na brasa": o churrasqueiro não precisa aceitar (igual ao banco)
-        // Bebida da mesa: o garçom pega e leva na hora, já nasce entregue (igual ao banco, 00043)
-        status: prod.sector === 'GRILL' ? 'IN_PREPARATION' : prod.sector === 'BAR' || prod.type === 'BEBIDA' ? 'DELIVERED' : 'RECEIVED',
+        // Bebida da mesa (exceto sucos que exigem preparo): o garçom pega e leva na hora, já nasce entregue
+        status: prod.sector === 'GRILL' ? 'IN_PREPARATION' : ((prod.sector === 'BAR' || prod.type === 'BEBIDA') && !/suco|refresco|jarra/i.test(prod.name)) ? 'DELIVERED' : 'RECEIVED',
         created_at: now,
         prepared_at: null,
-        delivered_at: prod.sector === 'BAR' || prod.type === 'BEBIDA' ? now : null,
+        delivered_at: ((prod.sector === 'BAR' || prod.type === 'BEBIDA') && !/suco|refresco|jarra/i.test(prod.name)) ? now : null,
         updated_at: now,
         updated_by: userId,
         version: 1,

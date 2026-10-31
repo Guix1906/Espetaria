@@ -47,7 +47,7 @@ export const DEFAULT_PRINT_TEMPLATES: PrintTemplates = {
     show_waiter: true, show_time: true, copies: 1, beep: true, footer: '',
   },
   KITCHEN: {
-    layout: 'ANOTA_PRODUCAO', title: 'COZINHA - ACOMPANHAMENTOS', show_restaurant_name: true, item_size: 3, show_doneness: false, show_notes: true,
+    layout: 'ANOTA_PRODUCAO', title: 'COZINHA', show_restaurant_name: true, item_size: 3, show_doneness: false, show_notes: true,
     show_waiter: true, show_time: true, copies: 1, beep: true, footer: '',
   },
   EXPEDICAO: {
