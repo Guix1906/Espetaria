@@ -313,4 +313,26 @@ describe('ETAPA 4: Telas de Produção KDS (Churrasqueira, Cozinha, Bar)', () =>
     const grillItemsAfterReady = useTableStore.getState().orderItems.filter((i) => i.order_id === order.id && i.sector === 'GRILL');
     expect(grillItemsAfterReady.every((i) => i.status === 'READY')).toBe(true);
   });
+
+  it('6. Fechamento de comanda encerra itens restantes como DELIVERED', () => {
+    const tableId = useTableStore.getState().tables[1]!.id;
+    const tab = useTableStore.getState().openTab(tableId, 'Mesa Encerramento', 2, '', userId, shiftId);
+
+    const order = useTableStore.getState().addOrderAtomic(
+      shiftId,
+      tab.id,
+      [{ productId: MOCK_GRILL_PRODUCT.id, quantity: 1, doneness: 'AO_PONTO' }],
+      userId
+    );
+
+    const itemBeforeClose = useTableStore.getState().orderItems.find((i) => i.order_id === order.id)!;
+    expect(itemBeforeClose.status).toBe('IN_PREPARATION');
+
+    const currentTab = useTableStore.getState().tabs.find((t) => t.id === tab.id)!;
+    // Registra pagamento integral e fecha a comanda
+    useTableStore.getState().quickCloseTabAtomic(shiftId, tab.id, currentTab.total, 'DINHEIRO', userId);
+
+    const itemAfterClose = useTableStore.getState().orderItems.find((i) => i.order_id === order.id)!;
+    expect(itemAfterClose.status).toBe('DELIVERED');
+  });
 });

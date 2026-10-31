@@ -76,10 +76,27 @@ export const GrillKDSView: React.FC = () => {
     toggleExhaustProduct(currentShift.id, productId, nextStatus, currentProfile.id, nextStatus ? 'Esgotado pelo churrasqueiro na brasa' : undefined);
   };
 
-  // Salão: espetos na brasa ("Recebido" é de pedidos antigos, antes do fluxo automático)
-  const onGrillItems = orderItems.filter((i) => i.sector === 'GRILL' && (i.status === 'IN_PREPARATION' || i.status === 'RECEIVED'));
+  // Salão: espetos na brasa apenas de comandas e mesas abertas (não exibe comandas encerradas/mesas livres)
+  const openTabIds = new Set(tabs.filter((t) => t.status === 'OPEN').map((t) => t.id));
+  const openTableIds = new Set(
+    tables.filter((t) => t.status === 'OCUPADA' || t.status === 'AGUARDANDO_CONTA').map((t) => t.id)
+  );
+
+  const onGrillItems = orderItems.filter(
+    (i) => i.sector === 'GRILL' && (i.status === 'IN_PREPARATION' || i.status === 'RECEIVED')
+  );
+
+  // Pedidos de mesa na brasa: sem necessidade de clicar botão na tela (o churrasqueiro trabalha na brasa),
+  // expiram do monitor de preparo após 30 min ou assim que a conta da mesa é fechada.
+  const MAX_GRILL_LOCAL_MINUTES = 30;
   const localTickets: GrillTicket[] = orders
-    .filter((o) => onGrillItems.some((i) => i.order_id === o.id))
+    .filter((order) => {
+      if (order.status === 'CLOSED' || order.status === 'CANCELLED') return false;
+      if (!openTabIds.has(order.tab_id) || !openTableIds.has(order.table_id)) return false;
+      if (!onGrillItems.some((i) => i.order_id === order.id)) return false;
+      const ageMinutes = (now - new Date(order.created_at).getTime()) / 60000;
+      return ageMinutes <= MAX_GRILL_LOCAL_MINUTES;
+    })
     .map((order) => {
       const table = tables.find((t) => t.id === order.table_id);
       const tableLabel = `Mesa ${table ? String(table.number).padStart(2, '0') : '??'}`;
@@ -92,9 +109,11 @@ export const GrillKDSView: React.FC = () => {
         subtitle: `Pedido #${order.order_number}${showCustomer ? ` · ${customer}` : ''}`,
         createdAt: order.created_at,
         notes: order.notes,
-        items: onGrillItems.filter((i) => i.order_id === order.id).map((i) => ({ id: i.id, quantity: i.quantity, name: i.product_name, doneness: i.doneness, notes: i.notes })),
+        items: onGrillItems
+          .filter((i) => i.order_id === order.id)
+          .map((i) => ({ id: i.id, quantity: i.quantity, name: i.product_name, doneness: i.doneness, notes: i.notes })),
         ready: () => updateOrderSectorItemsStatus(order.id, 'GRILL', 'READY'),
-        doneMessage: `${tableLabel}: cozinha avisada para mandar a bandeja.`,
+        doneMessage: `${tableLabel}: espetos prontos.`,
       };
     });
 
@@ -190,15 +209,33 @@ export const GrillKDSView: React.FC = () => {
                 </ul>
                 {ticket.notes && <p className="rounded-sm bg-amber-50 p-2 text-sm font-medium text-amber-900">Obs do pedido: {ticket.notes}</p>}
 
-                {isPending ? (
-                  <div className="mt-auto flex items-center gap-2">
-                    <p className="flex flex-1 items-center gap-2 text-sm font-semibold text-emerald-800" role="status"><CheckCheck className="h-5 w-5" aria-hidden="true" />Pronto! Avisando...</p>
-                    <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary min-h-14 px-5 text-base"><Undo2 className="h-5 w-5" aria-hidden="true" />Desfazer</button>
-                  </div>
+                {ticket.kind !== 'LOCAL' ? (
+                  isPending ? (
+                    <div className="mt-auto flex items-center gap-2">
+                      <p className="flex flex-1 items-center gap-2 text-sm font-semibold text-emerald-800" role="status">
+                        <CheckCheck className="h-5 w-5" aria-hidden="true" />Pronto! Avisando...
+                      </p>
+                      <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary min-h-14 px-5 text-base">
+                        <Undo2 className="h-5 w-5" aria-hidden="true" />Desfazer
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => markReady(ticket)}
+                      className="btn-success mt-auto min-h-14 w-full text-lg font-bold"
+                    >
+                      <CheckCheck className="h-6 w-6" aria-hidden="true" />
+                      {ticket.kind === 'PICKUP' ? 'Retirada pronta' : 'Delivery pronto'}
+                    </button>
+                  )
                 ) : (
-                  <button type="button" onClick={() => markReady(ticket)} className="btn-success mt-auto min-h-14 w-full text-lg font-bold">
-                    <CheckCheck className="h-6 w-6" aria-hidden="true" />Espeto pronto
-                  </button>
+                  <div className="mt-auto flex items-center justify-between border-t border-line/60 pt-2.5 text-xs text-ink-muted">
+                    <span className="flex items-center gap-1.5 font-semibold text-accent-700">
+                      <Flame className="h-4 w-4 text-accent-700" aria-hidden="true" /> Na brasa
+                    </span>
+                    <span className="font-medium text-ink-muted">Produção contínua</span>
+                  </div>
                 )}
               </li>
             );

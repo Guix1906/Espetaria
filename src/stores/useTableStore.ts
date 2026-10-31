@@ -694,6 +694,13 @@ export const useTableStore = create<TableState>((set, get) => ({
       t.id === tab.table_id ? { ...t, status: 'LIVRE' as const, current_tab: undefined, updated_at: now, updated_by: t.updated_by, version: (t.version || 0) + 1 } : t
     );
 
+    const tabOrderIds = new Set(get().orders.filter((o) => o.tab_id === tabId).map((o) => o.id));
+    const updatedOrderItems = get().orderItems.map((i) =>
+      tabOrderIds.has(i.order_id) && i.status !== 'CANCELLED'
+        ? { ...i, status: 'DELIVERED' as const, delivered_at: i.delivered_at ?? now, updated_at: now }
+        : i
+    );
+
     const updatedOrders = get().orders.map((o) =>
       o.tab_id === tabId ? { ...o, status: 'CLOSED' as const, updated_at: now, updated_by: userId, version: (o.version || 0) + 1 } : o
     );
@@ -702,6 +709,7 @@ export const useTableStore = create<TableState>((set, get) => ({
       tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
       tables: updatedTables,
       orders: updatedOrders,
+      orderItems: updatedOrderItems,
     });
 
     void callRpc('close_tab_atomic', { p_tab_id: tabId }, 'TableStore');
@@ -769,6 +777,13 @@ export const useTableStore = create<TableState>((set, get) => ({
       t.id === tab.table_id ? { ...t, status: 'LIVRE' as const, current_tab: undefined, updated_at: now, updated_by: t.updated_by, version: (t.version || 0) + 1 } : t
     );
 
+    const tabOrderIds = new Set(get().orders.filter((o) => o.tab_id === tabId).map((o) => o.id));
+    const updatedOrderItems = get().orderItems.map((i) =>
+      tabOrderIds.has(i.order_id) && i.status !== 'CANCELLED'
+        ? { ...i, status: 'DELIVERED' as const, delivered_at: i.delivered_at ?? now, updated_at: now }
+        : i
+    );
+
     const updatedOrders = get().orders.map((o) =>
       o.tab_id === tabId ? { ...o, status: 'CLOSED' as const, updated_at: now, updated_by: userId, version: (o.version || 0) + 1 } : o
     );
@@ -778,6 +793,7 @@ export const useTableStore = create<TableState>((set, get) => ({
       tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
       tables: updatedTables,
       orders: updatedOrders,
+      orderItems: updatedOrderItems,
     });
 
     // Chamada RPC atômica única: insere pagamento e fecha a comanda na mesma transação no PostgreSQL
