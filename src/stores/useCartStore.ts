@@ -31,6 +31,28 @@ export interface CartItem {
   notes: string | null;
 }
 
+const CARTS_STORAGE_KEY = 'espetaria_table_carts';
+
+const loadPersistedCarts = (): Record<string, CartItem[]> => {
+  if (typeof window === 'undefined' || !window.localStorage) return {};
+  try {
+    const raw = window.localStorage.getItem(CARTS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch {}
+  return {};
+};
+
+const savePersistedCarts = (carts: Record<string, CartItem[]>) => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(CARTS_STORAGE_KEY, JSON.stringify(carts));
+    } catch {}
+  }
+};
+
 interface CartState {
   // Carrinho indexado por tableId: { [tableId]: CartItem[] }
   // Permite ao garçom trocar de mesa sem perder os espetos que já anotou!
@@ -54,7 +76,7 @@ interface CartState {
 }
 
 export const useCartStore = create<CartState>((set, get) => ({
-  tableCarts: {},
+  tableCarts: loadPersistedCarts(),
 
   addItem: (tableId, product, quantity = 1, doneness = null, notes = null) => {
     set((state) => {
@@ -91,6 +113,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         ];
       }
 
+      savePersistedCarts(carts);
       return { tableCarts: carts };
     });
   },
@@ -113,6 +136,7 @@ export const useCartStore = create<CartState>((set, get) => ({
         .filter((item): item is CartItem => item !== null);
 
       carts[tableId] = updated;
+      savePersistedCarts(carts);
       return { tableCarts: carts };
     });
   },
@@ -121,6 +145,7 @@ export const useCartStore = create<CartState>((set, get) => ({
     const carts = { ...get().tableCarts };
     const currentList = carts[tableId] || [];
     carts[tableId] = currentList.filter((item) => item.id !== draftItemId);
+    savePersistedCarts(carts);
     set({ tableCarts: carts });
   },
 
@@ -139,6 +164,7 @@ export const useCartStore = create<CartState>((set, get) => ({
       carts[tableId] = twin
         ? others.map((item) => (item.id === twin.id ? { ...item, quantity: item.quantity + quantity } : item))
         : currentList.map((item) => (item.id === draftItemId ? { ...item, quantity, doneness, notes: normalizedNotes } : item));
+      savePersistedCarts(carts);
       return { tableCarts: carts };
     });
   },
@@ -146,6 +172,7 @@ export const useCartStore = create<CartState>((set, get) => ({
   clearCart: (tableId) => {
     const carts = { ...get().tableCarts };
     delete carts[tableId];
+    savePersistedCarts(carts);
     set({ tableCarts: carts });
   },
 

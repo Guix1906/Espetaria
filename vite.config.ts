@@ -6,39 +6,61 @@ import path from 'path';
 
 import { cloudflare } from "@cloudflare/vite-plugin";
 
+const buildTime = new Date().toISOString();
+
 // O plugin da Cloudflare só entra no build de produção (atrapalha os testes e o modo demonstração)
 export default defineConfig(({ command, mode }) => ({
-  plugins: [react(), VitePWA({
-    registerType: 'prompt',
-    includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
-    manifest: {
-      name: 'Ponto — Sabor da Carne',
-      short_name: 'Ponto',
-      description: 'Sistema Integrado de Gestão Operacional para Espetaria',
-      theme_color: '#B5502E',
-      background_color: '#F5EFE6',
-      display: 'standalone',
-      orientation: 'any',
-      icons: [
-        { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
-        { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
-        { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
-      ],
+  define: {
+    __APP_BUILD_TIME__: JSON.stringify(buildTime),
+  },
+  plugins: [
+    react(),
+    {
+      name: 'build-version-generator',
+      generateBundle() {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'version.json',
+          source: JSON.stringify({
+            buildTime,
+            timestamp: Date.now(),
+          }),
+        });
+      },
     },
-    // Nova versão assume imediatamente (sem ficar presa na versão antiga do cache)
-    workbox: {
-      globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-      // Fotos dos produtos (Supabase Storage ou outro link): ficam guardadas no aparelho e abrem na hora
-      runtimeCaching: [{
-        urlPattern: ({ request }) => request.destination === 'image',
-        handler: 'StaleWhileRevalidate',
-        options: { cacheName: 'product-images', expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 }, cacheableResponse: { statuses: [0, 200] } },
-      }],
-      // skipWaiting/clientsClaim desligados: eram eles que recarregavam a página ao abrir
-      clientsClaim: true,
-      cleanupOutdatedCaches: true,
-    },
-  }), ...(command === 'build' && mode !== 'demo' && !process.env.VITEST ? [cloudflare()] : [])],
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
+      manifest: {
+        name: 'Ponto — Sabor da Carne',
+        short_name: 'Ponto',
+        description: 'Sistema Integrado de Gestão Operacional para Espetaria',
+        theme_color: '#B5502E',
+        background_color: '#F5EFE6',
+        display: 'standalone',
+        orientation: 'any',
+        icons: [
+          { src: '/pwa-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
+          { src: '/pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any' },
+          { src: '/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+      // Nova versão assume imediatamente e limpa versões antigas
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
+        // Fotos dos produtos (Supabase Storage ou outro link): ficam guardadas no aparelho e abrem na hora
+        runtimeCaching: [{
+          urlPattern: ({ request }) => request.destination === 'image',
+          handler: 'StaleWhileRevalidate',
+          options: { cacheName: 'product-images', expiration: { maxEntries: 300, maxAgeSeconds: 60 * 60 * 24 * 30 }, cacheableResponse: { statuses: [0, 200] } },
+        }],
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
+      },
+    }),
+    ...(command === 'build' && mode !== 'demo' && !process.env.VITEST ? [cloudflare()] : [])
+  ],
   resolve: { alias: { '@': path.resolve(__dirname, './src') } },
   server: { 
     port: 3002, 
@@ -58,6 +80,5 @@ export default defineConfig(({ command, mode }) => ({
   preview: {
     port: 3002,
     strictPort: true,
-    host: true,
   },
 }));
