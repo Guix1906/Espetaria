@@ -6,10 +6,11 @@ if not exist node_modules (
   echo Instalando pela primeira vez, aguarde...
   call npm install --omit=dev
 )
-echo Impressao automatica ligada. Deixe esta janela aberta (pode minimizar).
+echo Impressao automatica ligada (com Auto-Update do GitHub).
+echo Deixe esta janela aberta (pode minimizar).
 echo Para desligar, feche a janela.
 echo.
-node src\index.js
+node runner.js
 echo.
 echo A impressao automatica parou. Veja a mensagem acima.
 pause

@@ -5,5 +5,5 @@ dist
 .DS_Store
 coverage
 impressoes-simuladas
-
 impressoes-simuladas/
+version.json
