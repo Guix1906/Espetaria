@@ -510,45 +510,6 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                 </span>
               </div>
 
-              {/* Lista de Fatias de Pagamentos já Registradas */}
-              <div className="space-y-1.5 max-h-[22vh] overflow-y-auto pr-1 custom-scrollbar">
-                {payments.length === 0 ? (
-                  <div className="py-4 text-center text-ink-muted text-xs">
-                    Nenhum pagamento registrado ainda. Selecione o método abaixo.
-                  </div>
-                ) : (
-                  payments.map((p) => (
-                    <div
-                      key={p.id}
-                      className="p-2.5 rounded-md bg-surface-muted border border-line flex items-center justify-between text-xs shadow-sm"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-800 font-medium tabular-nums text-xs">
-                          {METHOD_LABELS[p.method] ?? p.method}
-                        </span>
-                        <div>
-                          <span className="tabular-nums font-bold text-ink text-sm">
-                            {formatBRL(p.amount)}
-                          </span>
-                          {p.notes && (
-                            <p className="text-xs text-ink-muted italic mt-0.5">
-                              {p.notes}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => void handleRemovePayment(p)}
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-muted hover:text-rose-700 hover:bg-rose-50 transition"
-                        title="Remover este pagamento"
-                        type="button" aria-label="Remover este pagamento">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-
               {/* Status do Saldo da Conta */}
               <div
                 className={`p-3 rounded-2xl border flex items-center justify-between text-xs tabular-nums font-bold ${isFullyPaid
@@ -567,7 +528,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                 <span className="text-xl font-black">{formatBRL(remainingDue)}</span>
               </div>
 
-              {/* BLOCO DE QUITAÇÃO RÁPIDA EM 1 CLIQUE */}
+              {/* BLOCO DE QUITAÇÃO RÁPIDA EM 1 CLIQUE (TOPO PARA VELOCIDADE TOTAL) */}
               {!isFullyPaid && remainingDue > 0 && (
                 <div className="bg-gradient-to-br from-brand-50/70 via-surface to-surface p-3.5 rounded-2xl border-2 border-brand-300 shadow-sm space-y-2.5">
                   <div className="flex items-center justify-between">
@@ -665,11 +626,50 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                 <div className="relative flex py-1 items-center">
                   <div className="flex-grow border-t border-line"></div>
                   <span className="flex-shrink mx-3 text-[11px] uppercase tracking-wider text-ink-muted font-bold">
-                    Ou dividir pagamento / registrar parcial
+                    Ou dividir conta / registrar parcial
                   </span>
                   <div className="flex-grow border-t border-line"></div>
                 </div>
               )}
+
+              {/* Lista de Fatias de Pagamentos já Registradas */}
+              <div className="space-y-1.5 max-h-[16vh] overflow-y-auto pr-1 custom-scrollbar">
+                {payments.length === 0 ? (
+                  <div className="py-2 text-center text-ink-muted text-xs">
+                    Nenhum pagamento registrado ainda. Selecione o método abaixo.
+                  </div>
+                ) : (
+                  payments.map((p) => (
+                    <div
+                      key={p.id}
+                      className="p-2.5 rounded-md bg-surface-muted border border-line flex items-center justify-between text-xs shadow-sm"
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-sm bg-emerald-50 text-emerald-800 font-medium tabular-nums text-xs">
+                          {METHOD_LABELS[p.method] ?? p.method}
+                        </span>
+                        <div>
+                          <span className="tabular-nums font-bold text-ink text-sm">
+                            {formatBRL(p.amount)}
+                          </span>
+                          {p.notes && (
+                            <p className="text-xs text-ink-muted italic mt-0.5">
+                              {p.notes}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => void handleRemovePayment(p)}
+                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-ink-muted hover:text-rose-700 hover:bg-rose-50 transition"
+                        title="Remover este pagamento"
+                        type="button" aria-label="Remover este pagamento">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
 
               {/* Formulário para Adicionar Pagamento */}
               {!isFullyPaid && (

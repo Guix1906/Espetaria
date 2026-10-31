@@ -20,6 +20,7 @@ import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { useNavFocusStore } from '../../stores/useNavFocusStore';
 import { RestaurantTable, Tab } from '../../types/domain';
+import { PaymentMethod } from '../../types/enums';
 import { ReceiptModal } from './ReceiptModal';
 import { TableSettlementModal } from './TableSettlementModal';
 
@@ -39,8 +40,8 @@ function billMinutes(table: RestaurantTable): string {
 }
 
 export const CashierModule: React.FC = () => {
-  const { notify, requestText } = useFeedback();
-  const { tables, tabs, payments, getTabOrderItems, reopenTabAtomic } = useTableStore();
+  const { notify, requestText, requestChoice } = useFeedback();
+  const { tables, tabs, payments, getTabOrderItems, reopenTabAtomic, quickCloseTabAtomic } = useTableStore();
   const { currentShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
 
@@ -91,6 +92,67 @@ export const CashierModule: React.FC = () => {
       notify('Comanda reaberta com sucesso.', 'success');
     } catch (err) {
       notify((err as Error).message, 'error');
+    }
+  };
+
+  const handleQuickPayTable = async (table: RestaurantTable, tab: Tab | undefined, methodGroup: 'PIX' | 'CARTAO' | 'DINHEIRO') => {
+    if (!currentShift || !tab) return;
+    if (tab.total <= 0) {
+      quickCloseTabAtomic(currentShift.id, tab.id, 0, 'DINHEIRO', currentProfile.id, 'Fechamento rápido com saldo zero');
+      notify(`Mesa ${String(table.number).padStart(2, '0')} liberada com sucesso!`, 'success');
+      return;
+    }
+
+    if (methodGroup === 'PIX') {
+      const choice = await requestChoice({
+        title: `Quitar Mesa ${String(table.number).padStart(2, '0')} no PIX?`,
+        message: `Valor total da conta: ${formatBRL(tab.total)}. A mesa será encerrada e liberada imediatamente.`,
+        choices: [
+          { value: 'confirm', label: `✓ Confirmar PIX (${formatBRL(tab.total)})` },
+          { value: 'cancel', label: 'Voltar' },
+        ],
+      });
+      if (choice === 'confirm') {
+        quickCloseTabAtomic(currentShift.id, tab.id, tab.total, 'PIX', currentProfile.id, 'Quitação rápida via PIX no caixa');
+        notify(`Mesa ${String(table.number).padStart(2, '0')} quitada no PIX e liberada!`, 'success');
+      }
+      return;
+    }
+
+    if (methodGroup === 'CARTAO') {
+      const choice = await requestChoice({
+        title: `Quitar Mesa ${String(table.number).padStart(2, '0')} no Cartão?`,
+        message: `Valor total: ${formatBRL(tab.total)}. Escolha a modalidade aprovada na maquininha:`,
+        choices: [
+          { value: 'DEBITO', label: `💳 Cartão de Débito (${formatBRL(tab.total)})` },
+          { value: 'CREDITO', label: `💳 Cartão de Crédito (${formatBRL(tab.total)})` },
+          { value: 'cancel', label: 'Voltar' },
+        ],
+      });
+      if (choice === 'DEBITO' || choice === 'CREDITO') {
+        quickCloseTabAtomic(currentShift.id, tab.id, tab.total, choice as PaymentMethod, currentProfile.id, `Quitação rápida no Cartão (${choice})`);
+        notify(`Mesa ${String(table.number).padStart(2, '0')} quitada no Cartão e liberada!`, 'success');
+      }
+      return;
+    }
+
+    if (methodGroup === 'DINHEIRO') {
+      const choice = await requestChoice({
+        title: `Quitar Mesa ${String(table.number).padStart(2, '0')} em Dinheiro?`,
+        message: `Valor total: ${formatBRL(tab.total)}. O cliente pagou o valor exato ou precisa calcular troco?`,
+        choices: [
+          { value: 'exact', label: `💵 Valor Exato (${formatBRL(tab.total)})` },
+          { value: 'calculator', label: '🧮 Calcular Troco...' },
+          { value: 'cancel', label: 'Voltar' },
+        ],
+      });
+      if (choice === 'exact') {
+        quickCloseTabAtomic(currentShift.id, tab.id, tab.total, 'DINHEIRO', currentProfile.id, 'Quitação rápida em Dinheiro (valor exato)');
+        notify(`Mesa ${String(table.number).padStart(2, '0')} quitada em dinheiro e liberada!`, 'success');
+      } else if (choice === 'calculator') {
+        setSelectedTableForCheckout(table);
+      }
+      return;
     }
   };
 
@@ -200,17 +262,60 @@ export const CashierModule: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Botão de Fechamento */}
-                    <button
-                      onClick={() => setSelectedTableForCheckout(table)}
-                      className={`w-full h-12 rounded-md font-semibold text-[15px] transition flex items-center justify-center gap-2 ${isWaitingBill
-                          ? 'btn-primary'
-                          : 'btn-secondary'
+                    {/* Botões de Ação Rápida no Caixa */}
+                    <div className="space-y-2 pt-1">
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleQuickPayTable(table, currentTab, 'PIX');
+                          }}
+                          className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs transition"
+                          title={`Fechar Mesa ${String(table.number).padStart(2, '0')} no PIX (${formatBRL(currentTab?.total || 0)})`}
+                        >
+                          <QrCode className="w-3.5 h-3.5" />
+                          <span>PIX</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleQuickPayTable(table, currentTab, 'CARTAO');
+                          }}
+                          className="h-10 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs transition"
+                          title={`Fechar Mesa ${String(table.number).padStart(2, '0')} no Cartão (${formatBRL(currentTab?.total || 0)})`}
+                        >
+                          <CreditCard className="w-3.5 h-3.5" />
+                          <span>Cartão</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleQuickPayTable(table, currentTab, 'DINHEIRO');
+                          }}
+                          className="h-10 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs transition"
+                          title={`Fechar Mesa ${String(table.number).padStart(2, '0')} em Dinheiro (${formatBRL(currentTab?.total || 0)})`}
+                        >
+                          <Banknote className="w-3.5 h-3.5" />
+                          <span>Dinheiro</span>
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => setSelectedTableForCheckout(table)}
+                        className={`w-full h-9 rounded-lg border font-semibold text-xs transition flex items-center justify-center gap-1.5 ${
+                          isWaitingBill
+                            ? 'border-brand-300 bg-brand-50 text-brand-900 hover:bg-brand-100'
+                            : 'border-line bg-surface-muted hover:bg-surface text-ink-secondary hover:text-ink'
                         }`}
-                      type="button">
-                      <Receipt className="w-4 h-4" />
-                      <span>Fechar conta</span>
-                    </button>
+                        type="button"
+                      >
+                        <Receipt className="w-3.5 h-3.5 text-ink-muted" />
+                        <span>Dividir conta / Detalhes</span>
+                      </button>
+                    </div>
                   </div>
                 );
               })}
