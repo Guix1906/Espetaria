@@ -3,11 +3,9 @@ import {
   Building2,
   CheckCircle2,
   Copy,
-  CupSoda,
   FileText,
   Flame,
   MapPin,
-  Receipt,
   MessageCircle,
   Printer,
   QrCode,
@@ -63,8 +61,6 @@ function readSavedTab(): SettingsTab {
 const PRINTER_SECTORS: { sector: ProductionSector; title: string; ip: string; description: string; icon: typeof Store; tone: string }[] = [
   { sector: 'GRILL', title: 'Churrasqueira', ip: 'IP: 192.168.3.17:9100', description: 'Espetos com o ponto da carne em destaque, a via do motoboy quando o delivery tem espeto e a conta da mesa.', icon: Flame, tone: 'bg-amber-100 text-amber-800' },
   { sector: 'KITCHEN', title: 'Cozinha', ip: 'IP: 192.168.3.12:9100', description: 'Porções e acompanhamentos, a cópia do espeto com acompanhamento e a via do motoboy quando não há espeto.', icon: UtensilsCrossed, tone: 'bg-emerald-100 text-emerald-800' },
-  { sector: 'BAR', title: 'Bar', ip: 'Impressão integrada à Churrasqueira', description: 'Bebidas. Sem impressora própria no bar, o cupom sai na churrasqueira.', icon: CupSoda, tone: 'bg-sky-100 text-sky-800' },
-  { sector: 'NONE', title: 'Caixa / Expedição', ip: 'Impressão integrada à Churrasqueira', description: 'Itens sem setor de produção. Sem impressora própria no caixa, o cupom sai na churrasqueira.', icon: Receipt, tone: 'bg-surface-muted text-ink-secondary' },
 ];
 
 const FIELD ='h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-base sm:text-sm';
