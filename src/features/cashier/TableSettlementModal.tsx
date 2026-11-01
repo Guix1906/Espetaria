@@ -10,6 +10,7 @@ import {
   Printer,
   QrCode,
   Receipt,
+  Search,
   Trash2,
   Users,
   X
@@ -24,8 +25,9 @@ import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { usePrintStore } from '../../stores/usePrintStore';
 import { useShiftStore } from '../../stores/useShiftStore';
+import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
-import { OrderItem, Payment, RestaurantTable, Tab } from '../../types/domain';
+import { OrderItem, Payment, Product, RestaurantTable, Tab } from '../../types/domain';
 import { PaymentMethod } from '../../types/enums';
 import { PixPaymentModal } from '../pix/PixPaymentModal';
 import { ReceiptModal } from './ReceiptModal';
@@ -57,9 +59,13 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     addPaymentAtomic,
     removePayment,
     cancelOrderItemAtomic,
-    closeTabAtomic
+    closeTabAtomic,
+    addOrderAtomic
   } = useTableStore();
   const { currentShift } = useShiftStore();
+  const products = useStockStore((state) => state.products);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [itemSearch, setItemSearch] = useState('');
   const { currentProfile } = useAuthStore();
 
   const currentTab = tabs.find((t) => t.table_id === table.id && t.status === 'OPEN');
@@ -186,6 +192,21 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     ...(roundedTen > remainingDue ? [roundedTen] : []),
     ...commonBanknotes.filter((n) => n > remainingDue),
   ])).slice(0, 3);
+
+  // Complementa a conta com um item do cardápio (vai para a produção como um pedido normal)
+  const handleAddItem = (product: Product) => {
+    if (!currentShift) { notify('Abra um turno antes de adicionar itens.', 'error'); return; }
+    try {
+      addOrderAtomic(currentShift.id, currentTab.id, [{ productId: product.id, quantity: 1 }], currentProfile.id);
+      notify(`${product.name} adicionado à conta.`, 'success');
+    } catch (err) {
+      notify((err as Error).message, 'error');
+    }
+  };
+  const itemQuery = itemSearch.trim().toLocaleLowerCase('pt-BR');
+  const menuMatches = products
+    .filter((product) => product.active && product.name.toLocaleLowerCase('pt-BR').includes(itemQuery))
+    .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
 
   // Registrar fatia de pagamento
   const handleAddPayment = (e: React.FormEvent) => {
@@ -338,8 +359,34 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
             <div className="md:col-span-6 space-y-3 flex flex-col justify-between bg-surface p-4 rounded-2xl border border-line">
               <h4 className="flex items-center gap-2 border-b border-line pb-2 text-lg font-bold text-ink font-sans">
                 <Receipt className="w-5 h-5 text-brand-700" />
-                Itens lançados ({items.filter(i => i.status !== 'CANCELLED').length})
+                <span className="flex-1">Itens lançados ({items.filter(i => i.status !== 'CANCELLED').length})</span>
+                <button type="button" aria-expanded={isAddingItem} onClick={() => { setIsAddingItem(!isAddingItem); setItemSearch(''); }} className="btn-secondary min-h-[40px] px-3 text-sm font-semibold">
+                  {isAddingItem ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  {isAddingItem ? 'Fechar' : 'Adicionar item'}
+                </button>
               </h4>
+
+              {isAddingItem && (
+                <div className="space-y-2 rounded-xl border border-line p-2.5">
+                  <label className="relative block">
+                    <span className="sr-only">Buscar item do cardápio</span>
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+                    <input type="search" autoFocus value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} placeholder="Buscar no cardápio" className="min-h-[44px] w-full rounded-md border border-line-strong bg-surface pl-9 pr-3 text-base" />
+                  </label>
+                  <ul className="max-h-[26vh] divide-y divide-line overflow-y-auto">
+                    {menuMatches.length === 0 && <li className="py-3 text-center text-sm text-ink-muted">Nenhum item encontrado.</li>}
+                    {menuMatches.map((product) => (
+                      <li key={product.id}>
+                        <button type="button" onClick={() => handleAddItem(product)} aria-label={`Adicionar ${product.name}`} className="flex min-h-[44px] w-full items-center gap-2 px-1 text-left hover:bg-surface-muted">
+                          <span className="min-w-0 flex-1 truncate text-base font-medium text-ink">{product.name}</span>
+                          <span className="shrink-0 text-base font-semibold tabular-nums text-ink">{formatBRL(product.price)}</span>
+                          <Plus className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Alerta de pagamento excedente (valor a devolver) */}
               {isOverpaid && (
