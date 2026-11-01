@@ -110,7 +110,9 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
           doneness: item.doneness,
           notes: item.notes || undefined,
         })),
-        currentProfile.id
+        currentProfile.id,
+        undefined,
+        () => useCartStore.getState().restoreItems(table.id, cartItems)
       );
       clearCart(table.id);
       triggerHaptic(60);
@@ -237,12 +239,13 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   return (
     <div className="min-w-0 pb-32">
       <div className="subnav-sticky bg-canvas px-3 py-2 sm:px-6">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-2">
-          <div className="flex min-w-0 items-center gap-2.5">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-1.5">
+          <div className="flex min-w-0 items-center gap-1.5 min-[375px]:gap-2.5">
             <button type="button" onClick={onBackToTables} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-ink" aria-label="Voltar às mesas"><ArrowLeft className="h-5 w-5" /></button>
+            {/* O número da mesa nunca é cortado: é o que evita lançar pedido na mesa errada */}
             <div className="min-w-0">
-              <h1 className="truncate font-mono text-xl font-bold leading-tight text-ink">Mesa {pad2(table.number)}</h1>
-              {subtitle && <p className="truncate text-base text-ink-muted">{subtitle}</p>}
+              <h1 className="whitespace-nowrap font-mono text-lg font-bold leading-tight text-ink min-[375px]:text-xl">Mesa {pad2(table.number)}</h1>
+              {subtitle && <p className="truncate text-sm text-ink-muted min-[375px]:text-base">{subtitle}</p>}
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -250,11 +253,11 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
               <button
                 type="button"
                 onClick={() => setIsTransferModalOpen(true)}
-                className="flex h-11 items-center gap-1.5 rounded-xl border border-line-strong bg-amber-50 border-amber-300 px-3 text-amber-900 hover:bg-amber-100 active:scale-95 transition font-bold text-xs sm:text-sm shadow-sm"
+                className="flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition font-bold text-sm shadow-sm sm:w-auto sm:px-3"
                 aria-label="Trocar de mesa"
               >
                 <ArrowLeftRight className="h-4 w-4 text-amber-800 shrink-0" />
-                <span className="whitespace-nowrap">Trocar mesa</span>
+                <span className="hidden whitespace-nowrap sm:inline">Trocar mesa</span>
               </button>
             )}
             <button type="button" onClick={() => setIsViewTabOpen(true)} className="flex min-h-[44px] shrink-0 flex-col items-end justify-center rounded-md border border-line-strong bg-surface px-2.5 py-1 text-right active:bg-surface-muted" aria-label={`Ver consumo e conta: ${formatBRL(activeTab?.total)}`}>
@@ -304,7 +307,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
         {/* Um aviso só, o mais importante: encerrada > trocando > enviado > conta pedida */}
         {!activeTab ? <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">Esta comanda foi encerrada. Volte às mesas para iniciar outro atendimento.</p>
           : swapping ? <p role="status" className="notice border-brand-200 bg-brand-50 text-brand-900">Trocando <strong>{swapping}</strong>: escolha o item substituto e envie o pedido.</p>
-          : orderSent ? <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção.</span></div><button type="button" className="icon-button bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>
+          : orderSent && cartCount === 0 ? <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção.</span></div><button type="button" className="icon-button bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>
           : (billRequested || table.status === 'AGUARDANDO_CONTA') ? <p role="status" className="notice border-brand-200 bg-brand-50 text-brand-900">Conta pedida. Aguarde o atendimento do caixa.</p>
           : null}
         {/* Mesa aberta sem nenhum pedido: o garçom pode desfazer (abriu a mesa errada) */}

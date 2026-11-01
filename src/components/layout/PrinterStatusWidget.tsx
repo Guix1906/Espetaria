@@ -5,7 +5,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { Dialog } from '../ui/Dialog';
 
 export const usePrinterHealth = () => {
-  const { printerStatus } = usePrintStore();
+  const { printerStatus, jobs } = usePrintStore();
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -18,8 +18,13 @@ export const usePrinterHealth = () => {
     : 999;
 
   const isBridgeAlive = heartbeatAgeSeconds < 60;
-  const isGrillOk = isBridgeAlive && Boolean(printerStatus?.grill_online);
-  const isKitchenOk = isBridgeAlive && Boolean(printerStatus?.kitchen_online);
+  // O PC não testa a porta 9100 para não disputar com o Anota AI; quem mostra impressora com problema é cupom que falhou
+  const recentFailure = (sector: 'GRILL' | 'KITCHEN') =>
+    jobs.find((j) => j.sector === sector && j.status === 'FAILED' && now - new Date(j.created_at).getTime() < 30 * 60 * 1000);
+  const grillFailure = recentFailure('GRILL');
+  const kitchenFailure = recentFailure('KITCHEN');
+  const isGrillOk = isBridgeAlive && Boolean(printerStatus?.grill_online) && !grillFailure;
+  const isKitchenOk = isBridgeAlive && Boolean(printerStatus?.kitchen_online) && !kitchenFailure;
   const allOk = isGrillOk && isKitchenOk;
 
   return {
@@ -29,6 +34,8 @@ export const usePrinterHealth = () => {
     isKitchenOk,
     allOk,
     printerStatus,
+    grillFailure,
+    kitchenFailure,
   };
 };
 
@@ -51,7 +58,7 @@ export const PrinterAlertBanner: React.FC = () => {
               ? 'Computador de impressão local da loja está desconectado. Verifique se o PC da loja está ligado.'
               : `Atenção: ${!isKitchenOk ? 'Impressora da Cozinha (192.168.3.12)' : ''}${
                   !isKitchenOk && !isGrillOk ? ' e ' : ''
-                }${!isGrillOk ? 'Impressora da Churrasqueira (192.168.3.17)' : ''} não respondeu ao teste na rede local.`}
+                }${!isGrillOk ? 'Impressora da Churrasqueira (192.168.3.17)' : ''} com cupom que falhou nos últimos 30 minutos.`}
           </span>
         </div>
         <button
@@ -120,7 +127,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
   isOpen,
   onClose,
 }) => {
-  const { isBridgeAlive, isGrillOk, isKitchenOk, heartbeatAgeSeconds, printerStatus } = usePrinterHealth();
+  const { isBridgeAlive, isGrillOk, isKitchenOk, heartbeatAgeSeconds, printerStatus, grillFailure, kitchenFailure } = usePrinterHealth();
   const { loadPrinterStatus, sendTestPrintAll } = usePrintStore();
   const [isTesting, setIsTesting] = useState(false);
   const [testSuccessMessage, setTestSuccessMessage] = useState<string | null>(null);
@@ -168,7 +175,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
           </button>
         </div>
         <p className="text-xs text-ink-muted">
-          O sistema monitora a conexão contínua entre o computador da loja e as impressoras de rede da Cozinha e Churrasqueira.
+          O computador da loja avisa aqui que está ligado. Impressora com problema aparece quando um cupom falha; use o teste abaixo para conferir antes de abrir.
         </p>
 
         {/* Cartão do Bridge Local */}
@@ -219,8 +226,8 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
             </p>
             <p className="text-xs text-ink-muted">
               {isKitchenOk
-                ? `Resposta em ${printerStatus?.kitchen_latency_ms ?? 2}ms (acompanhamentos e porções).`
-                : `Não respondeu: ${printerStatus?.kitchen_error || 'verifique cabo e energia'}.`}
+                ? 'Nenhum cupom falhou nos últimos 30 minutos.'
+                : `Não respondeu: ${kitchenFailure?.last_error || 'verifique cabo e energia'}`}
             </p>
           </div>
 
@@ -248,8 +255,8 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
             </p>
             <p className="text-xs text-ink-muted">
               {isGrillOk
-                ? `Resposta em ${printerStatus?.grill_latency_ms ?? 3}ms (espetos e carnes).`
-                : `Não respondeu: ${printerStatus?.grill_error || 'verifique cabo e energia'}.`}
+                ? 'Nenhum cupom falhou nos últimos 30 minutos.'
+                : `Não respondeu: ${grillFailure?.last_error || 'verifique cabo e energia'}`}
             </p>
           </div>
         </div>

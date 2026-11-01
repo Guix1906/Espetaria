@@ -11,6 +11,7 @@ import { METHOD_LABELS, SALE_METHODS, buildCashFlow, downloadCsv, financeEntries
 import { useFinanceData } from './useFinanceData';
 import { EntriesPanel, EntryForm } from './EntriesPanel';
 import { ProfitPanel } from './ProfitPanel';
+import { ShiftSummaryCard } from './ShiftSummaryCard';
 
 type Tab = 'overview' | 'result' | 'cashflow' | 'PAGAR' | 'RECEBER';
 
@@ -22,6 +23,7 @@ export function FinanceView() {
   return (
     <div className="page-layout">
       <PageHeader title="Financeiro" description="Entradas e saídas reais do caixa, contas a pagar e a receber. As vendas do salão e do delivery entram sozinhas." />
+      <ShiftSummaryCard />
       <SectionTabs label="Seções do financeiro" value={tab} onChange={setTab} items={[{ id: 'overview', label: 'Visão geral' }, { id: 'result', label: 'Bruto, líquido e lucro' }, { id: 'cashflow', label: 'Fluxo de caixa' }, { id: 'PAGAR', label: 'Contas a pagar' }, { id: 'RECEBER', label: 'Contas a receber' }]} />
       <PeriodPicker value={period} onChange={setPeriod} />
       {error && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">{error}</p>}

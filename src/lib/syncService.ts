@@ -11,6 +11,25 @@ import { useDeliveryStore } from '../stores/useDeliveryStore';
 import { useSettingsStore } from '../stores/useSettingsStore';
 import type { RestaurantTable, Tab, Order, OrderItem, DailyPrepStock, Shift, Payment, Product, WhatsAppMessage, Category, PrinterStatusRecord } from '../types/domain';
 
+/** Lista grande de ids não cabe numa URL só: busca em partes e junta (também evita o limite de 1000 linhas). */
+async function selectInChunks<T>(table: string, column: string, ids: string[]): Promise<T[]> {
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += 100) chunks.push(ids.slice(i, i + 100));
+  const results = await Promise.all(chunks.map((part) => supabase.from(table).select('*').in(column, part)));
+  const failed = results.find((r) => r.error);
+  if (failed?.error) throw failed.error;
+  return results.flatMap((r) => (r.data ?? []) as T[]);
+}
+
+/** Só o que aparece na tela: se nada mudou, a consulta de segurança não redesenha o aparelho. */
+function operationalSnapshot(tables: RestaurantTable[], tabs: Tab[]): string {
+  const openTabs = tabs.filter((t) => t.status === 'OPEN').sort((a, b) => a.id.localeCompare(b.id));
+  return JSON.stringify([
+    tables.map((t) => [t.id, t.status, t.number, t.current_tab?.id]),
+    openTabs.map((t) => [t.id, t.table_id, t.total, t.subtotal, t.discount, t.people_count, t.customer_name]),
+  ]);
+}
+
 class SyncService {
   private channel: RealtimeChannel | null = null;
   private isHydrated = false;
@@ -21,6 +40,10 @@ class SyncService {
   private hadConnectionLoss = false;
   private removeResyncListeners: (() => void) | null = null;
   private lastMessageReceivedAt = 0;
+  private hydrateRequested = false;
+  private connectionLostAt = 0;
+  private lastRecoveryAt = 0;
+  private hiddenAt = 0;
 
   private recordActivity(): void {
     this.lastMessageReceivedAt = Date.now();
@@ -32,7 +55,8 @@ class SyncService {
    */
   public async hydrateAll(): Promise<void> {
     if (this.isHydrating) {
-      logger.debug({ context: 'SyncService', message: 'Hidratação já em andamento, ignorando chamada concorrente.' });
+      // Pedido durante a carga (ex.: o banco recusou uma ação): repete ao terminar, com os dados mais novos
+      this.hydrateRequested = true;
       return;
     }
     if (!isSupabaseConfigured) {
@@ -81,15 +105,10 @@ class SyncService {
         useStockStore.setState({ categories: dbCategories as Category[] });
       }
 
-      if (shiftError) {
-        logger.warn({ context: 'SyncService', message: 'Aviso ao buscar turno ativo', error: shiftError });
-      } else {
-        useShiftStore.setState({ currentShift: (shiftData as Shift | null) ?? null });
-      }
-
-      if (tablesError) {
-        logger.warn({ context: 'SyncService', message: 'Aviso ao buscar mesas', error: tablesError });
-      }
+      // Falha de rede aqui não pode apagar a tela: mantém o que o aparelho já tem e tenta de novo depois
+      if (shiftError) throw shiftError;
+      if (tablesError) throw tablesError;
+      useShiftStore.setState({ currentShift: (shiftData as Shift | null) ?? null });
 
       // 3. Busca comandas abertas + as já fechadas do turno atual (faturamento, caixa e fechamento do turno dependem delas)
       const shiftId = (shiftData as Shift | null)?.id;
@@ -98,9 +117,7 @@ class SyncService {
         .select('*')
         .or(shiftId ? `status.eq.OPEN,shift_id.eq.${shiftId}` : 'status.eq.OPEN');
 
-      if (tabsError) {
-        logger.warn({ context: 'SyncService', message: 'Aviso ao buscar comandas', error: tabsError });
-      }
+      if (tabsError) throw tabsError;
 
       const activeTabs = ((dbTabs || []) as Tab[]).map((t) => ({
         ...t,
@@ -110,84 +127,64 @@ class SyncService {
         total: Number(t.total),
       }));
 
-      // Atualiza mesas associando comanda atual
-      if (dbTables && dbTables.length > 0) {
-        const mergedTables: RestaurantTable[] = dbTables.map((tbl) => {
-          const matchingTab = activeTabs.find((tab) => tab.status === 'OPEN' && (tab.table_id === tbl.id || tab.table_id === `table-${tbl.number}`));
-          return {
-            ...tbl,
-            updated_at: tbl.updated_at ?? new Date().toISOString(),
-            updated_by: tbl.updated_by ?? null,
-            version: tbl.version ?? 1,
-            status: matchingTab ? (tbl.status === 'AGUARDANDO_CONTA' ? 'AGUARDANDO_CONTA' : 'OCUPADA') : 'LIVRE',
-            current_tab: matchingTab,
-          };
-        });
-        useTableStore.setState({ tables: mergedTables, tabs: activeTabs });
-      } else {
-        useTableStore.setState({ tabs: activeTabs });
-      }
+      // 4. Busca pagamentos, pedidos e itens das comandas (em partes, para não estourar a URL em noite cheia)
+      const tabIds = activeTabs.map((t) => t.id);
+      const [dbPayments, dbOrders] = await Promise.all([
+        selectInChunks<Payment>('payments', 'tab_id', tabIds),
+        selectInChunks<Order>('orders', 'tab_id', tabIds),
+      ]);
 
-      // 4. Busca pedidos, itens e pagamentos das comandas abertas
-      if (activeTabs.length === 0) {
-        useTableStore.setState({ orders: [], orderItems: [], payments: [] });
-      } else {
-        const tabIds = activeTabs.map((t) => t.id);
+      const ordersList = dbOrders.map((o) => ({
+        ...o,
+        updated_at: o.updated_at ?? new Date().toISOString(),
+        updated_by: o.updated_by ?? null,
+        version: o.version ?? 1,
+      })) as Order[];
 
-        const { data: dbPayments, error: paymentsError } = await supabase
-          .from('payments')
-          .select('*')
-          .in('tab_id', tabIds)
-          .eq('status', 'PAID');
-        if (paymentsError) throw paymentsError;
-        useTableStore.setState({
-          payments: ((dbPayments || []) as Payment[]).map((p) => ({ ...p, amount: Number(p.amount) })),
-        });
+      const closedOrderIds = new Set(ordersList.filter((o) => o.status === 'CLOSED').map((o) => o.id));
+      const cancelledOrderIds = new Set(ordersList.filter((o) => o.status === 'CANCELLED').map((o) => o.id));
+      const dbItems = await selectInChunks<OrderItem>('order_items', 'order_id', ordersList.map((o) => o.id));
 
-        const { data: dbOrders, error: ordersError } = await supabase
-          .from('orders')
-          .select('*')
-          .in('tab_id', tabIds);
-        if (ordersError) throw ordersError;
-
-        const ordersList = (dbOrders || []).map((o) => ({
-          ...o,
-          updated_at: o.updated_at ?? new Date().toISOString(),
-          updated_by: o.updated_by ?? null,
-          version: o.version ?? 1,
-        })) as Order[];
-
-        if (ordersList.length === 0) {
-          useTableStore.setState({ orders: [], orderItems: [] });
-        } else {
-          const orderIds = ordersList.map((o) => o.id);
-          const closedOrderIds = new Set(ordersList.filter((o) => o.status === 'CLOSED').map((o) => o.id));
-          const cancelledOrderIds = new Set(ordersList.filter((o) => o.status === 'CANCELLED').map((o) => o.id));
-          const { data: dbItems, error: itemsError } = await supabase
-            .from('order_items')
-            .select('*')
-            .in('order_id', orderIds);
-          if (itemsError) throw itemsError;
-
-          const itemsList = (dbItems || []).map((item) => {
-            let itemStatus = item.status;
-            if (closedOrderIds.has(item.order_id) && (itemStatus === 'IN_PREPARATION' || itemStatus === 'RECEIVED' || itemStatus === 'READY')) {
-              itemStatus = 'DELIVERED';
-            } else if (cancelledOrderIds.has(item.order_id) && itemStatus !== 'CANCELLED') {
-              itemStatus = 'CANCELLED';
-            }
-            return {
-              ...item,
-              status: itemStatus,
-            unit_price: Number(item.unit_price),
-            updated_at: item.updated_at ?? new Date().toISOString(),
-            updated_by: item.updated_by ?? null,
-            version: item.version ?? 1,
-            };
-          }) as OrderItem[];
-          useTableStore.setState({ orders: ordersList, orderItems: itemsList });
+      const itemsList = dbItems.map((item) => {
+        let itemStatus = item.status;
+        if (closedOrderIds.has(item.order_id) && (itemStatus === 'IN_PREPARATION' || itemStatus === 'RECEIVED' || itemStatus === 'READY')) {
+          itemStatus = 'DELIVERED';
+        } else if (cancelledOrderIds.has(item.order_id) && itemStatus !== 'CANCELLED') {
+          itemStatus = 'CANCELLED';
         }
-      }
+        return {
+          ...item,
+          status: itemStatus,
+          unit_price: Number(item.unit_price),
+          updated_at: item.updated_at ?? new Date().toISOString(),
+          updated_by: item.updated_by ?? null,
+          version: item.version ?? 1,
+        };
+      }) as OrderItem[];
+
+      // Atualiza mesas associando comanda atual
+      const mergedTables: RestaurantTable[] | null = dbTables && dbTables.length > 0
+        ? dbTables.map((tbl) => {
+            const matchingTab = activeTabs.find((tab) => tab.status === 'OPEN' && (tab.table_id === tbl.id || tab.table_id === `table-${tbl.number}`));
+            return {
+              ...tbl,
+              updated_at: tbl.updated_at ?? new Date().toISOString(),
+              updated_by: tbl.updated_by ?? null,
+              version: tbl.version ?? 1,
+              status: matchingTab ? (tbl.status === 'AGUARDANDO_CONTA' ? 'AGUARDANDO_CONTA' : 'OCUPADA') : 'LIVRE',
+              current_tab: matchingTab,
+            };
+          })
+        : null;
+
+      // Tudo de uma vez: a mesa nunca aparece "sem pedido" enquanto os itens ainda estão chegando
+      useTableStore.setState({
+        ...(mergedTables ? { tables: mergedTables } : {}),
+        tabs: activeTabs,
+        payments: dbPayments.filter((p) => p.status === 'PAID').map((p) => ({ ...p, amount: Number(p.amount) })),
+        orders: ordersList,
+        orderItems: itemsList,
+      });
 
       // 5. Busca estoque do turno se houver turno aberto
       if (shiftData) {
@@ -227,6 +224,10 @@ class SyncService {
       logger.error({ context: 'SyncService', message: 'Erro ao hidratar dados do Supabase', error: err });
     } finally {
       this.isHydrating = false;
+      if (this.hydrateRequested) {
+        this.hydrateRequested = false;
+        void this.hydrateAll();
+      }
     }
   }
 
@@ -234,17 +235,8 @@ class SyncService {
    * Assina canais Realtime do Postgres (postgres_changes) para sincronizar
    * mutações originadas em qualquer aparelho (celular, KDS, caixa).
    */
-  public subscribeToDatabaseChanges(): () => void {
-    if (!isSupabaseConfigured) {
-      return () => {};
-    }
-
-    if (this.isSubscribed && this.channel) {
-      return () => this.unsubscribe();
-    }
-
-    try {
-      const channel = supabase
+  private openChannel(): RealtimeChannel {
+      const channel: RealtimeChannel = supabase
         .channel('postgres-db-sync')
         // 1. Mudanças em restaurant_tables
         .on(
@@ -433,7 +425,10 @@ class SyncService {
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               const shift = payload.new as Shift;
               if (shift.status === 'ABERTO') {
+                const isNewShift = useShiftStore.getState().currentShift?.id !== shift.id;
                 useShiftStore.setState({ currentShift: shift });
+                // Turno novo: traz o estoque do dia junto, para o garçom não ver tudo esgotado
+                if (isNewShift) void this.hydrateAll();
               } else if (shift.status === 'FECHADO') {
                 useShiftStore.setState({ currentShift: null });
                 useStockStore.setState({ dailyPrepStock: [] });
@@ -450,8 +445,11 @@ class SyncService {
           }
         )
         .subscribe((status) => {
+          // Canal antigo sendo trocado por um novo: não conta como queda
+          if (this.channel && this.channel !== channel) return;
           logger.debug({ context: 'SyncService', message: `Canal postgres-db-sync: ${status}` });
           if (status === 'SUBSCRIBED') {
+            this.connectionLostAt = 0;
             // Reconexão após queda: recarrega o estado para recuperar eventos perdidos
             if (this.hadConnectionLoss) {
               this.hadConnectionLoss = false;
@@ -459,17 +457,54 @@ class SyncService {
             }
           } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
             this.hadConnectionLoss = true;
+            if (!this.connectionLostAt) this.connectionLostAt = Date.now();
           }
         });
+      return channel;
+  }
 
-      this.channel = channel;
+  /** Canal caído: recarrega tudo de tempos em tempos (a tela não pode ficar parada) e reabre o canal se ele não voltar sozinho. */
+  private recoverFromConnectionLoss(): void {
+    if (!this.hadConnectionLoss) return;
+    const now = Date.now();
+    if (now - this.lastRecoveryAt < 20000) return;
+    this.lastRecoveryAt = now;
+    void this.hydrateAll();
+    if (this.channel && this.connectionLostAt && now - this.connectionLostAt > 30000) {
+      const dead = this.channel;
+      this.channel = null;
+      void supabase.removeChannel(dead);
+      this.connectionLostAt = now;
+      this.channel = this.openChannel();
+    }
+  }
+
+  /**
+   * Assina o canal e liga as redes de segurança (volta do modo suspenso, volta da internet, consulta periódica).
+   */
+  public subscribeToDatabaseChanges(): () => void {
+    if (!isSupabaseConfigured) {
+      return () => {};
+    }
+
+    if (this.isSubscribed && this.channel) {
+      return () => this.unsubscribe();
+    }
+
+    try {
+      this.channel = this.openChannel();
       this.isSubscribed = true;
 
       // Aparelho voltou do modo suspenso ou recuperou a rede: ressincroniza
-      const resync = () => {
-        if (document.visibilityState === 'visible') {
-          void this.pollOperationalDelta(true);
+      const resync = (event: Event) => {
+        if (document.visibilityState !== 'visible') {
+          this.hiddenAt = Date.now();
+          return;
         }
+        // Celular bloqueado pode perder eventos sem o canal perceber: nesse caso recarrega tudo, inclusive os pedidos
+        const wasAway = event.type === 'online' || (this.hiddenAt > 0 && Date.now() - this.hiddenAt > 20000);
+        this.hiddenAt = 0;
+        void (wasAway ? this.hydrateAll() : this.pollOperationalDelta(true));
       };
       window.addEventListener('online', resync);
       document.addEventListener('visibilitychange', resync);
@@ -478,6 +513,7 @@ class SyncService {
       // sem sobrecarregar o banco com consultas excessivas de múltiplos celulares
       const intervalId = window.setInterval(() => {
         if (document.visibilityState === 'visible') {
+          this.recoverFromConnectionLoss();
           void this.pollOperationalDelta(false);
         }
       }, 10000);
@@ -540,7 +576,9 @@ class SyncService {
         });
         return;
       } else if (activeShift && (!localShift || localShift.id !== activeShift.id)) {
-        useShiftStore.setState({ currentShift: activeShift as Shift });
+        // Turno aberto em outro aparelho: carrega tudo (o estoque do dia vem junto)
+        void this.hydrateAll();
+        return;
       }
 
       if (!activeShift) return;
@@ -555,11 +593,22 @@ class SyncService {
         people_count: Number(t.people_count || 1),
       }));
 
+      const currentTabs = useTableStore.getState().tabs;
+      const openTabIds = new Set(normalizedOpenTabs.map((t) => t.id));
+      const missing = currentTabs.filter((t) => t.status === 'OPEN' && !openTabIds.has(t.id));
+      // Recém-aberta aqui pode ainda estar a caminho do banco; a mais antiga foi encerrada em outro aparelho e o aviso se perdeu
+      const justOpened = missing.filter((t) => Date.now() - new Date(t.opened_at).getTime() < 30000);
+      if (missing.length > justOpened.length) {
+        void this.hydrateAll();
+        return;
+      }
+
       // Atualiza mesas conectando comanda aberta
       if (activeTablesData && activeTablesData.length > 0) {
+        const tabsForTables = [...normalizedOpenTabs, ...justOpened];
         const mergedTables = activeTablesData.map((tbl) => {
-          const matchingTab = normalizedOpenTabs.find(
-            (tab) => tab.status === 'OPEN' && (tab.table_id === tbl.id || tab.table_id === `table-${tbl.number}`)
+          const matchingTab = tabsForTables.find(
+            (tab) => tab.table_id === tbl.id || tab.table_id === `table-${tbl.number}`
           );
           return {
             ...tbl,
@@ -569,17 +618,11 @@ class SyncService {
           } as RestaurantTable;
         });
 
-        const currentTabs = useTableStore.getState().tabs;
-        const openTabIds = new Set(normalizedOpenTabs.map((t) => t.id));
-        const mergedTabs = [
-          ...normalizedOpenTabs,
-          ...currentTabs.filter((t) => t.status !== 'OPEN' || !openTabIds.has(t.id)),
-        ];
-
-        useTableStore.setState({
-          tables: mergedTables,
-          tabs: mergedTabs,
-        });
+        const mergedTabs = [...normalizedOpenTabs, ...currentTabs.filter((t) => !openTabIds.has(t.id))];
+        const store = useTableStore.getState();
+        if (operationalSnapshot(mergedTables, mergedTabs) !== operationalSnapshot(store.tables, store.tabs)) {
+          useTableStore.setState({ tables: mergedTables, tabs: mergedTabs });
+        }
       }
     } catch (err) {
       logger.debug({ context: 'SyncService', message: 'Aviso em pollOperationalDelta', error: err });

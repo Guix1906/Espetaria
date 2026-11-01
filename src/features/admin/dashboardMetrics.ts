@@ -1,5 +1,4 @@
 import type { DeliveryOrder, Order, OrderItem, Payment, PrintJob, RestaurantTable, StockMovement, Tab } from '../../types/domain';
-import { formatBRL } from '../../lib/formatters';
 import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
 
 /** Limites dos alertas (minutos). */
@@ -274,14 +273,11 @@ export function computeDashboard(input: DashboardInput) {
   const feed: ActivityEvent[] = [];
   shiftTabs.forEach((tab) => {
     feed.push({ id: `tab-${tab.id}`, time: tab.opened_at, channel: 'Casa', tone: 'success', title: `Comanda aberta · ${tableNumber(tab.table_id)}`, description: `${tab.customer_name || 'Sem nome'} · ${tab.people_count} ${tab.people_count === 1 ? 'pessoa' : 'pessoas'}` });
-    if (tab.status === 'CLOSED' && tab.closed_at) feed.push({ id: `tabc-${tab.id}`, time: tab.closed_at, channel: 'Casa', tone: 'neutral', title: `Comanda encerrada · ${tableNumber(tab.table_id)}`, description: `Total ${formatBRL(tab.total)}` });
+    if (tab.status === 'CLOSED' && tab.closed_at) feed.push({ id: `tabc-${tab.id}`, time: tab.closed_at, channel: 'Casa', tone: 'neutral', title: `Comanda encerrada · ${tableNumber(tab.table_id)}`, description: tab.customer_name || 'Sem nome' });
   });
   orders.filter(inShift).forEach((order) => {
     const items = (order.items?.length ? order.items : orderItems.filter((i) => i.order_id === order.id));
     feed.push({ id: `ord-${order.id}`, time: order.created_at, channel: 'Casa', tone: 'warning', title: `Pedido #${order.order_number} · ${tableNumber(order.table_id)}`, description: items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ') || 'Itens lançados' });
-  });
-  payments.filter((p) => p.paid_at && (!shiftId || p.shift_id === shiftId || !p.shift_id)).forEach((p) => {
-    feed.push({ id: `pay-${p.id}`, time: p.paid_at, channel: 'Casa', tone: 'success', title: 'Pagamento recebido', description: `${formatBRL(p.amount)} · ${p.method === 'CREDITO' ? 'crédito' : p.method === 'DEBITO' ? 'débito' : p.method === 'DINHEIRO' ? 'dinheiro' : 'PIX'}` });
   });
   shiftDeliveries.forEach((d) => {
     const ch = isPickup(d) ? 'Retirada' : 'Delivery';

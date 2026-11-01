@@ -8,7 +8,7 @@ import { realtimeService } from '../lib/realtime';
 import { audioService } from '../lib/audio';
 import { logger } from '../lib/logger';
 import { usePrintStore } from './usePrintStore';
-import { callRpc } from '../lib/remote';
+import { callRpc, useRemoteErrorStore } from '../lib/remote';
 import { isSupabaseConfigured } from '../lib/supabase';
 import { computeTabTotals, fromCents, getServiceFeeRate, sumMoney, toCents } from '../lib/utils';
 import { useAuthStore } from './useAuthStore';
@@ -34,6 +34,9 @@ export function stockStatusForCancel(status: OrderItemStatus, returnStock?: bool
   if (shouldReturn) return 'RECEIVED';
   return status === 'RECEIVED' ? 'IN_PREPARATION' : status;
 }
+
+/** Abertura de comanda a caminho do banco: o primeiro pedido espera por ela para não chegar antes. */
+const pendingTabOpens = new Map<string, Promise<unknown>>();
 
 interface OrderItemInput {
   productId: string;
@@ -64,7 +67,9 @@ interface TableState {
     tabId: string,
     items: OrderItemInput[],
     userId: string,
-    notes?: string
+    notes?: string,
+    /** Chamado se o banco não confirmar o pedido (ex.: para devolver os itens ao carrinho). */
+    onRejected?: () => void
   ) => Order;
   /** returnStock: devolve ao estoque (só vale antes de ficar pronto). Sem valor, segue a regra padrão. */
   cancelOrderItemAtomic: (
@@ -170,14 +175,15 @@ export const useTableStore = create<TableState>((set, get) => ({
       ),
     });
 
-    void callRpc('open_tab_atomic', {
+    const opening = callRpc('open_tab_atomic', {
       p_tab_id: newTab.id,
       p_shift_id: shiftId,
       p_table_id: tableId,
       p_customer_name: newTab.customer_name,
       p_people_count: newTab.people_count,
       p_notes: newTab.notes,
-    }, 'TableStore');
+    }, 'TableStore').finally(() => pendingTabOpens.delete(newTab.id));
+    pendingTabOpens.set(newTab.id, opening);
 
     logger.info({
       context: 'TableStore',
@@ -187,7 +193,7 @@ export const useTableStore = create<TableState>((set, get) => ({
     return newTab;
   },
 
-  addOrderAtomic: (shiftId, tabId, items, userId, notes) => {
+  addOrderAtomic: (shiftId, tabId, items, userId, notes, onRejected) => {
     const tab = get().tabs.find(
       (t) => (t.id === tabId || t.table_id === tabId || `table-${t.table_id}` === tabId) && t.status === 'OPEN'
     );
@@ -282,10 +288,10 @@ export const useTableStore = create<TableState>((set, get) => ({
     });
 
     // Transação única no banco: pedido + itens + baixa de estoque com lock + totais
-    void callRpc<{ order_id: string; order_number: number }>('create_order_atomic', {
+    void Promise.resolve(pendingTabOpens.get(tab.id)).then(() => callRpc<{ order_id: string; order_number: number }>('create_order_atomic', {
       p_order_id: newOrder.id,
       p_shift_id: shiftId,
-      p_tab_id: tabId,
+      p_tab_id: tab.id,
       p_items: newItems.map((item) => ({
         id: item.id,
         product_id: item.product_id,
@@ -295,7 +301,13 @@ export const useTableStore = create<TableState>((set, get) => ({
       })),
       p_idempotency_key: newOrder.idempotency_key,
       p_notes: newOrder.notes,
-    }, 'TableStore').then((result) => {
+    }, 'TableStore')).then((result) => {
+      if (!result && isSupabaseConfigured) {
+        const reason = useRemoteErrorStore.getState().lastError;
+        useRemoteErrorStore.setState({ lastError: `Pedido da Mesa ${table.number} NÃO foi enviado. ${reason ?? ''} Os itens voltaram para o carrinho.` });
+        onRejected?.();
+        return;
+      }
       if (result && result.order_number !== newOrder.order_number) {
         set({
           orders: get().orders.map((o) => (o.id === result.order_id ? { ...o, order_number: result.order_number } : o)),
@@ -868,11 +880,12 @@ export const useTableStore = create<TableState>((set, get) => ({
       paid_at: now,
     };
 
+    // Sem aumentar a versão: o banco não muda a comanda ao pagar, e a versão local maior faria
+    // este aparelho ignorar o que outro garçom lançar depois (conta dividida com total velho)
     const updatedTab: Tab = {
       ...tab,
       updated_at: now,
       updated_by: receivedBy,
-      version: (tab.version || 0) + 1,
     };
 
     set({
@@ -1205,22 +1218,7 @@ export const useTableStore = create<TableState>((set, get) => ({
       }),
     });
 
-    void (async () => {
-      try {
-        const res = await callRpc('transfer_table_atomic', { p_tab_id: tabId, p_target_table_id: targetTableId }, 'TableStore');
-        if (!res && isSupabaseConfigured) {
-          const { supabase } = await import('../lib/supabase');
-          await supabase.from('tabs').update({ table_id: targetTableId, updated_at: now, updated_by: userId }).eq('id', tabId);
-          await supabase.from('orders').update({ table_id: targetTableId, updated_at: now }).eq('tab_id', tabId);
-          if (sourceTable) {
-            await supabase.from('restaurant_tables').update({ status: 'LIVRE', updated_at: now }).eq('id', sourceTable.id);
-          }
-          await supabase.from('restaurant_tables').update({ status: targetStatus, updated_at: now }).eq('id', targetTableId);
-        }
-      } catch (err) {
-        logger.error({ context: 'TableStore', message: 'Erro ao persistir transferência de mesa', error: err });
-      }
-    })();
+    void callRpc('transfer_table_atomic', { p_tab_id: tabId, p_target_table_id: targetTableId }, 'TableStore');
 
     logger.info({
       context: 'TableStore',
@@ -1259,8 +1257,11 @@ export const useTableStore = create<TableState>((set, get) => ({
     if (tableData.status === 'LIVRE') {
       const targetTable = localTable || get().tables.find((t) => t.id === updatedTableId);
       if (targetTable) {
-        const tableOrderIds = new Set(newOrders.filter((o) => o.table_id === targetTable.id).map((o) => o.id));
-        newOrders = newOrders.map((o) => (o.table_id === targetTable.id && o.status !== 'CANCELLED' ? { ...o, status: 'CLOSED' as const } : o));
+        // Comanda ainda aberta foi só trocada de mesa: os espetos dela continuam na brasa nos outros aparelhos
+        const openTabIds = new Set(get().tabs.filter((t) => t.status === 'OPEN').map((t) => t.id));
+        const isFinished = (o: Order) => o.table_id === targetTable.id && !openTabIds.has(o.tab_id);
+        const tableOrderIds = new Set(newOrders.filter(isFinished).map((o) => o.id));
+        newOrders = newOrders.map((o) => (isFinished(o) && o.status !== 'CANCELLED' ? { ...o, status: 'CLOSED' as const } : o));
         newOrderItems = newOrderItems.map((i) =>
           tableOrderIds.has(i.order_id) && i.status !== 'CANCELLED'
             ? { ...i, status: 'DELIVERED' as const }

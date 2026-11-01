@@ -18,10 +18,21 @@ if (!isSupabaseConfigured) {
   });
 }
 
+/** Wi-Fi ruim não pode deixar uma consulta pendurada para sempre: desiste e deixa o callRpc repetir. */
+const REST_TIMEOUT_MS = 15000;
+const fetchWithTimeout: typeof fetch = (input, init) => {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  if (!url.includes('/rest/v1/') || init?.signal) return fetch(input, init);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REST_TIMEOUT_MS);
+  return fetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+};
+
 export const supabase = createClient(
   supabaseUrl || 'https://mock-supabase.local',
   supabaseAnonKey || 'mock-anon-key-placeholder',
   {
+    global: { fetch: fetchWithTimeout },
     auth: {
       persistSession: true,
       autoRefreshToken: true,

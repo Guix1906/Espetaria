@@ -84,31 +84,15 @@ BEGIN
         END IF;
     END IF;
 
-    -- 5. Cancela o item antigo
+    -- 5. Cancela o item antigo (o motivo vai no cupom de cancelamento)
+    INSERT INTO order_item_status_history (order_item_id, from_status, to_status, changed_by, notes)
+    VALUES (p_order_item_id, v_old_item.status, 'CANCELLED', v_uid, 'Troca por ' || v_new_product.name);
+
     UPDATE order_items
        SET status = 'CANCELLED', updated_by = v_uid::TEXT, updated_at = NOW()
      WHERE id = p_order_item_id;
 
-    -- 6. Emite cupom de CANCELAMENTO do item antigo para a produção
-    IF auto_print_enabled() AND v_old_item.sector IN ('GRILL', 'KITCHEN') THEN
-        PERFORM enqueue_print(
-            'CANCEL',
-            v_order.id,
-            v_order.order_number,
-            v_old_item.sector,
-            'SALAO',
-            v_table_number,
-            v_tab.customer_name,
-            jsonb_build_array(jsonb_build_object(
-                'name', v_old_item.product_name,
-                'quantity', v_old_item.quantity,
-                'doneness', v_old_item.doneness,
-                'notes', v_old_item.notes
-            )),
-            jsonb_build_object('waiter', v_waiter, 'cancel_reason', 'Troca por ' || v_new_product.name),
-            'CANCEL-' || v_old_item.id || '-SWAP-' || extract(epoch FROM clock_timestamp())::BIGINT
-        );
-    END IF;
+    -- 6. O cupom de cancelamento sai pelo gatilho enqueue_item_cancel_print (não imprime duas vezes)
 
     -- 7. Dá baixa no estoque do novo produto se aplicável
     IF v_new_product.tracks_stock THEN

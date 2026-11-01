@@ -70,6 +70,8 @@ interface CartState {
   /** Troca ponto, observação e quantidade de um item do rascunho (revisão do pedido). */
   updateItem: (tableId: string, draftItemId: string, changes: { quantity: number; doneness: MeatDoneness | null; notes: string | null }) => void;
   clearCart: (tableId: string) => void;
+  /** Devolve ao carrinho os itens de um pedido que o banco não confirmou. */
+  restoreItems: (tableId: string, items: CartItem[]) => void;
   getCart: (tableId: string) => CartItem[];
   getCartTotal: (tableId: string) => number;
   getCartItemsCount: (tableId: string) => number;
@@ -172,6 +174,13 @@ export const useCartStore = create<CartState>((set, get) => ({
   clearCart: (tableId) => {
     const carts = { ...get().tableCarts };
     delete carts[tableId];
+    savePersistedCarts(carts);
+    set({ tableCarts: carts });
+  },
+
+  restoreItems: (tableId, items) => {
+    const carts = { ...get().tableCarts };
+    carts[tableId] = [...items, ...(carts[tableId] || [])];
     savePersistedCarts(carts);
     set({ tableCarts: carts });
   },

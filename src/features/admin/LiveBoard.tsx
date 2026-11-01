@@ -1,6 +1,6 @@
 import { Bike, Flame, UtensilsCrossed } from 'lucide-react';
 import type { ActiveTab } from '../../components/layout/navigation';
-import { formatBRL, formatElapsedMinutes } from '../../lib/formatters';
+import { formatElapsedMinutes } from '../../lib/formatters';
 import { LOW_STOCK_THRESHOLD } from '../../lib/productAvailability';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
@@ -49,7 +49,7 @@ export function LiveBoard({ now, openTabs, tabInfo, readyOldest, activeDeliverie
     return {
       key: tab.id, level, status,
       title: `Mesa ${table ? pad2(table.number) : '—'}${name}`,
-      detail: `${formatBRL(tab.total || tab.subtotal)} · ${formatElapsedMinutes(tab.opened_at, now)}`,
+      detail: `${tab.people_count} ${tab.people_count === 1 ? 'pessoa' : 'pessoas'} · ${formatElapsedMinutes(tab.opened_at, now)}`,
       onClick: table && goTable ? () => goTable(table.id, bill ? 'cashier' : 'waiter') : undefined,
     };
   });
@@ -95,7 +95,7 @@ export function LiveBoard({ now, openTabs, tabInfo, readyOldest, activeDeliverie
       level: lateIds.has(o.id) ? 'urgent' : elapsedLevel(o.created_at, now, 30, 45),
       title: `#${o.order_number} ${o.customer_name.trim().split(' ')[0] || o.customer_name}`,
       status: stage ? (stage === 'READY' && pickup ? 'pronto, cliente vem buscar' : DELIVERY_STAGE[stage]) : '',
-      detail: `${pickup ? 'retirada' : o.address_neighborhood || 'entrega'} · ${formatBRL(o.total)} · ${formatElapsedMinutes(o.created_at, now)}`,
+      detail: `${pickup ? 'retirada' : o.address_neighborhood || 'entrega'} · ${formatElapsedMinutes(o.created_at, now)}`,
       onClick: go ? () => go('delivery') : undefined,
     };
   });

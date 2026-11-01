@@ -110,9 +110,9 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
     it('1.1 MasterDashboardView (Visão Geral) deve abrir e renderizar sem erros', () => {
       const html = renderWithFeedback(<MasterDashboardView />);
       expect(html).toContain('Visão geral');
-      expect(html).toContain('Casa agora');
+      expect(html).toContain('Mesas em atendimento');
       expect(html).toContain('Delivery e retirada agora');
-      expect(html).toContain('Faturamento do turno');
+      expect(html).not.toContain('Faturamento do turno');
       expect(html).toContain('Produção agora');
       expect(html).toContain('Turno fechado. Abra o turno');
     });
@@ -240,14 +240,15 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       syncStores();
     });
 
-    it('2.1 MasterDashboardView com dados ativos deve listar comanda aberta e faturamento projetado', () => {
+    it('2.1 MasterDashboardView com dados ativos lista a operação e não mostra dinheiro', () => {
       const html = renderWithFeedback(<MasterDashboardView />);
       expect(html).toContain('Turno Auditoria');
       expect(html).toContain('Cliente Teste');
       expect(html).toContain('Mesa 01');
-      expect(html).toContain('Em consumo');
+      expect(html).toContain('2 na brasa');
       expect(html).toContain('Movimentações do turno');
       expect(html).toContain('Comanda aberta · Mesa 01');
+      expect(html).not.toContain('R$');
     });
 
     it('2.1b Lançar pedido do garçom mostra a foto do produto', () => {

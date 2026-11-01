@@ -40,7 +40,9 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   Plano de layout em `docs/correcoes-layout.md` (etapas 1–4 concluídas em 17/10).
 - Área do garçom (celular): Mesas (lista de ocupadas + grade de livres) / Prontos / Ajustes na barra inferior; avatar com Som e Sair;
   folhas `WaiterSheet` (abrir comanda, ponto da carne só com 3 pontos, revisar pedido). Painel admin continua com `TableCard`.
-- Visão geral: cálculos puros em `src/features/admin/dashboardMetrics.ts` (testados): alertas, casa × delivery agora, faturamento
+- Visão geral mostra SÓ a operação, sem nenhum valor em dinheiro (pedido do dono, 01/11); faturamento, resumo no WhatsApp e planilha do turno ficam em `ShiftSummaryCard` no Financeiro.
+- Vários aparelhos (01/11): `callRpc` repete deadlock/rede com espera crescente; pedido recusado volta ao carrinho (`onRejected`); `hydrateAll` nunca apaga a tela em erro e busca em partes de 100 ids; canal caído é reaberto; celular que volta do bloqueio recarrega tudo. Testes em `src/lib/__tests__/concurrent_access.test.ts`.
+- Cálculos da Visão geral: puros em `src/features/admin/dashboardMetrics.ts` (testados): alertas, casa × delivery agora, faturamento
   por canal (produtos sem taxas; delivery realizado = entregue ou pago). "Lançar pedido"/"Cobrar" abrem a mesa via `useNavFocusStore`.
 - Estoque amarrado: garçom vê saldo por item e o carrinho bloqueia acima do estoque (`assertStock` em `useCartStore`). Gerente bloqueia/libera item no quadro "Espetos e porções disponíveis" (Visão geral).
 - Login: abas Proprietário/Garçom na mesma moldura (`src/features/auth/AuthShell.tsx`). Perfil GARCOM sempre cai na área do garçom (`#/garcom`).
@@ -122,7 +124,7 @@ Vercel e Supabase CLI rodam via `npx` (`npx vercel@latest`, `npx supabase`).
 - `printer-bridge/.env` — `SUPABASE_SERVICE_ROLE_KEY` e IPs das impressoras.
 
 ## Atenção ao editar no Windows
-- Projeto em `C:\Projetos\Espetaria` (saiu do OneDrive em 21/10). `Set-Content` que falha pode deixar o arquivo VAZIO — preferir as ferramentas de edição ou `[IO.File]::WriteAllText` e conferir arquivos com 0 bytes depois.
+- Cópia em dia desde 01/11: `C:\Users\guigo\OneDrive\Documentos\Espetaria\Espetaria-main`. `C:\Projetos\Espetaria` está 36+ commits atrás; não publicar de lá. `Set-Content` que falha pode deixar o arquivo VAZIO — preferir as ferramentas de edição ou `[IO.File]::WriteAllText` e conferir arquivos com 0 bytes depois.
 - Arquivos têm mistura de quebras de linha LF/CRLF; considerar isso em substituições de texto.
 
 ## Situação em 11/10/2026

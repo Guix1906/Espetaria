@@ -37,11 +37,14 @@ export function initAutoUpdate() {
   const currentBuildTime = typeof __APP_BUILD_TIME__ !== 'undefined' ? __APP_BUILD_TIME__ : '';
   let registrationRef: ServiceWorkerRegistration | undefined;
 
-  const RELOAD_COOLDOWN_MS = 15000;
+  const RELOAD_COOLDOWN_MS = 60000;
+  const MAX_RELOADS_PER_SESSION = 3;
 
   const doReload = () => {
     try {
       sessionStorage.setItem('ponto_last_pwa_reload', String(Date.now()));
+      const count = Number(sessionStorage.getItem('ponto_pwa_reload_count') || '0');
+      sessionStorage.setItem('ponto_pwa_reload_count', String(count + 1));
     } catch {}
     window.location.reload();
   };
@@ -49,24 +52,24 @@ export function initAutoUpdate() {
   const triggerReload = () => {
     if (isReloading) return;
 
-    // Proteção contra loop de recargas sucessivas (cooldown de 15s)
+    // Proteção contra tela "piscando": se o aparelho não pegar a versão nova, para de insistir
     try {
       const lastReload = Number(sessionStorage.getItem('ponto_last_pwa_reload') || '0');
-      if (Date.now() - lastReload < RELOAD_COOLDOWN_MS) {
+      const count = Number(sessionStorage.getItem('ponto_pwa_reload_count') || '0');
+      if (Date.now() - lastReload < RELOAD_COOLDOWN_MS || count >= MAX_RELOADS_PER_SESSION) {
         return;
       }
     } catch {}
 
     isReloading = true;
 
-    // Se o usuário estiver no meio de uma digitação ou com modal aberto, aguarda concluir
+    // No meio de uma digitação ou com janela aberta: espera terminar (limite de 3 min, nunca corta o garçom no meio)
     if (isUserInteracting()) {
       showUpdateToast(true);
       let attempts = 0;
       const interval = window.setInterval(() => {
         attempts += 1;
-        // Se fechou o modal/blur ou atingiu o limite de 8s de tolerância, recarrega
-        if (!isUserInteracting() || attempts >= 8) {
+        if (!isUserInteracting() || attempts >= 180) {
           window.clearInterval(interval);
           doReload();
         }
@@ -129,8 +132,8 @@ export function initAutoUpdate() {
     }
   };
 
-  // Checa a cada 15 segundos em segundo plano
-  setInterval(checkForUpdates, 15000);
+  // Checa a cada minuto em segundo plano
+  setInterval(checkForUpdates, 60000);
 
   // Checa imediatamente ao desbloquear o celular / voltar para a aba
   document.addEventListener('visibilitychange', () => {

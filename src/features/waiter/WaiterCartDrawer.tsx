@@ -64,7 +64,7 @@ export function WaiterCartDrawer({ table, isOpen, onClose, onSuccess }: WaiterCa
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      addOrderAtomic(currentShift.id, activeTab.id, items.map((item) => ({ productId: item.product.id, quantity: item.quantity, doneness: item.doneness, notes: item.notes || undefined })), currentProfile.id);
+      addOrderAtomic(currentShift.id, activeTab.id, items.map((item) => ({ productId: item.product.id, quantity: item.quantity, doneness: item.doneness, notes: item.notes || undefined })), currentProfile.id, undefined, () => useCartStore.getState().restoreItems(table.id, items));
       clearCart(table.id);
       onSuccess();
       onClose();
