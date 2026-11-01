@@ -1,4 +1,4 @@
-import { AlertCircle, Ban, Check, CheckCircle2, Coins, Flame, History, RotateCcw, X } from 'lucide-react';
+import { AlertCircle, Ban, Calendar, Check, CheckCircle2, Coins, Flame, History, RotateCcw, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { formatBRL } from '../../lib/formatters';
@@ -248,7 +248,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   };
 
   const fieldClass = (filled: boolean) =>
-    `h-10 rounded-lg border px-2 text-center font-mono text-base font-bold text-ink focus:outline-none focus:ring-2 focus:ring-brand-600 transition ${
+    `h-10 rounded-lg border px-2 text-center font-mono text-base font-bold text-ink focus:outline-none focus:ring-2 focus:ring-brand-600 transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
       filled ? 'bg-surface border-line-strong' : 'bg-amber-50/80 border-amber-300'
     }`;
   const stepButton =
@@ -273,25 +273,27 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             : 'bg-amber-50/60 border-amber-300 shadow-xs'
         }`}
       >
-        {/* Linha 1: Nome completo do produto (sempre visível) + Preço + Botão de disponibilidade */}
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1 pr-1">
-            <span
-              className={`block font-bold text-sm sm:text-base leading-snug break-words ${
-                isDisabled ? 'text-ink-muted line-through' : 'text-ink'
-              }`}
-            >
-              {p.name}
+        {/* Linha 1: Nome completo do produto (sempre visível) + Preço + Sabor + Botão de disponibilidade */}
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span
+                className={`font-bold text-sm sm:text-base leading-tight break-words ${
+                  isDisabled ? 'text-ink-muted line-through' : 'text-ink'
+                }`}
+              >
+                {p.name}
+              </span>
               {isRice(p) && selectedRiceFlavors.length > 0 && !isDisabled && (
-                <span className="ml-2 inline-flex items-center gap-1 font-semibold text-xs text-brand-800 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
+                <span className="inline-flex items-center gap-1 font-semibold text-xs text-brand-800 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
                   <span>🍚</span>
-                  <span>Hoje: {selectedRiceFlavors.join(' & ')}</span>
+                  <span>Sabor: {selectedRiceFlavors.join(' & ')}</span>
                 </span>
               )}
-            </span>
-            <div className="text-xs text-ink-muted font-mono mt-0.5">
-              {formatBRL(p.price)}
-              {isCuba && !isDisabled && ` · ${portionsOf(p)} porções/cuba`}
+            </div>
+            <div className="text-xs text-ink-muted font-mono mt-0.5 flex items-center gap-2">
+              <span>{formatBRL(p.price)}</span>
+              {isCuba && !isDisabled && <span>· {portionsOf(p)} porções/cuba</span>}
             </div>
           </div>
 
@@ -350,7 +352,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 min="0"
                 inputMode="numeric"
                 value={val}
-                placeholder="—"
+                placeholder="0"
                 onChange={(e) => setField(p.id, field, e.target.value)}
                 className={`w-20 ${fieldClass(filled)}`}
                 aria-label={`Quantidade de ${p.name}`}
@@ -410,17 +412,42 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-ink mb-1.5" htmlFor="shift-open-name">Nome do turno</label>
-              <input id="shift-open-name" type="text" value={shiftName} onChange={(e) => setShiftName(e.target.value)} required
-                className="w-full h-11 bg-surface border border-line-strong rounded-md px-3.5 text-base sm:text-sm text-ink focus:outline-none focus:ring-1 focus:ring-brand-600" />
+              <label className="flex items-center gap-1.5 h-5 text-sm font-semibold text-ink mb-1.5" htmlFor="shift-open-name">
+                <Calendar className="w-4 h-4 text-ink-muted shrink-0" />
+                <span>Nome do turno</span>
+              </label>
+              <input
+                id="shift-open-name"
+                type="text"
+                value={shiftName}
+                onChange={(e) => setShiftName(e.target.value)}
+                required
+                className="w-full h-11 bg-surface border border-line-strong rounded-xl px-3.5 text-sm font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand-600 transition"
+              />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-ink mb-1.5 flex items-center gap-1.5" htmlFor="shift-open-cash">
-                <Coins className="w-4 h-4 text-amber-700" />
+              <label className="flex items-center gap-1.5 h-5 text-sm font-semibold text-ink mb-1.5" htmlFor="shift-open-cash">
+                <Coins className="w-4 h-4 text-amber-700 shrink-0" />
                 <span>Fundo de troco inicial</span>
               </label>
-              <input id="shift-open-cash" type="number" step="0.01" min="0" inputMode="decimal" value={cashStart} placeholder="0,00" onChange={(e) => setCashStart(e.target.value)}
-                className={`w-full px-3.5 text-left font-bold ${fieldClass(cashStart.trim() !== '')}`} />
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted font-mono pointer-events-none">
+                  R$
+                </span>
+                <input
+                  id="shift-open-cash"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  inputMode="decimal"
+                  value={cashStart}
+                  placeholder="0,00"
+                  onChange={(e) => setCashStart(e.target.value)}
+                  className={`w-full h-11 bg-surface border rounded-xl pl-9 pr-3.5 text-sm font-bold text-ink font-mono focus:outline-none focus:ring-2 focus:ring-brand-600 transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                    cashStart.trim() !== '' ? 'border-line-strong' : 'border-amber-300 bg-amber-50/40'
+                  }`}
+                />
+              </div>
             </div>
           </div>
 
@@ -548,7 +575,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
 
               {/* Card de contagem de porções preparadas */}
               <div className="pt-2.5 border-t border-line">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="w-full">
                   {unitRow(rice)}
                 </div>
               </div>
@@ -601,14 +628,14 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
           {starters.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Entradas (unidades)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{starters.map(unitRow)}</div>
+              <div className={`grid grid-cols-1 ${starters.length > 1 ? 'sm:grid-cols-2' : ''} gap-3`}>{starters.map(unitRow)}</div>
             </div>
           )}
 
           {otherSides.length > 0 && (
             <div className="space-y-3">
               <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Outros acompanhamentos e porções</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{otherSides.map(unitRow)}</div>
+              <div className={`grid grid-cols-1 ${otherSides.length > 1 ? 'sm:grid-cols-2' : ''} gap-3`}>{otherSides.map(unitRow)}</div>
             </div>
           )}
 
@@ -631,7 +658,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 {missingCount === 1 ? '1 produto sem quantidade' : `${missingCount} produtos sem quantidade`} (ficam fora do turno).
               </p>
             )}
-            <button type="submit" className="btn-primary w-full h-12 rounded-md text-[15px] font-semibold flex items-center justify-center gap-2">
+            <button type="submit" className="btn-primary w-full h-12 rounded-xl text-[15px] font-semibold flex items-center justify-center gap-2">
               <CheckCircle2 className="w-5 h-5" />
               <span>Confirmar e abrir turno</span>
             </button>
