@@ -72,7 +72,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   const canEditInSettlement = ['MASTER', 'GERENTE', 'CAIXA'].includes(currentProfile.role);
 
   // Estados locais de ajuste de conta
-  const [includeServiceFee, setIncludeServiceFee] = useState<boolean>(true);
+  const [includeServiceFee, setIncludeServiceFee] = useState<boolean>(false);
   const [discountAmount, setDiscountAmount] = useState<number>(0);
   /** Texto digitado no desconto; só aplica ao sair do campo (aí pede o motivo). */
   const [discountDraft, setDiscountDraft] = useState<string | null>(null);
@@ -97,7 +97,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   // Inicializa valores a partir da comanda atual
   useEffect(() => {
     if (currentTab) {
-      setIncludeServiceFee(currentTab.service_fee > 0);
+      setIncludeServiceFee(getServiceFeeRate() > 0 && currentTab.service_fee > 0);
       setDiscountAmount(currentTab.discount);
     }
   }, [currentTab?.id]);

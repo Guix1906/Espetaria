@@ -10,7 +10,7 @@ import { logger } from '../lib/logger';
 import { usePrintStore } from './usePrintStore';
 import { callRpc } from '../lib/remote';
 import { isSupabaseConfigured } from '../lib/supabase';
-import { computeTabTotals, fromCents, sumMoney, toCents } from '../lib/utils';
+import { computeTabTotals, fromCents, getServiceFeeRate, sumMoney, toCents } from '../lib/utils';
 import { useAuthStore } from './useAuthStore';
 
 /**
@@ -150,7 +150,7 @@ export const useTableStore = create<TableState>((set, get) => ({
       closed_by: null,
       subtotal: 0,
       service_fee: 0,
-      service_fee_enabled: true,
+      service_fee_enabled: getServiceFeeRate() > 0,
       discount: 0,
       total: 0,
       notes: notes || null,
@@ -254,7 +254,7 @@ export const useTableStore = create<TableState>((set, get) => ({
     // Atualiza saldo da comanda
     const totals = computeTabTotals(
       fromCents(toCents(tab.subtotal) + orderSubtotalCents),
-      tab.service_fee_enabled !== false,
+      Boolean(tab.service_fee_enabled) && getServiceFeeRate() > 0,
       tab.discount
     );
 
@@ -442,7 +442,7 @@ export const useTableStore = create<TableState>((set, get) => ({
         const deductionCents = toCents(item.unit_price) * item.quantity;
         const totals = computeTabTotals(
           fromCents(Math.max(0, toCents(tab.subtotal) - deductionCents)),
-          tab.service_fee_enabled !== false,
+          Boolean(tab.service_fee_enabled) && getServiceFeeRate() > 0,
           tab.discount
         );
 
@@ -560,7 +560,7 @@ export const useTableStore = create<TableState>((set, get) => ({
     const oldDeductionCents = toCents(oldItem.unit_price) * oldItem.quantity;
     const newAdditionCents = toCents(newProduct.price) * newQuantity;
     const newSubtotalCents = Math.max(0, toCents(tab.subtotal) - oldDeductionCents + newAdditionCents);
-    const totals = computeTabTotals(fromCents(newSubtotalCents), tab.service_fee_enabled !== false, tab.discount);
+    const totals = computeTabTotals(fromCents(newSubtotalCents), Boolean(tab.service_fee_enabled) && getServiceFeeRate() > 0, tab.discount);
 
     set({
       orders: [newOrder, ...get().orders],
