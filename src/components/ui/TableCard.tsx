@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeftRight, ChevronDown, Plus, Printer, Receipt, ShoppingBag, Users } from 'lucide-react';
+import { ArrowLeftRight, ChevronDown, Printer, Receipt, ShoppingBag, Users } from 'lucide-react';
 import { formatBRL, getTableStatusConfig } from '../../lib/formatters';
 import type { RestaurantTable, Tab } from '../../types/domain';
 import { STATUS_TOP_BORDER, tableStatusKind } from '../../lib/statusStyles';
@@ -65,11 +65,10 @@ export function TableCard({
             type="button"
             disabled={disabled}
             onClick={onOpen}
-            className="h-7 px-2.5 rounded-md border border-line bg-surface hover:bg-surface-muted text-xs font-semibold text-brand-800 flex items-center gap-1 transition active:scale-95 disabled:opacity-50"
+            className="h-7 px-2.5 rounded-md border border-line bg-surface hover:bg-surface-muted text-xs font-semibold text-brand-800 flex items-center justify-center transition active:scale-95 disabled:opacity-50"
             title="Abrir comanda para esta mesa"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>+ Abrir</span>
+            <span>Abrir</span>
           </button>
         </div>
 
@@ -113,11 +112,10 @@ export function TableCard({
               e.stopPropagation();
               onOrder();
             }}
-            className="h-7 px-2.5 rounded-md border border-line bg-surface hover:bg-surface-muted text-xs font-semibold text-ink flex items-center gap-1 transition active:scale-95 shadow-2xs"
+            className="h-7 px-2.5 rounded-md border border-line bg-surface hover:bg-surface-muted text-xs font-semibold text-ink flex items-center justify-center transition active:scale-95 shadow-2xs"
             title="Lançar novos pedidos nesta mesa"
           >
-            <Plus className="w-3.5 h-3.5 text-ink-muted" />
-            <span>+ Pedido</span>
+            <span>Pedido</span>
           </button>
 
           {onBill && (
