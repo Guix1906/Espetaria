@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCheck, Flame, Sparkles, Undo2, Users, Volume2, VolumeX } from 'lucide-react';
+import { AlertCircle, CheckCheck, ChevronDown, Flame, Sparkles, Undo2, Users, Volume2, VolumeX } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -62,6 +62,8 @@ export const GrillKDSView: React.FC = () => {
   const [isExhaustModalOpen, setIsExhaustModalOpen] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(audioService.getAudioEnabled());
   const [pending, setPending] = useState<Record<string, true>>({});
+  const [openCards, setOpenCards] = useState<Record<string, boolean>>({});
+  const toggleOpen = (key: string) => setOpenCards((current) => ({ ...current, [key]: !current[key] }));
   const now = useNow();
   const timers = useRef(new Map<string, { timer: number; commit: () => void }>());
 
@@ -203,43 +205,52 @@ export const GrillKDSView: React.FC = () => {
             const kind = KIND_LABEL[ticket.kind];
             const isPending = Boolean(pending[ticket.key]);
             const level = elapsedLevel(ticket.createdAt, now, 15, 25);
+            const isOpen = Boolean(openCards[ticket.key]);
+            const hasNotes = Boolean(ticket.notes) || ticket.items.some((item) => item.notes);
             const units = ticket.items.reduce((sum, item) => sum + item.quantity, 0);
             const strip = isPending ? 'bg-emerald-600 text-white' : STRIP[level];
             return (
               <li key={ticket.key} className="flex flex-col rounded-xl border border-line bg-surface shadow-xs">
                 {/* Mesmo formato do cartão do Salão: nome em cima, itens e faixa colorida embaixo */}
-                <div className="flex items-center justify-between gap-2 px-3 py-1">
-                  <div className="flex min-w-0 items-baseline gap-2">
-                    <h2 className="shrink-0 font-sans text-base font-bold leading-tight tracking-tight text-ink tabular-nums">{ticket.title}</h2>
-                    <p className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted tabular-nums">
+                <div className="flex h-10 items-center gap-2 px-3">
+                  <button type="button" onClick={() => toggleOpen(ticket.key)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Fechar' : 'Ver'} pedido de ${ticket.title}`} className="flex h-full min-w-0 flex-1 items-center gap-2 text-left">
+                    <h2 className="max-w-[70%] shrink-0 truncate font-sans text-base font-bold leading-tight tracking-tight text-ink tabular-nums">{ticket.title}</h2>
+                    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-ink-muted tabular-nums">
                       {ticket.kind !== 'LOCAL' && <span className={`shrink-0 rounded-sm px-1.5 py-0.5 font-semibold ${kind.classes}`}>{kind.label}</span>}
                       <span className="truncate">{ticket.subtitle}</span>
-                    </p>
-                  </div>
+                    </span>
+                    {hasNotes && <span className="shrink-0 rounded-sm bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-900">Obs</span>}
+                    <ChevronDown className={`h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  </button>
                   {ticket.kind !== 'LOCAL' && (isPending ? (
-                    <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary min-h-9 shrink-0 px-2 text-xs">
+                    <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary h-8 min-h-0 shrink-0 px-2 text-xs">
                       <Undo2 className="h-4 w-4" aria-hidden="true" />Desfazer
                     </button>
                   ) : (
-                    <button type="button" onClick={() => markReady(ticket)} className="btn-success min-h-9 shrink-0 px-2 text-xs font-bold">
+                    <button type="button" onClick={() => markReady(ticket)} className="btn-success h-8 min-h-0 shrink-0 px-2 text-xs font-bold">
                       <CheckCheck className="h-4 w-4" aria-hidden="true" />Pronto
                     </button>
                   ))}
                 </div>
 
-                <ul className="flex-1 space-y-0.5 border-t border-line px-3 py-1">
-                  {ticket.items.map((item) => (
-                    <li key={item.id} className="text-base leading-tight">
-                      <span className="font-mono font-bold tabular-nums text-accent-700">{item.quantity}x</span>{' '}
-                      <span className="font-semibold text-ink">{item.name}</span>
-                      {item.doneness && <span className="ml-1.5 whitespace-nowrap rounded-sm bg-amber-100 px-1.5 text-xs font-bold text-amber-900">{formatDoneness(item.doneness)}</span>}
-                      {item.notes && <span className="block text-xs text-amber-800">Obs: {item.notes}</span>}
-                    </li>
-                  ))}
-                  {ticket.notes && <li className="rounded-sm bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-900">Obs do pedido: {ticket.notes}</li>}
-                </ul>
+                {/* Fechado todos têm a mesma altura; o pedido desce ao tocar */}
+                <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
+                  <div className="overflow-hidden">
+                    <ul className="space-y-0.5 border-t border-line px-3 py-1.5">
+                      {ticket.items.map((item) => (
+                        <li key={item.id} className="text-base leading-tight">
+                          <span className="font-mono font-bold tabular-nums text-accent-700">{item.quantity}x</span>{' '}
+                          <span className="font-semibold text-ink">{item.name}</span>
+                          {item.doneness && <span className="ml-1.5 whitespace-nowrap rounded-sm bg-amber-100 px-1.5 text-xs font-bold text-amber-900">{formatDoneness(item.doneness)}</span>}
+                          {item.notes && <span className="block text-xs text-amber-800">Obs: {item.notes}</span>}
+                        </li>
+                      ))}
+                      {ticket.notes && <li className="rounded-sm bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-900">Obs do pedido: {ticket.notes}</li>}
+                    </ul>
+                  </div>
+                </div>
 
-                <div className={`flex items-center justify-between rounded-b-xl px-3 py-0.5 text-xs font-bold ${strip}`} role={isPending ? 'status' : undefined}>
+                <div className={`flex h-7 items-center justify-between rounded-b-xl px-3 text-xs font-bold ${strip}`} role={isPending ? 'status' : undefined}>
                   {isPending ? <span>Pronto! Avisando...</span> : (
                     <span className="flex items-center gap-3">
                       <span className="flex items-center gap-1" title="Espetos na brasa"><Flame className="h-4 w-4 opacity-90" aria-hidden="true" /><span className="tabular-nums">{units}</span></span>
