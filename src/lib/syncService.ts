@@ -20,6 +20,11 @@ class SyncService {
   private isSubscribed = false;
   private hadConnectionLoss = false;
   private removeResyncListeners: (() => void) | null = null;
+  private lastMessageReceivedAt = 0;
+
+  private recordActivity(): void {
+    this.lastMessageReceivedAt = Date.now();
+  }
 
   /**
    * Carga inicial (Hydration) do banco compartilhado Supabase.
@@ -246,6 +251,7 @@ class SyncService {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'restaurant_tables' },
           (payload) => {
+            this.recordActivity();
             const tableStore = useTableStore.getState();
             if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
               const updated = payload.new as RestaurantTable;
@@ -265,6 +271,7 @@ class SyncService {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'tabs' },
           (payload) => {
+            this.recordActivity();
             const tableStore = useTableStore.getState();
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               tableStore.applyRemoteTabChange(payload.eventType, payload.new as Tab);
@@ -278,6 +285,7 @@ class SyncService {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'orders' },
           (payload) => {
+            this.recordActivity();
             const tableStore = useTableStore.getState();
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               tableStore.applyRemoteOrderChange(payload.eventType, payload.new as Order);
@@ -291,6 +299,7 @@ class SyncService {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'print_queue' },
           (payload) => {
+            this.recordActivity();
             if (payload.eventType === 'DELETE') {
               const id = (payload.old as { id?: string } | null)?.id;
               if (id) usePrintStore.getState().removeRemoteJob(id);
@@ -302,6 +311,7 @@ class SyncService {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'printer_status' },
           (payload) => {
+            this.recordActivity();
             if (payload.new) {
               usePrintStore.getState().applyRemotePrinterStatus(payload.new as PrinterStatusRecord);
             }
@@ -341,6 +351,7 @@ class SyncService {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'order_items' },
           (payload) => {
+            this.recordActivity();
             const tableStore = useTableStore.getState();
             const currentRole = useAuthStore.getState().currentProfile?.role;
 
@@ -382,6 +393,7 @@ class SyncService {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'daily_prep_stock' },
           (payload) => {
+            this.recordActivity();
             if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
               useStockStore.getState().applyRemoteStockChange(payload.new as DailyPrepStock);
             }
@@ -456,18 +468,19 @@ class SyncService {
       // Aparelho voltou do modo suspenso ou recuperou a rede: ressincroniza
       const resync = () => {
         if (document.visibilityState === 'visible') {
-          void this.pollOperationalDelta();
+          void this.pollOperationalDelta(true);
         }
       };
       window.addEventListener('online', resync);
       document.addEventListener('visibilitychange', resync);
 
-      // Heartbeat delta a cada 4s: garante sincronização instantânea mesmo se o WebSocket oscilar
+      // Heartbeat delta adaptativo a cada 10s: atua como rede de segurança se o WebSocket oscilar,
+      // sem sobrecarregar o banco com consultas excessivas de múltiplos celulares
       const intervalId = window.setInterval(() => {
         if (document.visibilityState === 'visible') {
-          void this.pollOperationalDelta();
+          void this.pollOperationalDelta(false);
         }
-      }, 4000);
+      }, 10000);
       this.pollTimer = intervalId;
 
       this.removeResyncListeners = () => {
@@ -491,8 +504,9 @@ class SyncService {
    * Garante que mesas ativadas, comandas e fechamento de turno apareçam em tempo real
    * em todos os celulares e computadores conectados sem qualquer atraso ou perda de pacotes.
    */
-  public async pollOperationalDelta(): Promise<void> {
+  public async pollOperationalDelta(force = false): Promise<void> {
     if (this.isPolling || this.isHydrating || !isSupabaseConfigured) return;
+    if (!force && this.isSubscribed && Date.now() - this.lastMessageReceivedAt < 15000) return;
     const { data: sessionData } = await supabase.auth.getSession();
     if (!sessionData?.session) return;
 
