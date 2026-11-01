@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCheck, Flame, Sparkles, Undo2, Volume2, VolumeX } from 'lucide-react';
+import { AlertCircle, CheckCheck, Flame, Sparkles, Undo2, Users, Volume2, VolumeX } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -13,7 +13,7 @@ import { useTableStore } from '../../stores/useTableStore';
 import type { MeatDoneness } from '../../types/enums';
 import { GrillExhaustModal } from './GrillExhaustModal';
 import { GrillLiveSummary } from './GrillLiveSummary';
-import { KDSElapsedTimer, LEVEL_CARD, elapsedLevel, useNow } from './KDSElapsedTimer';
+import { KDSElapsedTimer, elapsedLevel, useNow, type ElapsedLevel } from './KDSElapsedTimer';
 
 /** Tempo para desfazer um toque errado antes de avisar cozinha/cliente. */
 const UNDO_MS = 4000;
@@ -26,11 +26,19 @@ interface GrillTicket {
   title: string;
   subtitle: string;
   createdAt: string;
+  people?: number;
   notes: string | null;
   items: { id: string; quantity: number; name: string; doneness: MeatDoneness | null; notes: string | null }[];
   ready: () => void;
   doneMessage: string;
 }
+
+/** Faixa do cartão: mesma cor do Salão; amarela e vermelha conforme a espera. */
+const STRIP: Record<ElapsedLevel, string> = {
+  ok: 'bg-[#f87152] text-white',
+  warning: 'bg-amber-400 text-amber-950',
+  urgent: 'bg-rose-700 text-white',
+};
 
 const KIND_LABEL: Record<TicketKind, { label: string; classes: string }> = {
   LOCAL: { label: 'Local', classes: 'bg-surface-muted text-ink-secondary' },
@@ -109,7 +117,8 @@ export const GrillKDSView: React.FC = () => {
     .map((order) => {
       const table = tables.find((t) => t.id === order.table_id);
       const tableLabel = `Mesa ${table ? String(table.number).padStart(2, '0') : '??'}`;
-      const customer = tabs.find((t) => t.id === order.tab_id)?.customer_name;
+      const tab = tabs.find((t) => t.id === order.tab_id);
+      const customer = tab?.customer_name;
       const showCustomer = customer && !/^mesa\s*\d+$/i.test(customer.trim());
       return {
         key: `local-${order.id}`,
@@ -117,6 +126,7 @@ export const GrillKDSView: React.FC = () => {
         title: tableLabel,
         subtitle: `Pedido #${order.order_number}${showCustomer ? ` · ${customer}` : ''}`,
         createdAt: order.created_at,
+        people: tab?.people_count,
         notes: order.notes,
         items: onGrillItems
           .filter((i) => i.order_id === order.id)
@@ -192,60 +202,52 @@ export const GrillKDSView: React.FC = () => {
           {tickets.map((ticket) => {
             const kind = KIND_LABEL[ticket.kind];
             const isPending = Boolean(pending[ticket.key]);
-            const level = LEVEL_CARD[elapsedLevel(ticket.createdAt, now, 15, 25)];
+            const level = elapsedLevel(ticket.createdAt, now, 15, 25);
+            const units = ticket.items.reduce((sum, item) => sum + item.quantity, 0);
+            const strip = isPending ? 'bg-emerald-600 text-white' : STRIP[level];
             return (
-              <li key={ticket.key} className={`flex flex-col gap-3 rounded-lg border border-l-8 p-4 shadow-sm transition ${level} ${isPending ? 'border-emerald-300 bg-emerald-50' : 'border-line bg-surface'}`}>
-                <div className="flex items-start justify-between gap-3">
+              <li key={ticket.key} className="flex flex-col rounded-xl border border-line bg-surface shadow-xs">
+                {/* Mesmo formato do cartão do Salão: nome em cima, itens e faixa colorida embaixo */}
+                <div className="flex min-h-[52px] items-center justify-between gap-2 px-3.5 py-2">
                   <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`rounded-sm px-2 py-0.5 text-xs font-semibold ${kind.classes}`}>{kind.label}</span>
-                      <span className="text-xs text-ink-muted tabular-nums">{ticket.subtitle}</span>
-                    </div>
-                    <h2 className="mt-1 break-words text-2xl font-bold leading-tight text-ink">{ticket.title}</h2>
+                    <h2 className="truncate font-sans text-xl font-bold leading-tight tracking-tight text-ink tabular-nums">{ticket.title}</h2>
+                    <p className="flex items-center gap-1.5 text-xs text-ink-muted tabular-nums">
+                      {ticket.kind !== 'LOCAL' && <span className={`shrink-0 rounded-sm px-1.5 py-0.5 font-semibold ${kind.classes}`}>{kind.label}</span>}
+                      <span className="truncate">{ticket.subtitle}</span>
+                    </p>
                   </div>
-                  <KDSElapsedTimer createdAt={ticket.createdAt} warningMinutes={15} urgentMinutes={25} />
+                  {ticket.kind !== 'LOCAL' && (isPending ? (
+                    <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary min-h-11 shrink-0 px-3 text-sm">
+                      <Undo2 className="h-4 w-4" aria-hidden="true" />Desfazer
+                    </button>
+                  ) : (
+                    <button type="button" onClick={() => markReady(ticket)} className="btn-success min-h-11 shrink-0 px-3 text-sm font-bold">
+                      <CheckCheck className="h-4 w-4" aria-hidden="true" />{ticket.kind === 'PICKUP' ? 'Retirada pronta' : 'Delivery pronto'}
+                    </button>
+                  ))}
                 </div>
 
-                <ul className="space-y-1.5">
+                <ul className="flex-1 space-y-1.5 border-t border-line px-3.5 py-2.5">
                   {ticket.items.map((item) => (
                     <li key={item.id} className="text-xl leading-snug">
                       <span className="font-mono font-bold tabular-nums text-accent-700">{item.quantity}x</span>{' '}
                       <span className="font-semibold text-ink">{item.name}</span>
-                      {item.doneness && <span className="ml-2 rounded-sm bg-amber-100 px-2 py-0.5 text-sm font-bold text-amber-900">{formatDoneness(item.doneness)}</span>}
+                      {item.doneness && <span className="ml-2 whitespace-nowrap rounded-sm bg-amber-100 px-2 py-0.5 text-sm font-bold text-amber-900">{formatDoneness(item.doneness)}</span>}
                       {item.notes && <span className="block text-sm text-amber-800">Obs: {item.notes}</span>}
                     </li>
                   ))}
+                  {ticket.notes && <li className="rounded-sm bg-amber-50 p-2 text-sm font-medium text-amber-900">Obs do pedido: {ticket.notes}</li>}
                 </ul>
-                {ticket.notes && <p className="rounded-sm bg-amber-50 p-2 text-sm font-medium text-amber-900">Obs do pedido: {ticket.notes}</p>}
 
-                {ticket.kind !== 'LOCAL' ? (
-                  isPending ? (
-                    <div className="mt-auto flex items-center gap-2">
-                      <p className="flex flex-1 items-center gap-2 text-sm font-semibold text-emerald-800" role="status">
-                        <CheckCheck className="h-5 w-5" aria-hidden="true" />Pronto! Avisando...
-                      </p>
-                      <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary min-h-14 px-5 text-base">
-                        <Undo2 className="h-5 w-5" aria-hidden="true" />Desfazer
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => markReady(ticket)}
-                      className="btn-success mt-auto min-h-14 w-full text-lg font-bold"
-                    >
-                      <CheckCheck className="h-6 w-6" aria-hidden="true" />
-                      {ticket.kind === 'PICKUP' ? 'Retirada pronta' : 'Delivery pronto'}
-                    </button>
-                  )
-                ) : (
-                  <div className="mt-auto flex items-center justify-between border-t border-line/60 pt-2.5 text-xs text-ink-muted">
-                    <span className="flex items-center gap-1.5 font-semibold text-accent-700">
-                      <Flame className="h-4 w-4 text-accent-700" aria-hidden="true" /> Na brasa
+                <div className={`flex items-center justify-between rounded-b-xl px-3.5 py-2 text-sm font-bold ${strip}`} role={isPending ? 'status' : undefined}>
+                  {isPending ? <span>Pronto! Avisando...</span> : (
+                    <span className="flex items-center gap-3">
+                      <span className="flex items-center gap-1" title="Espetos na brasa"><Flame className="h-4 w-4 opacity-90" aria-hidden="true" /><span className="tabular-nums">{units}</span></span>
+                      {ticket.people !== undefined && <span className="flex items-center gap-1" title="Pessoas na mesa"><Users className="h-4 w-4 opacity-90" aria-hidden="true" /><span className="tabular-nums">{ticket.people}</span></span>}
                     </span>
-                    <span className="font-medium text-ink-muted">Produção contínua</span>
-                  </div>
-                )}
+                  )}
+                  <span className="font-mono text-base font-black"><KDSElapsedTimer createdAt={ticket.createdAt} compact /></span>
+                </div>
               </li>
             );
           })}
