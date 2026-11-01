@@ -51,7 +51,7 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
     const reason = await requestText({
       title: `Cancelar ${item.quantity}x ${item.product_name}`,
       label: 'Motivo do cancelamento',
-      message: item.status === 'RECEIVED' ? 'O item ainda não entrou em preparo.' : 'Este item já está em produção: a churrasqueira/cozinha recebe um cupom de cancelamento.',
+      message: item.status === 'DELIVERED' ? 'O item sai da conta da mesa e fica registrado na auditoria.' : item.status === 'RECEIVED' ? 'O item ainda não entrou em preparo.' : 'Este item já está em produção: a churrasqueira/cozinha recebe um cupom de cancelamento.',
       initialValue: 'Cliente desistiu',
       confirmText: 'Cancelar item',
       danger: true,
@@ -67,7 +67,7 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
     }
     try {
       cancelOrderItemAtomic(item.id, reason, currentProfile.id, currentShift.id, returnStock);
-      notify('Item cancelado. Cupom de cancelamento enviado à produção.', 'success');
+      notify(item.status === 'DELIVERED' ? 'Item excluído da conta.' : 'Item cancelado. Cupom de cancelamento enviado à produção.', 'success');
     } catch (error: unknown) {
       notify(error instanceof Error ? error.message : 'Não foi possível cancelar o item.', 'error');
     }
@@ -149,8 +149,8 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
             const status = getOrderItemStatusConfig(item.status);
             // Qualquer garçom ou gerente pode trocar o item antes da entrega
             const canSwap = item.status !== 'DELIVERED';
-            // Apenas gerente/master cancela sem troca
-            const canCancelDirect = isManager && item.status !== 'DELIVERED';
+            // Apenas gerente/master cancela sem troca; vale também para entregue (bebida da mesa já nasce entregue)
+            const canCancelDirect = isManager;
             const canReprint = item.sector === 'GRILL' || item.sector === 'KITCHEN';
 
             const itemJobs = printJobs.filter((j) => j.order_id === item.order_id && j.sector === item.sector);
