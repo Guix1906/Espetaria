@@ -30,6 +30,7 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   `2-IMPRIMIR-TESTE.bat` (check + `test-print ALL`), `3-INICIAR-IMPRESSAO.bat` (worker).
 
 ## Regras do projeto
+- **Publicação obrigatória**: Toda vez que o dono pedir uma atualização, as alterações DEVEM ser commitadas e enviadas ao GitHub (git push origin main) e publicadas no Cloudflare (npm run deploy) para o domínio oficial https://sabordacarne.pontopdv.tech. Antes de publicar, sempre validar npx tsc --noEmit e npx vitest run.
 - Toda ação de negócio grava no banco via RPC (`callRpc` em `src/lib/remote.ts`, com atualização otimista + re-hidratação se o banco recusar). Produtos gravam via `src/lib/productSync.ts`.
 - Nunca apagar venda/comanda: "excluir comanda" = anular (`void_tab_atomic`), fica na auditoria.
 - Espeto "X com acompanhamento" usa o estoque do espeto "X" + 1 "Arroz" (regra pelo nome; 00031, gatilhos em
