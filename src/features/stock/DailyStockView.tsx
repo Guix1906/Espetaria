@@ -7,6 +7,8 @@ import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SearchField } from '../../components/ui/SearchField';
 import { StatusTag } from '../../components/ui/StatusTag';
+import { isSupabaseConfigured, supabase } from '../../lib/supabase';
+import { generateId } from '../../lib/utils';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
@@ -24,7 +26,10 @@ const SECTOR_LABEL: Record<string, string> = { GRILL: 'Churrasqueira', KITCHEN: 
 
 export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick }) => {
   const { requestText, notify } = useFeedback();
-  const { dailyPrepStock, toggleExhaustProduct, adjustStockPhysicalCount } = useStockStore();
+  const { dailyPrepStock: rawStock, products, toggleExhaustProduct, adjustStockPhysicalCount, applyRemoteStockChange } = useStockStore();
+  // As linhas vindas do banco não trazem o produto junto: sem isto a lista fica vazia
+  const dailyPrepStock = rawStock.map((stock) => (stock.product ? stock : { ...stock, product: products.find((p) => p.id === stock.product_id) }));
+  const [launchQty, setLaunchQty] = useState<Record<string, string>>({});
   const { currentShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
 
@@ -65,6 +70,32 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
     }
   };
 
+  // Produto com controle de estoque que não entrou na abertura do turno (combo segue o espeto e o arroz)
+  const notLaunched = products.filter((p) => p.active && p.tracks_stock && !/\s+com acompanhamento\s*$/i.test(p.name) && !rawStock.some((stock) => stock.product_id === p.id));
+
+  const handleLaunch = async (product: Product) => {
+    const quantity = Math.floor(Number(launchQty[product.id]));
+    if (!quantity || quantity <= 0) { notify('Informe a quantidade.', 'error'); return; }
+    try {
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('daily_prep_stock').insert({ shift_id: currentShift.id, product_id: product.id, initial_quantity: quantity, current_quantity: quantity, is_exhausted: false, updated_by: currentProfile.id }).select().single();
+        if (error) throw new Error(error.message);
+        applyRemoteStockChange(data as DailyPrepStock);
+        // Libera o espeto e o combo dele para os garçons
+        const names = [product.name, `${product.name} com acompanhamento`.toLocaleLowerCase('pt-BR')];
+        const ids = products.filter((p) => p.id === product.id || p.name.toLocaleLowerCase('pt-BR') === names[1]).map((p) => p.id);
+        await supabase.from('products').update({ available: true }).in('id', ids);
+        await supabase.from('stock_movements').insert({ shift_id: currentShift.id, product_id: product.id, quantity, movement_type: 'AJUSTE', previous_balance: 0, new_balance: quantity, reason: 'Lançado depois da abertura do turno', user_id: currentProfile.id });
+      } else {
+        applyRemoteStockChange({ id: generateId(), shift_id: currentShift.id, product_id: product.id, initial_quantity: quantity, current_quantity: quantity, consumed_quantity: 0, discarded_quantity: 0, adjusted_quantity: 0, is_exhausted: false } as DailyPrepStock);
+      }
+      setLaunchQty((current) => ({ ...current, [product.id]: '' }));
+      notify(`${product.name}: ${quantity} lançados no turno.`, 'success');
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : 'Não foi possível lançar a quantidade.', 'error');
+    }
+  };
+
   const isOut = (s: DailyPrepStock) => s.is_exhausted || s.current_quantity <= 0;
   const isLow = (s: DailyPrepStock) => !isOut(s) && s.current_quantity <= lowStockLimit(s.product);
   const query = searchTerm.trim().toLocaleLowerCase('pt-BR');
@@ -77,6 +108,22 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
   return (
     <div className="page-layout">
       <PageHeader eyebrow="Controle de produção" title="Estoque diário" description={<>Disponibilidade, reposição e contagem física dos produtos.<span className="mt-1 block font-medium text-ink-secondary">{currentShift.name}</span></>} icon={Flame} />
+      {notLaunched.length > 0 && (
+        <section className="surface-card border-amber-300 p-4" aria-labelledby="not-launched-title">
+          <h2 id="not-launched-title" className="text-base font-semibold text-ink">Não entraram no turno de hoje ({notLaunched.length})</h2>
+          <p className="mt-0.5 text-sm text-ink-muted">Os garçons não conseguem vender estes itens. Informe a quantidade para liberar.</p>
+          <ul className="mt-2 divide-y divide-line">
+            {notLaunched.map((product) => (
+              <li key={product.id} className="flex flex-wrap items-center gap-2 py-2">
+                <span className="min-w-0 flex-1 text-[15px] font-semibold text-ink">{product.name}</span>
+                <input type="number" min="1" inputMode="numeric" placeholder="Qtd." aria-label={`Quantidade de ${product.name}`} value={launchQty[product.id] ?? ''} onChange={(e) => setLaunchQty((current) => ({ ...current, [product.id]: e.target.value }))} className="h-11 w-24 rounded-md border border-line-strong bg-surface px-3 font-mono text-base font-bold" />
+                <button type="button" onClick={() => void handleLaunch(product)} className="btn-primary min-h-[44px]">Lançar</button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {/* Cadastro de sabores do dia para os garçons */}
       <DailyFlavorsManager />
 
