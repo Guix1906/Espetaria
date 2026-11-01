@@ -77,6 +77,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
   // Estados de novo pagamento
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('PIX');
+  const [payMode, setPayMode] = useState<'TOTAL' | 'PARTIAL'>('TOTAL');
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [cashTendered, setCashTendered] = useState<string>('');
   const [paymentNotes, setPaymentNotes] = useState<string>('');
@@ -97,10 +98,6 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     if (currentTab) {
       setIncludeServiceFee(getServiceFeeRate() > 0 && currentTab.service_fee > 0);
       setDiscountAmount(currentTab.discount);
-      // Já abre com o saldo no campo: é só escolher a forma e lançar
-      const paid = payments.reduce((sum, p) => sum + p.amount, 0);
-      const due = Math.max(0, Math.round((currentTab.total - paid) * 100) / 100);
-      setPaymentAmount(due > 0 ? due.toFixed(2) : '');
     }
   }, [currentTab?.id]);
 
@@ -127,7 +124,8 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
   // Cálculo de troco quando dinheiro
   const cashGivenNumber = parseFloat(cashTendered.replace(',', '.')) || 0;
-  const paymentAmountNumber = parseFloat(paymentAmount.replace(',', '.')) || 0;
+  // Conta inteira paga sempre o que falta; parcial paga o valor digitado
+  const paymentAmountNumber = payMode === 'TOTAL' ? remainingDue : parseFloat(paymentAmount.replace(',', '.')) || 0;
   const cashChange = paymentMethod === 'DINHEIRO' && cashGivenNumber > paymentAmountNumber
     ? Math.round((cashGivenNumber - paymentAmountNumber) * 100) / 100
     : 0;
@@ -179,14 +177,6 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     if (answer === 'yes') removePayment(p.id);
   };
 
-  // Preenche campo de pagamento com o saldo restante ao mudar de método ou abrir
-  const handleSelectMethod = (m: PaymentMethod) => {
-    setPaymentMethod(m);
-    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
-      setPaymentAmount(remainingDue > 0 ? remainingDue.toFixed(2) : '');
-    }
-  };
-
   // Sugestões de notas de dinheiro comuns acima do saldo devido para troco imediato
   const commonBanknotes = [10, 20, 50, 100, 200];
   const roundedTen = Math.ceil(remainingDue / 10) * 10;
@@ -200,9 +190,13 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     e.preventDefault();
     setErrorMessage(null);
 
-    const amount = parseFloat(paymentAmount.replace(',', '.'));
-    if (isNaN(amount) || amount <= 0) {
-      setErrorMessage('Informe um valor válido maior que zero.');
+    const amount = paymentAmountNumber;
+    if (amount <= 0) {
+      setErrorMessage('Informe o valor que o cliente vai pagar agora.');
+      return;
+    }
+    if (amount > remainingDue + 0.001) {
+      setErrorMessage(`O valor passa do que falta pagar (${formatBRL(remainingDue)}). Para dar troco, use o campo "Cliente entregou" em Dinheiro.`);
       return;
     }
 
@@ -226,9 +220,8 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
         notes || undefined
       );
 
-      // Limpa formulário para o próximo pagamento se houver saldo restante
-      const nextRemaining = Math.max(0, remainingDue - amount);
-      setPaymentAmount(nextRemaining > 0 ? nextRemaining.toFixed(2) : '');
+      // Depois de uma parte, o campo fica vazio para a próxima
+      setPaymentAmount('');
       setCashTendered('');
       setPaymentNotes('');
     } catch (err) {
@@ -451,6 +444,15 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
 
               {!isFullyPaid && (
                 <form onSubmit={handleAddPayment} className="space-y-3">
+                  <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-muted p-1" role="group" aria-label="Quanto vai pagar agora">
+                    {([['TOTAL', 'Conta inteira'], ['PARTIAL', 'Pagar parte']] as const).map(([mode, label]) => (
+                      <button key={mode} type="button" aria-pressed={payMode === mode} onClick={() => { setPayMode(mode); setPaymentAmount(''); setErrorMessage(null); }}
+                        className={`min-h-[48px] rounded-md text-base font-bold transition ${payMode === mode ? 'bg-brand-700 text-white' : 'text-ink-secondary hover:text-ink'}`}>
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
                   <div className="grid grid-cols-4 gap-1.5">
                     {[
                       { id: 'PIX' as PaymentMethod, label: 'PIX', icon: QrCode },
@@ -465,7 +467,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                           key={m.id}
                           type="button"
                           aria-pressed={isSelected}
-                          onClick={() => handleSelectMethod(m.id)}
+                          onClick={() => setPaymentMethod(m.id)}
                           className={`min-h-[56px] rounded-md text-sm font-bold transition flex flex-col items-center justify-center gap-1 ${isSelected
                               ? 'bg-ink text-white'
                               : 'bg-surface border border-line-strong text-ink hover:bg-surface-muted'
@@ -485,40 +487,36 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                     </button>
                   )}
 
-                  <div>
-                    <label htmlFor="settlement-amount" className="mb-1 block text-sm font-semibold text-ink-secondary">Valor a lançar</label>
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-ink-muted font-bold">R$</span>
-                        <input
-                          id="settlement-amount"
-                          type="text"
-                          value={paymentAmount}
-                          onChange={(e) => setPaymentAmount(e.target.value)}
-                          placeholder={remainingDue.toFixed(2)}
-                          className="w-full min-h-[52px] pl-11 pr-3 rounded-md bg-surface border border-line-strong text-ink tabular-nums text-xl font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
-                          inputMode="decimal" />
+                  {payMode === 'PARTIAL' && (
+                    <>
+                      <div>
+                        <label htmlFor="settlement-amount" className="mb-1 block text-sm font-semibold text-ink-secondary">Quanto vai pagar agora?</label>
+                        <div className="relative">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-ink-muted font-bold">R$</span>
+                          <input
+                            id="settlement-amount"
+                            type="text"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            placeholder="0,00"
+                            className="w-full min-h-[52px] pl-11 pr-3 rounded-md bg-surface border border-line-strong text-ink tabular-nums text-xl font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
+                            inputMode="decimal" />
+                        </div>
                       </div>
-                      <button type="submit" className="btn-success min-h-[52px] px-5 rounded-md text-base font-bold flex items-center gap-1.5 shrink-0">
-                        <Plus className="w-4 h-4" />
-                        Lançar
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5 text-sm tabular-nums text-ink-secondary">
-                    {([
-                      ['Total', 1],
-                      ['1/2', 2],
-                      ['1/3', 3],
-                      ...(currentTab.people_count > 1 && ![2, 3].includes(currentTab.people_count) ? [[`Por pessoa (${currentTab.people_count})`, currentTab.people_count] as const] : []),
-                    ] as const).map(([label, parts]) => (
-                      <button key={label} type="button" onClick={() => setPaymentAmount((remainingDue / parts).toFixed(2))}
-                        className="min-h-[44px] px-3 rounded-md bg-surface border border-line hover:bg-surface-muted transition">
-                        {label}: {formatBRL(remainingDue / parts)}
-                      </button>
-                    ))}
-                  </div>
+                      <div className="flex flex-wrap gap-1.5 text-sm tabular-nums text-ink-secondary">
+                        {([
+                          ['1/2', 2],
+                          ['1/3', 3],
+                          ...(currentTab.people_count > 1 && ![2, 3].includes(currentTab.people_count) ? [[`Por pessoa (${currentTab.people_count})`, currentTab.people_count] as const] : []),
+                        ] as const).map(([label, parts]) => (
+                          <button key={label} type="button" onClick={() => setPaymentAmount((remainingDue / parts).toFixed(2))}
+                            className="min-h-[44px] px-3 rounded-md bg-surface border border-line hover:bg-surface-muted transition">
+                            {label}: {formatBRL(remainingDue / parts)}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
 
                   {paymentMethod === 'DINHEIRO' && (
                     <div className="space-y-2 rounded-xl border border-line p-3 text-base">
@@ -548,6 +546,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                       )}
                     </div>
                   )}
+                  <button type="submit" className="btn-success min-h-[52px] w-full rounded-md text-base font-bold flex items-center justify-center gap-1.5">
+                    <Plus className="w-4 h-4" />
+                    {payMode === 'TOTAL' ? `Lançar ${formatBRL(remainingDue)}` : `Lançar parte${paymentAmountNumber > 0 ? ` de ${formatBRL(paymentAmountNumber)}` : ''}`}
+                  </button>
                 </form>
               )}
 
@@ -597,7 +599,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
         <PixPaymentModal
           isOpen={isPixModalOpen}
           onClose={() => setIsPixModalOpen(false)}
-          amount={parseFloat(paymentAmount.replace(',', '.')) || remainingDue}
+          amount={paymentAmountNumber || remainingDue}
           tableNumber={table.number}
           customerName={currentTab.customer_name}
           subtotal={currentTab.subtotal}
@@ -612,9 +614,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
               currentProfile.id,
               `PIX Dinâmico BACEN TxID: ${txId}`
             );
-            // Atualiza o valor restante no form
-            const nextRemaining = Math.max(0, remainingDue - confirmedAmount);
-            setPaymentAmount(nextRemaining > 0 ? nextRemaining.toFixed(2) : '');
+            setPaymentAmount('');
           }}
         />
       )}
