@@ -63,7 +63,7 @@ BEGIN
      WHERE id = v_tab.table_id;
 
     UPDATE restaurant_tables
-       SET status = CASE WHEN v_source_table.status = 'AGUARDANDO_CONTA' THEN 'AGUARDANDO_CONTA' ELSE 'OCUPADA' END,
+       SET status = (CASE WHEN v_source_table.status = 'AGUARDANDO_CONTA' THEN 'AGUARDANDO_CONTA' ELSE 'OCUPADA' END)::table_status,
            updated_by = v_uid::TEXT,
            updated_at = NOW()
      WHERE id = p_target_table_id;
