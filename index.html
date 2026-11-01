@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
@@ -14,6 +14,56 @@
   </head>
   <body class="antialiased min-h-screen">
     <div id="root"></div>
+    <script>
+      (function() {
+        var isRecovering = false;
+        function forceCleanReload() {
+          if (isRecovering) return;
+          isRecovering = true;
+          try {
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistrations().then(function(regs) {
+                regs.forEach(function(r) { r.unregister(); });
+              });
+            }
+            if ('caches' in window) {
+              caches.keys().then(function(keys) {
+                keys.forEach(function(k) { caches.delete(k); });
+              });
+            }
+          } catch (e) {}
+          var lastRecover = sessionStorage.getItem('ponto_auto_recover');
+          var now = Date.now();
+          if (!lastRecover || (now - parseInt(lastRecover, 10)) > 8000) {
+            sessionStorage.setItem('ponto_auto_recover', now.toString());
+            window.location.reload(true);
+          }
+        }
+
+        window.addEventListener('error', function(e) {
+          var target = e.target;
+          var isTag = target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK');
+          var msg = (e.message || '').toLowerCase();
+          if (isTag || msg.indexOf('unexpected token') !== -1 || msg.indexOf('dynamically imported module') !== -1 || msg.indexOf('loading chunk') !== -1) {
+            forceCleanReload();
+          }
+        }, true);
+
+        // Se após 3.5s o React ainda não tiver montado nada (tela em branco por cache antigo)
+        setTimeout(function() {
+          var root = document.getElementById('root');
+          if (root && (!root.innerHTML || root.innerHTML.trim() === '')) {
+            var lastRecover = sessionStorage.getItem('ponto_auto_recover');
+            var now = Date.now();
+            if (!lastRecover || (now - parseInt(lastRecover, 10)) > 8000) {
+              forceCleanReload();
+            } else {
+              root.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;padding:24px;text-align:center;background:#F8F5EE;color:#2B211C;"><h2 style="font-size:20px;font-weight:700;margin-bottom:8px;color:#2B211C;">Atualizando para a nova versão...</h2><p style="font-size:14px;color:#6B5D53;margin-bottom:20px;max-width:320px;">O sistema foi atualizado na nuvem. Clique no botão abaixo para carregar imediatamente:</p><button onclick="window.location.reload(true)" style="background:#B5502E;color:#fff;border:none;padding:12px 28px;border-radius:10px;font-weight:600;font-size:16px;cursor:pointer;box-shadow:0 4px 14px rgba(181,80,46,0.3);">Atualizar agora</button></div>';
+            }
+          }
+        }, 3500);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
