@@ -65,6 +65,25 @@ describe('Visão geral: números do turno', () => {
     const d = computeDashboard(base({ stockMovements: [{ id: 'm', shift_id: 's1', product_id: 'p', quantity: -2, movement_type: 'PERDA', created_at: ago(1) } as never] }));
     expect(d.losses[0]?.quantity).toBe(2);
   });
+
+  it('zera automaticamente todos os valores quando o turno esta fechado (shiftId nulo)', () => {
+    const d = computeDashboard(base({
+      shiftId: null,
+      tables: [table('t1', 1)],
+      tabs: [tab('a', 't1', 'OPEN', 150)],
+      payments: [{ id: 'p1', tab_id: 'a', amount: 150, method: 'PIX', status: 'PAID' } as Payment],
+      deliveryOrders: [delivery('d1', 'DELIVERED', 50)],
+    }));
+    expect(d.revenue.realized).toBe(0);
+    expect(d.revenue.inProgress).toBe(0);
+    expect(d.revenue.projected).toBe(0);
+    expect(d.salon.open).toBe(0);
+    expect(d.salon.closed).toBe(0);
+    expect(d.salon.openTabs).toHaveLength(0);
+    expect(d.delivery.realized).toBe(0);
+    expect(d.receivedTotal).toBe(0);
+    expect(d.productionTotal).toBe(0);
+  });
 });
 
 describe('Visão geral: alerta do robô do WhatsApp', () => {

@@ -36,7 +36,6 @@ type Section = 'tables' | 'ready' | 'settings';
 type TableFilter = 'occupied' | 'free' | 'all';
 type SalonFilter = 'ACTIVE' | 'ALL' | 'READY' | TableStatus;
 const pad2 = (n: number) => String(n).padStart(2, '0');
-const isOccupied = (table: RestaurantTable) => table.status === 'OCUPADA' || table.status === 'AGUARDANDO_CONTA';
 
 export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: WaiterModuleProps = {}) {
   const { tables, tabs, openTab, orders, orderItems } = useTableStore();
@@ -119,7 +118,37 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const selectedTable = tables.find((table) => table.id === selectedTableId);
   // Índices montados uma vez por mudança de dados (antes, cada mesa varria todos os pedidos a cada toque)
   const activeTables = useMemo(() => tables.filter((table) => table.active).sort((a, b) => a.number - b.number), [tables]);
-  const openTabByTable = useMemo(() => new Map(tabs.filter((tab) => tab.status === 'OPEN' && tab.table_id).map((tab) => [tab.table_id!, tab])), [tabs]);
+  const openTabByTable = useMemo(() => {
+    const map = new Map<string, Tab>();
+    for (const tab of tabs) {
+      if (tab.status === 'OPEN' && tab.table_id) {
+        map.set(tab.table_id, tab);
+        const tbl = tables.find((t) => t.id === tab.table_id || `table-${t.number}` === tab.table_id);
+        if (tbl) {
+          map.set(tbl.id, tab);
+          map.set(`table-${tbl.number}`, tab);
+        }
+      }
+    }
+    return map;
+  }, [tabs, tables]);
+
+  const getTableTab = (tableId: string) => {
+    const direct = openTabByTable.get(tableId);
+    if (direct) return direct;
+    const table = tables.find((t) => t.id === tableId);
+    if (table) {
+      return openTabByTable.get(`table-${table.number}`) || tabs.find((t) => t.status === 'OPEN' && (t.table_id === table.id || t.table_id === `table-${table.number}`));
+    }
+    return undefined;
+  };
+
+  const isTableOccupied = (table: RestaurantTable) => {
+    if (table.status === 'OCUPADA' || table.status === 'AGUARDANDO_CONTA') return true;
+    const tab = getTableTab(table.id);
+    return tab !== undefined && tab.status === 'OPEN';
+  };
+
   const itemsByTable = useMemo(() => {
     const tableOfOrder = new Map<string, string>();
     const tableOfTab = new Map([...openTabByTable].map(([tableId, tab]) => [tab.id, tableId]));
@@ -128,7 +157,6 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
     orderItems.forEach((item) => { const tableId = tableOfOrder.get(item.order_id); if (tableId) map.set(tableId, [...(map.get(tableId) ?? []), item]); });
     return map;
   }, [openTabByTable, orders, orderItems]);
-  const getTableTab = (tableId: string) => openTabByTable.get(tableId);
   const itemsOfTable = (tableId: string): OrderItem[] => itemsByTable.get(tableId) ?? [];
   const readyItemsOf = (tableId: string) => itemsOfTable(tableId).filter((item) => isFreshReady(item, now));
   const readyTables = activeTables.filter((table) => readyItemsOf(table.id).length > 0);
@@ -169,14 +197,14 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
 
   // ---------------- Painel administrativo (tela larga) ----------------
   if (!dedicated) {
-    const occupiedTables = activeTables.filter(isOccupied);
+    const occupiedTables = activeTables.filter(isTableOccupied);
     const freeTables = activeTables.filter((t) => t.status === 'LIVRE');
     const effectiveFilter: SalonFilter = filter;
 
     const filteredTables = activeTables.filter((table) => {
       if (!matches(table)) return false;
       if (query) return true;
-      if (effectiveFilter === 'ACTIVE') return isOccupied(table);
+      if (effectiveFilter === 'ACTIVE') return isTableOccupied(table);
       if (effectiveFilter === 'ALL') return true;
       if (effectiveFilter === 'READY') return readyTableIds.has(table.id);
       return table.status === effectiveFilter;
@@ -373,8 +401,8 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   }
 
   // ---------------- Área do garçom (celular) ----------------
-  const occupied = activeTables.filter(isOccupied);
-  const free = activeTables.filter((table) => !isOccupied(table));
+  const occupied = activeTables.filter(isTableOccupied);
+  const free = activeTables.filter((table) => !isTableOccupied(table));
   // Sem mesa ocupada, começa mostrando todas (não abre numa lista vazia)
   const tableFilter: TableFilter = chosenFilter ?? (occupied.length ? 'occupied' : 'all');
   const readyCount = readyTables.reduce((sum, table) => sum + readyItemsOf(table.id).length, 0);
@@ -437,7 +465,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
           </p>
           <div className="grid grid-cols-3 gap-2 xs:grid-cols-4">
             {[...showOccupied, ...showFree].sort((a, b) => a.number - b.number).map((table) => {
-              if (!isOccupied(table)) {
+              if (!isTableOccupied(table)) {
                 return (
                   <button key={table.id} type="button" disabled={!isShiftOpen} onClick={() => askOpen(table)}
                     className={`flex h-[64px] items-center justify-center rounded-md border-2 bg-surface font-mono text-2xl font-bold disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-dashed border-line-strong text-ink-secondary' : 'border-emerald-600 text-emerald-800'}`}

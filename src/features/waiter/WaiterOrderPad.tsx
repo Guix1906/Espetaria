@@ -124,7 +124,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
     }
   };
 
-  const activeTab = tabs.find((tab) => tab.table_id === table.id && tab.status === 'OPEN');
+  const activeTab = tabs.find((tab) => (tab.table_id === table.id || tab.table_id === `table-${table.number}`) && tab.status === 'OPEN');
   // Abrir a mesa conta como "levou à mesa": o aviso de pronto some sem o botão "Servir"
   useEffect(() => {
     if (!activeTab) return;

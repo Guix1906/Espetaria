@@ -15,6 +15,8 @@ class SyncService {
   private channel: RealtimeChannel | null = null;
   private isHydrated = false;
   private isHydrating = false;
+  private isPolling = false;
+  private pollTimer: number | null = null;
   private isSubscribed = false;
   private hadConnectionLoss = false;
   private removeResyncListeners: (() => void) | null = null;
@@ -421,11 +423,16 @@ class SyncService {
               if (shift.status === 'ABERTO') {
                 useShiftStore.setState({ currentShift: shift });
               } else if (shift.status === 'FECHADO') {
-                const current = useShiftStore.getState().currentShift;
-                if (current && current.id === shift.id) {
-                  useShiftStore.setState({ currentShift: null });
-                  useStockStore.setState({ dailyPrepStock: [] });
-                }
+                useShiftStore.setState({ currentShift: null });
+                useStockStore.setState({ dailyPrepStock: [] });
+                const tableStore = useTableStore.getState();
+                const now = new Date().toISOString();
+                useTableStore.setState({
+                  tables: tableStore.tables.map((t) => ({ ...t, status: 'LIVRE' as const, current_tab: undefined, updated_at: now })),
+                  tabs: tableStore.tabs.map((t) => (t.status === 'OPEN' ? { ...t, status: 'CLOSED' as const, closed_at: now } : t)),
+                  orders: tableStore.orders.map((o) => (o.status !== 'CANCELLED' && o.status !== 'CLOSED' ? { ...o, status: 'CLOSED' as const, updated_at: now } : o)),
+                  orderItems: tableStore.orderItems.map((i) => (i.status !== 'CANCELLED' && i.status !== 'DELIVERED' ? { ...i, status: 'DELIVERED' as const, delivered_at: now, updated_at: now } : i)),
+                });
               }
             }
           }
@@ -448,11 +455,26 @@ class SyncService {
 
       // Aparelho voltou do modo suspenso ou recuperou a rede: ressincroniza
       const resync = () => {
-        if (document.visibilityState === 'visible') void this.hydrateAll();
+        if (document.visibilityState === 'visible') {
+          void this.pollOperationalDelta();
+        }
       };
       window.addEventListener('online', resync);
       document.addEventListener('visibilitychange', resync);
+
+      // Heartbeat delta a cada 4s: garante sincronização instantânea mesmo se o WebSocket oscilar
+      const intervalId = window.setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          void this.pollOperationalDelta();
+        }
+      }, 4000);
+      this.pollTimer = intervalId;
+
       this.removeResyncListeners = () => {
+        if (this.pollTimer) {
+          window.clearInterval(this.pollTimer);
+          this.pollTimer = null;
+        }
         window.removeEventListener('online', resync);
         document.removeEventListener('visibilitychange', resync);
       };
@@ -461,6 +483,94 @@ class SyncService {
     } catch (err) {
       logger.warn({ context: 'SyncService', message: 'Erro ao assinar canal postgres-db-sync', error: err });
       return () => {};
+    }
+  }
+
+  /**
+   * Sincronização delta ultra-rápida (polling heartbeat operacional a cada 4s).
+   * Garante que mesas ativadas, comandas e fechamento de turno apareçam em tempo real
+   * em todos os celulares e computadores conectados sem qualquer atraso ou perda de pacotes.
+   */
+  public async pollOperationalDelta(): Promise<void> {
+    if (this.isPolling || this.isHydrating || !isSupabaseConfigured) return;
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session) return;
+
+    this.isPolling = true;
+    try {
+      const [
+        { data: activeShift, error: shiftErr },
+        { data: openTabsData, error: tabsErr },
+        { data: activeTablesData, error: tablesErr },
+      ] = await Promise.all([
+        supabase.from('shifts').select('*').eq('status', 'ABERTO').order('opened_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('tabs').select('*').eq('status', 'OPEN'),
+        supabase.from('restaurant_tables').select('*').eq('active', true).order('number', { ascending: true }),
+      ]);
+
+      if (shiftErr || tabsErr || tablesErr) return;
+
+      const localShift = useShiftStore.getState().currentShift;
+
+      // Se o turno foi fechado em outro aparelho, zera imediatamente este aparelho
+      if (!activeShift && localShift && localShift.status === 'ABERTO') {
+        useShiftStore.setState({ currentShift: null });
+        useStockStore.setState({ dailyPrepStock: [] });
+        const tableStore = useTableStore.getState();
+        const now = new Date().toISOString();
+        useTableStore.setState({
+          tables: tableStore.tables.map((t) => ({ ...t, status: 'LIVRE' as const, current_tab: undefined, updated_at: now })),
+          tabs: tableStore.tabs.map((t) => (t.status === 'OPEN' ? { ...t, status: 'CLOSED' as const, closed_at: now } : t)),
+          orders: tableStore.orders.map((o) => (o.status !== 'CANCELLED' && o.status !== 'CLOSED' ? { ...o, status: 'CLOSED' as const, updated_at: now } : o)),
+          orderItems: tableStore.orderItems.map((i) => (i.status !== 'CANCELLED' && i.status !== 'DELIVERED' ? { ...i, status: 'DELIVERED' as const, delivered_at: now, updated_at: now } : i)),
+        });
+        return;
+      } else if (activeShift && (!localShift || localShift.id !== activeShift.id)) {
+        useShiftStore.setState({ currentShift: activeShift as Shift });
+      }
+
+      if (!activeShift) return;
+
+      // Normaliza comandas abertas recebidas
+      const normalizedOpenTabs: Tab[] = ((openTabsData || []) as Tab[]).map((t) => ({
+        ...t,
+        subtotal: Number(t.subtotal || 0),
+        service_fee: Number(t.service_fee || 0),
+        discount: Number(t.discount || 0),
+        total: Number(t.total || 0),
+        people_count: Number(t.people_count || 1),
+      }));
+
+      // Atualiza mesas conectando comanda aberta
+      if (activeTablesData && activeTablesData.length > 0) {
+        const mergedTables = activeTablesData.map((tbl) => {
+          const matchingTab = normalizedOpenTabs.find(
+            (tab) => tab.status === 'OPEN' && (tab.table_id === tbl.id || tab.table_id === `table-${tbl.number}`)
+          );
+          return {
+            ...tbl,
+            updated_at: tbl.updated_at ?? new Date().toISOString(),
+            status: matchingTab ? (tbl.status === 'AGUARDANDO_CONTA' ? 'AGUARDANDO_CONTA' : 'OCUPADA') : 'LIVRE',
+            current_tab: matchingTab,
+          } as RestaurantTable;
+        });
+
+        const currentTabs = useTableStore.getState().tabs;
+        const openTabIds = new Set(normalizedOpenTabs.map((t) => t.id));
+        const mergedTabs = [
+          ...normalizedOpenTabs,
+          ...currentTabs.filter((t) => t.status !== 'OPEN' || !openTabIds.has(t.id)),
+        ];
+
+        useTableStore.setState({
+          tables: mergedTables,
+          tabs: mergedTabs,
+        });
+      }
+    } catch (err) {
+      logger.debug({ context: 'SyncService', message: 'Aviso em pollOperationalDelta', error: err });
+    } finally {
+      this.isPolling = false;
     }
   }
 

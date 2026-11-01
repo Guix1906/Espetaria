@@ -131,11 +131,13 @@ export const useTableStore = create<TableState>((set, get) => ({
   conflictWarning: undefined,
 
   openTab: (tableId, customerName, peopleCount, notes, userId, shiftId) => {
-    const table = get().tables.find((t) => t.id === tableId);
+    const table = get().tables.find((t) => t.id === tableId || `table-${t.number}` === tableId);
     if (!table) throw new Error('Mesa não encontrada.');
 
     // Verifica se a mesa já tem comanda aberta
-    const existingTab = get().tabs.find((tab) => tab.table_id === tableId && tab.status === 'OPEN');
+    const existingTab = get().tabs.find(
+      (tab) => (tab.table_id === table.id || tab.table_id === `table-${table.number}`) && tab.status === 'OPEN'
+    );
     if (existingTab) throw new Error(`A Mesa ${table.number} já possui uma comanda aberta.`);
 
     const now = new Date().toISOString();
@@ -163,7 +165,9 @@ export const useTableStore = create<TableState>((set, get) => ({
 
     set({
       tabs: [newTab, ...get().tabs],
-      tables: get().tables.map((t) => (t.id === tableId ? { ...t, status: 'OCUPADA', current_tab: newTab } : t)),
+      tables: get().tables.map((t) =>
+        t.id === table.id || t.number === table.number ? { ...t, status: 'OCUPADA', current_tab: newTab, updated_at: now } : t
+      ),
     });
 
     void callRpc('open_tab_atomic', {
@@ -184,10 +188,12 @@ export const useTableStore = create<TableState>((set, get) => ({
   },
 
   addOrderAtomic: (shiftId, tabId, items, userId, notes) => {
-    const tab = get().tabs.find((t) => t.id === tabId && t.status === 'OPEN');
+    const tab = get().tabs.find(
+      (t) => (t.id === tabId || t.table_id === tabId || `table-${t.table_id}` === tabId) && t.status === 'OPEN'
+    );
     if (!tab) throw new Error('Comanda não encontrada ou já encerrada.');
 
-    const table = get().tables.find((t) => t.id === tab.table_id);
+    const table = get().tables.find((t) => t.id === tab.table_id || `table-${t.number}` === tab.table_id);
     if (!table) throw new Error('Mesa associada não encontrada.');
 
     const products = useStockStore.getState().products;
@@ -269,7 +275,10 @@ export const useTableStore = create<TableState>((set, get) => ({
     set({
       orders: [newOrder, ...get().orders],
       orderItems: [...newItems, ...get().orderItems],
-      tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
+      tabs: get().tabs.map((t) => (t.id === tab.id ? updatedTab : t)),
+      tables: get().tables.map((t) =>
+        t.id === table.id || t.number === table.number ? { ...t, status: 'OCUPADA', current_tab: updatedTab, updated_at: now } : t
+      ),
     });
 
     // Transação única no banco: pedido + itens + baixa de estoque com lock + totais
@@ -1260,12 +1269,24 @@ export const useTableStore = create<TableState>((set, get) => ({
       }
     }
 
+    const currentTabs = get().tabs;
+    const isLivre = tableData.status === 'LIVRE';
+
     set({
-      tables: get().tables.map((t) =>
-        t.id === tableData.id || (tableData.number !== undefined && t.number === tableData.number)
-          ? { ...t, ...tableData, ...(tableData.status === 'LIVRE' ? { current_tab: undefined } : {}) }
-          : t
-      ),
+      tables: get().tables.map((t) => {
+        if (t.id === tableData.id || (tableData.number !== undefined && t.number === tableData.number)) {
+          const matchingTab = isLivre
+            ? undefined
+            : currentTabs.find((tb) => tb.status === 'OPEN' && (tb.table_id === t.id || tb.table_id === `table-${t.number}`));
+          return {
+            ...t,
+            ...tableData,
+            status: isLivre ? ('LIVRE' as const) : (matchingTab ? (tableData.status === 'AGUARDANDO_CONTA' ? ('AGUARDANDO_CONTA' as const) : ('OCUPADA' as const)) : (tableData.status ?? t.status)),
+            current_tab: matchingTab,
+          };
+        }
+        return t;
+      }),
       orders: newOrders,
       orderItems: newOrderItems,
     });
@@ -1277,7 +1298,7 @@ export const useTableStore = create<TableState>((set, get) => ({
       set({
         tabs: tabs.filter((t) => t.id !== tabData.id),
         tables: tables.map((t) =>
-          t.id === tabData.table_id || t.current_tab?.id === tabData.id
+          t.id === tabData.table_id || `table-${t.number}` === tabData.table_id || t.current_tab?.id === tabData.id
             ? { ...t, status: 'LIVRE' as const, current_tab: undefined }
             : t
         ),
@@ -1285,37 +1306,44 @@ export const useTableStore = create<TableState>((set, get) => ({
       return;
     }
 
-    const localTab = tabs.find((t) => t.id === tabData.id);
-    {
-      if (isStaleRemote(localTab, tabData)) {
-        const table = tables.find((t) => t.id === tabData.table_id || t.current_tab?.id === tabData.id);
-        const tableNumber = table?.number ?? '?';
-        logger.warn({
-          context: 'TableStore',
-          message: `Conflito detectado na Comanda da Mesa ${tableNumber}. Alteração local é mais recente; mantendo estado local.`,
-        });
-        set({ conflictWarning: `Conflito na Comanda da Mesa ${tableNumber}: sua alteração foi mantida.` });
-        return;
-      }
+    const normalizedTab: Tab = {
+      ...tabData,
+      subtotal: Number(tabData.subtotal || 0),
+      service_fee: Number(tabData.service_fee || 0),
+      discount: Number(tabData.discount || 0),
+      total: Number(tabData.total || 0),
+      people_count: Number(tabData.people_count || 1),
+    };
+
+    const localTab = tabs.find((t) => t.id === normalizedTab.id);
+    if (isStaleRemote(localTab, normalizedTab)) {
+      const table = tables.find((t) => t.id === normalizedTab.table_id || `table-${t.number}` === normalizedTab.table_id || t.current_tab?.id === normalizedTab.id);
+      const tableNumber = table?.number ?? '?';
+      logger.warn({
+        context: 'TableStore',
+        message: `Conflito detectado na Comanda da Mesa ${tableNumber}. Alteração local é mais recente; mantendo estado local.`,
+      });
+      set({ conflictWarning: `Conflito na Comanda da Mesa ${tableNumber}: sua alteração foi mantida.` });
+      return;
     }
 
-    const existingIndex = tabs.findIndex((t) => t.id === tabData.id);
+    const existingIndex = tabs.findIndex((t) => t.id === normalizedTab.id);
     let newTabs: Tab[];
     if (existingIndex >= 0) {
-      newTabs = tabs.map((t) => (t.id === tabData.id ? { ...t, ...tabData } : t));
+      newTabs = tabs.map((t) => (t.id === normalizedTab.id ? { ...t, ...normalizedTab } : t));
     } else {
-      newTabs = [tabData, ...tabs];
+      newTabs = [normalizedTab, ...tabs];
     }
 
     const newTables = tables.map((t) => {
-      if (t.id === tabData.table_id || `table-${t.number}` === tabData.table_id) {
-        if (tabData.status === 'CLOSED' || tabData.status === 'CANCELLED') {
+      if (t.id === normalizedTab.table_id || `table-${t.number}` === normalizedTab.table_id) {
+        if (normalizedTab.status === 'CLOSED' || normalizedTab.status === 'CANCELLED') {
           return { ...t, status: 'LIVRE' as const, current_tab: undefined };
         }
         return {
           ...t,
           status: t.status === 'AGUARDANDO_CONTA' ? ('AGUARDANDO_CONTA' as const) : ('OCUPADA' as const),
-          current_tab: tabData,
+          current_tab: normalizedTab,
         };
       }
       return t;
@@ -1323,17 +1351,17 @@ export const useTableStore = create<TableState>((set, get) => ({
 
     let newOrders = get().orders;
     let newOrderItems = get().orderItems;
-    if (tabData.status === 'CLOSED') {
-      const tabOrderIds = new Set(newOrders.filter((o) => o.tab_id === tabData.id).map((o) => o.id));
-      newOrders = newOrders.map((o) => (o.tab_id === tabData.id ? { ...o, status: 'CLOSED' as const } : o));
+    if (normalizedTab.status === 'CLOSED') {
+      const tabOrderIds = new Set(newOrders.filter((o) => o.tab_id === normalizedTab.id).map((o) => o.id));
+      newOrders = newOrders.map((o) => (o.tab_id === normalizedTab.id ? { ...o, status: 'CLOSED' as const } : o));
       newOrderItems = newOrderItems.map((i) =>
         tabOrderIds.has(i.order_id) && i.status !== 'CANCELLED'
           ? { ...i, status: 'DELIVERED' as const }
           : i
       );
-    } else if (tabData.status === 'CANCELLED') {
-      const tabOrderIds = new Set(newOrders.filter((o) => o.tab_id === tabData.id).map((o) => o.id));
-      newOrders = newOrders.map((o) => (o.tab_id === tabData.id ? { ...o, status: 'CANCELLED' as const } : o));
+    } else if (normalizedTab.status === 'CANCELLED') {
+      const tabOrderIds = new Set(newOrders.filter((o) => o.tab_id === normalizedTab.id).map((o) => o.id));
+      newOrders = newOrders.map((o) => (o.tab_id === normalizedTab.id ? { ...o, status: 'CANCELLED' as const } : o));
       newOrderItems = newOrderItems.map((i) =>
         tabOrderIds.has(i.order_id) ? { ...i, status: 'CANCELLED' as const } : i
       );
@@ -1395,26 +1423,30 @@ export const useTableStore = create<TableState>((set, get) => ({
       return;
     }
 
-    const localItem = orderItems.find((i) => i.id === itemData.id);
-    {
-      if (isStaleRemote(localItem, itemData)) {
-        const order = orders.find((o) => o.id === itemData.order_id);
-        const orderNumber = order?.order_number ?? '?';
-        logger.warn({
-          context: 'TableStore',
-          message: `Conflito detectado no Item do Pedido #${orderNumber}. Alteração local é mais recente; mantendo estado local.`,
-        });
-        set({ conflictWarning: `Conflito no Item do Pedido #${orderNumber}: sua alteração foi mantida.` });
-        return;
-      }
+    const normalizedItem: OrderItem = {
+      ...itemData,
+      unit_price: Number(itemData.unit_price || 0),
+      quantity: Number(itemData.quantity || 1),
+    };
+
+    const localItem = orderItems.find((i) => i.id === normalizedItem.id);
+    if (isStaleRemote(localItem, normalizedItem)) {
+      const order = orders.find((o) => o.id === normalizedItem.order_id);
+      const orderNumber = order?.order_number ?? '?';
+      logger.warn({
+        context: 'TableStore',
+        message: `Conflito detectado no Item do Pedido #${orderNumber}. Alteração local é mais recente; mantendo estado local.`,
+      });
+      set({ conflictWarning: `Conflito no Item do Pedido #${orderNumber}: sua alteração foi mantida.` });
+      return;
     }
 
-    const exists = orderItems.some((i) => i.id === itemData.id);
+    const exists = orderItems.some((i) => i.id === normalizedItem.id);
     let newItems: OrderItem[];
     if (exists) {
-      newItems = orderItems.map((i) => (i.id === itemData.id ? { ...i, ...itemData } : i));
+      newItems = orderItems.map((i) => (i.id === normalizedItem.id ? { ...i, ...normalizedItem } : i));
     } else {
-      newItems = [itemData, ...orderItems];
+      newItems = [normalizedItem, ...orderItems];
     }
 
     const order = orders.find((o) => o.id === itemData.order_id);

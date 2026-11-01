@@ -244,7 +244,7 @@ export const CashierModule: React.FC = () => {
             Acesso direto:
           </span>
           {activeTables.map((t) => {
-            const tTab = tabs.find((tb) => tb.table_id === t.id && tb.status === 'OPEN');
+            const tTab = tabs.find((tb) => (tb.table_id === t.id || tb.table_id === `table-${t.number}`) && tb.status === 'OPEN');
             const isBill = t.status === 'AGUARDANDO_CONTA';
             return (
               <button
@@ -277,7 +277,7 @@ export const CashierModule: React.FC = () => {
               .filter((t) => (effectiveFilter === 'WAITING_BILL' ? t.status === 'AGUARDANDO_CONTA' : true))
               .filter((t) => {
                 if (!query) return true;
-                const currentTab = tabs.find((tab) => tab.table_id === t.id && tab.status === 'OPEN');
+                const currentTab = tabs.find((tab) => (tab.table_id === t.id || tab.table_id === `table-${t.number}`) && tab.status === 'OPEN');
                 const numStr = String(t.number);
                 return (
                   numStr.includes(query) ||
@@ -286,7 +286,7 @@ export const CashierModule: React.FC = () => {
                 );
               })
               .map((table) => {
-                const currentTab = tabs.find((tab) => tab.table_id === table.id && tab.status === 'OPEN');
+                const currentTab = tabs.find((tab) => (tab.table_id === table.id || tab.table_id === `table-${table.number}`) && tab.status === 'OPEN');
                 const isWaitingBill = table.status === 'AGUARDANDO_CONTA';
                 const items = currentTab ? getTabOrderItems(currentTab.id) : [];
 
@@ -393,7 +393,7 @@ export const CashierModule: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {closedTabs.map((tab) => {
-              const table = tables.find((t) => t.id === tab.table_id);
+              const table = tables.find((t) => t.id === tab.table_id || `table-${t.number}` === tab.table_id);
               const tabPayments = payments.filter((p) => p.tab_id === tab.id && p.status === 'PAID');
 
               return (
@@ -475,7 +475,7 @@ export const CashierModule: React.FC = () => {
           isOpen={true}
           onClose={() => setSelectedClosedTabForReceipt(null)}
           tab={selectedClosedTabForReceipt}
-          table={tables.find((t) => t.id === selectedClosedTabForReceipt.table_id)}
+          table={tables.find((t) => t.id === selectedClosedTabForReceipt.table_id || `table-${t.number}` === selectedClosedTabForReceipt.table_id)}
           items={getTabOrderItems(selectedClosedTabForReceipt.id)}
           payments={payments.filter((p) => p.tab_id === selectedClosedTabForReceipt.id && p.status === 'PAID')}
         />

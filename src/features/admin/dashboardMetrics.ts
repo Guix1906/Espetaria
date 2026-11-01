@@ -58,14 +58,89 @@ const isRealized = (d: DeliveryOrder) => isSale(d) && (d.status === 'DELIVERED' 
 
 export function computeDashboard(input: DashboardInput) {
   const { shiftId, tables, tabs, orders, orderItems, payments, deliveryOrders, stockMovements, jobs, now } = input;
-  const inShift = <T extends { shift_id?: string | null }>(row: T) => !shiftId || row.shift_id === shiftId || !row.shift_id;
+
+  // Turno fechado: todos os valores operacionais e financeiros zeram automaticamente
+  if (!shiftId) {
+    return {
+      revenue: { realized: 0, inProgress: 0, projected: 0, fees: 0 },
+      salon: {
+        closed: 0,
+        open: 0,
+        avgTicket: 0,
+        avgPerPerson: 0,
+        serviceFee: 0,
+        discounts: 0,
+        people: 0,
+        openTabs: [],
+        closedTabs: [],
+        waitingBill: [],
+        readyCount: 0,
+        readyOldest: 0,
+        grillCount: 0,
+        grillOldest: 0,
+      },
+      delivery: {
+        realized: 0,
+        pending: 0,
+        gross: 0,
+        fees: 0,
+        avgTicket: 0,
+        count: 0,
+      },
+      pickup: {
+        realized: 0,
+        pending: 0,
+        gross: 0,
+        avgTicket: 0,
+        count: 0,
+      },
+      production: {
+        GRILL: { salon: 0, delivery: 0 },
+        KITCHEN: { salon: 0, delivery: 0 },
+        BAR: { salon: 0, delivery: 0 },
+      },
+      productionTotal: 0,
+      stuckJobs: [],
+      failedJobs: [],
+      received: {
+        PIX: 0,
+        CREDITO: 0,
+        DEBITO: 0,
+        DINHEIRO: 0,
+        CARTAO_ENTREGA: 0,
+      },
+      receivedTotal: 0,
+      alerts: [],
+      feed: [],
+      topProducts: [],
+      losses: [],
+      stages: {
+        AWAITING_PAYMENT: [],
+        IN_PRODUCTION: [],
+        READY: [],
+        OUT_FOR_DELIVERY: [],
+      },
+      lateDeliveries: [],
+      pickupsWaiting: [],
+      tabInfo: () => ({
+        ready: 0,
+        preparing: 0,
+        served: 0,
+        itemCount: 0,
+        minutesSinceLastOrder: null,
+      }),
+      minutesSince: () => 0,
+    };
+  }
+
+  const inShift = <T extends { shift_id?: string | null }>(row: T) => row.shift_id === shiftId;
   const tableNumber = (tableId: string | undefined) => {
     const table = tables.find((t) => t.id === tableId);
     return table ? `Mesa ${pad2(table.number)}` : 'Balcão';
   };
 
   // ---------------- Casa ----------------
-  const shiftTabs = tabs.filter((t) => (shiftId ? t.shift_id === shiftId || t.status === 'OPEN' : true));
+  const shiftTabs = tabs.filter((t) => t.shift_id === shiftId || t.status === 'OPEN');
   const openTabs = shiftTabs.filter((t) => t.status === 'OPEN');
   const paidByTab = new Map<string, number>();
   payments.filter((p) => p.status === 'PAID').forEach((p) => paidByTab.set(p.tab_id, (paidByTab.get(p.tab_id) ?? 0) + p.amount));

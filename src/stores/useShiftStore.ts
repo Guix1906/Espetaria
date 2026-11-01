@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Shift } from '../types/domain';
 import { generateId } from '../lib/utils';
 import { useStockStore, PrepItemInput } from './useStockStore';
+import { useTableStore } from './useTableStore';
 import { logger } from '../lib/logger';
 import { callRpc } from '../lib/remote';
 
@@ -118,6 +119,19 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
     set({
       currentShift: null,
       shiftsHistory: get().shiftsHistory.map((s) => (s.id === current.id ? closedShift : s)),
+    });
+
+    // Zera automaticamente o estoque diário ao encerrar o turno
+    useStockStore.setState({ dailyPrepStock: [] });
+
+    // Zera e libera todas as mesas e comandas do salão automaticamente
+    const tableStore = useTableStore.getState();
+    const closeNow = new Date().toISOString();
+    useTableStore.setState({
+      tables: tableStore.tables.map((t) => ({ ...t, status: 'LIVRE' as const, current_tab: undefined, updated_at: closeNow })),
+      tabs: tableStore.tabs.map((t) => (t.status === 'OPEN' ? { ...t, status: 'CLOSED' as const, closed_at: closeNow, closed_by: userId } : t)),
+      orders: tableStore.orders.map((o) => (o.status !== 'CANCELLED' && o.status !== 'CLOSED' ? { ...o, status: 'CLOSED' as const, updated_at: closeNow } : o)),
+      orderItems: tableStore.orderItems.map((i) => (i.status !== 'CANCELLED' && i.status !== 'DELIVERED' ? { ...i, status: 'DELIVERED' as const, delivered_at: closeNow, updated_at: closeNow } : i)),
     });
 
     void callRpc('close_shift', {
