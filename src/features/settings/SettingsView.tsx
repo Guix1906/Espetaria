@@ -31,7 +31,7 @@ import { WhatsAppAutoCard } from './WhatsAppAutoCard';
 import { WhatsAppBotCard } from './WhatsAppBotCard';
 import { formatBRL } from '../../lib/formatters';
 import { maskCnpj, maskPhone, pixKeyError, toPixText } from '../../lib/inputMasks';
-import { PrintBridgeStatus, DigitalMenuLinkCard, PrinterHealthTag } from './PrintBridgeStatus';
+import { PrintBridgeStatus, PrinterHealthTag } from './PrintBridgeStatus';
 
 import { PrintTemplatesEditor } from './PrintTemplatesEditor';
 import { TableManagementView } from './TableManagementView';
@@ -60,11 +60,11 @@ function readSavedTab(): SettingsTab {
 }
 
 /** Setores de impressão, na mesma regra do printer-bridge (bar e caixa sem impressora própria saem na churrasqueira). */
-const PRINTER_SECTORS: { sector: ProductionSector; title: string; description: string; icon: typeof Store; tone: string }[] = [
-  { sector: 'GRILL', title: 'Churrasqueira', description: 'Espetos com o ponto da carne em destaque, a via do motoboy quando o delivery tem espeto e a conta da mesa.', icon: Flame, tone: 'bg-amber-100 text-amber-800' },
-  { sector: 'KITCHEN', title: 'Cozinha', description: 'Porções e acompanhamentos, a cópia do espeto com acompanhamento e a via do motoboy quando não há espeto.', icon: UtensilsCrossed, tone: 'bg-emerald-100 text-emerald-800' },
-  { sector: 'BAR', title: 'Bar', description: 'Bebidas. Sem impressora própria no bar, o cupom sai na churrasqueira.', icon: CupSoda, tone: 'bg-sky-100 text-sky-800' },
-  { sector: 'NONE', title: 'Caixa', description: 'Itens sem setor de produção. Sem impressora própria no caixa, o cupom sai na churrasqueira.', icon: Receipt, tone: 'bg-surface-muted text-ink-secondary' },
+const PRINTER_SECTORS: { sector: ProductionSector; title: string; ip: string; description: string; icon: typeof Store; tone: string }[] = [
+  { sector: 'GRILL', title: 'Churrasqueira', ip: 'IP: 192.168.3.17:9100', description: 'Espetos com o ponto da carne em destaque, a via do motoboy quando o delivery tem espeto e a conta da mesa.', icon: Flame, tone: 'bg-amber-100 text-amber-800' },
+  { sector: 'KITCHEN', title: 'Cozinha', ip: 'IP: 192.168.3.12:9100', description: 'Porções e acompanhamentos, a cópia do espeto com acompanhamento e a via do motoboy quando não há espeto.', icon: UtensilsCrossed, tone: 'bg-emerald-100 text-emerald-800' },
+  { sector: 'BAR', title: 'Bar', ip: 'Impressão integrada à Churrasqueira', description: 'Bebidas. Sem impressora própria no bar, o cupom sai na churrasqueira.', icon: CupSoda, tone: 'bg-sky-100 text-sky-800' },
+  { sector: 'NONE', title: 'Caixa / Expedição', ip: 'Impressão integrada à Churrasqueira', description: 'Itens sem setor de produção. Sem impressora própria no caixa, o cupom sai na churrasqueira.', icon: Receipt, tone: 'bg-surface-muted text-ink-secondary' },
 ];
 
 const FIELD ='h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-base sm:text-sm';
@@ -405,7 +405,6 @@ export const SettingsView: React.FC = () => {
       {activeTab === 'printers' && (
         <div className="space-y-6">
           <PrintBridgeStatus jobs={jobs} />
-          <DigitalMenuLinkCard />
 
           <div className="surface-card p-4 sm:p-5 space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
@@ -449,12 +448,15 @@ export const SettingsView: React.FC = () => {
 
           {feedbackFor('printers')}
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {PRINTER_SECTORS.map(({ sector, title, description, icon: Icon, tone }) => (
+            {PRINTER_SECTORS.map(({ sector, title, ip, description, icon: Icon, tone }) => (
               <div key={sector} className="surface-card p-4 sm:p-5 space-y-3">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="flex shrink-0 items-center gap-2.5">
                     <span className={`icon-tile ${tone}`}><Icon className="h-5 w-5" /></span>
-                    <h4 className="font-bold text-ink">{title}</h4>
+                    <div>
+                      <h4 className="font-bold text-ink">{title}</h4>
+                      <p className="font-mono text-[11px] text-ink-muted">{ip}</p>
+                    </div>
                   </div>
                   <PrinterHealthTag jobs={jobs} sector={sector} />
                 </div>
@@ -660,16 +662,19 @@ export const SettingsView: React.FC = () => {
 
           <div>
             <label htmlFor="store-fee" className={LABEL}>Taxa de serviço (%)</label>
-            <input
-              id="store-fee"
-              type="number"
-              min="0"
-              max="30"
-              step="0.5"
-              value={serviceFee}
-              onChange={(e) => setServiceFee(Number(e.target.value))}
-              className={FIELD}
-            />
+            <div className="flex items-center gap-3">
+              <input
+                id="store-fee"
+                type="number"
+                min="0"
+                max="0"
+                value="0"
+                readOnly
+                disabled
+                className={`${FIELD} w-24 bg-surface-muted text-ink-muted cursor-not-allowed`}
+              />
+              <span className="text-xs text-ink-muted">A espetaria opera sem taxa de serviço (0%).</span>
+            </div>
           </div>
 
           <div className="pt-2">
