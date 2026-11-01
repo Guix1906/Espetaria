@@ -1,5 +1,4 @@
-import { AlertCircle, Ban, CheckCircle2, Coins, Flame, History, Printer, RotateCcw, X } from 'lucide-react';
-import { usePrinterHealth } from '../../components/layout/PrinterStatusWidget';
+import { AlertCircle, Ban, CheckCircle2, Coins, Flame, History, RotateCcw, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { formatBRL } from '../../lib/formatters';
@@ -25,7 +24,6 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   const { products, categories } = useStockStore();
   const { openShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
-  const { isBridgeAlive, isGrillOk, isKitchenOk, allOk } = usePrinterHealth();
 
   const [shiftName, setShiftName] = useState<string>(`${new Date().toLocaleDateString('pt-BR')} — Noite`);
   const [cashStart, setCashStart] = useState<string>('');
@@ -177,8 +175,11 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   };
 
   const fieldClass = (filled: boolean) =>
-    `h-11 rounded-md border px-2 text-center font-mono text-base sm:text-sm text-ink focus:outline-none focus:ring-1 focus:ring-brand-600 ${filled ? 'bg-surface border-line-strong' : 'bg-amber-50 border-amber-300'}`;
-  const stepButton = 'flex h-11 min-w-[44px] items-center justify-center rounded-md border border-line-strong bg-surface px-2 font-mono text-sm font-bold text-ink hover:bg-surface-muted transition';
+    `h-10 rounded-lg border px-2 text-center font-mono text-base font-bold text-ink focus:outline-none focus:ring-2 focus:ring-brand-600 transition ${
+      filled ? 'bg-surface border-line-strong' : 'bg-amber-50/80 border-amber-300'
+    }`;
+  const stepButton =
+    'flex h-10 w-11 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface font-mono text-sm font-bold text-ink hover:bg-surface-muted active:scale-95 transition';
 
   const unitRow = (p: Product) => {
     const isDisabled = Boolean(disabledProducts[p.id]);
@@ -191,57 +192,71 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     return (
       <div
         key={p.id}
-        className={`flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between p-3 rounded-2xl border transition ${
+        className={`flex flex-col justify-between gap-3 p-3.5 rounded-2xl border transition ${
           isDisabled
-            ? 'bg-rose-50/50 border-rose-200'
+            ? 'bg-rose-50/40 border-rose-200'
             : filled
-            ? 'bg-surface border-line'
-            : 'bg-amber-50/60 border-amber-200'
+            ? 'bg-surface border-line shadow-xs'
+            : 'bg-amber-50/60 border-amber-300 shadow-xs'
         }`}
       >
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <span className={`font-semibold ${isDisabled ? 'text-ink-muted line-through' : 'text-ink'}`}>
+        {/* Linha 1: Nome completo do produto (sempre visível) + Preço + Botão de disponibilidade */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1 pr-1">
+            <span
+              className={`block font-bold text-sm sm:text-base leading-snug break-words ${
+                isDisabled ? 'text-ink-muted line-through' : 'text-ink'
+              }`}
+            >
               {p.name}
             </span>
-            {isDisabled && (
-              <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">
-                <Ban className="w-3 h-3" />
-                Não tem hoje
-              </span>
+            <div className="text-xs text-ink-muted font-mono mt-0.5">
+              {formatBRL(p.price)}
+              {isCuba && !isDisabled && ` · ${portionsOf(p)} porções/cuba`}
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => toggleDisable(p.id)}
+            className={`h-8 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition shrink-0 ${
+              isDisabled
+                ? 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100 shadow-xs active:scale-95'
+                : 'border-line bg-surface text-ink-muted hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50'
+            }`}
+            title={isDisabled ? `Habilitar ${p.name}` : `Desabilitar ${p.name} (não tem hoje)`}
+            aria-label={isDisabled ? `Habilitar ${p.name}` : `Desabilitar ${p.name}`}
+          >
+            {isDisabled ? (
+              <>
+                <RotateCcw className="w-3.5 h-3.5 text-brand-700 shrink-0" />
+                <span>Habilitar</span>
+              </>
+            ) : (
+              <>
+                <Ban className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                <span>Não tem hoje</span>
+              </>
             )}
-          </div>
-          <div className="text-[13px] text-ink-muted font-mono">
-            {formatBRL(p.price)}
-            {isCuba && !isDisabled && ` · ${portionsOf(p)} porções/cuba`}
-          </div>
+          </button>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5">
-          {isDisabled ? (
-            <button
-              type="button"
-              onClick={() => toggleDisable(p.id)}
-              className="h-11 px-3.5 rounded-lg border border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
-              title={`Habilitar ${p.name}`}
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-brand-700" />
-              <span>Habilitar</span>
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => toggleDisable(p.id)}
-                className="h-11 px-2.5 rounded-md border border-line-strong bg-surface text-ink-muted hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50 text-xs font-semibold flex items-center gap-1 transition"
-                title={`Desabilitar ${p.name} (não tem hoje)`}
-                aria-label={`Desabilitar ${p.name}`}
-              >
-                <Ban className="w-3.5 h-3.5 text-rose-600 shrink-0" />
-                <span className="hidden sm:inline">Não tem hoje</span>
-                <span className="sm:hidden">Sem</span>
-              </button>
+        {/* Linha 2: Controles de quantidade ou status de desabilitado */}
+        {isDisabled ? (
+          <div className="pt-2 border-t border-rose-200/70 flex items-center justify-between text-xs font-semibold text-rose-700">
+            <span className="flex items-center gap-1.5">
+              <Ban className="w-3.5 h-3.5 shrink-0" />
+              Fora do cardápio hoje
+            </span>
+            <span className="text-[11px] font-normal text-rose-600">Garçons não verão este item</span>
+          </div>
+        ) : (
+          <div className="pt-2.5 border-t border-line/60 flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-ink-secondary">
+              {isCuba ? 'Cubas preparadas:' : 'Qtd. preparada:'}
+            </span>
 
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => step(p.id, field, -stepDelta)}
@@ -258,7 +273,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 value={val}
                 placeholder="—"
                 onChange={(e) => setField(p.id, field, e.target.value)}
-                className={`w-16 ${fieldClass(filled)}`}
+                className={`w-20 ${fieldClass(filled)}`}
                 aria-label={`Quantidade de ${p.name}`}
               />
 
@@ -270,9 +285,9 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               >
                 +{stepDelta}
               </button>
-            </>
-          )}
-        </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -306,36 +321,6 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             </button>
           </div>
           {repeatState.message && <p className="-mt-3 text-sm text-ink-secondary" role="status">{repeatState.message}</p>}
-
-          {/* Checagem automática das impressoras na abertura de turno */}
-          <div className="rounded-2xl border border-line bg-surface-soft p-3.5 space-y-2.5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Printer className="w-4 h-4 text-brand-700" />
-                <span className="font-bold text-sm text-ink">Impressoras de Produção</span>
-              </div>
-              <span className={`status-badge text-[11px] font-bold ${allOk ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
-                {allOk ? 'Cozinha e Churrasqueira OK' : 'Atenção na Impressão'}
-              </span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-              <div className={`p-2.5 rounded-xl border flex items-center justify-between ${isKitchenOk ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50'}`}>
-                <span className="font-semibold text-ink">Cozinha (192.168.3.12)</span>
-                <span className={`font-bold ${isKitchenOk ? 'text-emerald-700' : 'text-rose-700'}`}>{isKitchenOk ? '✔ Online' : '✖ Offline'}</span>
-              </div>
-              <div className={`p-2.5 rounded-xl border flex items-center justify-between ${isGrillOk ? 'border-emerald-200 bg-emerald-50/50' : 'border-rose-200 bg-rose-50/50'}`}>
-                <span className="font-semibold text-ink">Churrasqueira (192.168.3.17)</span>
-                <span className={`font-bold ${isGrillOk ? 'text-emerald-700' : 'text-rose-700'}`}>{isGrillOk ? '✔ Online' : '✖ Offline'}</span>
-              </div>
-            </div>
-            {!allOk && (
-              <p className="text-xs text-rose-700 font-medium">
-                {!isBridgeAlive 
-                  ? 'Atenção: O computador da loja não está conectado ao serviço de impressão. Ligue o PC da loja antes de abrir o turno.' 
-                  : 'Verifique se os cabos de rede e energia das impressoras estão conectados antes de começar o turno.'}
-              </p>
-            )}
-          </div>
 
           {errorMsg && (
             <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 flex items-center gap-2.5" role="alert">
