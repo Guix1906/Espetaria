@@ -1,10 +1,11 @@
-import { AlertCircle, Ban, CheckCircle2, Coins, Flame, History, RotateCcw, X } from 'lucide-react';
+import { AlertCircle, Ban, Check, CheckCircle2, Coins, Flame, History, RotateCcw, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { formatBRL } from '../../lib/formatters';
 import { isComboProduct } from '../../lib/comboStock';
 import { loadLastClosedShiftPrep } from '../../lib/lastShift';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { PrepItemInput, useStockStore } from '../../stores/useStockStore';
 import type { Product } from '../../types/domain';
@@ -20,10 +21,21 @@ type PrepValue = { quantity: string; cubas: string };
 const toNumber = (v: string) => (v.trim() === '' ? null : Math.max(0, Number(v.replace(',', '.')) || 0));
 const isRice = (p: Product) => /^arroz(\b|$)/i.test(p.name.trim());
 
+const DEFAULT_RICE_OPTIONS = [
+  'Arroz Branco',
+  'Arroz Carreteiro',
+  'Baião de Dois',
+  'Arroz de Alho',
+  'Arroz com Brócolis',
+  'Arroz à Grega',
+  'Arroz Integral',
+];
+
 export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose }) => {
   const { products, categories } = useStockStore();
   const { openShift } = useShiftStore();
   const { currentProfile } = useAuthStore();
+  const { settings, updateSettings } = useSettingsStore();
 
   const [shiftName, setShiftName] = useState<string>(`${new Date().toLocaleDateString('pt-BR')} — Noite`);
   const [cashStart, setCashStart] = useState<string>('');
@@ -35,6 +47,24 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [repeatState, setRepeatState] = useState<{ loading: boolean; message: string | null }>({ loading: false, message: null });
 
+  // Sabores de arroz do dia selecionados para o turno
+  const [selectedRiceFlavors, setSelectedRiceFlavors] = useState<string[]>(() => {
+    return settings.daily_rice_flavors && settings.daily_rice_flavors.length > 0
+      ? settings.daily_rice_flavors
+      : ['Arroz Branco'];
+  });
+  const [customRiceInput, setCustomRiceInput] = useState('');
+  const [isAddingCustomRice, setIsAddingCustomRice] = useState(false);
+
+  // Lista consolidada de todos os arrozes cadastrados (configurações + catálogo de produtos + sugestões)
+  const allRegisteredRices = React.useMemo(() => {
+    const fromSettings = settings.daily_rice_flavors || [];
+    const fromProducts = products
+      .filter((p) => /arroz|bai[aã]o/i.test(p.name))
+      .map((p) => p.name.replace(/\s*\([^)]*\)\s*/g, '').trim());
+    return Array.from(new Set([...fromSettings, ...fromProducts, ...DEFAULT_RICE_OPTIONS])).filter(Boolean);
+  }, [settings.daily_rice_flavors, products]);
+
   // Campos começam vazios a cada abertura
   useEffect(() => {
     if (!isOpen) return;
@@ -44,7 +74,14 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     setCashStart('');
     setErrorMsg(null);
     setRepeatState({ loading: false, message: null });
-  }, [isOpen]);
+    setSelectedRiceFlavors(
+      settings.daily_rice_flavors && settings.daily_rice_flavors.length > 0
+        ? settings.daily_rice_flavors
+        : ['Arroz Branco']
+    );
+    setCustomRiceInput('');
+    setIsAddingCustomRice(false);
+  }, [isOpen, settings.daily_rice_flavors]);
 
   if (!isOpen) return null;
 
@@ -167,11 +204,47 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
         return;
       }
 
+      // Salva os sabores de arroz selecionados nas configurações para os garçons
+      if (selectedRiceFlavors.length > 0) {
+        updateSettings({ daily_rice_flavors: selectedRiceFlavors });
+      }
+
       openShift(shiftName, notes, toNumber(cashStart) ?? 0, items, currentProfile.id, disabledIds);
       onClose();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Erro inesperado ao abrir turno.');
     }
+  };
+
+  const handleSelectRiceOption = (value: string) => {
+    if (value === '__NEW__') {
+      setIsAddingCustomRice(true);
+      return;
+    }
+    if (!value) return;
+    if (!selectedRiceFlavors.includes(value)) {
+      setSelectedRiceFlavors([...selectedRiceFlavors, value]);
+    }
+  };
+
+  const toggleRiceFlavor = (flavor: string) => {
+    if (selectedRiceFlavors.includes(flavor)) {
+      if (selectedRiceFlavors.length > 1) {
+        setSelectedRiceFlavors(selectedRiceFlavors.filter((f) => f !== flavor));
+      }
+    } else {
+      setSelectedRiceFlavors([...selectedRiceFlavors, flavor]);
+    }
+  };
+
+  const handleAddCustomRice = () => {
+    const trimmed = customRiceInput.trim();
+    if (!trimmed) return;
+    if (!selectedRiceFlavors.some((f) => f.toLowerCase() === trimmed.toLowerCase())) {
+      setSelectedRiceFlavors([...selectedRiceFlavors, trimmed]);
+    }
+    setCustomRiceInput('');
+    setIsAddingCustomRice(false);
   };
 
   const fieldClass = (filled: boolean) =>
@@ -209,6 +282,12 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               }`}
             >
               {p.name}
+              {isRice(p) && selectedRiceFlavors.length > 0 && !isDisabled && (
+                <span className="ml-2 inline-flex items-center gap-1 font-semibold text-xs text-brand-800 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
+                  <span>🍚</span>
+                  <span>Hoje: {selectedRiceFlavors.join(' & ')}</span>
+                </span>
+              )}
             </span>
             <div className="text-xs text-ink-muted font-mono mt-0.5">
               {formatBRL(p.price)}
@@ -355,9 +434,124 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
           )}
 
           {rice && (
-            <div className="space-y-3">
-              <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Arroz (porções que rendeu hoje)</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{unitRow(rice)}</div>
+            <div className="space-y-3.5 rounded-2xl border border-line bg-surface-soft p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-line pb-2.5">
+                <div>
+                  <h3 className="font-bold text-ink text-sm flex items-center gap-2">
+                    <span className="text-base">🍚</span>
+                    <span>Arroz do Dia & Porções Preparadas</span>
+                  </h3>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    Puxe os arrozes cadastrados e defina qual está pronto para os garçons venderem hoje.
+                  </p>
+                </div>
+              </div>
+
+              {/* Seletor de arrozes cadastrados */}
+              <div className="space-y-2.5 pt-1">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="select-daily-rice" className="text-xs font-bold uppercase tracking-wider text-ink-secondary">
+                    Puxar Arroz Cadastrado:
+                  </label>
+                  <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
+                    {selectedRiceFlavors.length === 1 ? '1 sabor selecionado' : `${selectedRiceFlavors.length} sabores selecionados`}
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <select
+                    id="select-daily-rice"
+                    value=""
+                    onChange={(e) => handleSelectRiceOption(e.target.value)}
+                    className="flex-1 h-10 rounded-lg border border-line-strong bg-white px-3 text-sm font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-brand-600 cursor-pointer"
+                  >
+                    <option value="" disabled>-- Selecionar da lista de arrozes cadastrados --</option>
+                    {allRegisteredRices.map((r) => (
+                      <option key={r} value={r}>
+                        🍚 {r} {selectedRiceFlavors.includes(r) ? '✓ (Ativo)' : ''}
+                      </option>
+                    ))}
+                    <option value="__NEW__">➕ Digitar outro sabor de arroz...</option>
+                  </select>
+
+                  {isAddingCustomRice && (
+                    <div className="flex items-center gap-1.5 flex-1">
+                      <input
+                        type="text"
+                        autoFocus
+                        value={customRiceInput}
+                        onChange={(e) => setCustomRiceInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddCustomRice(); } }}
+                        placeholder="Ex.: Arroz à Piamontese"
+                        className="flex-1 h-10 rounded-lg border border-line-strong bg-white px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand-600"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCustomRice}
+                        disabled={!customRiceInput.trim()}
+                        className="btn-primary h-10 px-3 text-xs font-bold shrink-0 disabled:opacity-50"
+                      >
+                        Salvar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingCustomRice(false)}
+                        className="btn-secondary h-10 px-2 text-xs shrink-0"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Chips rápidos dos arrozes cadastrados mais comuns */}
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[11px] font-semibold text-ink-muted">Toque para ativar ou desativar do turno:</span>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {allRegisteredRices.slice(0, 8).map((option) => {
+                      const isSelected = selectedRiceFlavors.includes(option);
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => toggleRiceFlavor(option)}
+                          className={`h-7 px-3 rounded-full text-xs font-bold transition flex items-center gap-1.5 border ${
+                            isSelected
+                              ? 'border-brand-600 bg-brand-600 text-white shadow-xs'
+                              : 'border-line-strong bg-white text-ink hover:border-brand-400 hover:bg-surface-muted'
+                          }`}
+                        >
+                          {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                          <span>{option}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Banner com o arroz do dia que os garçons vão ver */}
+                {selectedRiceFlavors.length > 0 && (
+                  <div className="rounded-xl border border-brand-200 bg-brand-50/80 p-2.5 flex items-center justify-between text-xs font-semibold text-brand-900 mt-2">
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-sm">🍚</span>
+                      <span>Arroz do dia para os garçons:</span>
+                      <strong className="text-brand-800 underline decoration-brand-300">
+                        {selectedRiceFlavors.join(' & ')}
+                      </strong>
+                    </span>
+                    <span className="text-[11px] text-brand-700 bg-white/90 border border-brand-200 px-2 py-0.5 rounded-full font-bold">
+                      Ativo no turno
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Card de contagem de porções preparadas */}
+              <div className="pt-2.5 border-t border-line">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {unitRow(rice)}
+                </div>
+              </div>
             </div>
           )}
 
