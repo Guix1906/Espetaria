@@ -80,6 +80,8 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   const [payMode, setPayMode] = useState<'TOTAL' | 'PARTIAL'>('TOTAL');
   const [paymentAmount, setPaymentAmount] = useState<string>('');
   const [cashTendered, setCashTendered] = useState<string>('');
+  /** Troco do último pagamento em dinheiro: continua na tela depois de lançar. */
+  const [lastChange, setLastChange] = useState<number>(0);
   const [paymentNotes, setPaymentNotes] = useState<string>('');
   const [isPixModalOpen, setIsPixModalOpen] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -220,6 +222,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
         notes || undefined
       );
 
+      setLastChange(paymentMethod === 'DINHEIRO' ? cashChange : 0);
       // Depois de uma parte, o campo fica vazio para a próxima
       setPaymentAmount('');
       setCashTendered('');
@@ -243,7 +246,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
         table,
         items: result.items,
         payments: result.payments,
-        cashChange,
+        cashChange: lastChange,
       });
     } catch (err) {
       setErrorMessage((err as Error).message);
@@ -442,6 +445,13 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                 <span className="text-3xl font-black tabular-nums">{formatBRL(remainingDue)}</span>
               </div>
 
+              {lastChange > 0 && (
+                <div className="flex items-center justify-between rounded-xl bg-emerald-600 px-3 py-2.5 font-bold text-white tabular-nums" role="status">
+                  <span className="text-base">Devolver de troco</span>
+                  <span className="text-3xl">{formatBRL(lastChange)}</span>
+                </div>
+              )}
+
               {!isFullyPaid && (
                 <form onSubmit={handleAddPayment} className="space-y-3">
                   <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-muted p-1" role="group" aria-label="Quanto vai pagar agora">
@@ -538,10 +548,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                           </button>
                         ))}
                       </div>
-                      {cashChange > 0 && (
-                        <div className="flex justify-between items-center border-t border-line pt-2 font-bold text-emerald-800 tabular-nums">
-                          <span>Troco</span>
-                          <span className="text-xl">{formatBRL(cashChange)}</span>
+                      {cashGivenNumber > 0 && (
+                        <div className={`flex justify-between items-center rounded-lg px-3 py-2 font-bold tabular-nums ${cashGivenNumber >= paymentAmountNumber ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
+                          <span>{cashGivenNumber >= paymentAmountNumber ? 'Troco a devolver' : 'Falta o cliente entregar'}</span>
+                          <span className="text-2xl">{formatBRL(cashGivenNumber >= paymentAmountNumber ? cashChange : paymentAmountNumber - cashGivenNumber)}</span>
                         </div>
                       )}
                     </div>
