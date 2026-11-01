@@ -68,7 +68,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
 
   return (
     <Dialog label="Consumo da mesa" onClose={onClose} placement="sheet">
-      <div className="dialog-panel bg-surface-muted border-t sm:border border-line rounded-t-md sm:rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-card space-y-4 max-h-[92vh] flex flex-col fade-in zoom-in-95">
+      <div className="dialog-panel bg-surface-muted border-t sm:border border-line rounded-t-md sm:rounded-2xl w-full max-w-lg md:max-w-5xl p-5 sm:p-6 shadow-card space-y-4 max-h-[92dvh] flex flex-col overflow-y-auto md:overflow-hidden fade-in zoom-in-95">
 
         {/* Topo do Extrato */}
         <div className="flex items-center justify-between border-b border-line pb-4">
@@ -110,13 +110,15 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto pr-1">
+        {/* Computador: pedidos à esquerda ocupando a altura toda, conta e botões à direita. Celular: tudo em uma rolagem só. */}
+        <div className="space-y-4 md:grid md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_340px] md:gap-5 md:space-y-0">
+        <div className="md:min-h-0 md:overflow-y-auto md:pr-1">
           <TabItemsPanel table={table} compact />
         </div>
 
         {/* Resumo Financeiro da Mesa */}
         {currentTab && (
-          <div className="border-t border-line pt-4 space-y-2.5 text-base">
+          <div className="border-t border-line pt-4 space-y-2.5 text-base md:min-h-0 md:overflow-y-auto md:border-l md:border-t-0 md:pl-5 md:pt-0">
             <div className="flex justify-between text-ink-muted">
               <span>Subtotal</span>
               <span className="tabular-nums font-bold text-ink">
@@ -209,6 +211,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
             </div>
           </div>
         )}
+        </div>
 
       </div>
     </Dialog>
