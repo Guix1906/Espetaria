@@ -390,3 +390,5 @@ export interface PrinterStatusRecord {
   kitchen_error: string | null;
   updated_at: string;
 }
+
+export type { MeatDoneness } from './enums';

@@ -46,6 +46,8 @@ interface PrintState {
   sendTestPrintAll: () => Promise<void>;
   /** Imprime a conta da mesa (conferência) na churrasqueira. Retorna false se o banco recusar. */
   printBill: (tableId: string) => Promise<boolean>;
+  reprintTableProduction: (tableId: string, sector?: ProductionSector, reason?: string) => Promise<boolean>;
+
   enqueuePrintJob: (input: CreatePrintJobInput) => { job: PrintJob; isDuplicate: boolean };
   processJob: (jobId: string) => Promise<boolean>;
   reprintJob: (jobId: string, reason?: string) => PrintJob;
@@ -162,6 +164,25 @@ export const usePrintStore = create<PrintState>((set, get) => ({
     // Modo demonstração: sem banco, não há cupom real de conta
     if (!isSupabaseConfigured) return true;
     return (await callRpc('enqueue_bill_print', { p_table_id: tableId, p_reprint: true }, 'PrintStore')) !== null;
+  },
+
+  reprintTableProduction: async (tableId, sector, reason = 'Reimpressão solicitada na mesa') => {
+    if (!isSupabaseConfigured) {
+      const tableJobs = get().jobs.filter((j) => {
+        return (!sector || j.sector === sector) && (j.origin === 'SALAO');
+      });
+      if (tableJobs.length > 0) {
+        tableJobs.forEach((job) => get().reprintJob(job.id, reason));
+        return true;
+      }
+      return true;
+    }
+    const res = await callRpc<{ success: boolean; enqueued_count: number }>(
+      'reprint_table_production',
+      { p_table_id: tableId, p_sector: sector || null, p_reason: reason },
+      'PrintStore'
+    );
+    return res !== null && (res.success ?? true);
   },
 
   enqueuePrintJob: (input) => {

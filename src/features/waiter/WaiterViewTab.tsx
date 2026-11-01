@@ -16,7 +16,7 @@ import { isFreshReady } from '../../lib/productionStatus';
 import { useTableStore } from '../../stores/useTableStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { TabItemsPanel } from './TabItemsPanel';
-import { RestaurantTable } from '../../types/domain';
+import { RestaurantTable, OrderItem } from '../../types/domain';
 
 interface WaiterViewTabProps {
   table: RestaurantTable;
@@ -40,6 +40,17 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
   const { currentProfile } = useAuthStore();
   const canSettle = ['MASTER', 'GERENTE', 'CAIXA'].includes(currentProfile.role);
   const [printing, setPrinting] = React.useState(false);
+  const [reprintingProduction, setReprintingProduction] = React.useState(false);
+
+  const reprintProduction = async () => {
+    setReprintingProduction(true);
+    const ok = await usePrintStore.getState().reprintTableProduction(table.id);
+    setReprintingProduction(false);
+    notify(
+      ok ? 'Pedidos da mesa reenviados para a Churrasqueira e Cozinha (2ª Via).' : 'Não foi possível reenviar os pedidos.',
+      ok ? 'success' : 'error'
+    );
+  };
 
   const reprintBill = async () => {
     setPrinting(true);
@@ -145,6 +156,19 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
               >
                 <ArrowLeftRight className="w-4 h-4 text-brand-700" />
                 <span>Trocar comanda de mesa</span>
+              </button>
+            )}
+
+            {/* Botão de Reenviar Pedidos à Produção */}
+            {items.some((i: OrderItem) => i.status !== 'CANCELLED' && (i.sector === 'GRILL' || i.sector === 'KITCHEN')) && (
+              <button
+                type="button"
+                disabled={reprintingProduction}
+                onClick={() => void reprintProduction()}
+                className="w-full py-2.5 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 active:scale-[0.98] font-bold text-brand-800 flex items-center justify-center gap-2 transition text-sm shadow-sm disabled:opacity-60"
+              >
+                <Printer className="w-4 h-4 text-brand-700" />
+                <span>{reprintingProduction ? 'Enviando...' : 'Reenviar pedidos à produção (2ª Via)'}</span>
               </button>
             )}
 

@@ -112,7 +112,7 @@ describe('Area dedicada do garcom', () => {
     expect(useStockStore.getState().getProductDailyStock(product.id)?.current_quantity).toBe(1);
   });
 
-  it('garcom nao tem permissao para cancelar ou trocar item ja lancado', () => {
+  it('garcom nao tem permissao para excluir item sem troca, mas pode trocar e reenviar a producao', () => {
     useAuthStore.setState({ currentProfile: waiter });
     const tab = useTableStore.getState().openTab(table.id, 'Cliente', 2, '', waiter.id, 'shift-test');
     useStockStore.getState().initShiftStock('shift-test', [{ productId: product.id, quantity: 5 }], waiter.id);
@@ -124,7 +124,8 @@ describe('Area dedicada do garcom', () => {
 
     // 2. No HTML do painel de itens para o garçom, não pode existir botão de Trocar nem Lixeira
     const html = renderToStaticMarkup(<FeedbackProvider><TabItemsPanel table={table} compact /></FeedbackProvider>);
-    expect(html).not.toContain('Trocar');
+    expect(html).toContain('Trocar');
+    expect(html).toContain('Reenviar');
     expect(html).not.toContain('Cancelar');
   });
 

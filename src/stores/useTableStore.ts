@@ -74,6 +74,19 @@ interface TableState {
     shiftId: string,
     returnStock?: boolean
   ) => void;
+  /** Troca atômica de item: cancela o antigo (enviando cancelamento à produção) e lança o novo (enviando pedido à produção). */
+  swapOrderItemAtomic: (
+    oldItemId: string,
+    newProductId: string,
+    newQuantity: number,
+    newDoneness: MeatDoneness | null,
+    newNotes: string | null,
+    userId: string,
+    shiftId: string,
+    returnStock?: boolean
+  ) => OrderItem;
+  reprintTableProduction: (tableId: string, sector?: ProductionSector, reason?: string) => Promise<boolean>;
+  reprintOrderItemProduction: (orderItemId: string, reason?: string) => Promise<boolean>;
   updateOrderItemStatus: (orderItemId: string, status: OrderItemStatus) => void;
   updateOrderSectorItemsStatus: (orderId: string, sector: ProductionSector, status: OrderItemStatus) => void;
   markDelivered: (orderItemId: string) => void;
@@ -444,6 +457,242 @@ export const useTableStore = create<TableState>((set, get) => ({
     }
 
     set({ orderItems: updatedItems });
+  },
+
+  swapOrderItemAtomic: (oldItemId, newProductId, newQuantity, newDoneness, newNotes, userId, shiftId, returnStock) => {
+    const oldItem = get().orderItems.find((i) => i.id === oldItemId);
+    if (!oldItem) throw new Error('Item não encontrado.');
+    if (oldItem.status === 'CANCELLED') throw new Error('Item já cancelado.');
+    if (oldItem.status === 'DELIVERED') throw new Error('Item já entregue à mesa não pode ser trocado.');
+
+    const order = get().orders.find((o) => o.id === oldItem.order_id);
+    if (!order) throw new Error('Pedido vinculado não encontrado.');
+
+    const tab = get().tabs.find((t) => t.id === order.tab_id && t.status === 'OPEN');
+    if (!tab) throw new Error('Comanda não encontrada ou encerrada.');
+
+    const table = get().tables.find((t) => t.id === tab.table_id);
+    if (!table) throw new Error('Mesa não encontrada.');
+
+    const products = useStockStore.getState().products;
+    const newProduct = products.find((p) => p.id === newProductId);
+    if (!newProduct) throw new Error('Novo produto não encontrado.');
+    if (newProduct.active === false) throw new Error('Novo produto está indisponível.');
+
+    const now = new Date().toISOString();
+    const newItemId = generateId();
+
+    // 1. Devolve estoque do item antigo
+    useStockStore
+      .getState()
+      .cancelOrderItemStockAtomic(
+        shiftId,
+        oldItem.product_id,
+        oldItem.quantity,
+        stockStatusForCancel(oldItem.status, returnStock ?? true),
+        userId,
+        oldItemId,
+        `Troca por ${newProduct.name}`
+      );
+
+    // 2. Dá baixa do novo produto no estoque
+    useStockStore
+      .getState()
+      .consumeStockAtomic(shiftId, [{ productId: newProductId, quantity: newQuantity }], userId, order.id);
+
+    // 3. Cria novo pedido e novo OrderItem para o item substituto
+    const newSector: ProductionSector = /suco|refresco|jarra/i.test(newProduct.name) ? 'KITCHEN' : newProduct.sector;
+    const newOrderId = generateId();
+    const newOrderNumber = get().orders.reduce((max, o) => Math.max(max, o.order_number), 0) + 1;
+
+    const newOrder: Order = {
+      id: newOrderId,
+      shift_id: shiftId,
+      tab_id: tab.id,
+      table_id: table.id,
+      order_number: newOrderNumber,
+      status: newSector === 'GRILL' ? 'IN_PREPARATION' : 'CONFIRMED',
+      notes: `Troca de item (${oldItem.product_name} -> ${newProduct.name})`,
+      idempotency_key: generateId(),
+      created_by: userId,
+      created_at: now,
+      updated_at: now,
+      updated_by: userId,
+      version: 1,
+      items: [],
+    };
+
+    const newItem: OrderItem = {
+      id: newItemId,
+      order_id: newOrderId,
+      shift_id: shiftId,
+      product_id: newProduct.id,
+      product_name: newProduct.name,
+      unit_price: newProduct.price,
+      quantity: newQuantity,
+      doneness: newDoneness ?? null,
+      notes: newNotes ?? null,
+      sector: newSector,
+      status: newSector === 'GRILL' ? 'IN_PREPARATION' : ((newSector === 'BAR' || newProduct.type === 'BEBIDA') && !/suco|refresco|jarra/i.test(newProduct.name)) ? 'DELIVERED' : 'RECEIVED',
+      created_at: now,
+      prepared_at: null,
+      delivered_at: ((newSector === 'BAR' || newProduct.type === 'BEBIDA') && !/suco|refresco|jarra/i.test(newProduct.name)) ? now : null,
+      updated_at: now,
+      updated_by: userId,
+      version: 1,
+    };
+    newOrder.items = [newItem];
+
+    // 4. Marca o antigo como CANCELLED
+    const updatedOldItem: OrderItem = {
+      ...oldItem,
+      status: 'CANCELLED',
+      updated_at: now,
+      updated_by: userId,
+      version: (oldItem.version || 0) + 1,
+    };
+
+    const updatedItems = get().orderItems.map((i) =>
+      i.id === oldItemId ? updatedOldItem : i
+    ).concat(newItem);
+
+    // 5. Recalcula totais da comanda
+    const oldDeductionCents = toCents(oldItem.unit_price) * oldItem.quantity;
+    const newAdditionCents = toCents(newProduct.price) * newQuantity;
+    const newSubtotalCents = Math.max(0, toCents(tab.subtotal) - oldDeductionCents + newAdditionCents);
+    const totals = computeTabTotals(fromCents(newSubtotalCents), tab.service_fee_enabled !== false, tab.discount);
+
+    set({
+      orders: [newOrder, ...get().orders],
+      orderItems: updatedItems,
+      tabs: get().tabs.map((t) => (t.id === tab.id ? { ...t, ...totals, updated_at: now, updated_by: userId, version: (t.version || 0) + 1 } : t)),
+    });
+
+    // 6. Enfileira impressões no modo local/demo
+    const printStore = usePrintStore.getState();
+    // Envia cancelamento para a produção do item antigo com ID único para não colidir
+    if (oldItem.sector === 'GRILL' || oldItem.sector === 'KITCHEN') {
+      printStore.enqueuePrintJob({
+        order_id: generateId(),
+        order_number: order.order_number,
+        sector: oldItem.sector,
+        origin: 'SALAO',
+        table_number: table.number,
+        customer_name: tab.customer_name || undefined,
+        items: [{
+          name: `[CANCELADO] ${oldItem.product_name}`,
+          quantity: oldItem.quantity,
+          doneness: oldItem.doneness,
+          notes: `Cancelado para troca por ${newProduct.name}`,
+        }],
+      });
+    }
+
+    // Envia novo pedido para a produção do novo item
+    if (newSector === 'GRILL') {
+      printStore.enqueuePrintJob({
+        order_id: newOrderId,
+        order_number: newOrderNumber,
+        sector: 'GRILL',
+        origin: 'SALAO',
+        table_number: table.number,
+        customer_name: tab.customer_name || undefined,
+        items: [{
+          name: newItem.product_name,
+          quantity: newItem.quantity,
+          doneness: newItem.doneness,
+          notes: newItem.notes,
+        }],
+      });
+    }
+    if (newSector === 'KITCHEN' || (newSector === 'GRILL' && (newProduct.name.match(/acompanhamento/i) || (newItem.notes && newItem.notes.match(/(?:arroz|bai[aã]o|pur[eê]|vinagrete|farofa|salada|mandioca|batata|fritas)/i))))) {
+      printStore.enqueuePrintJob({
+        order_id: newOrderId,
+        order_number: newOrderNumber,
+        sector: 'KITCHEN',
+        origin: 'SALAO',
+        table_number: table.number,
+        customer_name: tab.customer_name || undefined,
+        items: [{
+          name: newItem.product_name,
+          quantity: newItem.quantity,
+          doneness: null,
+          notes: newItem.notes,
+        }],
+      });
+    }
+
+    // 7. Chamada remota ao banco
+    void callRpc('swap_order_item_atomic', {
+      p_order_item_id: oldItemId,
+      p_new_product_id: newProductId,
+      p_new_quantity: newQuantity,
+      p_new_doneness: newDoneness,
+      p_new_notes: newNotes,
+      p_new_item_id: newItemId,
+      p_return_stock: returnStock ?? true,
+      p_reason: `Troca por ${newProduct.name}`,
+    }, 'TableStore');
+
+    logger.info({
+      context: 'TableStore',
+      message: `Item ${oldItem.product_name} trocado por ${newProduct.name} na Mesa ${table.number}.`
+    });
+
+    return newItem;
+  },
+
+  reprintTableProduction: async (tableId, sector, reason) => {
+    return usePrintStore.getState().reprintTableProduction(tableId, sector, reason);
+  },
+
+  reprintOrderItemProduction: async (orderItemId, reason = 'Reimpressão solicitada pelo operador') => {
+    const item = get().orderItems.find((i) => i.id === orderItemId);
+    if (!item) throw new Error('Item não encontrado.');
+    const order = get().orders.find((o) => o.id === item.order_id);
+    const table = order ? get().tables.find((t) => t.id === order.table_id) : undefined;
+    const tab = order ? get().tabs.find((t) => t.id === order.tab_id) : undefined;
+
+    const sector: ProductionSector = /suco|refresco|jarra/i.test(item.product_name) ? 'KITCHEN' : item.sector;
+    if (sector !== 'GRILL' && sector !== 'KITCHEN') {
+      return false;
+    }
+
+    const printStore = usePrintStore.getState();
+
+    if (!isSupabaseConfigured) {
+      const existingJob = printStore.jobs.find((j) => j.order_id === item.order_id && j.sector === sector);
+      if (existingJob) {
+        printStore.reprintJob(existingJob.id, reason);
+        return true;
+      }
+      printStore.enqueuePrintJob({
+        order_id: item.order_id,
+        order_number: order?.order_number || 0,
+        sector,
+        origin: 'SALAO',
+        table_number: table?.number,
+        customer_name: tab?.customer_name || undefined,
+        items: [{
+          name: item.product_name,
+          quantity: item.quantity,
+          doneness: item.doneness,
+          notes: item.notes,
+        }],
+      });
+      return true;
+    }
+
+    const existingJob = printStore.jobs.find((j) => j.order_id === item.order_id && j.sector === sector);
+    if (existingJob) {
+      printStore.reprintJob(existingJob.id, reason);
+      return true;
+    }
+
+    if (table) {
+      return await printStore.reprintTableProduction(table.id, sector, reason);
+    }
+    return false;
   },
 
   updateOrderItemStatus: (orderItemId, status) => {
