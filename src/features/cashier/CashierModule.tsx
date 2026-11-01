@@ -6,7 +6,6 @@ import {
   QrCode,
   Receipt,
   RotateCcw,
-  Sparkles,
   Users
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -271,7 +270,7 @@ export const CashierModule: React.FC = () => {
       {/* Grade de Mesas / Comandas */}
       {effectiveFilter !== 'CLOSED_TODAY' ? (
         activeTables.length === 0 ? (
-          <EmptyState title="Nenhuma mesa aberta" description="As mesas estão livres para novos clientes. As próximas comandas aparecerão aqui." icon={Sparkles} />
+          <EmptyState title="Nenhuma mesa aberta" description="As mesas estão livres para novos clientes. As próximas comandas aparecerão aqui." icon={Receipt} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
             {activeTables

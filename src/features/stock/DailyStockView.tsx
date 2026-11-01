@@ -1,4 +1,4 @@
-import { Ban, CheckCircle, Clock, Flame, RotateCcw, SlidersHorizontal } from 'lucide-react';
+import { Ban, Clock, Flame, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import React, { useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -6,7 +6,6 @@ import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SearchField } from '../../components/ui/SearchField';
-import { StatCard } from '../../components/ui/StatCard';
 import { StatusTag } from '../../components/ui/StatusTag';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
@@ -78,11 +77,6 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
   return (
     <div className="page-layout">
       <PageHeader eyebrow="Controle de produção" title="Estoque diário" description={<>Disponibilidade, reposição e contagem física dos produtos.<span className="mt-1 block font-medium text-ink-secondary">{currentShift.name}</span></>} icon={Flame} />
-      <div className="stat-grid stat-grid--three">
-        <StatCard label="Produtos disponíveis" value={dailyPrepStock.filter((s) => !isOut(s)).length} hint="Liberados para atendimento" icon={CheckCircle} tone="success" />
-        <StatCard label="Estoque baixo" value={dailyPrepStock.filter(isLow).length} hint="No limite de cada produto" icon={SlidersHorizontal} tone="warning" />
-        <StatCard label="Produtos esgotados" value={dailyPrepStock.filter(isOut).length} hint="Bloqueados para novos pedidos" icon={Ban} tone="danger" />
-      </div>
       {/* Cadastro de sabores do dia para os garçons */}
       <DailyFlavorsManager />
 

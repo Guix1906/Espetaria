@@ -1,8 +1,7 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import type { StatusKind } from '../../lib/statusStyles';
-import { ArrowRight, CheckCheck, Info, LayoutGrid, Plus, Receipt, Search, Settings2, ShoppingBag, Smartphone, Users, BellRing, X, Sparkles } from 'lucide-react';
+import { ArrowRight, Info, LayoutGrid, Plus, Search, Settings2, Smartphone, BellRing, X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
-import { StatCard } from '../../components/ui/StatCard';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { TableTransferModal } from './TableTransferModal';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -21,7 +20,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { useNavFocusStore } from '../../stores/useNavFocusStore';
-import type { Order, OrderItem, RestaurantTable, Tab } from '../../types/domain';
+import type { OrderItem, RestaurantTable, Tab } from '../../types/domain';
 import type { TableStatus } from '../../types/enums';
 import { WaiterOpenTabSheet } from './WaiterOpenTabSheet';
 import { WaiterOrderPad } from './WaiterOrderPad';
@@ -184,10 +183,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
     });
 
     const filterOptions: { key: SalonFilter; label: string; count: number }[] = [
-      { key: 'ACTIVE', label: 'Ativas', count: occupiedTables.length },
-      { key: 'AGUARDANDO_CONTA', label: 'Conta pedida', count: activeTables.filter((t) => t.status === 'AGUARDANDO_CONTA').length },
-      { key: 'READY', label: 'Para servir', count: readyTables.length },
-      { key: 'LIVRE', label: 'Livres', count: freeTables.length },
+      { key: 'ACTIVE', label: 'Mesas ativas', count: occupiedTables.length },
       { key: 'ALL', label: 'Todas as 60', count: activeTables.length },
     ];
 
@@ -199,177 +195,39 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
       );
     };
 
-    const handleLoadDemoTables = () => {
-      let shift = useShiftStore.getState().currentShift;
-      if (!shift || shift.status !== 'ABERTO') {
-        try {
-          shift = useShiftStore.getState().openShift(
-            'Turno Principal',
-            'Turno de demonstração das mesas',
-            200,
-            [],
-            currentProfile.id
-          );
-        } catch {}
-      }
-
-      const shiftId = shift?.id || 'shift-demo';
-      const userId = currentProfile.id;
-
-      const demoData = [
-        { num: 27, status: 'OCUPADA' as const, people: 1, items: 3, total: 95 },
-        { num: 34, status: 'OCUPADA' as const, people: 2, items: 1, total: 85 },
-        { num: 41, status: 'OCUPADA' as const, people: 2, items: 1, total: 70 },
-        { num: 47, status: 'OCUPADA' as const, people: 1, items: 4, total: 231 },
-        { num: 48, status: 'OCUPADA' as const, people: 1, items: 1, total: 40 },
-        { num: 50, status: 'AGUARDANDO_CONTA' as const, people: 1, items: 1, total: 67 },
-        { num: 52, status: 'OCUPADA' as const, people: 1, items: 1, total: 94 },
-        { num: 53, status: 'OCUPADA' as const, people: 1, items: 1, total: 65 },
-        { num: 54, status: 'AGUARDANDO_CONTA' as const, people: 1, items: 1, total: 75 },
-        { num: 56, status: 'OCUPADA' as const, people: 1, items: 2, total: 92 },
-      ];
-
-      const nowIso = new Date().toISOString();
-      const demoNumSet = new Set(demoData.map((d) => d.num));
-
-      const newTables = useTableStore.getState().tables.map((t) => {
-        const demo = demoData.find((d) => d.num === t.number);
-        if (demo) {
-          return { ...t, status: demo.status, updated_at: nowIso };
-        }
-        return t;
-      });
-
-      const newTabs: Tab[] = demoData.map((d) => ({
-        id: `tab-demo-${d.num}`,
-        shift_id: shiftId,
-        table_id: `table-${d.num}`,
-        customer_name: `Mesa ${String(d.num).padStart(2, '0')}`,
-        people_count: d.people,
-        status: 'OPEN',
-        opened_by: userId,
-        closed_by: null,
-        subtotal: d.total,
-        service_fee: 0,
-        service_fee_enabled: false,
-        discount: 0,
-        total: d.total,
-        notes: null,
-        opened_at: nowIso,
-        closed_at: null,
-        updated_at: nowIso,
-        updated_by: userId,
-        version: 1,
-      }));
-
-      const newOrders: Order[] = demoData.map((d) => ({
-        id: `order-demo-${d.num}`,
-        shift_id: shiftId,
-        tab_id: `tab-demo-${d.num}`,
-        table_id: `table-${d.num}`,
-        order_number: d.num,
-        status: 'OPEN',
-        notes: null,
-        idempotency_key: null,
-        created_by: userId,
-        created_at: nowIso,
-        updated_at: nowIso,
-        updated_by: userId,
-        version: 1,
-      }));
-
-      const newOrderItems: OrderItem[] = [];
-      demoData.forEach((d) => {
-        for (let i = 1; i <= d.items; i++) {
-          newOrderItems.push({
-            id: `item-demo-${d.num}-${i}`,
-            order_id: `order-demo-${d.num}`,
-            shift_id: shiftId,
-            product_id: 'prod-picanha',
-            product_name: i === 1 ? 'Espeto Especial' : `Item ${i}`,
-            unit_price: d.total / d.items,
-            quantity: 1,
-            doneness: null,
-            notes: null,
-            sector: 'GRILL',
-            status: 'DELIVERED',
-            created_at: nowIso,
-            prepared_at: nowIso,
-            delivered_at: nowIso,
-            updated_at: nowIso,
-            updated_by: userId,
-            version: 1,
-          });
-        }
-      });
-
-      useTableStore.setState((state) => ({
-        tables: newTables,
-        tabs: [
-          ...state.tabs.filter((t) => !demoNumSet.has(parseInt(t.table_id?.replace('table-', '') || '0', 10))),
-          ...newTabs,
-        ],
-        orders: [
-          ...state.orders.filter((o) => !demoNumSet.has(parseInt(o.table_id?.replace('table-', '') || '0', 10))),
-          ...newOrders,
-        ],
-        orderItems: [
-          ...state.orderItems.filter((i) => !i.id.startsWith('item-demo-')),
-          ...newOrderItems,
-        ],
-      }));
-
-      setFilter('ACTIVE');
-      setSearchTerm('');
-      notify('10 mesas da foto carregadas no Mapa de Mesas!', 'success');
-    };
-
     return (
       <div className="page-layout">
         <PageHeader
           eyebrow="Salão"
-          title="Salão — Mapa de mesas e comandas"
+          title="Salão"
           description={
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs font-semibold">
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-[#f87152]" />
-                <span>Ocupada ({occupiedTables.length})</span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-                <span>Fechando conta ({activeTables.filter((t) => t.status === 'AGUARDANDO_CONTA').length})</span>
-              </span>
-              <span className="text-ink-muted">· {formatBRL(tabs.filter((tab) => tab.status === 'OPEN').reduce((sum, tab) => sum + tab.total, 0))} em aberto</span>
-            </div>
+            occupiedTables.length > 0
+              ? `${occupiedTables.length} ${occupiedTables.length === 1 ? 'mesa em atendimento' : 'mesas em atendimento'} · ${formatBRL(tabs.filter((tab) => tab.status === 'OPEN').reduce((sum, tab) => sum + tab.total, 0))} em aberto`
+              : 'Nenhuma mesa em atendimento no momento.'
           }
-          icon={Smartphone}
+          icon={LayoutGrid}
           actions={
             <div className="flex items-center gap-2">
+              <a className="btn-secondary min-h-[44px] text-xs font-semibold flex items-center gap-1.5" href="#/garcom" title="Área do garçom no celular">
+                <Smartphone className="h-4 w-4" />
+                <span className="hidden sm:inline">Área do garçom</span>
+              </a>
               <button
                 type="button"
-                onClick={handleLoadDemoTables}
-                className="btn-secondary min-h-[44px] text-xs font-semibold flex items-center gap-1.5"
-                title="Carregar as 10 mesas de exemplo da foto"
+                disabled={!isShiftOpen}
+                onClick={() => setIsPickerOpen(true)}
+                className="btn-primary min-h-[44px] shrink-0 text-sm flex items-center justify-center gap-1.5 px-4"
+                title="Abrir uma nova mesa livre"
               >
-                <Sparkles className="h-4 w-4 text-brand-600" />
-                <span>Mesas da foto</span>
+                <Plus className="h-4 w-4" />
+                <span>Abrir mesa</span>
               </button>
-              <a className="btn-secondary min-h-[44px]" href="#/garcom">
-                <Smartphone className="h-4 w-4" />
-                <span>Área do garçom no celular</span>
-              </a>
             </div>
           }
         />
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="Mesas livres" value={freeTables.length} hint="Disponíveis para novos clientes" icon={CheckCheck} tone="success" />
-          <StatCard label="Em atendimento" value={activeTables.filter((table) => table.status === 'OCUPADA').length} hint="Comandas em andamento" icon={Users} />
-          <StatCard label="Conta pedida" value={activeTables.filter((table) => table.status === 'AGUARDANDO_CONTA').length} hint="Prontas para o fechamento" icon={Receipt} tone="brand" />
-          <StatCard label="Consumo em aberto" value={formatBRL(tabs.filter((tab) => tab.status === 'OPEN').reduce((sum, tab) => sum + tab.total, 0))} hint="Total das comandas abertas" icon={ShoppingBag} />
-        </div>
         {shiftNotice}
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <div className="filter-bar" aria-label="Filtrar mesas por situação">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="filter-bar" aria-label="Filtrar mesas">
             {filterOptions.map((opt) => (
               <FilterChip
                 key={opt.key}
@@ -382,23 +240,13 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
             ))}
           </div>
 
-          <div className="flex items-center gap-2.5 w-full xl:w-auto">
-            <button
-              type="button"
-              disabled={!isShiftOpen}
-              onClick={() => setIsPickerOpen(true)}
-              className="btn-primary min-h-[44px] shrink-0 text-sm flex items-center justify-center gap-1.5 px-3.5"
-              title="Abrir uma nova mesa livre"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Abrir mesa</span>
-            </button>
+          <div className="w-full sm:w-64">
             <SearchField
               value={searchTerm}
               onChange={setSearchTerm}
               label="Buscar mesa ou cliente"
               placeholder="Nº da mesa ou cliente"
-              className="w-full shrink-0 xl:w-64"
+              className="w-full"
             />
           </div>
         </div>
@@ -424,66 +272,43 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-line bg-surface p-8 text-center shadow-card space-y-4 max-w-2xl mx-auto my-6">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-800">
-              <LayoutGrid className="h-7 w-7" />
+          <div className="rounded-2xl border border-line bg-surface p-8 text-center shadow-card space-y-3 max-w-md mx-auto my-8">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-surface-muted text-ink-muted">
+              <LayoutGrid className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-ink">
+              <h3 className="text-base font-bold text-ink">
                 {effectiveFilter === 'ACTIVE'
-                  ? 'Nenhuma mesa com comanda aberta no momento'
+                  ? 'Nenhuma mesa em atendimento'
                   : 'Nenhuma mesa encontrada'}
               </h3>
-              <p className="mt-1 text-sm text-ink-muted">
+              <p className="mt-1 text-xs text-ink-muted">
                 {effectiveFilter === 'ACTIVE'
-                  ? 'O mapa de mesas e comandas exibe as mesas com atendimento ativo (ocupadas ou fechando conta). Você pode abrir uma mesa agora ou carregar as 10 mesas de exemplo da foto para testar a tela.'
-                  : 'Tente outro número, nome de cliente ou situação da mesa.'}
+                  ? 'As mesas ativadas com pedidos aparecerão aqui.'
+                  : 'Tente outro número de mesa ou nome de cliente.'}
               </p>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              {effectiveFilter === 'ACTIVE' ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={handleLoadDemoTables}
-                    className="btn-primary min-h-[44px] px-5 text-sm font-bold flex items-center gap-2 shadow-sm"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    Carregar 10 mesas da foto
-                  </button>
-                  <button
-                    type="button"
-                    disabled={!isShiftOpen}
-                    onClick={() => setIsPickerOpen(true)}
-                    className="btn-secondary min-h-[44px] px-4 text-sm font-semibold flex items-center gap-2"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Abrir comanda (Mesa 01 a 60)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFilter('ALL')}
-                    className="btn-secondary min-h-[44px] px-4 text-sm font-semibold"
-                  >
-                    Ver todas as 60 mesas
-                  </button>
-                </>
-              ) : (
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                disabled={!isShiftOpen}
+                onClick={() => setIsPickerOpen(true)}
+                className="btn-primary min-h-[40px] px-4 text-xs font-bold inline-flex items-center gap-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Abrir mesa</span>
+              </button>
+              {effectiveFilter === 'ACTIVE' && (
                 <button
                   type="button"
-                  className="btn-secondary"
-                  onClick={() => {
-                    setFilter('ACTIVE');
-                    setSearchTerm('');
-                  }}
+                  onClick={() => setFilter('ALL')}
+                  className="btn-secondary min-h-[40px] px-3 text-xs font-semibold"
                 >
-                  Ver mesas ativas
+                  Ver todas as 60 mesas
                 </button>
               )}
             </div>
-            <p className="text-xs text-ink-muted pt-1">
-              60 mesas cadastradas no salão. Próxima disponível: <strong>Mesa 01</strong>.
-            </p>
+            <p className="text-xs text-ink-muted pt-1">60 mesas cadastradas. Próxima disponível: <strong>Mesa 01</strong>.</p>
           </div>
         )}
 

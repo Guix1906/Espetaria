@@ -127,8 +127,8 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
     it('1.3 TableGridView (Salão e Mesas) deve abrir e renderizar sem erros', () => {
       const html = renderWithFeedback(<TableGridView />);
       expect(html).toContain('Salão');
-      expect(html).toContain('Mesas livres');
-      expect(html).toContain('Consumo em aberto');
+      expect(html).toContain('Abrir mesa');
+      expect(html).toContain('Mesas ativas');
     });
 
     it('1.4 KDSModule (Produção Geral) deve abrir e renderizar sem erros', () => {
