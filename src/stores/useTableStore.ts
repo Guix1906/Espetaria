@@ -1244,12 +1244,30 @@ export const useTableStore = create<TableState>((set, get) => ({
       }
     }
 
+    const updatedTableId = tableData.id;
+    let newOrders = get().orders;
+    let newOrderItems = get().orderItems;
+    if (tableData.status === 'LIVRE') {
+      const targetTable = localTable || get().tables.find((t) => t.id === updatedTableId);
+      if (targetTable) {
+        const tableOrderIds = new Set(newOrders.filter((o) => o.table_id === targetTable.id).map((o) => o.id));
+        newOrders = newOrders.map((o) => (o.table_id === targetTable.id && o.status !== 'CANCELLED' ? { ...o, status: 'CLOSED' as const } : o));
+        newOrderItems = newOrderItems.map((i) =>
+          tableOrderIds.has(i.order_id) && i.status !== 'CANCELLED'
+            ? { ...i, status: 'DELIVERED' as const }
+            : i
+        );
+      }
+    }
+
     set({
       tables: get().tables.map((t) =>
         t.id === tableData.id || (tableData.number !== undefined && t.number === tableData.number)
-          ? { ...t, ...tableData }
+          ? { ...t, ...tableData, ...(tableData.status === 'LIVRE' ? { current_tab: undefined } : {}) }
           : t
       ),
+      orders: newOrders,
+      orderItems: newOrderItems,
     });
   },
 
@@ -1303,7 +1321,25 @@ export const useTableStore = create<TableState>((set, get) => ({
       return t;
     });
 
-    set({ tabs: newTabs, tables: newTables });
+    let newOrders = get().orders;
+    let newOrderItems = get().orderItems;
+    if (tabData.status === 'CLOSED') {
+      const tabOrderIds = new Set(newOrders.filter((o) => o.tab_id === tabData.id).map((o) => o.id));
+      newOrders = newOrders.map((o) => (o.tab_id === tabData.id ? { ...o, status: 'CLOSED' as const } : o));
+      newOrderItems = newOrderItems.map((i) =>
+        tabOrderIds.has(i.order_id) && i.status !== 'CANCELLED'
+          ? { ...i, status: 'DELIVERED' as const }
+          : i
+      );
+    } else if (tabData.status === 'CANCELLED') {
+      const tabOrderIds = new Set(newOrders.filter((o) => o.tab_id === tabData.id).map((o) => o.id));
+      newOrders = newOrders.map((o) => (o.tab_id === tabData.id ? { ...o, status: 'CANCELLED' as const } : o));
+      newOrderItems = newOrderItems.map((i) =>
+        tabOrderIds.has(i.order_id) ? { ...i, status: 'CANCELLED' as const } : i
+      );
+    }
+
+    set({ tabs: newTabs, tables: newTables, orders: newOrders, orderItems: newOrderItems });
   },
 
   applyRemoteOrderChange: (eventType, orderData) => {
@@ -1326,10 +1362,29 @@ export const useTableStore = create<TableState>((set, get) => ({
     }
 
     const exists = orders.some((o) => o.id === orderData.id);
+    let newOrderItems = get().orderItems;
+    if (orderData.status === 'CLOSED') {
+      newOrderItems = newOrderItems.map((i) =>
+        i.order_id === orderData.id && i.status !== 'CANCELLED'
+          ? { ...i, status: 'DELIVERED' as const }
+          : i
+      );
+    } else if (orderData.status === 'CANCELLED') {
+      newOrderItems = newOrderItems.map((i) =>
+        i.order_id === orderData.id ? { ...i, status: 'CANCELLED' as const } : i
+      );
+    }
+
     if (exists) {
-      set({ orders: orders.map((o) => (o.id === orderData.id ? { ...o, ...orderData } : o)) });
+      set({
+        orders: orders.map((o) => (o.id === orderData.id ? { ...o, ...orderData } : o)),
+        orderItems: newOrderItems,
+      });
     } else {
-      set({ orders: [orderData, ...orders] });
+      set({
+        orders: [orderData, ...orders],
+        orderItems: newOrderItems,
+      });
     }
   },
 

@@ -55,8 +55,14 @@ export function LiveBoard({ now, openTabs, tabInfo, readyOldest, activeDeliverie
   });
 
   // Produção: pedidos ativos por setor (salão + delivery/retirada), pelo mais antigo
+  const openTabIdSet = new Set(openTabs.map((t) => t.id));
   const prodRows: Row[] = SECTORS.flatMap((sector) => {
-    const salonOrders = orders.filter((o) => orderItems.some((i) => i.order_id === o.id && i.sector === sector.key && (i.status === 'RECEIVED' || i.status === 'IN_PREPARATION')));
+    const salonOrders = orders.filter((o) =>
+      o.status !== 'CLOSED' &&
+      o.status !== 'CANCELLED' &&
+      openTabIdSet.has(o.tab_id) &&
+      orderItems.some((i) => i.order_id === o.id && i.sector === sector.key && (i.status === 'RECEIVED' || i.status === 'IN_PREPARATION'))
+    );
     const remote = activeDeliveries.filter((o) => (o.status === 'PREPARING' || o.status === 'CONFIRMED') && o.items.some((i) => i.sector === sector.key));
     const starts = [...salonOrders, ...remote].map((o) => o.created_at).sort();
     const oldest = starts[0];

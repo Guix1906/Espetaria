@@ -82,8 +82,18 @@ export const GrillKDSView: React.FC = () => {
     tables.filter((t) => t.status === 'OCUPADA' || t.status === 'AGUARDANDO_CONTA').map((t) => t.id)
   );
 
+  const activeOrderIds = new Set(
+    orders
+      .filter((order) => {
+        if (order.status === 'CLOSED' || order.status === 'CANCELLED') return false;
+        if (!openTabIds.has(order.tab_id) || !openTableIds.has(order.table_id)) return false;
+        return true;
+      })
+      .map((order) => order.id)
+  );
+
   const onGrillItems = orderItems.filter(
-    (i) => i.sector === 'GRILL' && (i.status === 'IN_PREPARATION' || i.status === 'RECEIVED')
+    (i) => activeOrderIds.has(i.order_id) && i.sector === 'GRILL' && (i.status === 'IN_PREPARATION' || i.status === 'RECEIVED')
   );
 
   // Pedidos de mesa na brasa: sem necessidade de clicar botão na tela (o churrasqueiro trabalha na brasa),
@@ -91,8 +101,7 @@ export const GrillKDSView: React.FC = () => {
   const MAX_GRILL_LOCAL_MINUTES = 30;
   const localTickets: GrillTicket[] = orders
     .filter((order) => {
-      if (order.status === 'CLOSED' || order.status === 'CANCELLED') return false;
-      if (!openTabIds.has(order.tab_id) || !openTableIds.has(order.table_id)) return false;
+      if (!activeOrderIds.has(order.id)) return false;
       if (!onGrillItems.some((i) => i.order_id === order.id)) return false;
       const ageMinutes = (now - new Date(order.created_at).getTime()) / 60000;
       return ageMinutes <= MAX_GRILL_LOCAL_MINUTES;

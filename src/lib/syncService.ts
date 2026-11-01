@@ -154,19 +154,30 @@ class SyncService {
           useTableStore.setState({ orders: [], orderItems: [] });
         } else {
           const orderIds = ordersList.map((o) => o.id);
+          const closedOrderIds = new Set(ordersList.filter((o) => o.status === 'CLOSED').map((o) => o.id));
+          const cancelledOrderIds = new Set(ordersList.filter((o) => o.status === 'CANCELLED').map((o) => o.id));
           const { data: dbItems, error: itemsError } = await supabase
             .from('order_items')
             .select('*')
             .in('order_id', orderIds);
           if (itemsError) throw itemsError;
 
-          const itemsList = (dbItems || []).map((item) => ({
-            ...item,
+          const itemsList = (dbItems || []).map((item) => {
+            let itemStatus = item.status;
+            if (closedOrderIds.has(item.order_id) && (itemStatus === 'IN_PREPARATION' || itemStatus === 'RECEIVED' || itemStatus === 'READY')) {
+              itemStatus = 'DELIVERED';
+            } else if (cancelledOrderIds.has(item.order_id) && itemStatus !== 'CANCELLED') {
+              itemStatus = 'CANCELLED';
+            }
+            return {
+              ...item,
+              status: itemStatus,
             unit_price: Number(item.unit_price),
             updated_at: item.updated_at ?? new Date().toISOString(),
             updated_by: item.updated_by ?? null,
             version: item.version ?? 1,
-          })) as OrderItem[];
+            };
+          }) as OrderItem[];
           useTableStore.setState({ orders: ordersList, orderItems: itemsList });
         }
       }

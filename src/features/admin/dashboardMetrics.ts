@@ -73,9 +73,18 @@ export function computeDashboard(input: DashboardInput) {
   const shiftItems = orderItems.filter((i) => inShift(i) && i.status !== 'CANCELLED');
   const people = openTabs.reduce((s, t) => s + (t.people_count || 1), 0);
   const waitingBill = tables.filter((t) => t.status === 'AGUARDANDO_CONTA');
-  const readyItems = orderItems.filter((i) => isFreshReady(i, now));
+  const openTabIds = new Set(openTabs.map((t) => t.id));
+  const activeOrders = orders.filter((o) => o.status !== 'CLOSED' && o.status !== 'CANCELLED' && (openTabIds.size === 0 || openTabIds.has(o.tab_id)));
+  const activeOrderIds = new Set(activeOrders.map((o) => o.id));
+  const activeSalonItems = orderItems.filter((i) => {
+    if (i.status === 'CANCELLED') return false;
+    if (tabs.length > 0 && openTabs.length === 0) return false;
+    if (orders.length > 0 && !activeOrderIds.has(i.order_id)) return false;
+    return true;
+  });
+  const readyItems = activeSalonItems.filter((i) => isFreshReady(i, now));
   const readyOldest = readyItems.reduce((m, i) => Math.max(m, minutesSince(i.prepared_at ?? i.updated_at, now)), 0);
-  const grillItems = orderItems.filter((i) => i.sector === 'GRILL' && i.status === 'IN_PREPARATION');
+  const grillItems = activeSalonItems.filter((i) => i.sector === 'GRILL' && i.status === 'IN_PREPARATION');
   const grillOldest = grillItems.reduce((m, i) => Math.max(m, minutesSince(i.created_at, now)), 0);
 
   const salonClosed = closedTabs.reduce((s, t) => s + t.subtotal, 0);
@@ -140,7 +149,7 @@ export function computeDashboard(input: DashboardInput) {
 
   // ---------------- Produção (unidades) ----------------
   const production: Record<'GRILL' | 'KITCHEN' | 'BAR', { salon: number; delivery: number }> = { GRILL: { salon: 0, delivery: 0 }, KITCHEN: { salon: 0, delivery: 0 }, BAR: { salon: 0, delivery: 0 } };
-  orderItems.filter(isPendingProduction).forEach((i) => {
+  activeSalonItems.filter(isPendingProduction).forEach((i) => {
     if (i.sector in production) production[i.sector as keyof typeof production].salon += i.quantity;
   });
   stages.IN_PRODUCTION.forEach((d) => d.items.forEach((i) => {
