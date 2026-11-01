@@ -9,18 +9,18 @@ const STALE_AFTER_MS = 60_000;
 export type PrinterSector = PrintJob['sector'];
 export type PrinterHealth = 'ON' | 'NO_SIGNAL' | 'NOT_SET';
 
-/** Status deduzido da fila: se há cupom travado ou com falha = sem sinal; se já imprimiu = ligada. */
+/** Status deduzido da fila: se há cupom travado ou com falha = sem sinal; caso contrário = conectada. */
 export function sectorPrinterHealth(jobs: PrintJob[], sector: PrinterSector, now: number): PrinterHealth {
   const mine = jobs.filter((j) => j.sector === sector);
   const stuck = mine.some((j) => j.status === 'FAILED' || ((j.status === 'PENDING' || j.status === 'PRINTING') && now - new Date(j.created_at).getTime() > STALE_AFTER_MS));
   if (stuck) return 'NO_SIGNAL';
-  return mine.some((j) => j.status === 'PRINTED') ? 'ON' : 'NOT_SET';
+  return 'ON';
 }
 
 const HEALTH_TAG: Record<PrinterHealth, { label: string; className: string }> = {
-  ON: { label: 'Ligada', className: 'bg-emerald-600 text-white' },
+  ON: { label: 'Conectada', className: 'bg-emerald-600 text-white' },
   NO_SIGNAL: { label: 'Sem sinal', className: 'bg-rose-600 text-white' },
-  NOT_SET: { label: 'Integrada', className: 'bg-surface-muted text-ink-secondary' },
+  NOT_SET: { label: 'Conectada', className: 'bg-emerald-600 text-white' },
 };
 
 export function PrinterHealthTag({ jobs, sector }: { jobs: PrintJob[]; sector: PrinterSector }) {
