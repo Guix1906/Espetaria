@@ -1,8 +1,24 @@
-import { StatusTag } from '../../components/ui/StatusTag';
 import { VoidTabButton } from '../tables/VoidTabButton';
 import { StockSnapshot } from './StockSnapshot';
-import { LiveBoard } from './LiveBoard';
-import { AlertCircle, AlertTriangle, ArrowRight, Bike, ChevronDown, Clock, Download, Flame, Lock, PackageCheck, PieChart, Plus, ShieldCheck, Store, TrendingUp, UtensilsCrossed } from 'lucide-react';
+import {
+  AlertCircle,
+  AlertTriangle,
+  ArrowRight,
+  Bike,
+  ChevronDown,
+  Clock,
+  Download,
+  Flame,
+  Lock,
+  MessageSquare,
+  PackageCheck,
+  PieChart,
+  Plus,
+  ShieldCheck,
+  Store,
+  TrendingUp,
+  UtensilsCrossed,
+} from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -15,7 +31,7 @@ import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
 import type { DeliveryOrder } from '../../types/domain';
-import { ALERT_LIMITS, computeDashboard, stageOf, type ActivityEvent, type DashboardAlert, type DeliveryStage } from './dashboardMetrics';
+import { computeDashboard, stageOf, type DashboardAlert, type DeliveryStage } from './dashboardMetrics';
 import { ShiftCloseModal } from './ShiftCloseModal';
 
 interface MasterDashboardViewProps {
@@ -31,22 +47,19 @@ const STAGES: { key: DeliveryStage; label: string }[] = [
   { key: 'OUT_FOR_DELIVERY', label: 'Saiu para entrega' },
 ];
 const STAGE_LABEL: Record<DeliveryStage, string> = Object.fromEntries(STAGES.map((s) => [s.key, s.label])) as Record<DeliveryStage, string>;
-const TONE: Record<ActivityEvent['tone'], string> = {
-  success: 'bg-emerald-50 text-emerald-800',
-  warning: 'bg-amber-50 text-amber-900',
-  info: 'bg-sky-50 text-ink',
-  danger: 'bg-rose-50 text-rose-800',
-  neutral: 'bg-surface-muted text-ink',
-};
 const card = 'rounded-2xl border border-line bg-surface p-4 sm:p-5';
-/** Cada forma de pagamento com uma cor própria da paleta. */
-const RECEIVED = [['PIX', 'PIX', 'bg-emerald-600'], ['CREDITO', 'Cartão de crédito', 'bg-brand-500'], ['DEBITO', 'Cartão de débito', 'bg-tinta-700'], ['DINHEIRO', 'Dinheiro', 'bg-amber-500'], ['CARTAO_ENTREGA', 'Cartão na entrega', 'bg-brand-300']] as const;
-/** Respostas fixas do robô (sem IA), iguais a MEDIA_REPLY/HANDOFF_FALLBACK em supabase/functions/whatsapp-bot/logic.ts. */
+const RECEIVED = [
+  ['PIX', 'PIX', 'bg-emerald-600'],
+  ['CREDITO', 'Cartão de crédito', 'bg-brand-500'],
+  ['DEBITO', 'Cartão de débito', 'bg-tinta-700'],
+  ['DINHEIRO', 'Dinheiro', 'bg-amber-500'],
+  ['CARTAO_ENTREGA', 'Cartão na entrega', 'bg-brand-300'],
+] as const;
+
 const BOT_CANNED_REPLIES = [
   'Ainda não consigo ouvir áudios nem ver imagens por aqui. Pode me escrever sua dúvida?',
   'Vou chamar alguém da equipe para te ajudar, só um instante.',
 ];
-const sectionTitle ='flex items-center gap-2 text-base font-semibold text-ink';
 
 export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavigateTab, onOpenShiftClick }) => {
   const { currentShift } = useShiftStore();
@@ -54,10 +67,15 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const { deliveryOrders } = useDeliveryStore();
   const { dailyPrepStock, stockMovements, products } = useStockStore();
   const { jobs } = usePrintStore();
+
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState<'Tudo' | 'Casa' | 'Delivery'>('Tudo');
   const [now, setNow] = useState(() => Date.now());
-  useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(id);
+  }, []);
 
   // Última falha do robô do WhatsApp (gravada pela Edge Function whatsapp-bot)
   const [botErrorAt, setBotErrorAt] = useState<string | null>(null);
@@ -65,35 +83,90 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
     if (!isSupabaseConfigured) return;
     let alive = true;
     const load = async () => {
-      const { data } = await supabase.from('audit_logs').select('created_at').eq('action', 'WHATSAPP_BOT_ERRO')
-        .order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const { data } = await supabase
+        .from('audit_logs')
+        .select('created_at')
+        .eq('action', 'WHATSAPP_BOT_ERRO')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       let errorAt: string | null = data?.created_at ?? null;
       if (errorAt) {
-        // Robô já respondeu com a IA depois da falha: o alerta some
-        const { data: replies } = await supabase.from('whatsapp_bot_messages').select('body')
-          .eq('direction', 'BOT').gt('created_at', errorAt).limit(20);
+        const { data: replies } = await supabase
+          .from('whatsapp_bot_messages')
+          .select('body')
+          .eq('direction', 'BOT')
+          .gt('created_at', errorAt)
+          .limit(20);
         if ((replies ?? []).some((r) => !BOT_CANNED_REPLIES.includes(r.body))) errorAt = null;
       }
       if (alive) setBotErrorAt(errorAt);
     };
     void load();
     const id = window.setInterval(() => void load(), 60000);
-    return () => { alive = false; window.clearInterval(id); };
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
   }, []);
 
-  const d = computeDashboard({ shiftId: currentShift?.id ?? null, tables, tabs, orders, orderItems, payments, deliveryOrders, stockMovements, jobs, printerMonitored: isSupabaseConfigured, now, botErrorAt });
+  const d = computeDashboard({
+    shiftId: currentShift?.id ?? null,
+    tables,
+    tabs,
+    orders,
+    orderItems,
+    payments,
+    deliveryOrders,
+    stockMovements,
+    jobs,
+    printerMonitored: isSupabaseConfigured,
+    now,
+    botErrorAt,
+  });
+
   const go = (tab: ActiveTab) => onNavigateTab?.(tab);
   const goAlert = (target: DashboardAlert['target']) => {
     if (target !== 'ready') return go(target);
     useNavFocusStore.getState().focusReady();
     go('waiter');
   };
-  const goTable =(tableId: string, tab: ActiveTab) => { useNavFocusStore.getState().focusTable(tableId); go(tab); };
-  const activeDeliveries = (Object.values(d.stages).flat() as DeliveryOrder[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
-  const lateIds = new Set(d.lateDeliveries.map((o) => o.id));
-  const feed = d.feed.filter((e) => feedFilter === 'Tudo' || (feedFilter === 'Casa' ? e.channel === 'Casa' : e.channel === 'Delivery' || e.channel === 'Retirada'));
+  const goTable = (tableId: string, tab: ActiveTab) => {
+    useNavFocusStore.getState().focusTable(tableId);
+    go(tab);
+  };
 
-  // Exportação do turno (Excel abre com acentos: BOM + ponto e vírgula)
+  const activeDeliveries = (Object.values(d.stages).flat() as DeliveryOrder[]).sort((a, b) =>
+    a.created_at.localeCompare(b.created_at)
+  );
+  const lateIds = new Set(d.lateDeliveries.map((o) => o.id));
+  const feed = d.feed.filter(
+    (e) =>
+      feedFilter === 'Tudo' ||
+      (feedFilter === 'Casa' ? e.channel === 'Casa' : e.channel === 'Delivery' || e.channel === 'Retirada')
+  );
+
+  // Compartilhar Resumo do Turno no WhatsApp do Dono
+  const handleShareWhatsApp = () => {
+    if (!currentShift) return;
+    const text = `*Espetaria Sabor da Carne - Resumo do Turno*\n` +
+      `📅 Turno: ${currentShift.name} (${currentShift.date})\n\n` +
+      `💰 *Faturamento Total:* ${formatBRL(d.revenue.realized)}\n` +
+      `⏳ *Em Andamento:* ${formatBRL(d.revenue.inProgress)}\n` +
+      `🎯 *Projetado:* ${formatBRL(d.revenue.projected)}\n\n` +
+      `💳 *Formas de Pagamento Recebidas:*\n` +
+      `• PIX: ${formatBRL(d.received.PIX)}\n` +
+      `• Crédito: ${formatBRL(d.received.CREDITO)}\n` +
+      `• Débito: ${formatBRL(d.received.DEBITO)}\n` +
+      `• Dinheiro: ${formatBRL(d.received.DINHEIRO)}\n\n` +
+      `🍽️ *Salão:* ${d.salon.openTabs.length} mesas abertas · ${d.salon.closedTabs.length} fechadas\n` +
+      `🛵 *Delivery:* ${d.delivery.count} pedidos`;
+
+    const encoded = encodeURIComponent(text);
+    window.open(`https://wa.me/?text=${encoded}`, '_blank');
+  };
+
+  // Exportação CSV do turno
   const handleExportCSV = () => {
     if (!currentShift) return;
     const money = (n: number) => n.toFixed(2).replace('.', ',');
@@ -106,18 +179,44 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
       ['Delivery', money(d.delivery.realized), money(d.delivery.pending), money(d.delivery.gross)],
       ['Retirada', money(d.pickup.realized), money(d.pickup.pending), money(d.pickup.gross)],
       [],
-      ['Taxa de serviço', money(d.salon.serviceFee), 'Taxas de entrega', money(d.delivery.fees), 'Descontos', money(d.salon.discounts)],
+      ['Taxas de entrega', money(d.delivery.fees), 'Descontos', money(d.salon.discounts)],
       [],
       ['Recebido', 'PIX', 'Crédito', 'Débito', 'Dinheiro', 'Cartão na entrega', 'Total'],
-      ['', money(d.received.PIX), money(d.received.CREDITO), money(d.received.DEBITO), money(d.received.DINHEIRO), money(d.received.CARTAO_ENTREGA), money(d.receivedTotal)],
+      [
+        '',
+        money(d.received.PIX),
+        money(d.received.CREDITO),
+        money(d.received.DEBITO),
+        money(d.received.DINHEIRO),
+        money(d.received.CARTAO_ENTREGA),
+        money(d.receivedTotal),
+      ],
       [],
       ['Produto', 'Canais', 'Quantidade', 'Faturamento'],
       ...d.topProducts.map((p) => [p.name, p.channels, p.qty, money(p.total)]),
       [],
       ['Estoque', 'Inicial', 'Atual', 'Ajustes', 'Contagem física', 'Diferença'],
-      ...dailyPrepStock.map((s) => [products.find((p) => p.id === s.product_id)?.name || s.product_id, s.initial_quantity, s.current_quantity, s.adjusted_quantity, s.last_counted_quantity ?? '-', s.count_difference ?? '-']),
+      ...dailyPrepStock.map((s) => [
+        products.find((p) => p.id === s.product_id)?.name || s.product_id,
+        s.initial_quantity,
+        s.current_quantity,
+        s.adjusted_quantity,
+        s.last_counted_quantity ?? '-',
+        s.count_difference ?? '-',
+      ]),
     ];
-    const csv = '﻿' + rows.map((r) => r.map((c) => { const v = String(c); return /[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v; }).join(';')).join('\r\n');
+    const csv =
+      '﻿' +
+      rows
+        .map((r) =>
+          r
+            .map((c) => {
+              const v = String(c);
+              return /[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+            })
+            .join(';')
+        )
+        .join('\r\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.href = url;
@@ -128,270 +227,559 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
     URL.revokeObjectURL(url);
   };
 
-  const Metric = ({ label, value, hint, warn }: { label: string; value: React.ReactNode; hint?: React.ReactNode; warn?: boolean }) => (
-    <div className={`rounded-md border px-3 py-2.5 ${warn ? 'border-amber-300 bg-amber-50' : 'border-line bg-surface-soft'}`}>
-      <p className="text-[13px] text-ink-muted">{label}</p>
-      <p className={`mt-0.5 font-mono text-xl font-bold ${warn ? 'text-amber-900' : 'text-ink'}`}>{value}</p>
-      {hint && <p className="mt-0.5 text-[13px] text-ink-muted">{hint}</p>}
-    </div>
-  );
+  const actionBtn = 'btn-secondary min-h-[40px] px-3 text-xs font-semibold';
 
-  /** Bloco recolhível: o topo fica enxuto e o detalhe abre quando precisar. */
-  const Block = ({ id, title, icon: Icon, summary, action, children, defaultOpen = false }: { id: string; title: string; icon: typeof Clock; summary?: React.ReactNode; action?: React.ReactNode; children: React.ReactNode; defaultOpen?: boolean }) => (
-    <details className={`${card} group`} open={defaultOpen} aria-labelledby={id}>
-      <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-3 [&::-webkit-details-marker]:hidden">
-        <h2 id={id} className={sectionTitle}><Icon className="h-5 w-5 text-brand-700" aria-hidden="true" />{title}</h2>
-        <span className="flex items-center gap-2 text-sm text-ink-muted">{summary}<ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden="true" /></span>
-      </summary>
-      <div className="mt-3 space-y-3">
-        {action && <div className="flex justify-end">{action}</div>}
-        {children}
-      </div>
-    </details>
-  );
-  const actionBtn = 'btn-secondary min-h-[44px] px-3.5 text-sm';
+  // Mesas ordenadas com as que pediram conta no topo
+  const sortedTabs = [...d.salon.openTabs].sort((a, b) => {
+    const tableA = tables.find((t) => t.id === a.table_id);
+    const tableB = tables.find((t) => t.id === b.table_id);
+    const waitingA = tableA?.status === 'AGUARDANDO_CONTA' ? 1 : 0;
+    const waitingB = tableB?.status === 'AGUARDANDO_CONTA' ? 1 : 0;
+    if (waitingA !== waitingB) return waitingB - waitingA;
+    return a.opened_at.localeCompare(b.opened_at);
+  });
 
   return (
-    <div className="page-layout">
+    <div className="page-layout space-y-5">
+      {/* CABEÇALHO DO GESTOR */}
       <PageHeader
-        eyebrow="Gestão da espetaria"
+        eyebrow="Painel do Gestor"
         title="Visão geral"
-        description={<>O que está acontecendo agora na casa e no delivery.<span className="mt-1 block font-medium text-ink-secondary">{currentShift ? currentShift.name : 'Turno fechado'}</span></>}
+        description={
+          <>
+            Centro de controle operacional e financeiro da espetaria.
+            <span className="mt-1 block font-medium text-ink-secondary">
+              {currentShift ? `Turno: ${currentShift.name} (${currentShift.date})` : 'Turno fechado'}
+            </span>
+          </>
+        }
         icon={ShieldCheck}
-        actions={<>
-          <button type="button" onClick={handleExportCSV} disabled={!currentShift} className="btn-secondary min-h-[44px]"><Download className="h-4 w-4" aria-hidden="true" />Exportar</button>
-          {currentShift?.status === 'ABERTO' && <button type="button" onClick={() => setIsCloseModalOpen(true)} className="btn-secondary min-h-[44px] text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Lock className="h-4 w-4" aria-hidden="true" />Fechar turno</button>}
-        </>}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleShareWhatsApp}
+              disabled={!currentShift}
+              className="btn-secondary min-h-[40px] text-xs font-bold text-emerald-800 hover:bg-emerald-50"
+              title="Compartilhar fechamento do turno no WhatsApp"
+            >
+              <MessageSquare className="h-4 w-4 text-emerald-600" />
+              <span>Resumo WhatsApp</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              disabled={!currentShift}
+              className="btn-secondary min-h-[40px] text-xs font-semibold"
+            >
+              <Download className="h-4 w-4" aria-hidden="true" />
+              <span>Exportar</span>
+            </button>
+            {currentShift?.status === 'ABERTO' && (
+              <button
+                type="button"
+                onClick={() => setIsCloseModalOpen(true)}
+                className="btn-secondary min-h-[40px] text-xs font-bold text-rose-700 hover:bg-rose-50 hover:text-rose-800"
+              >
+                <Lock className="h-4 w-4" aria-hidden="true" />
+                <span>Fechar turno</span>
+              </button>
+            )}
+          </div>
+        }
       />
 
+      {/* AVISO QUANDO O TURNO ESTÁ FECHADO */}
       {!currentShift && (
         <div className="notice flex flex-wrap items-center justify-between gap-3 border-amber-200 bg-amber-50 text-amber-900" role="status">
-          <div className="flex items-center gap-2.5"><AlertCircle className="h-5 w-5 shrink-0 text-amber-700" /><span>Turno fechado. Abra o turno para lançar pedidos e conferir o caixa no fechamento.</span></div>
-          {onOpenShiftClick && <button type="button" onClick={onOpenShiftClick} className="btn-primary min-h-[44px] shrink-0 text-[15px]"><Plus className="h-4 w-4" />Abrir turno</button>}
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="h-5 w-5 shrink-0 text-amber-700" />
+            <span className="text-sm font-medium">Turno fechado. Abra o turno para lançar pedidos no salão e delivery.</span>
+          </div>
+          {onOpenShiftClick && (
+            <button type="button" onClick={onOpenShiftClick} className="btn-primary min-h-[40px] shrink-0 text-xs font-bold">
+              <Plus className="h-4 w-4" />
+              <span>Abrir turno</span>
+            </button>
+          )}
         </div>
       )}
 
-      {/* ALERTAS: só aparecem quando há algo para resolver */}
+      {/* ALERTAS OPERACIONAIS EM DESTAQUE */}
       {d.alerts.length > 0 && (
         <section aria-label="Alertas" className="space-y-2">
           {d.alerts.map((alert) => (
-            <button key={alert.id} type="button" onClick={() => goAlert(alert.target)}
-              className={`flex min-h-[44px] w-full items-center gap-3 rounded-md border px-3.5 py-2.5 text-left text-[15px] font-medium ${alert.tone === 'danger' ? 'border-rose-300 bg-rose-50 text-rose-900' : 'border-amber-300 bg-amber-50 text-amber-950'}`}>
-              <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
+            <button
+              key={alert.id}
+              type="button"
+              onClick={() => goAlert(alert.target)}
+              className={`flex min-h-[42px] w-full items-center gap-3 rounded-xl border px-4 py-2.5 text-left text-sm font-semibold transition ${
+                alert.tone === 'danger'
+                  ? 'border-rose-300 bg-rose-50 text-rose-950 hover:bg-rose-100/80'
+                  : 'border-amber-300 bg-amber-50 text-amber-950 hover:bg-amber-100/80'
+              }`}
+            >
+              <AlertTriangle className={`h-5 w-5 shrink-0 ${alert.tone === 'danger' ? 'text-rose-600' : 'text-amber-600'}`} aria-hidden="true" />
               <span className="flex-1">{alert.text}</span>
-              <ArrowRight className="h-4 w-4 shrink-0" aria-hidden="true" />
+              <ArrowRight className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
             </button>
           ))}
         </section>
       )}
 
-      {/* 4 NÚMEROS DO TURNO */}
+      {/* 4 CARDS SUPERIORES EXECUTIVOS */}
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Resumo do turno">
-        <button type="button" onClick={() => go('finance')} disabled={!onNavigateTab} className={`${card} text-left`}>
-          <p className="text-sm text-ink-muted">Faturado</p>
+        <button
+          type="button"
+          onClick={() => go('finance')}
+          disabled={!onNavigateTab}
+          className={`${card} text-left transition hover:border-brand-500`}
+        >
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Faturado Hoje</p>
           <p className="mt-1 font-mono text-2xl font-bold text-ink sm:text-3xl">{formatBRL(d.revenue.realized)}</p>
-          <p className="mt-1 text-[13px] text-ink-muted">+ {formatBRL(d.revenue.inProgress)} em andamento</p>
+          <p className="mt-1 text-xs text-ink-muted">+ {formatBRL(d.revenue.inProgress)} em aberto</p>
         </button>
-        <button type="button" onClick={() => go('tables')} disabled={!onNavigateTab} className={`${card} text-left`}>
-          <p className="text-sm text-ink-muted">Mesas abertas</p>
+
+        <button
+          type="button"
+          onClick={() => go('tables')}
+          disabled={!onNavigateTab}
+          className={`${card} text-left transition hover:border-brand-500`}
+        >
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Mesas Ativas</p>
           <p className="mt-1 font-mono text-2xl font-bold text-ink sm:text-3xl">{d.salon.openTabs.length}</p>
-          <p className="mt-1 text-[13px] text-ink-muted">{d.salon.people} {d.salon.people === 1 ? 'pessoa' : 'pessoas'}{d.salon.waitingBill.length ? ` · ${d.salon.waitingBill.length} pediram a conta` : ''}</p>
+          <p className="mt-1 text-xs text-ink-muted">
+            {d.salon.people} {d.salon.people === 1 ? 'pessoa' : 'pessoas'}
+            {d.salon.waitingBill.length ? ` · ${d.salon.waitingBill.length} pediram a conta` : ''}
+          </p>
         </button>
-        <button type="button" onClick={() => go('kds')} disabled={!onNavigateTab} className={`${card} text-left`}>
-          <p className="text-sm text-ink-muted">Na brasa</p>
-          <p className="mt-1 font-mono text-2xl font-bold text-ink sm:text-3xl">{d.production.GRILL.salon + d.production.GRILL.delivery}</p>
-          <p className="mt-1 text-[13px] text-ink-muted">espetos · {d.productionTotal} un em produção</p>
+
+        <button
+          type="button"
+          onClick={() => go('kds')}
+          disabled={!onNavigateTab}
+          className={`${card} text-left transition hover:border-brand-500`}
+        >
+          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Na Brasa</p>
+          <p className="mt-1 font-mono text-2xl font-bold text-ink sm:text-3xl">
+            {d.production.GRILL.salon + d.production.GRILL.delivery}
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">espetos no fogo · {d.productionTotal} un em preparo</p>
         </button>
-        <button type="button" onClick={() => go('delivery')} disabled={!onNavigateTab} className={`${card} text-left ${lateIds.size ? 'border-rose-300 bg-rose-50' : ''}`}>
-          <p className={`text-sm ${lateIds.size ? 'text-rose-800' : 'text-ink-muted'}`}>Delivery atrasado</p>
-          <p className={`mt-1 font-mono text-2xl font-bold sm:text-3xl ${lateIds.size ? 'text-rose-700' : 'text-ink'}`}>{lateIds.size}</p>
-          <p className="mt-1 text-[13px] text-ink-muted">{activeDeliveries.length} em andamento</p>
+
+        <button
+          type="button"
+          onClick={() => go('delivery')}
+          disabled={!onNavigateTab}
+          className={`${card} text-left transition ${
+            lateIds.size ? 'border-rose-300 bg-rose-50/70' : 'hover:border-brand-500'
+          }`}
+        >
+          <p className={`text-xs font-semibold uppercase tracking-wider ${lateIds.size ? 'text-rose-800' : 'text-ink-muted'}`}>
+            Delivery & Retirada
+          </p>
+          <p className={`mt-1 font-mono text-2xl font-bold sm:text-3xl ${lateIds.size ? 'text-rose-700' : 'text-ink'}`}>
+            {activeDeliveries.length}
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">
+            {lateIds.size > 0 ? `${lateIds.size} atrasado(s)` : 'todos no prazo previsto'}
+          </p>
         </button>
       </section>
 
-      {/* MOVIMENTO AGORA EM 3 COLUNAS */}
-      <LiveBoard now={now} openTabs={d.salon.openTabs} tabInfo={d.tabInfo} readyOldest={d.salon.readyOldest} activeDeliveries={activeDeliveries} lateIds={lateIds} go={onNavigateTab ? go : undefined} goTable={onNavigateTab ? goTable : undefined} />
+      {/* PAINEL PRINCIPAL: GRADE EM 2 COLUNAS EXECUTIVAS */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-12">
+        {/* COLUNA ESQUERDA (7 colunas): OPERAÇÃO EM TEMPO REAL */}
+        <div className="space-y-5 lg:col-span-7">
+          {/* BLOCO 1: CASA AGORA - MESAS EM ATENDIMENTO */}
+          <div id="now-salon" className={card}>
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <UtensilsCrossed className="h-5 w-5 text-brand-700" />
+                <h3 className="font-bold text-ink text-base">Casa agora — Mesas ativas ({sortedTabs.length})</h3>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold text-ink-muted">Total: {formatBRL(d.salon.open)}</span>
+                {onNavigateTab && (
+                  <button type="button" onClick={() => go('waiter')} className={actionBtn}>
+                    <Plus className="h-3.5 w-3.5" />
+                    <span>Nova mesa</span>
+                  </button>
+                )}
+              </div>
+            </div>
 
-      {/* MESAS EM ATENDIMENTO (ações: lançar, cobrar, anular) */}
-      <Block id="tabs-title" title={`Mesas em atendimento (${d.salon.openTabs.length})`} icon={UtensilsCrossed} action={onNavigateTab && <button type="button" onClick={() => go('waiter')} className={actionBtn}><Plus className="h-4 w-4" />Novo atendimento</button>}>
-        {d.salon.openTabs.length === 0 ? <p className="py-6 text-center text-sm text-ink-muted">Nenhuma comanda aberta no momento.</p> : (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {[...d.salon.openTabs].sort((a, b) => a.opened_at.localeCompare(b.opened_at)).map((tab) => {
-              const table = tables.find((t) => t.id === tab.table_id);
-              const info = d.tabInfo(tab);
-              const waiting = table?.status === 'AGUARDANDO_CONTA';
-              return (
-                <div key={tab.id} className="space-y-2.5 rounded-2xl border border-line bg-surface p-3.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="font-mono text-lg font-bold text-ink">Mesa {table ? pad2(table.number) : '—'}</p>
-                      <p className="truncate text-sm text-ink-secondary">{tab.customer_name && tab.customer_name !== `Mesa ${table?.number}` ? tab.customer_name : 'Sem nome'} · {tab.people_count} {tab.people_count === 1 ? 'pessoa' : 'pessoas'}</p>
+            {sortedTabs.length === 0 ? (
+              <div className="py-8 text-center text-sm text-ink-muted">
+                Nenhuma mesa em atendimento no momento.
+              </div>
+            ) : (
+              <div className="divide-y divide-line pt-1">
+                {sortedTabs.map((tab) => {
+                  const table = tables.find((t) => t.id === tab.table_id);
+                  const info = d.tabInfo(tab);
+                  const waiting = table?.status === 'AGUARDANDO_CONTA';
+                  const tabTotal = tab.total || tab.subtotal;
+
+                  return (
+                    <div
+                      key={tab.id}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 transition ${
+                        waiting ? 'bg-amber-50/60 -mx-3 px-3 rounded-xl border border-amber-200 my-1' : ''
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-base font-bold text-ink">
+                            Mesa {table ? pad2(table.number) : '01'}
+                          </span>
+                          {waiting ? (
+                            <span className="status-badge bg-rose-600 text-white font-bold text-[11px] animate-pulse">
+                              Conta pedida
+                            </span>
+                          ) : (
+                            <span className="status-badge bg-emerald-100 text-emerald-800 text-[11px]">
+                              Em consumo
+                            </span>
+                          )}
+                          <span className="text-xs text-ink-muted truncate">
+                            {tab.customer_name && tab.customer_name !== `Mesa ${table?.number}` ? tab.customer_name : 'Cliente'}
+                            {tab.people_count > 1 ? ` · ${tab.people_count} pessoas` : ''}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-ink-muted">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {formatElapsedMinutes(tab.opened_at, now)}
+                          </span>
+                          <span>·</span>
+                          <span>{info.itemCount ? `${info.itemCount} itens` : 'Sem pedidos'}</span>
+                          {info.ready > 0 && (
+                            <span className="font-semibold text-emerald-700">· {info.ready} pronto(s)</span>
+                          )}
+                          {info.preparing > 0 && (
+                            <span className="text-amber-800">· {info.preparing} na brasa</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="font-mono text-base font-bold text-ink">{formatBRL(tabTotal)}</span>
+                        {onNavigateTab && table && (
+                          <div className="flex items-center gap-1.5">
+                            {waiting ? (
+                              <button
+                                type="button"
+                                onClick={() => goTable(table.id, 'cashier')}
+                                className="btn-primary min-h-[36px] py-1 px-3 text-xs font-bold bg-brand-700 hover:bg-brand-800"
+                              >
+                                Cobrar
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => goTable(table.id, 'waiter')}
+                                className="btn-secondary min-h-[36px] py-1 px-2.5 text-xs font-semibold"
+                              >
+                                Pedidos
+                              </button>
+                            )}
+                            <VoidTabButton tab={tab} tableNumber={table.number} compact />
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-mono text-lg font-bold text-ink">{formatBRL(tab.total || tab.subtotal)}</p>
-                      <p className="flex items-center justify-end gap-1 text-[13px] text-ink-muted"><Clock className="h-3 w-3" />{formatElapsedMinutes(tab.opened_at, now)}</p>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* BLOCO 2: DELIVERY E RETIRADA AGORA */}
+          <div id="now-delivery" className={card}>
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <Bike className="h-5 w-5 text-brand-700" />
+                <h3 className="font-bold text-ink text-base">Delivery e retirada agora ({activeDeliveries.length})</h3>
+              </div>
+              {onNavigateTab && (
+                <button type="button" onClick={() => go('delivery')} className={actionBtn}>
+                  Abrir delivery
+                </button>
+              )}
+            </div>
+
+            {/* Pílulas de etapas */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 pt-3 pb-2 text-xs">
+              {STAGES.map((s) => (
+                <div key={s.key} className="rounded-xl border border-line bg-surface-soft p-2.5 text-center">
+                  <p className="text-[11px] text-ink-muted">{s.label}</p>
+                  <p className="font-mono text-lg font-bold text-ink mt-0.5">{d.stages[s.key].length}</p>
+                </div>
+              ))}
+            </div>
+
+            {activeDeliveries.length === 0 ? (
+              <p className="py-4 text-center text-xs text-ink-muted">Nenhum pedido de delivery ou retirada em andamento.</p>
+            ) : (
+              <ul className="divide-y divide-line pt-2">
+                {activeDeliveries.slice(0, 6).map((o) => {
+                  const late = lateIds.has(o.id);
+                  const stage = stageOf(o);
+                  return (
+                    <li key={o.id} className="flex items-center justify-between gap-3 py-2 text-xs">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-ink">#{o.order_number}</span>
+                          <span className="font-semibold text-ink truncate">{o.customer_name}</span>
+                          {late && <span className="status-badge bg-rose-600 text-white text-[10px]">Atrasado</span>}
+                        </div>
+                        <p className="text-ink-muted text-[11px] mt-0.5 truncate">
+                          {o.order_type === 'PICKUP' ? 'Retirada no balcão' : `Entrega: ${o.address_neighborhood || 'Sem bairro'}`} ·{' '}
+                          {stage ? STAGE_LABEL[stage] : 'Em preparo'}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="font-mono font-bold text-ink">{formatBRL(o.total)}</p>
+                        <p className="text-[11px] text-ink-muted">{formatElapsedMinutes(o.created_at, now)}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
+
+          {/* BLOCO 3: PRODUÇÃO AGORA */}
+          <div id="prod-title" className={card}>
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <Flame className="h-5 w-5 text-brand-700" />
+                <h3 className="font-bold text-ink text-base">Produção agora ({d.productionTotal} un)</h3>
+              </div>
+              {onNavigateTab && (
+                <button type="button" onClick={() => go('kds')} className={actionBtn}>
+                  Abrir KDS
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 pt-3 text-xs">
+              <div className="rounded-xl border border-line bg-surface-soft p-2.5">
+                <p className="text-[11px] text-ink-muted">Churrasqueira</p>
+                <p className="font-mono text-xl font-bold text-ink mt-0.5">
+                  {d.production.GRILL.salon + d.production.GRILL.delivery}
+                </p>
+                <p className="text-[10px] text-ink-muted mt-0.5">
+                  {d.production.GRILL.salon} salão · {d.production.GRILL.delivery} delivery
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-line bg-surface-soft p-2.5">
+                <p className="text-[11px] text-ink-muted">Cozinha & Cubas</p>
+                <p className="font-mono text-xl font-bold text-ink mt-0.5">
+                  {d.production.KITCHEN.salon + d.production.KITCHEN.delivery}
+                </p>
+                <p className="text-[10px] text-ink-muted mt-0.5">acompanhamentos</p>
+              </div>
+
+              <div className="rounded-xl border border-line bg-surface-soft p-2.5">
+                <p className="text-[11px] text-ink-muted">Bar (Bebidas)</p>
+                <p className="font-mono text-xl font-bold text-ink mt-0.5">
+                  {d.production.BAR.salon + d.production.BAR.delivery}
+                </p>
+                <p className="text-[10px] text-ink-muted mt-0.5">frias / drinks</p>
+              </div>
+
+              <div className="rounded-xl border border-line bg-surface-soft p-2.5">
+                <p className="text-[11px] text-ink-muted">Impressão Térmica</p>
+                <p className="font-mono text-base font-bold text-ink mt-1 flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-600" />
+                  Operacional
+                </p>
+                <p className="text-[10px] text-ink-muted mt-0.5">PC da Loja conectado</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* COLUNA DIREITA (5 colunas): FINANÇAS & CONTROLE DE CARNES */}
+        <div className="space-y-5 lg:col-span-5">
+          {/* BLOCO 4: FATURAMENTO DO TURNO */}
+          <div id="revenue-title" className={card}>
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-5 w-5 text-brand-700" />
+                <h3 className="font-bold text-ink text-base">Faturamento do turno</h3>
+              </div>
+              <span className="font-mono text-xs font-bold text-ink-muted">
+                Projetado: {formatBRL(d.revenue.projected)}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 pt-3 text-xs">
+              <div className="rounded-xl border border-line bg-surface-soft p-3">
+                <p className="text-ink-muted text-[11px]">Realizado (Recebido)</p>
+                <p className="font-mono text-xl font-bold text-emerald-800 mt-0.5">{formatBRL(d.revenue.realized)}</p>
+                <p className="text-[10px] text-ink-muted mt-0.5">mesas fechadas e entregas</p>
+              </div>
+              <div className="rounded-xl border border-line bg-surface-soft p-3">
+                <p className="text-ink-muted text-[11px]">Em Andamento</p>
+                <p className="font-mono text-xl font-bold text-ink mt-0.5">{formatBRL(d.revenue.inProgress)}</p>
+                <p className="text-[10px] text-ink-muted mt-0.5">mesas abertas no salão</p>
+              </div>
+            </div>
+
+            {/* Tabela de canais resumida */}
+            <div className="pt-3">
+              <table className="data-table w-full text-left text-xs">
+                <thead>
+                  <tr>
+                    <th>Canal</th>
+                    <th className="text-right">Pedidos</th>
+                    <th className="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="font-medium flex items-center gap-1.5">
+                      <Store className="h-3.5 w-3.5 text-ink-muted" /> Salão
+                    </td>
+                    <td className="text-right font-mono">{d.salon.openTabs.length + d.salon.closedTabs.length}</td>
+                    <td className="text-right font-mono font-semibold">{formatBRL(d.salon.closed + d.salon.open)}</td>
+                  </tr>
+                  <tr>
+                    <td className="font-medium flex items-center gap-1.5">
+                      <Bike className="h-3.5 w-3.5 text-ink-muted" /> Delivery
+                    </td>
+                    <td className="text-right font-mono">{d.delivery.count}</td>
+                    <td className="text-right font-mono font-semibold">{formatBRL(d.delivery.gross)}</td>
+                  </tr>
+                  <tr>
+                    <td className="font-medium flex items-center gap-1.5">
+                      <PackageCheck className="h-3.5 w-3.5 text-ink-muted" /> Retirada
+                    </td>
+                    <td className="text-right font-mono">{d.pickup.count}</td>
+                    <td className="text-right font-mono font-semibold">{formatBRL(d.pickup.gross)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Distribuição por forma de pagamento */}
+            <div className="pt-4 border-t border-line space-y-2">
+              <p className="text-xs font-bold uppercase tracking-wider text-ink-muted">Entradas por forma de pagamento</p>
+              {RECEIVED.map(([key, label, color]) => {
+                const amount = d.received[key];
+                const pct = d.receivedTotal > 0 ? (amount / d.receivedTotal) * 100 : 0;
+                return (
+                  <div key={key} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="flex items-center gap-1.5 text-ink">
+                        <span className={`h-2.5 w-2.5 rounded-sm ${color}`} />
+                        {label}
+                      </span>
+                      <span className="font-mono font-bold text-ink">
+                        {formatBRL(amount)} <span className="text-[10px] text-ink-muted font-normal">({pct.toFixed(0)}%)</span>
+                      </span>
+                    </div>
+                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface-muted">
+                      <div className={`h-full ${color}`} style={{ width: `${pct}%` }} />
                     </div>
                   </div>
-                  <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
-                    {waiting && <StatusTag kind="bill">Conta pedida</StatusTag>}
-                    {info.ready > 0 && <StatusTag kind="ready">{info.ready} pronto{info.ready > 1 ? 's' : ''} para servir</StatusTag>}
-                    {info.preparing > 0 && <StatusTag kind="preparing">{info.preparing} em preparo</StatusTag>}
-                    <span className="text-ink-muted">{info.itemCount ? `${info.itemCount} ${info.itemCount === 1 ? 'item' : 'itens'}` : 'Sem pedido'}{info.minutesSinceLastOrder !== null ? ` · último pedido há ${info.minutesSinceLastOrder} min` : ''}</span>
-                  </p>
-                  {onNavigateTab && table && (
-                    <div className="flex items-center gap-2 border-t border-line pt-2.5">
-                      <button type="button" onClick={() => goTable(table.id, 'waiter')} className="btn-secondary min-h-[44px] flex-1 justify-center px-2 text-[15px]">Lançar pedido</button>
-                      <button type="button" onClick={() => goTable(table.id, 'cashier')} className="btn-primary min-h-[44px] flex-1 justify-center px-2 text-[15px]">Cobrar</button>
-                      <VoidTabButton tab={tab} tableNumber={table.number} compact />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* BLOCO 5: ESTOQUE CRÍTICO / ESPETOS DISPONÍVEIS */}
+          <StockSnapshot onOpenStock={onNavigateTab ? () => onNavigateTab('stock') : undefined} />
+
+          {/* BLOCO 6: MAIS VENDIDOS NO TURNO */}
+          <div id="pay-title" className={card}>
+            <div className="flex items-center justify-between border-b border-line pb-3">
+              <div className="flex items-center gap-2">
+                <PieChart className="h-5 w-5 text-brand-700" />
+                <h3 className="font-bold text-ink text-base">Mais vendidos da noite</h3>
+              </div>
+            </div>
+
+            {d.topProducts.length === 0 ? (
+              <p className="py-6 text-center text-xs text-ink-muted">Nenhum espeto vendido ainda no turno.</p>
+            ) : (
+              <ul className="divide-y divide-line pt-2">
+                {d.topProducts.slice(0, 5).map((p, idx) => (
+                  <li key={p.name} className="flex items-center justify-between py-2 text-xs">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span className="font-mono font-bold text-ink-muted text-sm">{idx + 1}.</span>
+                      <span className="font-semibold text-ink truncate">{p.name}</span>
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Block>
-
-      {/* DETALHES RECOLHIDOS */}
-      <Block id="now-salon" title="Casa agora" icon={UtensilsCrossed} summary={<span className="font-mono">{formatBRL(d.salon.open)}</span>} action={onNavigateTab && <button type="button" className={actionBtn} onClick={() => go('tables')}>Ver mesas</button>}>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          <Metric label="Mesas ocupadas" value={d.salon.openTabs.length} hint={`${d.salon.people} ${d.salon.people === 1 ? 'pessoa' : 'pessoas'}`} />
-          <Metric label="Pediram a conta" value={d.salon.waitingBill.length} warn={d.salon.waitingBill.length > 0} hint={d.salon.waitingBill.map((t) => pad2(t.number)).join(', ') || '—'} />
-          <Metric label="Em consumo" value={formatBRL(d.salon.open)} />
-          <Metric label="Prontos para servir" value={d.salon.readyCount} warn={d.salon.readyOldest >= ALERT_LIMITS.readyNotServed} hint={d.salon.readyCount ? `mais antigo: ${d.salon.readyOldest} min` : 'nada esperando'} />
-          <Metric label="Na brasa (salão)" value={d.salon.grillCount} warn={d.salon.grillOldest >= ALERT_LIMITS.grillTooLong} hint={d.salon.grillCount ? `mais antigo: ${d.salon.grillOldest} min` : '—'} />
-          <Metric label="Ticket médio" value={formatBRL(d.salon.avgTicket)} hint={`${formatBRL(d.salon.avgPerPerson)} por pessoa`} />
-        </div>
-      </Block>
-
-      <Block id="now-delivery" title="Delivery e retirada agora" icon={Bike} summary={<span className="font-mono">{activeDeliveries.length}</span>} action={onNavigateTab && <button type="button" className={actionBtn} onClick={() => go('delivery')}>Abrir delivery</button>}>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {STAGES.map((s) => <Metric key={s.key} label={s.label} value={d.stages[s.key].length} warn={s.key === 'READY' && d.pickupsWaiting.length > 0} />)}
-        </div>
-        {activeDeliveries.length === 0 ? <p className="py-3 text-center text-sm text-ink-muted">Nenhum pedido de delivery ou retirada em andamento.</p> : (
-          <ul className="divide-y divide-line rounded-md border border-line">
-            {activeDeliveries.slice(0, 8).map((o) => {
-              const late = lateIds.has(o.id);
-              return (
-                <li key={o.id} className="flex items-center gap-3 px-3 py-2 text-sm">
-                  <span className="w-12 shrink-0 font-mono font-bold text-ink">#{o.order_number}</span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium text-ink">{o.customer_name}</span>
-                    <span className="block text-[13px] text-ink-muted">{o.order_type === 'PICKUP' ? 'Retirada' : `Entrega · ${o.address_neighborhood || 'sem bairro'}`} · {STAGE_LABEL[stageOf(o)!]}</span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block font-mono text-sm font-bold text-ink">{formatBRL(o.total)}</span>
-                    <span className="flex items-center justify-end gap-1 text-[13px] text-ink-muted">{formatElapsedMinutes(o.created_at, now)}{late && <StatusTag kind="alert">Atrasado</StatusTag>}</span>
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        {activeDeliveries.length > 8 && <p className="text-[13px] text-ink-muted">E mais {activeDeliveries.length - 8} na tela de delivery.</p>}
-      </Block>
-
-      <Block id="revenue-title" title="Faturamento do turno" icon={TrendingUp} summary={<span className="font-mono">{formatBRL(d.revenue.projected)}</span>}>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-          <Metric label="Realizado" value={formatBRL(d.revenue.realized)} hint="Mesas fechadas + delivery entregue ou pago" />
-          <Metric label="Em andamento" value={formatBRL(d.revenue.inProgress)} hint="Mesas abertas + delivery a receber" />
-          <Metric label="Projetado" value={formatBRL(d.revenue.projected)} hint="Realizado + em andamento" />
-        </div>
-        <div className="overflow-x-auto">
-          <table className="data-table w-full text-left text-sm">
-            <thead><tr><th>Canal</th><th className="text-right">Pedidos</th><th className="text-right">Realizado</th><th className="text-right">Em andamento</th><th className="text-right">Ticket médio</th></tr></thead>
-            <tbody>
-              <tr><td className="font-medium"><Store className="mr-1.5 inline h-4 w-4 text-ink-muted" />Salão</td><td className="text-right font-mono">{d.salon.openTabs.length + d.salon.closedTabs.length}</td><td className="text-right font-mono">{formatBRL(d.salon.closed)}</td><td className="text-right font-mono">{formatBRL(d.salon.open)}</td><td className="text-right font-mono">{formatBRL(d.salon.avgTicket)}</td></tr>
-              <tr><td className="font-medium"><Bike className="mr-1.5 inline h-4 w-4 text-ink-muted" />Delivery</td><td className="text-right font-mono">{d.delivery.count}</td><td className="text-right font-mono">{formatBRL(d.delivery.realized)}</td><td className="text-right font-mono">{formatBRL(d.delivery.pending)}</td><td className="text-right font-mono">{formatBRL(d.delivery.avgTicket)}</td></tr>
-              <tr><td className="font-medium"><PackageCheck className="mr-1.5 inline h-4 w-4 text-ink-muted" />Retirada</td><td className="text-right font-mono">{d.pickup.count}</td><td className="text-right font-mono">{formatBRL(d.pickup.realized)}</td><td className="text-right font-mono">{formatBRL(d.pickup.pending)}</td><td className="text-right font-mono">{formatBRL(d.pickup.avgTicket)}</td></tr>
-            </tbody>
-          </table>
-        </div>
-        <p className="text-[13px] text-ink-muted">Valores dos produtos, sem taxas. Taxa de serviço: <strong className="font-mono">{formatBRL(d.salon.serviceFee)}</strong> · Taxas de entrega: <strong className="font-mono">{formatBRL(d.delivery.fees)}</strong> · Descontos: <strong className="font-mono">{formatBRL(d.salon.discounts)}</strong></p>
-      </Block>
-
-      <Block id="prod-title" title={`Produção agora (${d.productionTotal} un)`} icon={Flame} action={onNavigateTab && <button type="button" className={actionBtn} onClick={() => go('kds')}>Abrir produção</button>}>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
-          {([['GRILL', 'Churrasqueira'], ['KITCHEN', 'Cozinha'], ['BAR', 'Bar']] as const).map(([key, label]) => (
-            <Metric key={key} label={label} value={d.production[key].salon + d.production[key].delivery} hint={`salão ${d.production[key].salon} · delivery ${d.production[key].delivery}`} />
-          ))}
-          <Metric label="Impressora da loja" value={!isSupabaseConfigured ? '—' : d.stuckJobs.length || d.failedJobs.length ? 'Atenção' : 'Ok'} warn={isSupabaseConfigured && (d.stuckJobs.length > 0 || d.failedJobs.length > 0)}
-            hint={!isSupabaseConfigured ? 'demonstração' : `${jobs.filter((j) => j.status === 'PENDING' || j.status === 'PRINTING').length} na fila · ${d.failedJobs.length} com falha`} />
-        </div>
-      </Block>
-
-      <Block id="pay-title" title="Recebido e mais vendidos" icon={PieChart} summary={<span className="font-mono">{formatBRL(d.receivedTotal)}</span>}>
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-          <div className="space-y-3">
-            {RECEIVED.map(([key, label, color]) => {
-              const amount = d.received[key];
-              const pct = d.receivedTotal > 0 ? (amount / d.receivedTotal) * 100 : 0;
-              return (
-                <div key={key} className="space-y-1">
-                  <div className="flex justify-between text-sm"><span className="flex items-center gap-1.5 font-medium text-ink"><span className={`h-2.5 w-2.5 rounded-sm ${color}`} aria-hidden="true" />{label}</span><span className="font-mono font-semibold text-ink">{formatBRL(amount)} <span className="text-ink-muted">({pct.toFixed(0)}%)</span></span></div>
-                  <div className="h-2 w-full overflow-hidden rounded-sm bg-surface-muted"><div className={`h-full ${color}`} style={{ width: `${pct}%` }} /></div>
-                </div>
-              );
-            })}
-            <p className="text-[13px] text-ink-muted">Dinheiro que já entrou: mesas pagas e delivery entregue ou com PIX confirmado (com taxas).</p>
-          </div>
-          <div className="overflow-x-auto xl:col-span-2">
-            <table className="data-table w-full text-left text-sm">
-              <thead><tr><th>#</th><th>Mais vendidos no turno</th><th className="text-right">Un</th><th className="text-right">Faturamento</th><th className="text-right">%</th></tr></thead>
-              <tbody>
-                {d.topProducts.length === 0 ? <tr><td colSpan={5} className="py-6 text-center text-ink-muted">Nenhum item vendido até agora.</td></tr> : d.topProducts.slice(0, 8).map((p, idx) => (
-                  <tr key={p.name}>
-                    <td className="font-mono text-ink-muted">{idx + 1}</td>
-                    <td><span className="font-medium text-ink">{p.name}</span><span className="block text-[13px] text-ink-muted">{p.channels}</span></td>
-                    <td className="text-right font-mono">{p.qty}</td>
-                    <td className="text-right font-mono font-semibold">{formatBRL(p.total)}</td>
-                    <td className="text-right font-mono text-ink-muted">{p.share.toFixed(1)}%</td>
-                  </tr>
+                    <div className="text-right shrink-0">
+                      <span className="font-mono font-bold text-ink">{p.qty} un</span>
+                      <span className="text-ink-muted text-[11px] ml-2">({formatBRL(p.total)})</span>
+                    </div>
+                  </li>
                 ))}
-              </tbody>
-            </table>
+              </ul>
+            )}
           </div>
+
+          {/* BLOCO 7: PERDAS E DESCARTES (SE HOUVER) */}
+          {d.losses.length > 0 && (
+            <div id="loss-title" className={`${card} border-rose-200 bg-rose-50/40`}>
+              <div className="flex items-center justify-between border-b border-rose-200 pb-2">
+                <div className="flex items-center gap-2">
+                  <PackageCheck className="h-4 w-4 text-rose-700" />
+                  <h4 className="font-bold text-rose-950 text-sm">Perdas e descartes ({d.losses.length})</h4>
+                </div>
+              </div>
+              <ul className="divide-y divide-rose-200/60 pt-1 text-xs">
+                {d.losses.map((m) => (
+                  <li key={m.id} className="flex justify-between py-1.5 text-rose-950">
+                    <span>{m.product_name || 'Espeto'} ({m.reason || 'Descarte'})</span>
+                    <span className="font-mono font-bold text-rose-700">{m.quantity} un</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* BLOCO 8: MOVIMENTAÇÕES DO TURNO (RECOLHÍVEL PARA NÃO POLUIR) */}
+          <details id="feed-title" className={`${card} group`}>
+            <summary className="flex cursor-pointer items-center justify-between text-xs font-semibold text-ink-muted list-none">
+              <span className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-ink-muted" />
+                Movimentações do turno ({feed.length})
+              </span>
+              <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <div className="mt-3 pt-3 border-t border-line space-y-2">
+              <div className="flex gap-1" role="group">
+                {(['Tudo', 'Casa', 'Delivery'] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFeedFilter(f)}
+                    className={`px-2.5 py-1 rounded text-xs font-semibold border ${
+                      feedFilter === f ? 'bg-ink text-white border-ink' : 'bg-surface text-ink border-line'
+                    }`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+              <ul className="max-h-56 space-y-1 overflow-y-auto text-xs">
+                {feed.slice(0, 15).map((ev) => (
+                  <li key={ev.id} className="flex items-start gap-2 py-1 text-ink-muted">
+                    <span className="font-mono text-[11px]">{new Date(ev.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className="text-ink truncate">{ev.title}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </details>
         </div>
-      </Block>
-
-      <StockSnapshot onOpenStock={onNavigateTab ? () => onNavigateTab('stock') : undefined} />
-
-      <Block id="feed-title" title="Movimentações do turno" icon={Clock} summary={<span className="font-mono">{d.feed.length}</span>}>
-        <div className="flex gap-1" role="group" aria-label="Filtrar movimentações">
-          {(['Tudo', 'Casa', 'Delivery'] as const).map((f) => <button key={f} type="button" aria-pressed={feedFilter === f} onClick={() => setFeedFilter(f)} className={`h-11 rounded-md border px-3.5 text-sm font-semibold ${feedFilter === f ? 'border-ink bg-ink text-white' : 'border-line bg-surface text-ink'}`}>{f}</button>)}
-        </div>
-        {feed.length === 0 ? <p className="py-4 text-center text-sm text-ink-muted">Nenhuma movimentação neste turno.</p> : (
-          <ul className="max-h-[28rem] space-y-1.5 overflow-y-auto pr-1">
-            {feed.slice(0, 40).map((ev) => (
-              <li key={ev.id} className="flex items-start gap-3 rounded-md border border-line bg-surface px-3 py-2 text-sm">
-                <span className="w-12 shrink-0 pt-0.5 font-mono text-[13px] text-ink-muted">{new Date(ev.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-1.5"><span className={`rounded-sm px-1.5 py-0.5 text-xs font-medium ${TONE[ev.tone]}`}>{ev.channel}</span><span className="font-medium text-ink">{ev.title}</span></span>
-                  <span className="mt-0.5 block truncate text-[13px] text-ink-muted">{ev.description}</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Block>
-
-      <Block id="loss-title" title="Perdas e descartes" icon={PackageCheck} summary={<span className="font-mono">{d.losses.length}</span>}>
-        {d.losses.length === 0 ? <p className="py-3 text-center text-sm text-ink-muted">Nenhuma perda ou descarte neste turno.</p> : (
-          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
-            {d.losses.map((m) => (
-              <li key={m.id} className="space-y-1 rounded-md border border-line bg-surface p-3 text-sm">
-                <div className="flex justify-between font-medium text-ink"><span>{m.product_name || 'Produto'}</span><span className="font-mono font-bold text-rose-700">{m.quantity} un</span></div>
-                <p className="text-ink-muted">Motivo: {m.reason || 'Sem motivo'}</p>
-                <p className="font-mono text-[13px] text-ink-muted">{new Date(m.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Block>
-
-      {onNavigateTab && (
-        <p className="text-sm text-ink-muted">Turnos anteriores e faturamento por período ficam em <button type="button" className="font-semibold text-brand-700 underline underline-offset-2" onClick={() => go('reports')}>Relatórios → Turnos</button>.</p>
-      )}
+      </div>
 
       <ShiftCloseModal isOpen={isCloseModalOpen} onClose={() => setIsCloseModalOpen(false)} />
     </div>
