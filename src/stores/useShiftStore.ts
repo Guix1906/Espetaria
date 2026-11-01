@@ -13,7 +13,8 @@ interface ShiftState {
     initialNotes: string,
     cashDrawerStart: number,
     stockItems: PrepItemInput[],
-    userId: string
+    userId: string,
+    disabledProductIds?: string[]
   ) => Shift;
   closeShift: (
     closingNotes: string,
@@ -26,7 +27,7 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
   currentShift: null,
   shiftsHistory: [],
 
-  openShift: (name, initialNotes, cashDrawerStart, stockItems, userId) => {
+  openShift: (name, initialNotes, cashDrawerStart, stockItems, userId, disabledProductIds = []) => {
     if (get().currentShift && get().currentShift?.status === 'ABERTO') {
       throw new Error('Já existe um turno aberto. Feche o turno atual antes de iniciar um novo.');
     }
@@ -51,8 +52,8 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       version: 1,
     };
 
-    // Inicializa o estoque de mise en place do dia
-    useStockStore.getState().initShiftStock(shiftId, stockItems, userId);
+    // Inicializa o estoque de mise en place do dia (incluindo produtos desabilitados)
+    useStockStore.getState().initShiftStock(shiftId, stockItems, userId, disabledProductIds);
 
     set({
       currentShift: newShift,
@@ -73,6 +74,16 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       })),
     }, 'ShiftStore').then(async (serverShiftId) => {
       if (serverShiftId) {
+        if (disabledProductIds && disabledProductIds.length > 0) {
+          for (const dId of disabledProductIds) {
+            void callRpc('toggle_exhaustion', {
+              p_shift_id: serverShiftId,
+              p_product_id: dId,
+              p_is_exhausted: true,
+              p_reason: 'Não disponível hoje (abertura do turno)',
+            }, 'ShiftStore');
+          }
+        }
         const { syncService } = await import('../lib/syncService');
         await syncService.hydrateAll();
       }

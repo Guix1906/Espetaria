@@ -83,7 +83,7 @@ interface StockState {
   deleteProduct: (id: string) => void;
   toggleProductActive: (id: string) => void;
   resetProductsToDefault: () => void;
-  initShiftStock: (shiftId: string, items: PrepItemInput[], userId: string) => void;
+  initShiftStock: (shiftId: string, items: PrepItemInput[], userId: string, disabledProductIds?: string[]) => void;
   consumeStockAtomic: (
     shiftId: string,
     items: { productId: string; quantity: number }[],
@@ -283,11 +283,13 @@ export const useStockStore = create<StockState>((set, get) => ({
     });
   },
 
-  initShiftStock: (shiftId, items, userId) => {
+  initShiftStock: (shiftId, items, userId, disabledProductIds = []) => {
     const newDailyPrep: DailyPrepStock[] = [];
     const newMovements: StockMovement[] = [];
     const updatedProducts = [...get().products];
+    const disabledSet = new Set(disabledProductIds);
 
+    // 1. Processa itens com quantidade preparada informada
     items.forEach((item) => {
       const product = updatedProducts.find((p) => p.id === item.productId);
       if (!product) return;
@@ -350,6 +352,87 @@ export const useStockStore = create<StockState>((set, get) => ({
 
         // Garante que o produto está ativo e disponível
         product.available = true;
+        void productSync.update(product.id, { available: true });
+      }
+    });
+
+    // 2. Processa produtos explicitamente desabilitados pelo operador
+    disabledSet.forEach((productId) => {
+      const product = updatedProducts.find((p) => p.id === productId);
+      if (!product) return;
+
+      product.available = false;
+
+      const prepRecord: DailyPrepStock = {
+        id: generateId(),
+        shift_id: shiftId,
+        product_id: product.id,
+        cubas_count: 0,
+        portions_per_cuba: product.portions_per_cuba || 1,
+        initial_quantity: 0,
+        current_quantity: 0,
+        reserved_quantity: 0,
+        consumed_quantity: 0,
+        discarded_quantity: 0,
+        adjusted_quantity: 0,
+        last_counted_quantity: 0,
+        count_difference: 0,
+        is_exhausted: true,
+        exhausted_at: new Date().toISOString(),
+        exhausted_by: userId,
+        exhaust_reason: 'Não disponível hoje (abertura do turno)',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updated_by: userId,
+        version: 1,
+        product: product,
+      };
+
+      newDailyPrep.push(prepRecord);
+      void productSync.update(product.id, { available: false });
+      realtimeService.broadcastExhaustion(shiftId, product.id, true, 'Não disponível hoje (abertura do turno)');
+    });
+
+    // 3. Atualiza disponibilidade de combos ("X com acompanhamento")
+    const riceProd = updatedProducts.find((p) => p.active && /^arroz(\b|$)/i.test(p.name.trim()));
+    const isRiceDisabled = riceProd ? (!riceProd.available || disabledSet.has(riceProd.id)) : false;
+
+    updatedProducts.filter(isComboProduct).forEach((combo) => {
+      const baseName = combo.name.replace(/\s+com acompanhamento\s*$/i, '').trim().toLowerCase();
+      const baseProd = updatedProducts.find((p) => p.id !== combo.id && p.name.trim().toLowerCase() === baseName);
+      const isBaseDisabled = baseProd ? (!baseProd.available || disabledSet.has(baseProd.id)) : false;
+
+      if (isRiceDisabled || isBaseDisabled) {
+        combo.available = false;
+        void productSync.update(combo.id, { available: false });
+
+        if (!newDailyPrep.some((s) => s.product_id === combo.id)) {
+          newDailyPrep.push({
+            id: generateId(),
+            shift_id: shiftId,
+            product_id: combo.id,
+            cubas_count: 0,
+            portions_per_cuba: 1,
+            initial_quantity: 0,
+            current_quantity: 0,
+            reserved_quantity: 0,
+            consumed_quantity: 0,
+            discarded_quantity: 0,
+            adjusted_quantity: 0,
+            last_counted_quantity: 0,
+            count_difference: 0,
+            is_exhausted: true,
+            exhausted_at: new Date().toISOString(),
+            exhausted_by: userId,
+            exhaust_reason: isBaseDisabled ? 'Sem espeto base no turno' : 'Sem arroz no turno',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            updated_by: userId,
+            version: 1,
+            product: combo,
+          });
+          realtimeService.broadcastExhaustion(shiftId, combo.id, true, isBaseDisabled ? 'Sem espeto base no turno' : 'Sem arroz no turno');
+        }
       }
     });
 
@@ -493,6 +576,31 @@ export const useStockStore = create<StockState>((set, get) => ({
         exhaust_reason: reason ?? null,
         updated_at: new Date().toISOString(),
       };
+    } else if (isExhausted && prod) {
+      dailyPrepList.push({
+        id: generateId(),
+        shift_id: shiftId,
+        product_id: productId,
+        cubas_count: 0,
+        portions_per_cuba: prod.portions_per_cuba || 1,
+        initial_quantity: 0,
+        current_quantity: 0,
+        reserved_quantity: 0,
+        consumed_quantity: 0,
+        discarded_quantity: 0,
+        adjusted_quantity: 0,
+        last_counted_quantity: 0,
+        count_difference: 0,
+        is_exhausted: true,
+        exhausted_at: new Date().toISOString(),
+        exhausted_by: userId,
+        exhaust_reason: reason ?? 'Não disponível hoje',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        updated_by: userId,
+        version: 1,
+        product: prod,
+      });
     }
 
     if (prod) {

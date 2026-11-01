@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Coins, Flame, History, X, Printer } from 'lucide-react';
+import { AlertCircle, Ban, CheckCircle2, Coins, Flame, History, Printer, RotateCcw, X } from 'lucide-react';
 import { usePrinterHealth } from '../../components/layout/PrinterStatusWidget';
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
@@ -19,7 +19,7 @@ interface ShiftOpenModalProps {
 type PrepValue = { quantity: string; cubas: string };
 
 const toNumber = (v: string) => (v.trim() === '' ? null : Math.max(0, Number(v.replace(',', '.')) || 0));
-const isRice = (p: Product) => p.name.trim().toLocaleLowerCase('pt-BR') === 'arroz';
+const isRice = (p: Product) => /^arroz(\b|$)/i.test(p.name.trim());
 
 export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose }) => {
   const { products, categories } = useStockStore();
@@ -31,6 +31,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   const [cashStart, setCashStart] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
   const [prepValues, setPrepValues] = useState<Record<string, PrepValue>>({});
+  const [disabledProducts, setDisabledProducts] = useState<Record<string, boolean>>({});
   /** Rendimento por cuba vindo do último turno (senão, do cadastro do produto). */
   const [portionsOverride, setPortionsOverride] = useState<Record<string, number>>({});
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -40,6 +41,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   useEffect(() => {
     if (!isOpen) return;
     setPrepValues({});
+    setDisabledProducts({});
     setPortionsOverride({});
     setCashStart('');
     setErrorMsg(null);
@@ -49,27 +51,41 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   if (!isOpen) return null;
 
   // "X com acompanhamento" não é digitado: o banco calcula o saldo = menor entre espeto X e arroz (00031)
-  // Só se conta no turno: espetos, porções de arroz e entradas. O resto vende sem controle de quantidade.
+  // Só se conta no turno: espetos, porções de arroz, entradas e acompanhamentos. O resto vende sem controle de quantidade.
   const activeTracked = products.filter((p) => p.active && p.tracks_stock);
   const combos = activeTracked.filter(isComboProduct);
   const isStarter = (p: Product) => /entrada/i.test(categories.find((c) => c.id === p.category_id)?.name ?? '');
   const rice = activeTracked.find(isRice);
   const skewers = activeTracked.filter((p) => !isComboProduct(p) && p.sector === 'GRILL' && p !== rice && !isStarter(p));
   const starters = activeTracked.filter((p) => !isComboProduct(p) && p !== rice && isStarter(p));
-  const stockProducts = [...skewers, ...(rice ? [rice] : []), ...starters];
+  const otherSides = activeTracked.filter(
+    (p) => !isComboProduct(p) && p !== rice && !skewers.some((s) => s.id === p.id) && !starters.some((s) => s.id === p.id)
+  );
+  const stockProducts = [...skewers, ...(rice ? [rice] : []), ...starters, ...otherSides];
 
   /** Arroz é lançado direto em porções (o rendimento muda a cada dia). */
   const usesCubas = (p: Product) => p.is_cubas && p !== rice;
   const portionsOf = (p: Product) => portionsOverride[p.id] || p.portions_per_cuba || 1;
   const valueOf = (id: string): PrepValue => prepValues[id] ?? { quantity: '', cubas: '' };
-  const isFilled = (p: Product) => (usesCubas(p) ? valueOf(p.id).cubas : valueOf(p.id).quantity).trim() !== '';
-  const qtyOf = (p: Product) => (usesCubas(p) ? Math.round((toNumber(valueOf(p.id).cubas) ?? 0) * portionsOf(p)) : toNumber(valueOf(p.id).quantity) ?? 0);
+  const isFilled = (p: Product) => {
+    if (disabledProducts[p.id]) return true;
+    return (usesCubas(p) ? valueOf(p.id).cubas : valueOf(p.id).quantity).trim() !== '';
+  };
+  const qtyOf = (p: Product) => {
+    if (disabledProducts[p.id]) return 0;
+    return usesCubas(p)
+      ? Math.round((toNumber(valueOf(p.id).cubas) ?? 0) * portionsOf(p))
+      : toNumber(valueOf(p.id).quantity) ?? 0;
+  };
   const riceQty = rice ? qtyOf(rice) : 0;
   const baseOf = (combo: Product) => {
     const name = combo.name.replace(/\s+com acompanhamento\s*$/i, '').trim().toLocaleLowerCase('pt-BR');
     return stockProducts.find((p) => p.name.trim().toLocaleLowerCase('pt-BR') === name);
   };
-  const missingCount = stockProducts.filter((p) => !isFilled(p)).length;
+  const missingCount = stockProducts.filter(
+    (p) => !disabledProducts[p.id] && (usesCubas(p) ? valueOf(p.id).cubas : valueOf(p.id).quantity).trim() === ''
+  ).length;
+  const disabledCount = stockProducts.filter((p) => disabledProducts[p.id]).length;
 
   const setField = (productId: string, field: keyof PrepValue, value: string) =>
     setPrepValues((prev) => ({ ...prev, [productId]: { ...valueOf(productId), [field]: value } }));
@@ -78,16 +94,35 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     setField(productId, field, String(Math.max(0, current + delta)));
   };
 
+  const toggleDisable = (productId: string) => {
+    setDisabledProducts((prev) => {
+      const nextState = !prev[productId];
+      if (nextState) {
+        setPrepValues((p) => ({ ...p, [productId]: { quantity: '', cubas: '' } }));
+      }
+      return { ...prev, [productId]: nextState };
+    });
+  };
+
   const repeatLastShift = async () => {
     setRepeatState({ loading: true, message: null });
     try {
       const last = await loadLastClosedShiftPrep();
-      if (!last) { setRepeatState({ loading: false, message: 'Ainda não há turno fechado para repetir.' }); return; }
+      if (!last) {
+        setRepeatState({ loading: false, message: 'Ainda não há turno fechado para repetir.' });
+        return;
+      }
       const next: Record<string, PrepValue> = {};
       const portions: Record<string, number> = {};
+      const nextDisabled: Record<string, boolean> = {};
+
       last.items.forEach((item) => {
         const prod = stockProducts.find((p) => p.id === item.productId);
         if (!prod) return;
+        if (item.quantity === 0 && item.cubas === 0) {
+          nextDisabled[prod.id] = true;
+          return;
+        }
         if (usesCubas(prod)) {
           next[prod.id] = { quantity: '', cubas: String(item.cubas) };
           if (item.portions > 0) portions[prod.id] = item.portions;
@@ -96,6 +131,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
         }
       });
       setPrepValues(next);
+      setDisabledProducts(nextDisabled);
       setPortionsOverride(portions);
       setCashStart(String(last.cashStart));
       setRepeatState({ loading: false, message: `Preenchido com "${last.shiftName}". Confira antes de abrir.` });
@@ -110,7 +146,14 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
 
     try {
       const items: PrepItemInput[] = [];
+      const disabledIds: string[] = [];
+
       stockProducts.forEach((prod) => {
+        if (disabledProducts[prod.id]) {
+          disabledIds.push(prod.id);
+          return;
+        }
+
         const val = valueOf(prod.id);
         if (usesCubas(prod)) {
           const cubas = toNumber(val.cubas) ?? 0;
@@ -126,7 +169,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
         return;
       }
 
-      openShift(shiftName, notes, toNumber(cashStart) ?? 0, items, currentProfile.id);
+      openShift(shiftName, notes, toNumber(cashStart) ?? 0, items, currentProfile.id, disabledIds);
       onClose();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : 'Erro inesperado ao abrir turno.');
@@ -138,17 +181,97 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   const stepButton = 'flex h-11 min-w-[44px] items-center justify-center rounded-md border border-line-strong bg-surface px-2 font-mono text-sm font-bold text-ink hover:bg-surface-muted transition';
 
   const unitRow = (p: Product) => {
-    const val = valueOf(p.id).quantity;
+    const isDisabled = Boolean(disabledProducts[p.id]);
+    const isCuba = usesCubas(p);
+    const field = isCuba ? 'cubas' : 'quantity';
+    const stepDelta = isCuba ? 1 : 5;
+    const val = isCuba ? valueOf(p.id).cubas : valueOf(p.id).quantity;
+    const filled = isFilled(p);
+
     return (
-      <div key={p.id} className={`flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between p-3 rounded-2xl border ${isFilled(p) ? 'bg-surface border-line' : 'bg-amber-50/60 border-amber-200'}`}>
+      <div
+        key={p.id}
+        className={`flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between p-3 rounded-2xl border transition ${
+          isDisabled
+            ? 'bg-rose-50/50 border-rose-200'
+            : filled
+            ? 'bg-surface border-line'
+            : 'bg-amber-50/60 border-amber-200'
+        }`}
+      >
         <div className="min-w-0 flex-1">
-          <div className="font-semibold text-ink">{p.name}</div>
-          <div className="text-[13px] text-ink-muted font-mono">{formatBRL(p.price)}</div>
+          <div className="flex items-center gap-2">
+            <span className={`font-semibold ${isDisabled ? 'text-ink-muted line-through' : 'text-ink'}`}>
+              {p.name}
+            </span>
+            {isDisabled && (
+              <span className="inline-flex items-center gap-1 rounded bg-rose-100 px-2 py-0.5 text-[11px] font-bold text-rose-800">
+                <Ban className="w-3 h-3" />
+                Não tem hoje
+              </span>
+            )}
+          </div>
+          <div className="text-[13px] text-ink-muted font-mono">
+            {formatBRL(p.price)}
+            {isCuba && !isDisabled && ` · ${portionsOf(p)} porções/cuba`}
+          </div>
         </div>
+
         <div className="flex shrink-0 items-center gap-1.5">
-          <button type="button" onClick={() => step(p.id, 'quantity', -5)} className={stepButton} aria-label={`Tirar 5 de ${p.name}`}>−5</button>
-          <input type="number" min="0" inputMode="numeric" value={val} placeholder="—" onChange={(e) => setField(p.id, 'quantity', e.target.value)} className={`w-16 ${fieldClass(isFilled(p))}`} aria-label={`Quantidade de ${p.name}`} />
-          <button type="button" onClick={() => step(p.id, 'quantity', 5)} className={stepButton} aria-label={`Somar 5 em ${p.name}`}>+5</button>
+          {isDisabled ? (
+            <button
+              type="button"
+              onClick={() => toggleDisable(p.id)}
+              className="h-11 px-3.5 rounded-lg border border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100 text-xs font-bold flex items-center gap-1.5 transition active:scale-95 shadow-sm"
+              title={`Habilitar ${p.name}`}
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-brand-700" />
+              <span>Habilitar</span>
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => toggleDisable(p.id)}
+                className="h-11 px-2.5 rounded-md border border-line-strong bg-surface text-ink-muted hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50 text-xs font-semibold flex items-center gap-1 transition"
+                title={`Desabilitar ${p.name} (não tem hoje)`}
+                aria-label={`Desabilitar ${p.name}`}
+              >
+                <Ban className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                <span className="hidden sm:inline">Não tem hoje</span>
+                <span className="sm:hidden">Sem</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => step(p.id, field, -stepDelta)}
+                className={stepButton}
+                aria-label={`Tirar ${stepDelta} de ${p.name}`}
+              >
+                −{stepDelta}
+              </button>
+
+              <input
+                type="number"
+                min="0"
+                inputMode="numeric"
+                value={val}
+                placeholder="—"
+                onChange={(e) => setField(p.id, field, e.target.value)}
+                className={`w-16 ${fieldClass(filled)}`}
+                aria-label={`Quantidade de ${p.name}`}
+              />
+
+              <button
+                type="button"
+                onClick={() => step(p.id, field, stepDelta)}
+                className={stepButton}
+                aria-label={`Somar ${stepDelta} em ${p.name}`}
+              >
+                +{stepDelta}
+              </button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -257,15 +380,38 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             <div className="space-y-2 rounded-2xl border border-line bg-surface-soft p-3">
               <h3 className="font-bold text-ink text-sm">Espetos com acompanhamento (calculado sozinho)</h3>
               <p className="text-[13px] text-ink-muted">Usam o espeto + 1 porção de arroz. O que dá para vender é o menor dos dois.</p>
-              <ul className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2">
+              <ul className="grid grid-cols-1 gap-x-4 gap-y-1.5 sm:grid-cols-2">
                 {combos.map((combo) => {
                   const base = baseOf(combo);
-                  const parts = [base ? qtyOf(base) : null, rice ? riceQty : null].filter((n): n is number => n !== null);
-                  const avail = parts.length ? Math.min(...parts) : 0;
+                  const baseDisabled = base ? Boolean(disabledProducts[base.id]) : true;
+                  const riceDisabled = rice ? Boolean(disabledProducts[rice.id]) : true;
+                  const isComboDisabled = baseDisabled || riceDisabled;
+                  const parts = [
+                    base && !baseDisabled ? qtyOf(base) : null,
+                    rice && !riceDisabled ? riceQty : null,
+                  ].filter((n): n is number => n !== null);
+                  const avail = isComboDisabled ? 0 : parts.length ? Math.min(...parts) : 0;
+
                   return (
-                    <li key={combo.id} className="flex justify-between gap-2 text-sm">
-                      <span className="truncate text-ink-secondary">{combo.name}</span>
-                      <span className="shrink-0 font-mono font-bold text-ink">{base ? `até ${avail}` : 'sem espeto base'}</span>
+                    <li key={combo.id} className="flex justify-between items-center gap-2 text-sm py-0.5">
+                      <span className={`truncate ${isComboDisabled ? 'text-ink-muted line-through' : 'text-ink-secondary'}`}>
+                        {combo.name}
+                      </span>
+                      <span className={`shrink-0 font-mono text-xs font-bold px-2 py-0.5 rounded ${
+                        isComboDisabled 
+                          ? 'bg-rose-100 text-rose-800' 
+                          : avail > 0 
+                          ? 'bg-surface text-ink border border-line' 
+                          : 'bg-amber-100 text-amber-800'
+                      }`}>
+                        {baseDisabled
+                          ? 'sem espeto base'
+                          : riceDisabled
+                          ? 'sem arroz hoje'
+                          : base
+                          ? `até ${avail}`
+                          : 'sem espeto base'}
+                      </span>
                     </li>
                   );
                 })}
@@ -280,6 +426,13 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             </div>
           )}
 
+          {otherSides.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-bold text-ink text-sm border-b border-line pb-2">Outros acompanhamentos e porções</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{otherSides.map(unitRow)}</div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-semibold text-ink mb-1.5" htmlFor="shift-open-notes">Observações da noite (opcional)</label>
             <textarea id="shift-open-notes" value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
@@ -288,6 +441,12 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
           </div>
 
           <div className="pt-2 space-y-2">
+            {disabledCount > 0 && (
+              <p className="text-sm font-semibold text-rose-800 flex items-center gap-1.5" role="status">
+                <Ban className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{disabledCount === 1 ? '1 produto desabilitado hoje' : `${disabledCount} produtos desabilitados hoje`} (não poderão ser pedidos pelos garçons).</span>
+              </p>
+            )}
             {missingCount > 0 && (
               <p className="text-sm font-semibold text-amber-800" role="status">
                 {missingCount === 1 ? '1 produto sem quantidade' : `${missingCount} produtos sem quantidade`} (ficam fora do turno).

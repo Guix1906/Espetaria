@@ -15,8 +15,8 @@ export function isComboProduct(product: Pick<Product, 'name'>) {
 export function stockUnitIds(product: Product, products: Product[]): string[] {
   if (!isComboProduct(product)) return [product.id];
   const baseName = norm(product.name.replace(COMBO_SUFFIX, ''));
-  const base = products.find((p) => p.active && p.id !== product.id && norm(p.name) === baseName);
-  const rice = products.find((p) => p.active && norm(p.name) === 'arroz');
+  const base = products.find((p) => p.active !== false && p.id !== product.id && norm(p.name) === baseName);
+  const rice = products.find((p) => p.active !== false && /^arroz(\b|$)/i.test(norm(p.name)));
   return [product.id, ...(base ? [base.id] : []), ...(rice ? [rice.id] : [])];
 }
 
@@ -27,6 +27,31 @@ interface Line { product: Product; quantity: number }
  * (um combo no rascunho também ocupa o espeto e o arroz). `null` = sem controle de estoque.
  */
 export function remainingFor(product: Product, products: Product[], stocks: DailyPrepStock[], cart: Line[]): number | null {
+  if (product.tracks_stock === false) return null;
+
+  if (isComboProduct(product)) {
+    const baseName = norm(product.name.replace(COMBO_SUFFIX, ''));
+    const base = products.find((p) => p.active !== false && p.id !== product.id && norm(p.name) === baseName);
+    const rice = products.find((p) => p.active !== false && /^arroz(\b|$)/i.test(norm(p.name)));
+
+    if (!base || base.available === false) return 0;
+    if (!rice || rice.available === false) return 0;
+
+    const baseStock = stocks.find((s) => s.product_id === base.id);
+    const riceStock = stocks.find((s) => s.product_id === rice.id);
+
+    if (!baseStock || baseStock.is_exhausted || baseStock.current_quantity <= 0) return 0;
+    if (!riceStock || riceStock.is_exhausted || riceStock.current_quantity <= 0) return 0;
+
+    const baseUsed = cart.filter((line) => stockUnitIds(line.product, products).includes(base.id)).reduce((sum, line) => sum + line.quantity, 0);
+    const riceUsed = cart.filter((line) => stockUnitIds(line.product, products).includes(rice.id)).reduce((sum, line) => sum + line.quantity, 0);
+
+    const baseFree = Math.max(0, baseStock.current_quantity - baseUsed);
+    const riceFree = Math.max(0, riceStock.current_quantity - riceUsed);
+
+    return Math.min(baseFree, riceFree);
+  }
+
   let left: number | null = null;
   for (const unitId of stockUnitIds(product, products)) {
     const stock = stocks.find((s) => s.product_id === unitId);
@@ -40,6 +65,29 @@ export function remainingFor(product: Product, products: Product[], stocks: Dail
 
 /** Nome da peça que está limitando (para a mensagem de erro), ex.: "Arroz". */
 export function limitingName(product: Product, products: Product[], stocks: DailyPrepStock[], cart: Line[]): string {
+  if (isComboProduct(product)) {
+    const baseName = norm(product.name.replace(COMBO_SUFFIX, ''));
+    const base = products.find((p) => p.active !== false && p.id !== product.id && norm(p.name) === baseName);
+    const rice = products.find((p) => p.active !== false && /^arroz(\b|$)/i.test(norm(p.name)));
+
+    if (!base || base.available === false) return base?.name ?? 'Espeto base';
+    if (!rice || rice.available === false) return rice?.name ?? 'Arroz';
+
+    const baseStock = stocks.find((s) => s.product_id === base.id);
+    const riceStock = stocks.find((s) => s.product_id === rice.id);
+
+    if (!baseStock || baseStock.is_exhausted || baseStock.current_quantity <= 0) return base.name;
+    if (!riceStock || riceStock.is_exhausted || riceStock.current_quantity <= 0) return rice.name;
+
+    const baseUsed = cart.filter((line) => stockUnitIds(line.product, products).includes(base.id)).reduce((sum, line) => sum + line.quantity, 0);
+    const riceUsed = cart.filter((line) => stockUnitIds(line.product, products).includes(rice.id)).reduce((sum, line) => sum + line.quantity, 0);
+
+    const baseFree = baseStock.current_quantity - baseUsed;
+    const riceFree = riceStock.current_quantity - riceUsed;
+
+    return baseFree <= riceFree ? base.name : rice.name;
+  }
+
   let worst: { name: string; free: number } | null = null;
   for (const unitId of stockUnitIds(product, products)) {
     const stock = stocks.find((s) => s.product_id === unitId);
