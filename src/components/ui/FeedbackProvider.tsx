@@ -1,4 +1,4 @@
-﻿import { AlertCircle, CheckCircle2, MessageSquareText, X } from 'lucide-react';
+import { AlertCircle, CheckCircle2, MessageSquareText, X } from 'lucide-react';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Dialog } from './Dialog';
 
@@ -125,6 +125,12 @@ export function FeedbackProvider({ children }: { children: ReactNode }) {
 
 export function useFeedback() {
   const context = useContext(FeedbackContext);
-  if (!context) throw new Error('useFeedback requires FeedbackProvider.');
+  if (!context) {
+    return {
+      requestText: async () => null,
+      requestChoice: async () => null,
+      notify: () => {},
+    };
+  }
   return context;
 }

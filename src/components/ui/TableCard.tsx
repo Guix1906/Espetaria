@@ -1,50 +1,247 @@
-import { ArrowRight, Clock3, Plus, Receipt, ShoppingBag } from 'lucide-react';
-import { formatBRL, formatElapsedMinutes, getTableStatusConfig } from '../../lib/formatters';
+import { useEffect, useRef, useState } from 'react';
+import { ArrowLeftRight, ChevronDown, Plus, Printer, Receipt, ShoppingBag, Users } from 'lucide-react';
+import { formatBRL, getTableStatusConfig } from '../../lib/formatters';
 import type { RestaurantTable, Tab } from '../../types/domain';
 import { STATUS_TOP_BORDER, tableStatusKind } from '../../lib/statusStyles';
 
 interface TableCardProps {
   table: RestaurantTable;
   tab?: Tab;
+  itemCount?: number;
   onOpen: () => void;
   onOrder: () => void;
   onBill?: () => void;
+  onPrint?: () => void;
+  onTransfer?: () => void;
   disabled?: boolean;
 }
 
-
-export function TableCard({ table, tab, onOpen, onOrder, onBill, disabled = false }: TableCardProps) {
+export function TableCard({
+  table,
+  tab,
+  itemCount = 0,
+  onOpen,
+  onOrder,
+  onBill,
+  onPrint,
+  onTransfer,
+  disabled = false,
+}: TableCardProps) {
   const isFree = table.status === 'LIVRE';
   const status = getTableStatusConfig(table.status);
-  const content = (
-    <div className="flex flex-1 flex-col p-3.5 sm:p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <h2 className="text-2xl font-bold tracking-tight text-ink tabular-nums">Mesa {String(table.number).padStart(2, '0')}</h2>      </div>
-      <span className={`status-badge mt-3 ${status.badgeBg}`}>{status.label}</span>
-      <div className="flex flex-1 flex-col justify-center py-4">
-        {tab ? (
-          <>
-            {tab.customer_name && tab.customer_name !== `Mesa ${table.number}` && <p className="truncate text-base font-semibold text-ink" title={tab.customer_name}>{tab.customer_name}</p>}
-            <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <span className="flex items-center gap-1 text-base font-medium text-ink-secondary"><Clock3 className="h-4 w-4" aria-hidden="true" />{formatElapsedMinutes(tab.opened_at)}</span>
-              <span className="font-mono text-lg font-bold text-ink tabular-nums">{formatBRL(tab.total)}</span>
-            </div>
-          </>
-        ) : !isFree ? <p className="text-base text-ink-muted">Reservada</p> : null}
-      </div>
-      {!onBill && <span className={`flex items-center justify-between gap-2 border-t border-line pt-3 text-base font-semibold ${isFree ? 'text-brand-700' : 'text-ink'}`}><span className="whitespace-nowrap">{isFree ? (disabled ? 'Turno fechado' : <>Abrir<span className="hidden xs:inline"> comanda</span></>) : <>Ver itens<span className="hidden xs:inline"> e lançar</span></>}</span>{isFree ? <Plus className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}</span>}
-    </div>
-  );
+  const isWaitingBill = table.status === 'AGUARDANDO_CONTA';
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  if (!onBill) {
-    return <button type="button" disabled={isFree && disabled} onClick={isFree ? onOpen : onOrder} className={`table-card ${STATUS_TOP_BORDER[tableStatusKind(table.status)]}`} aria-label={`Mesa ${table.number}, ${status.label}. ${isFree ? 'Abrir comanda' : 'Ver itens e lançar pedido'}`}>{content}</button>;
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [menuOpen]);
+
+  const padNumber = String(table.number).padStart(2, '0');
+
+  // Caso Mesa Livre
+  if (isFree) {
+    return (
+      <article
+        className={`table-card rounded-xl border border-line bg-surface shadow-xs hover:shadow-md transition overflow-hidden flex flex-col justify-between ${STATUS_TOP_BORDER[tableStatusKind(table.status)]}`}
+        aria-label={`Mesa ${table.number}, ${status.label}. Abrir comanda`}
+      >
+        <span className="sr-only status-badge">{status.label}</span>
+        <div className="px-3.5 py-2.5 flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <span className="font-bold text-[16px] text-ink font-sans tracking-tight tabular-nums">
+              Mesa {padNumber}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={onOpen}
+            className="h-7 px-2.5 rounded-md border border-line bg-surface hover:bg-surface-muted text-xs font-semibold text-brand-800 flex items-center gap-1 transition active:scale-95 disabled:opacity-50"
+            title="Abrir comanda para esta mesa"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>+ Abrir</span>
+          </button>
+        </div>
+
+        <div className="px-3.5 py-1.5 bg-surface-muted text-ink-muted border-t border-line/60 flex items-center justify-between text-xs">
+          <span>Livre</span>
+          <span>Disponível</span>
+        </div>
+      </article>
+    );
   }
 
+  // Caso Mesa Ativa (Ocupada ou Fechando conta)
   return (
-    <article className={`table-card ${STATUS_TOP_BORDER[tableStatusKind(table.status)]}`} aria-label={`Mesa ${table.number}, ${status.label}`}>
-      {content}
-      <div className="mx-3.5 mb-3.5 flex flex-col gap-2 sm:flex-row border-t border-line pt-3 sm:mx-4 sm:mb-4">
-        {isFree ? <button type="button" disabled={disabled} onClick={onOpen} className="btn-secondary w-full px-2 text-base text-brand-800"><Plus className="h-4 w-4" aria-hidden="true" />Abrir comanda</button> : <><button type="button" onClick={onOrder} className="btn-primary flex-1 px-2 text-base"><ShoppingBag className="h-3.5 w-3.5" aria-hidden="true" />Pedir</button><button type="button" onClick={onBill} className="btn-secondary flex-1 px-2 text-base"><Receipt className="h-3.5 w-3.5" aria-hidden="true" />Cobrar</button></>}
+    <article
+      className="table-card rounded-xl border border-line bg-surface shadow-xs hover:shadow-md transition overflow-visible flex flex-col justify-between relative"
+      aria-label={`Mesa ${table.number}, ${status.label}`}
+    >
+      <span className="sr-only status-badge">{status.label}</span>
+
+      {/* LINHA SUPERIOR: Nome da mesa + Ações */}
+      <div className="px-3.5 py-2 flex items-center justify-between gap-2 bg-surface rounded-t-xl">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="font-bold text-[16px] text-ink font-sans tracking-tight tabular-nums">
+            Mesa {padNumber}
+          </span>
+          {tab?.customer_name && tab.customer_name !== `Mesa ${table.number}` && (
+            <span
+              className="text-xs text-ink-muted truncate max-w-[110px]"
+              title={tab.customer_name || undefined}
+            >
+              · {tab.customer_name}
+            </span>
+          )}
+        </div>
+
+        {/* BOTÕES DE AÇÃO: + Pedido, Cobrar e Menu v */}
+        <div className="flex items-center gap-1 shrink-0">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOrder();
+            }}
+            className="h-7 px-2.5 rounded-md border border-line bg-surface hover:bg-surface-muted text-xs font-semibold text-ink flex items-center gap-1 transition active:scale-95 shadow-2xs"
+            title="Lançar novos pedidos nesta mesa"
+          >
+            <Plus className="w-3.5 h-3.5 text-ink-muted" />
+            <span>+ Pedido</span>
+          </button>
+
+          {onBill && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onBill();
+              }}
+              className={`h-7 px-2.5 rounded-md text-xs font-bold flex items-center gap-1 transition active:scale-95 shadow-2xs ${
+                isWaitingBill
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                  : 'bg-ink hover:bg-ink-secondary text-white'
+              }`}
+              title="Cobrar / fechar mesa"
+            >
+              <Receipt className="w-3 h-3" />
+              <span>Cobrar</span>
+            </button>
+          )}
+
+          {/* Botão Dropdown [ v ] */}
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen((prev) => !prev);
+              }}
+              className="h-7 w-7 rounded-md border border-line bg-surface hover:bg-surface-muted text-ink-muted hover:text-ink flex items-center justify-center transition active:scale-95"
+              aria-label="Mais opções da mesa"
+              title="Opções da mesa"
+            >
+              <ChevronDown className="w-3.5 h-3.5" />
+            </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-line bg-surface py-1 shadow-floating z-40 text-xs animate-in fade-in zoom-in-95">
+                {onBill && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onBill();
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-surface-muted flex items-center gap-2 text-ink font-semibold"
+                  >
+                    <Receipt className="w-4 h-4 text-brand-600" />
+                    <span>Cobrar conta</span>
+                  </button>
+                )}
+                {onPrint && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onPrint();
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-surface-muted flex items-center gap-2 text-ink"
+                  >
+                    <Printer className="w-4 h-4 text-ink-muted" />
+                    <span>Imprimir pré-conta</span>
+                  </button>
+                )}
+                {onTransfer && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onTransfer();
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-surface-muted flex items-center gap-2 text-ink"
+                  >
+                    <ArrowLeftRight className="w-4 h-4 text-ink-muted" />
+                    <span>Transferir mesa</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuOpen(false);
+                    onOrder();
+                  }}
+                  className="w-full px-3 py-2 text-left hover:bg-surface-muted flex items-center gap-2 text-ink border-t border-line/60"
+                >
+                  <ShoppingBag className="w-4 h-4 text-ink-muted" />
+                  <span>Ver itens da comanda</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* FAIXA INFERIOR: Barra colorida com ícones de itens, pessoas e total em R$ */}
+      <div
+        onClick={onBill}
+        className={`px-3.5 py-1.5 rounded-b-xl flex items-center justify-between text-xs font-semibold select-none transition cursor-pointer ${
+          isWaitingBill
+            ? 'bg-amber-400 hover:bg-amber-500 text-amber-950'
+            : 'bg-[#f87152] hover:bg-[#eb6546] text-white'
+        }`}
+        title="Clique para cobrar e fechar a mesa"
+      >
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1 font-bold">
+            <Receipt className="w-3.5 h-3.5 opacity-90" />
+            <span className="tabular-nums">{itemCount}</span>
+          </span>
+          <span className="flex items-center gap-1 font-bold">
+            <Users className="w-3.5 h-3.5 opacity-90" />
+            <span className="tabular-nums">{tab?.people_count || 1}</span>
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <span className="font-mono text-[13px] font-black tabular-nums tracking-tight">
+            {formatBRL(tab?.total || 0)}
+          </span>
+        </div>
       </div>
     </article>
   );

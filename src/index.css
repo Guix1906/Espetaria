@@ -114,8 +114,8 @@
   .status-badge { @apply inline-flex w-fit items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-xs font-medium leading-tight; border-width: 0; }
   .notice { @apply flex items-start gap-3 rounded-xl border p-4 text-sm leading-relaxed; }
   .empty-state { @apply surface-card flex flex-col items-center justify-center gap-3 px-5 py-14 text-center; }
-  .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr)); gap: 1rem; }
-  .table-card { @apply surface-card flex min-h-[180px] w-full flex-col overflow-hidden rounded-sm border-t-[3px] text-left; }
+  .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 0.85rem; }
+  .table-card { @apply surface-card flex min-h-[72px] w-full flex-col overflow-visible rounded-xl border border-line text-left; }
   .table-card:not(:disabled):hover { @apply shadow-floating; }
   .product-card { @apply surface-card flex w-full flex-col p-4 text-left transition-colors sm:p-5; }
   .product-card:not(:disabled):hover { @apply border-brand-400; }
@@ -162,8 +162,8 @@
   .dialog-root--sheet > .dialog-panel.waiter-sheet { border-radius: 12px 12px 0 0; }
   .dialog-root--sheet > .dialog-panel { max-height: calc(100% - env(safe-area-inset-top, 0px) - 12px); border-radius: 6px 6px 0 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); }
   .dialog-root--navigation { padding: 0; }
-  .table-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
-  .table-card { min-height: 180px; }
+  .table-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.5rem; }
+  .table-card { min-height: 72px; }
 }
 
 * { scrollbar-width: thin; scrollbar-color: rgb(var(--color-line-strong)) transparent; }

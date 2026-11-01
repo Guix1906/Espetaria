@@ -46,6 +46,8 @@ export const CashierModule: React.FC = () => {
   const { currentProfile } = useAuthStore();
 
   const [filter, setFilter] = useState<CashierFilter>('WAITING_BILL');
+  const [searchTerm, setSearchTerm] = useState('');
+  const query = searchTerm.trim().toLocaleLowerCase('pt-BR');
   // Vindo da Visão geral ("Cobrar"), já abre o fechamento daquela mesa
   const [selectedTableForCheckout, setSelectedTableForCheckout] = useState<RestaurantTable | null>(() => {
     const id = useNavFocusStore.getState().tableId;
@@ -194,41 +196,96 @@ export const CashierModule: React.FC = () => {
         </ul>
       </section>
 
-      {/* Barra de Filtros */}
-      <div className="flex flex-wrap items-center gap-2 pb-1 text-xs">
-        <button
-          onClick={() => setFilter('WAITING_BILL')}
-          className={`filter-chip ${effectiveFilter === 'WAITING_BILL' ? 'is-active' : ''}`}
-          type="button" aria-pressed={effectiveFilter === 'WAITING_BILL'}>
-          <AlertTriangle className="w-4 h-4" />
-          <span>Conta solicitada ({waitingBillTables.length})</span>
-        </button>
+      {/* Barra de Filtros e Busca Rápida de Mesas */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-2 pb-1 text-xs">
+          <button
+            onClick={() => setFilter('WAITING_BILL')}
+            className={`filter-chip ${effectiveFilter === 'WAITING_BILL' ? 'is-active' : ''}`}
+            type="button" aria-pressed={effectiveFilter === 'WAITING_BILL'}>
+            <AlertTriangle className="w-4 h-4" />
+            <span>Conta solicitada ({waitingBillTables.length})</span>
+          </button>
 
-        <button
-          onClick={() => setFilter('ALL_ACTIVE')}
-          className={`filter-chip ${effectiveFilter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
-          type="button" aria-pressed={effectiveFilter === 'ALL_ACTIVE'}>
-          <Users className="w-4 h-4" />
-          <span>Em atendimento ({activeTables.length})</span>
-        </button>
+          <button
+            onClick={() => setFilter('ALL_ACTIVE')}
+            className={`filter-chip ${effectiveFilter === 'ALL_ACTIVE' ? 'is-active' : ''}`}
+            type="button" aria-pressed={effectiveFilter === 'ALL_ACTIVE'}>
+            <Users className="w-4 h-4" />
+            <span>Em atendimento ({activeTables.length})</span>
+          </button>
 
-        <button
-          onClick={() => setFilter('CLOSED_TODAY')}
-          className={`filter-chip ${effectiveFilter === 'CLOSED_TODAY' ? 'is-active' : ''}`}
-          type="button" aria-pressed={effectiveFilter === 'CLOSED_TODAY'}>
-          <CheckCircle2 className="w-4 h-4" />
-          <span>Encerradas ({closedTabs.length})</span>
-        </button>
+          <button
+            onClick={() => setFilter('CLOSED_TODAY')}
+            className={`filter-chip ${effectiveFilter === 'CLOSED_TODAY' ? 'is-active' : ''}`}
+            type="button" aria-pressed={effectiveFilter === 'CLOSED_TODAY'}>
+            <CheckCircle2 className="w-4 h-4" />
+            <span>Encerradas ({closedTabs.length})</span>
+          </button>
+        </div>
+
+        {effectiveFilter !== 'CLOSED_TODAY' && activeTables.length > 0 && (
+          <div className="w-full sm:w-64">
+            <input
+              type="search"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Buscar mesa nº ou cliente..."
+              aria-label="Buscar mesa ou cliente no caixa"
+              className="w-full h-9 px-3 rounded-xl border border-line bg-surface text-xs placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition"
+            />
+          </div>
+        )}
       </div>
+
+      {/* Régua de Acesso Rápido / Atalho Direto para as Mesas Ativas */}
+      {effectiveFilter !== 'CLOSED_TODAY' && activeTables.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 custom-scrollbar">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted whitespace-nowrap">
+            Acesso direto:
+          </span>
+          {activeTables.map((t) => {
+            const tTab = tabs.find((tb) => tb.table_id === t.id && tb.status === 'OPEN');
+            const isBill = t.status === 'AGUARDANDO_CONTA';
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setSelectedTableForCheckout(t)}
+                className={`shrink-0 h-8 px-2.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition active:scale-95 ${
+                  isBill
+                    ? 'border-brand-500 bg-brand-50 text-brand-900 hover:bg-brand-100 shadow-xs'
+                    : 'border-line bg-surface hover:bg-surface-muted text-ink'
+                }`}
+                title={`Abrir fechamento da Mesa ${String(t.number).padStart(2, '0')}`}
+              >
+                <span>Mesa {String(t.number).padStart(2, '0')}</span>
+                {isBill && <span className="h-1.5 w-1.5 rounded-full bg-brand-600 animate-pulse" />}
+                {tTab && <span className="font-mono text-ink-muted font-normal">· {formatBRL(tTab.total)}</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Grade de Mesas / Comandas */}
       {effectiveFilter !== 'CLOSED_TODAY' ? (
         activeTables.length === 0 ? (
           <EmptyState title="Nenhuma mesa aberta" description="As mesas estão livres para novos clientes. As próximas comandas aparecerão aqui." icon={Sparkles} />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3.5">
             {activeTables
               .filter((t) => (effectiveFilter === 'WAITING_BILL' ? t.status === 'AGUARDANDO_CONTA' : true))
+              .filter((t) => {
+                if (!query) return true;
+                const currentTab = tabs.find((tab) => tab.table_id === t.id && tab.status === 'OPEN');
+                const numStr = String(t.number);
+                return (
+                  numStr.includes(query) ||
+                  numStr.padStart(2, '0').includes(query) ||
+                  (currentTab?.customer_name?.toLocaleLowerCase('pt-BR').includes(query) ?? false)
+                );
+              })
               .map((table) => {
                 const currentTab = tabs.find((tab) => tab.table_id === table.id && tab.status === 'OPEN');
                 const isWaitingBill = table.status === 'AGUARDANDO_CONTA';
@@ -237,23 +294,23 @@ export const CashierModule: React.FC = () => {
                 return (
                   <div
                     key={table.id}
-                    className="p-5 rounded-2xl border border-line bg-surface transition flex flex-col justify-between space-y-4 hover:border-line-strong"
+                    className="p-3.5 sm:p-4 rounded-xl border border-line bg-surface transition flex flex-col justify-between space-y-3 hover:border-line-strong hover:shadow-xs"
                   >
                     <div>
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl font-bold tabular-nums text-ink">
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-xl font-bold tabular-nums text-ink font-mono">
                             Mesa {String(table.number).padStart(2, '0')}
                           </span>
                           {isWaitingBill && (
-                            <span className="status-badge bg-brand-500 text-white">
+                            <span className="status-badge bg-brand-500 text-white text-[11px]">
                               Conta pedida {billMinutes(table)}
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-ink-muted flex items-center gap-1 tabular-nums">
+                        <span className="text-xs text-ink-muted flex items-center gap-1 tabular-nums shrink-0">
                           <Users className="w-3.5 h-3.5 text-ink-muted" />
-                          {currentTab?.people_count}p
+                          {currentTab?.people_count || 1}p
                         </span>
                       </div>
 
@@ -261,26 +318,26 @@ export const CashierModule: React.FC = () => {
                         {currentTab?.customer_name || `Mesa ${table.number}`}
                       </p>
 
-                      <div className="mt-3.5 pt-3 border-t border-line flex items-baseline justify-between">
+                      <div className="mt-2.5 pt-2 border-t border-line/60 flex items-baseline justify-between">
                         <span className="text-xs text-ink-muted">
-                          {items.filter(i => i.status !== 'CANCELLED').length} itens consumidos
+                          {items.filter(i => i.status !== 'CANCELLED').length} itens
                         </span>
-                        <span className="text-xl font-bold tabular-nums text-brand-700">
+                        <span className="text-lg font-bold tabular-nums text-brand-700 font-mono">
                           {formatBRL(currentTab?.total || 0)}
                         </span>
                       </div>
                     </div>
 
                     {/* Botões de Ação Rápida no Caixa */}
-                    <div className="space-y-2 pt-1">
-                      <div className="grid grid-cols-3 gap-1.5">
+                    <div className="space-y-1.5 pt-1">
+                      <div className="grid grid-cols-3 gap-1">
                         <button
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             void handleQuickPayTable(table, currentTab, 'PIX');
                           }}
-                          className="h-10 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs transition"
+                          className="h-8 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs transition"
                           title={`Fechar Mesa ${String(table.number).padStart(2, '0')} no PIX (${formatBRL(currentTab?.total || 0)})`}
                         >
                           <QrCode className="w-3.5 h-3.5" />
@@ -292,7 +349,7 @@ export const CashierModule: React.FC = () => {
                             e.stopPropagation();
                             void handleQuickPayTable(table, currentTab, 'CARTAO');
                           }}
-                          className="h-10 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs transition"
+                          className="h-8 rounded-lg bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs transition"
                           title={`Fechar Mesa ${String(table.number).padStart(2, '0')} no Cartão (${formatBRL(currentTab?.total || 0)})`}
                         >
                           <CreditCard className="w-3.5 h-3.5" />
@@ -304,7 +361,7 @@ export const CashierModule: React.FC = () => {
                             e.stopPropagation();
                             void handleQuickPayTable(table, currentTab, 'DINHEIRO');
                           }}
-                          className="h-10 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs transition"
+                          className="h-8 rounded-lg bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-xs transition"
                           title={`Fechar Mesa ${String(table.number).padStart(2, '0')} em Dinheiro (${formatBRL(currentTab?.total || 0)})`}
                         >
                           <Banknote className="w-3.5 h-3.5" />
@@ -314,7 +371,7 @@ export const CashierModule: React.FC = () => {
 
                       <button
                         onClick={() => setSelectedTableForCheckout(table)}
-                        className={`w-full h-9 rounded-lg border font-semibold text-xs transition flex items-center justify-center gap-1.5 ${
+                        className={`w-full h-8 rounded-lg border font-semibold text-xs transition flex items-center justify-center gap-1.5 ${
                           isWaitingBill
                             ? 'border-brand-300 bg-brand-50 text-brand-900 hover:bg-brand-100'
                             : 'border-line bg-surface-muted hover:bg-surface text-ink-secondary hover:text-ink'

@@ -1,15 +1,19 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import type { StatusKind } from '../../lib/statusStyles';
-import { ArrowRight, CheckCheck, Info, LayoutGrid, Receipt, Search, Settings2, ShoppingBag, Smartphone, Users, BellRing } from 'lucide-react';
+import { ArrowRight, CheckCheck, Info, LayoutGrid, Plus, Receipt, Search, Settings2, ShoppingBag, Smartphone, Users, BellRing, X, Sparkles } from 'lucide-react';
+import { Dialog } from '../../components/ui/Dialog';
 import { StatCard } from '../../components/ui/StatCard';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
+import { TableTransferModal } from './TableTransferModal';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
+import { usePrintStore } from '../../stores/usePrintStore';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SearchField } from '../../components/ui/SearchField';
 import { TableCard } from '../../components/ui/TableCard';
-import { formatBRL, formatDoneness, formatElapsedMinutes, getTableStatusConfig } from '../../lib/formatters';
+import { formatBRL, formatDoneness, formatElapsedMinutes } from '../../lib/formatters';
 import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
 import { ALERT_LIMITS } from '../admin/dashboardMetrics';
 import { KDSElapsedTimer } from '../kds/KDSElapsedTimer';
@@ -17,7 +21,7 @@ import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { useNavFocusStore } from '../../stores/useNavFocusStore';
-import type { OrderItem, RestaurantTable, Tab } from '../../types/domain';
+import type { Order, OrderItem, RestaurantTable, Tab } from '../../types/domain';
 import type { TableStatus } from '../../types/enums';
 import { WaiterOpenTabSheet } from './WaiterOpenTabSheet';
 import { WaiterOrderPad } from './WaiterOrderPad';
@@ -31,6 +35,7 @@ interface WaiterModuleProps {
 
 type Section = 'tables' | 'ready' | 'settings';
 type TableFilter = 'occupied' | 'free' | 'all';
+type SalonFilter = 'ACTIVE' | 'ALL' | 'READY' | TableStatus;
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const isOccupied = (table: RestaurantTable) => table.status === 'OCUPADA' || table.status === 'AGUARDANDO_CONTA';
 
@@ -97,13 +102,16 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   }, []);
 
   useEffect(() => { useNavFocusStore.getState().clear(); }, []);
-  const [filter, setFilter] = useState<'ALL' | 'READY' | TableStatus>(() => (useNavFocusStore.getState().readySection ? 'READY' : 'ALL'));
+  const [filter, setFilter] = useState<SalonFilter>(() => (useNavFocusStore.getState().readySection ? 'READY' : 'ACTIVE'));
   const [chosenFilter, setTableFilter] = useState<TableFilter | null>(null);
   const [section, setSection] = useState<Section>(() => (useNavFocusStore.getState().readySection ? 'ready' : 'tables'));
   const [searchTerm, setSearchTerm] = useState('');
   const [tableToOpen, setTableToOpen] = useState<RestaurantTable | null>(null);
   const [tableForBill, setTableForBill] = useState<RestaurantTable | null>(null);
+  const [tableToTransfer, setTableToTransfer] = useState<{ table: RestaurantTable; tab: Tab } | null>(null);
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { notify } = useFeedback();
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
 
@@ -162,26 +170,379 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
 
   // ---------------- Painel administrativo (tela larga) ----------------
   if (!dedicated) {
-    const filteredTables = activeTables.filter((table) => (filter === 'ALL' || (filter === 'READY' ? readyTableIds.has(table.id) : table.status === filter)) && matches(table));
+    const occupiedTables = activeTables.filter(isOccupied);
+    const freeTables = activeTables.filter((t) => t.status === 'LIVRE');
+    const effectiveFilter: SalonFilter = filter;
+
+    const filteredTables = activeTables.filter((table) => {
+      if (!matches(table)) return false;
+      if (query) return true;
+      if (effectiveFilter === 'ACTIVE') return isOccupied(table);
+      if (effectiveFilter === 'ALL') return true;
+      if (effectiveFilter === 'READY') return readyTableIds.has(table.id);
+      return table.status === effectiveFilter;
+    });
+
+    const filterOptions: { key: SalonFilter; label: string; count: number }[] = [
+      { key: 'ACTIVE', label: 'Ativas', count: occupiedTables.length },
+      { key: 'AGUARDANDO_CONTA', label: 'Conta pedida', count: activeTables.filter((t) => t.status === 'AGUARDANDO_CONTA').length },
+      { key: 'READY', label: 'Para servir', count: readyTables.length },
+      { key: 'LIVRE', label: 'Livres', count: freeTables.length },
+      { key: 'ALL', label: 'Todas as 60', count: activeTables.length },
+    ];
+
+    const handlePrintTable = async (table: RestaurantTable) => {
+      const ok = await usePrintStore.getState().printBill(table.id);
+      notify(
+        ok ? `Pré-conta da Mesa ${table.number} impressa com sucesso.` : 'Não foi possível imprimir a conta.',
+        ok ? 'success' : 'error'
+      );
+    };
+
+    const handleLoadDemoTables = () => {
+      let shift = useShiftStore.getState().currentShift;
+      if (!shift || shift.status !== 'ABERTO') {
+        try {
+          shift = useShiftStore.getState().openShift(
+            'Turno Principal',
+            'Turno de demonstração das mesas',
+            200,
+            [],
+            currentProfile.id
+          );
+        } catch {}
+      }
+
+      const shiftId = shift?.id || 'shift-demo';
+      const userId = currentProfile.id;
+
+      const demoData = [
+        { num: 27, status: 'OCUPADA' as const, people: 1, items: 3, total: 95 },
+        { num: 34, status: 'OCUPADA' as const, people: 2, items: 1, total: 85 },
+        { num: 41, status: 'OCUPADA' as const, people: 2, items: 1, total: 70 },
+        { num: 47, status: 'OCUPADA' as const, people: 1, items: 4, total: 231 },
+        { num: 48, status: 'OCUPADA' as const, people: 1, items: 1, total: 40 },
+        { num: 50, status: 'AGUARDANDO_CONTA' as const, people: 1, items: 1, total: 67 },
+        { num: 52, status: 'OCUPADA' as const, people: 1, items: 1, total: 94 },
+        { num: 53, status: 'OCUPADA' as const, people: 1, items: 1, total: 65 },
+        { num: 54, status: 'AGUARDANDO_CONTA' as const, people: 1, items: 1, total: 75 },
+        { num: 56, status: 'OCUPADA' as const, people: 1, items: 2, total: 92 },
+      ];
+
+      const nowIso = new Date().toISOString();
+      const demoNumSet = new Set(demoData.map((d) => d.num));
+
+      const newTables = useTableStore.getState().tables.map((t) => {
+        const demo = demoData.find((d) => d.num === t.number);
+        if (demo) {
+          return { ...t, status: demo.status, updated_at: nowIso };
+        }
+        return t;
+      });
+
+      const newTabs: Tab[] = demoData.map((d) => ({
+        id: `tab-demo-${d.num}`,
+        shift_id: shiftId,
+        table_id: `table-${d.num}`,
+        customer_name: `Mesa ${String(d.num).padStart(2, '0')}`,
+        people_count: d.people,
+        status: 'OPEN',
+        opened_by: userId,
+        closed_by: null,
+        subtotal: d.total,
+        service_fee: 0,
+        service_fee_enabled: false,
+        discount: 0,
+        total: d.total,
+        notes: null,
+        opened_at: nowIso,
+        closed_at: null,
+        updated_at: nowIso,
+        updated_by: userId,
+        version: 1,
+      }));
+
+      const newOrders: Order[] = demoData.map((d) => ({
+        id: `order-demo-${d.num}`,
+        shift_id: shiftId,
+        tab_id: `tab-demo-${d.num}`,
+        table_id: `table-${d.num}`,
+        order_number: d.num,
+        status: 'OPEN',
+        notes: null,
+        idempotency_key: null,
+        created_by: userId,
+        created_at: nowIso,
+        updated_at: nowIso,
+        updated_by: userId,
+        version: 1,
+      }));
+
+      const newOrderItems: OrderItem[] = [];
+      demoData.forEach((d) => {
+        for (let i = 1; i <= d.items; i++) {
+          newOrderItems.push({
+            id: `item-demo-${d.num}-${i}`,
+            order_id: `order-demo-${d.num}`,
+            shift_id: shiftId,
+            product_id: 'prod-picanha',
+            product_name: i === 1 ? 'Espeto Especial' : `Item ${i}`,
+            unit_price: d.total / d.items,
+            quantity: 1,
+            doneness: null,
+            notes: null,
+            sector: 'GRILL',
+            status: 'DELIVERED',
+            created_at: nowIso,
+            prepared_at: nowIso,
+            delivered_at: nowIso,
+            updated_at: nowIso,
+            updated_by: userId,
+            version: 1,
+          });
+        }
+      });
+
+      useTableStore.setState((state) => ({
+        tables: newTables,
+        tabs: [
+          ...state.tabs.filter((t) => !demoNumSet.has(parseInt(t.table_id?.replace('table-', '') || '0', 10))),
+          ...newTabs,
+        ],
+        orders: [
+          ...state.orders.filter((o) => !demoNumSet.has(parseInt(o.table_id?.replace('table-', '') || '0', 10))),
+          ...newOrders,
+        ],
+        orderItems: [
+          ...state.orderItems.filter((i) => !i.id.startsWith('item-demo-')),
+          ...newOrderItems,
+        ],
+      }));
+
+      setFilter('ACTIVE');
+      setSearchTerm('');
+      notify('10 mesas da foto carregadas no Mapa de Mesas!', 'success');
+    };
+
     return (
       <div className="page-layout">
-        <PageHeader eyebrow="Operação do salão" title="Salão" description="Escolha uma mesa para abrir a comanda, lançar pedidos ou fechar a conta." icon={Smartphone} actions={<a className="btn-secondary min-h-[44px]" href="#/garcom"><Smartphone className="h-4 w-4" />Área do garçom no celular</a>} />
+        <PageHeader
+          eyebrow="Salão"
+          title="Salão — Mapa de mesas e comandas"
+          description={
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-xs font-semibold">
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#f87152]" />
+                <span>Ocupada ({occupiedTables.length})</span>
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
+                <span>Fechando conta ({activeTables.filter((t) => t.status === 'AGUARDANDO_CONTA').length})</span>
+              </span>
+              <span className="text-ink-muted">· {formatBRL(tabs.filter((tab) => tab.status === 'OPEN').reduce((sum, tab) => sum + tab.total, 0))} em aberto</span>
+            </div>
+          }
+          icon={Smartphone}
+          actions={
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleLoadDemoTables}
+                className="btn-secondary min-h-[44px] text-xs font-semibold flex items-center gap-1.5"
+                title="Carregar as 10 mesas de exemplo da foto"
+              >
+                <Sparkles className="h-4 w-4 text-brand-600" />
+                <span>Mesas da foto</span>
+              </button>
+              <a className="btn-secondary min-h-[44px]" href="#/garcom">
+                <Smartphone className="h-4 w-4" />
+                <span>Área do garçom no celular</span>
+              </a>
+            </div>
+          }
+        />
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard label="Mesas livres" value={activeTables.filter((table) => table.status === 'LIVRE').length} hint="Disponíveis para novos clientes" icon={CheckCheck} tone="success" />
+          <StatCard label="Mesas livres" value={freeTables.length} hint="Disponíveis para novos clientes" icon={CheckCheck} tone="success" />
           <StatCard label="Em atendimento" value={activeTables.filter((table) => table.status === 'OCUPADA').length} hint="Comandas em andamento" icon={Users} />
           <StatCard label="Conta pedida" value={activeTables.filter((table) => table.status === 'AGUARDANDO_CONTA').length} hint="Prontas para o fechamento" icon={Receipt} tone="brand" />
           <StatCard label="Consumo em aberto" value={formatBRL(tabs.filter((tab) => tab.status === 'OPEN').reduce((sum, tab) => sum + tab.total, 0))} hint="Total das comandas abertas" icon={ShoppingBag} />
         </div>
         {shiftNotice}
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div className="filter-bar" aria-label="Filtrar mesas por situação">
-            {(['ALL', 'READY', 'LIVRE', 'OCUPADA', 'AGUARDANDO_CONTA', 'RESERVADA'] as const).map((status) => <FilterChip key={status} active={filter === status} onClick={() => setFilter(status)} count={status === 'ALL' ? activeTables.length : status === 'READY' ? readyTables.length : activeTables.filter((table) => table.status === status).length}>{status === 'ALL' ? 'Todas' : status === 'READY' ? 'Para servir' : getTableStatusConfig(status).label}</FilterChip>)}
+            {filterOptions.map((opt) => (
+              <FilterChip
+                key={opt.key}
+                active={effectiveFilter === opt.key}
+                onClick={() => setFilter(opt.key)}
+                count={opt.count}
+              >
+                {opt.label}
+              </FilterChip>
+            ))}
           </div>
-          <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar mesa ou cliente" placeholder="Número da mesa ou cliente" className="w-full shrink-0 xl:w-64" />
+
+          <div className="flex items-center gap-2.5 w-full xl:w-auto">
+            <button
+              type="button"
+              disabled={!isShiftOpen}
+              onClick={() => setIsPickerOpen(true)}
+              className="btn-primary min-h-[44px] shrink-0 text-sm flex items-center justify-center gap-1.5 px-3.5"
+              title="Abrir uma nova mesa livre"
+            >
+              <Plus className="h-4 w-4" />
+              <span>Abrir mesa</span>
+            </button>
+            <SearchField
+              value={searchTerm}
+              onChange={setSearchTerm}
+              label="Buscar mesa ou cliente"
+              placeholder="Nº da mesa ou cliente"
+              className="w-full shrink-0 xl:w-64"
+            />
+          </div>
         </div>
-        {filteredTables.length ? <div className="table-grid">{filteredTables.map((table) => <TableCard key={table.id} table={table} tab={getTableTab(table.id)} disabled={!isShiftOpen} onOpen={() => askOpen(table)} onOrder={() => setSelectedTableId(table.id)} onBill={() => setTableForBill(table)} />)}</div> : <EmptyState title="Nenhuma mesa encontrada" description="Tente outro número, nome de cliente ou situação da mesa." action={<button type="button" className="btn-secondary" onClick={() => { setFilter('ALL'); setSearchTerm(''); }}>Limpar filtros</button>} />}
+
+        {filteredTables.length ? (
+          <div className="table-grid">
+            {filteredTables.map((table) => (
+              <TableCard
+                key={table.id}
+                table={table}
+                tab={getTableTab(table.id)}
+                itemCount={itemsOfTable(table.id).filter((i) => i.status !== 'CANCELLED').length}
+                disabled={!isShiftOpen}
+                onOpen={() => askOpen(table)}
+                onOrder={() => setSelectedTableId(table.id)}
+                onBill={() => setTableForBill(table)}
+                onPrint={() => void handlePrintTable(table)}
+                onTransfer={() => {
+                  const tab = getTableTab(table.id);
+                  if (tab) setTableToTransfer({ table, tab });
+                }}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-line bg-surface p-8 text-center shadow-card space-y-4 max-w-2xl mx-auto my-6">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-800">
+              <LayoutGrid className="h-7 w-7" />
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-ink">
+                {effectiveFilter === 'ACTIVE'
+                  ? 'Nenhuma mesa com comanda aberta no momento'
+                  : 'Nenhuma mesa encontrada'}
+              </h3>
+              <p className="mt-1 text-sm text-ink-muted">
+                {effectiveFilter === 'ACTIVE'
+                  ? 'O mapa de mesas e comandas exibe as mesas com atendimento ativo (ocupadas ou fechando conta). Você pode abrir uma mesa agora ou carregar as 10 mesas de exemplo da foto para testar a tela.'
+                  : 'Tente outro número, nome de cliente ou situação da mesa.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+              {effectiveFilter === 'ACTIVE' ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleLoadDemoTables}
+                    className="btn-primary min-h-[44px] px-5 text-sm font-bold flex items-center gap-2 shadow-sm"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Carregar 10 mesas da foto
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!isShiftOpen}
+                    onClick={() => setIsPickerOpen(true)}
+                    className="btn-secondary min-h-[44px] px-4 text-sm font-semibold flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Abrir comanda (Mesa 01 a 60)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFilter('ALL')}
+                    className="btn-secondary min-h-[44px] px-4 text-sm font-semibold"
+                  >
+                    Ver todas as 60 mesas
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    setFilter('ACTIVE');
+                    setSearchTerm('');
+                  }}
+                >
+                  Ver mesas ativas
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-ink-muted pt-1">
+              60 mesas cadastradas no salão. Próxima disponível: <strong>Mesa 01</strong>.
+            </p>
+          </div>
+        )}
+
+        {isPickerOpen && (
+          <Dialog label="Selecionar mesa para abrir" onClose={() => setIsPickerOpen(false)}>
+            <div className="dialog-panel bg-surface border border-line rounded-2xl w-full max-w-xl p-5 shadow-card space-y-4">
+              <div className="flex items-center justify-between border-b border-line pb-3">
+                <div>
+                  <h3 className="font-bold text-ink text-lg leading-none">Abrir nova mesa</h3>
+                  <p className="text-xs text-ink-muted mt-1">
+                    Toque no número da mesa disponível ({freeTables.length} livres) para iniciar a comanda
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsPickerOpen(false)}
+                  className="p-2 text-ink-muted hover:text-ink rounded-lg transition"
+                  aria-label="Fechar"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="grid grid-cols-4 xs:grid-cols-6 sm:grid-cols-8 gap-2 max-h-[60vh] overflow-y-auto pr-1 custom-scrollbar">
+                {freeTables.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setIsPickerOpen(false);
+                      askOpen(t);
+                    }}
+                    className="h-12 rounded-xl border border-line bg-surface hover:border-brand-500 hover:bg-brand-50 hover:text-brand-900 font-mono text-base font-bold text-ink flex items-center justify-center transition active:scale-95"
+                    aria-label={`Mesa ${String(t.number).padStart(2, '0')}`}
+                  >
+                    {String(t.number).padStart(2, '0')}
+                  </button>
+                ))}
+              </div>
+              {freeTables.length === 0 && (
+                <p className="py-6 text-center text-sm text-ink-muted">Todas as mesas estão ocupadas no momento.</p>
+              )}
+            </div>
+          </Dialog>
+        )}
+
         {openSheet}
         {tableForBill && <TableSettlementModal table={tableForBill} isOpen onClose={() => setTableForBill(null)} />}
+        {tableToTransfer && (
+          <TableTransferModal
+            isOpen={true}
+            sourceTable={tableToTransfer.table}
+            currentTab={tableToTransfer.tab}
+            onClose={() => setTableToTransfer(null)}
+            onSuccess={(newTable) => {
+              setTableToTransfer(null);
+              setSelectedTableId(newTable.id);
+            }}
+          />
+        )}
       </div>
     );
   }

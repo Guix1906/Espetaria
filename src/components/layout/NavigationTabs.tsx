@@ -1,4 +1,4 @@
-﻿import { X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Dialog } from '../ui/Dialog';
 import { BrandMark } from './BrandMark';
 import { NAVIGATION_GROUPS, PAGE_TITLES, type ActiveTab } from './navigation';
@@ -21,6 +21,7 @@ interface NavigationTabsProps {
 
 export function NavigationTabs({ allowed, activeTab, onChangeTab, openTablesCount, exhaustedCount, pendingProductionCount = 0, waitingBillCount = 0, activeDeliveriesCount = 0, isMobileOpen, onCloseMobile }: NavigationTabsProps) {
   const counts: Partial<Record<ActiveTab, number>> = {
+    waiter: openTablesCount,
     tables: openTablesCount,
     kds: pendingProductionCount,
     cashier: waitingBillCount,
