@@ -339,7 +339,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       );
       expect(html).toContain('Fechamento de conta');
       expect(html).toContain('Lance o pagamento para encerrar');
-      expect(html).toContain('Total devido');
+      expect(html).toContain('Total da conta');
       expect(html).toContain('Imprimir conta');
 
       // Garçom: depois de "Pediu a conta", aparece o botão para reimprimir
