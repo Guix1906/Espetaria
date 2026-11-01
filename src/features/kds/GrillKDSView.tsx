@@ -198,7 +198,7 @@ export const GrillKDSView: React.FC = () => {
       {tickets.length === 0 ? (
         <EmptyState title="Nada na brasa agora" description="Assim que um pedido com espeto for enviado, ele aparece aqui e sai na impressora." icon={Sparkles} />
       ) : (
-        <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3" aria-label="Pedidos na brasa">
+        <ul className="grid grid-cols-1 items-start gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Pedidos na brasa">
           {tickets.map((ticket) => {
             const kind = KIND_LABEL[ticket.kind];
             const isPending = Boolean(pending[ticket.key]);
@@ -208,45 +208,45 @@ export const GrillKDSView: React.FC = () => {
             return (
               <li key={ticket.key} className="flex flex-col rounded-xl border border-line bg-surface shadow-xs">
                 {/* Mesmo formato do cartão do Salão: nome em cima, itens e faixa colorida embaixo */}
-                <div className="flex min-h-[52px] items-center justify-between gap-2 px-3.5 py-2">
-                  <div className="min-w-0">
-                    <h2 className="truncate font-sans text-xl font-bold leading-tight tracking-tight text-ink tabular-nums">{ticket.title}</h2>
-                    <p className="flex items-center gap-1.5 text-xs text-ink-muted tabular-nums">
+                <div className="flex items-center justify-between gap-2 px-3 py-1">
+                  <div className="flex min-w-0 items-baseline gap-2">
+                    <h2 className="shrink-0 font-sans text-base font-bold leading-tight tracking-tight text-ink tabular-nums">{ticket.title}</h2>
+                    <p className="flex min-w-0 items-center gap-1.5 text-xs text-ink-muted tabular-nums">
                       {ticket.kind !== 'LOCAL' && <span className={`shrink-0 rounded-sm px-1.5 py-0.5 font-semibold ${kind.classes}`}>{kind.label}</span>}
                       <span className="truncate">{ticket.subtitle}</span>
                     </p>
                   </div>
                   {ticket.kind !== 'LOCAL' && (isPending ? (
-                    <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary min-h-11 shrink-0 px-3 text-sm">
+                    <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary min-h-9 shrink-0 px-2 text-xs">
                       <Undo2 className="h-4 w-4" aria-hidden="true" />Desfazer
                     </button>
                   ) : (
-                    <button type="button" onClick={() => markReady(ticket)} className="btn-success min-h-11 shrink-0 px-3 text-sm font-bold">
-                      <CheckCheck className="h-4 w-4" aria-hidden="true" />{ticket.kind === 'PICKUP' ? 'Retirada pronta' : 'Delivery pronto'}
+                    <button type="button" onClick={() => markReady(ticket)} className="btn-success min-h-9 shrink-0 px-2 text-xs font-bold">
+                      <CheckCheck className="h-4 w-4" aria-hidden="true" />Pronto
                     </button>
                   ))}
                 </div>
 
-                <ul className="flex-1 space-y-1.5 border-t border-line px-3.5 py-2.5">
+                <ul className="flex-1 space-y-0.5 border-t border-line px-3 py-1">
                   {ticket.items.map((item) => (
-                    <li key={item.id} className="text-xl leading-snug">
+                    <li key={item.id} className="text-base leading-tight">
                       <span className="font-mono font-bold tabular-nums text-accent-700">{item.quantity}x</span>{' '}
                       <span className="font-semibold text-ink">{item.name}</span>
-                      {item.doneness && <span className="ml-2 whitespace-nowrap rounded-sm bg-amber-100 px-2 py-0.5 text-sm font-bold text-amber-900">{formatDoneness(item.doneness)}</span>}
-                      {item.notes && <span className="block text-sm text-amber-800">Obs: {item.notes}</span>}
+                      {item.doneness && <span className="ml-1.5 whitespace-nowrap rounded-sm bg-amber-100 px-1.5 text-xs font-bold text-amber-900">{formatDoneness(item.doneness)}</span>}
+                      {item.notes && <span className="block text-xs text-amber-800">Obs: {item.notes}</span>}
                     </li>
                   ))}
-                  {ticket.notes && <li className="rounded-sm bg-amber-50 p-2 text-sm font-medium text-amber-900">Obs do pedido: {ticket.notes}</li>}
+                  {ticket.notes && <li className="rounded-sm bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-900">Obs do pedido: {ticket.notes}</li>}
                 </ul>
 
-                <div className={`flex items-center justify-between rounded-b-xl px-3.5 py-2 text-sm font-bold ${strip}`} role={isPending ? 'status' : undefined}>
+                <div className={`flex items-center justify-between rounded-b-xl px-3 py-0.5 text-xs font-bold ${strip}`} role={isPending ? 'status' : undefined}>
                   {isPending ? <span>Pronto! Avisando...</span> : (
                     <span className="flex items-center gap-3">
                       <span className="flex items-center gap-1" title="Espetos na brasa"><Flame className="h-4 w-4 opacity-90" aria-hidden="true" /><span className="tabular-nums">{units}</span></span>
                       {ticket.people !== undefined && <span className="flex items-center gap-1" title="Pessoas na mesa"><Users className="h-4 w-4 opacity-90" aria-hidden="true" /><span className="tabular-nums">{ticket.people}</span></span>}
                     </span>
                   )}
-                  <span className="font-mono text-base font-black"><KDSElapsedTimer createdAt={ticket.createdAt} compact /></span>
+                  <span className="font-mono text-sm font-black"><KDSElapsedTimer createdAt={ticket.createdAt} compact /></span>
                 </div>
               </li>
             );
