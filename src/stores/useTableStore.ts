@@ -37,6 +37,8 @@ export function stockStatusForCancel(status: OrderItemStatus, returnStock?: bool
 
 /** Abertura de comanda a caminho do banco: o primeiro pedido espera por ela para não chegar antes. */
 const pendingTabOpens = new Map<string, Promise<unknown>>();
+/** Pagamentos a caminho do banco: encerrar a conta espera por eles, senão o banco recusa por pagamento insuficiente. */
+const pendingPayments = new Map<string, Promise<unknown>>();
 
 interface OrderItemInput {
   productId: string;
@@ -893,13 +895,16 @@ export const useTableStore = create<TableState>((set, get) => ({
       tabs: get().tabs.map((t) => (t.id === tabId ? updatedTab : t)),
     });
 
-    void callRpc('add_payment_atomic', {
+    const paying: Promise<unknown> = Promise.resolve(pendingPayments.get(tabId)).then(() => callRpc('add_payment_atomic', {
       p_payment_id: newPayment.id,
       p_tab_id: tabId,
       p_amount: newPayment.amount,
       p_method: method,
       p_notes: newPayment.notes,
-    }, 'TableStore');
+    }, 'TableStore')).finally(() => {
+      if (pendingPayments.get(tabId) === paying) pendingPayments.delete(tabId);
+    });
+    pendingPayments.set(tabId, paying);
 
     logger.info({
       context: 'TableStore',
@@ -985,7 +990,7 @@ export const useTableStore = create<TableState>((set, get) => ({
       orderItems: updatedOrderItems,
     });
 
-    void callRpc('close_tab_atomic', { p_tab_id: tabId }, 'TableStore');
+    void Promise.resolve(pendingPayments.get(tabId)).then(() => callRpc('close_tab_atomic', { p_tab_id: tabId }, 'TableStore'));
 
     const items = get().getTabOrderItems(tabId);
 
