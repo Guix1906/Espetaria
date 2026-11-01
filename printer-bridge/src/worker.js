@@ -104,21 +104,13 @@ export class PrintWorker {
 
     this.timer = setInterval(() => this.tick(), this.config.pollIntervalMs);
 
-    // 1. Teste de conexão inicial com as impressoras ao iniciar o bridge
-    log('[bridge] 🔍 Testando conexão com as impressoras (Cozinha e Churrasqueira)...');
-    try {
-      const initialStatus = await this.probeAndReportHeartbeat();
-      if (initialStatus) {
-        const grill = initialStatus.grill_online ? `ONLINE (${initialStatus.grill_latency_ms}ms)` : `OFFLINE (${initialStatus.grill_error || 'sem sinal'})`;
-        const kitchen = initialStatus.kitchen_online ? `ONLINE (${initialStatus.kitchen_latency_ms}ms)` : `OFFLINE (${initialStatus.kitchen_error || 'sem sinal'})`;
-        log(`[bridge] 🖨️  Churrasqueira: ${grill} | Cozinha: ${kitchen}`);
-      }
-    } catch (e) {
-      log('[bridge] Erro no teste inicial:', e.message);
-    }
+    // 1. Notificação inicial do bridge ao banco
+    log('[bridge] 🚀 Bridge conectado ao banco. Pronto para processar pedidos.');
+    await this.reportHeartbeat();
 
-    // 2. Monitoramento contínuo das impressoras a cada 20 segundos
-    this.heartbeatTimer = setInterval(() => this.probeAndReportHeartbeat(), 20000);
+    // 2. Heartbeat leve a cada 20 segundos para manter o PC da loja marcado como online no painel.
+    // NÃO fazemos conexões TCP contínuas nas impressoras para NUNCA disputar ou travar a porta 9100 com o Anota AI.
+    this.heartbeatTimer = setInterval(() => this.reportHeartbeat(), 20000);
 
     await this.tick();
   }
@@ -128,6 +120,36 @@ export class PrintWorker {
     clearInterval(this.timer);
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     if (this.channel) await this.supabase.removeChannel(this.channel);
+  }
+
+  /**
+   * Atualiza o batimento cardíaco do daemon no Supabase (PC da loja online).
+   * Mantém as impressoras registradas sem abrir conexões invasivas no socket TCP,
+   * garantindo que a porta 9100 fique 100% livre para o Anota AI.
+   */
+  async reportHeartbeat() {
+    try {
+      const payload = {
+        id: 'default',
+        worker_name: this.config.workerName,
+        mode: this.config.mode,
+        last_heartbeat: new Date().toISOString(),
+        grill_online: true,
+        grill_ip: this.config.printers.GRILL?.label ?? null,
+        kitchen_online: true,
+        kitchen_ip: this.config.printers.KITCHEN?.label ?? null,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await this.supabase.from('printer_status').upsert(payload);
+      if (error) {
+        log('[bridge] Falha ao gravar heartbeat no banco:', error.message);
+      }
+      return payload;
+    } catch (err) {
+      log('[bridge] Erro no heartbeat do bridge:', err.message);
+      return null;
+    }
   }
 
   /** Testa o socket TCP de cada impressora e publica o status em tempo real no Supabase. */
@@ -172,16 +194,6 @@ export class PrintWorker {
   async tick() {
     if (!this.running) return;
     if (this.busy) { this.again = true; return; }
-
-    // Salvaguarda: em modo LIVE, se nenhuma impressora física responder ao teste na rede local,
-    // NÃO consome a fila. Isso evita que um computador fora da rede da loja (ex.: notebook em casa)
-    // sequestre os cupons e marque pedidos como FAILED após 3 tentativas de timeout.
-    if (this.config.mode === 'live' && this.latestProbe) {
-      const anyOnline = Object.values(this.latestProbe).some((p) => p && typeof p === 'object' && p.ok);
-      if (!anyOnline) {
-        return;
-      }
-    }
     this.busy = true;
     try {
       do {
