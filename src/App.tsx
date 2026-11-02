@@ -19,7 +19,8 @@ import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { DailyStockView } from './features/stock/DailyStockView';
 import { WaiterModule } from './features/waiter/WaiterModule';
 import { WaiterPortal } from './features/waiter/WaiterPortal';
-import { WhatsAppConnectView } from './features/whatsapp/WhatsAppConnectView';
+import { TopTabs } from './components/layout/TopTabs';
+import { WhatsAppView } from './features/whatsapp/WhatsAppView';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { AuthShell } from './features/auth/AuthShell';
@@ -119,6 +120,10 @@ function AdminWorkspace() {
   const mainRef = useRef<HTMLElement>(null);
   const previousTab = useRef(activeTab);
 
+  // Aba "Sistema" volta para a última tela aberta antes do WhatsApp
+  const lastSystemTab = useRef<ActiveTab>(activeTab === 'whatsapp' ? (allowedTabs[0] ?? 'waiter') : activeTab);
+  if (activeTab !== 'whatsapp') lastSystemTab.current = activeTab;
+
   const setActiveTab = (tab: ActiveTab) => {
     setRequestedTab(tab);
     try {
@@ -169,10 +174,11 @@ function AdminWorkspace() {
   return (
     <div className="app-shell">
       <a href="#main-content" className="skip-link">Pular para o conteúdo</a>
+      <TopTabs whatsappActive={activeTab === 'whatsapp'} canUseWhatsApp={allowedTabs.includes('whatsapp')} onSystem={() => setActiveTab(lastSystemTab.current)} onWhatsApp={() => setActiveTab('whatsapp')} />
       <NavigationTabs allowed={allowedTabs} activeTab={activeTab} onChangeTab={setActiveTab} openTablesCount={openTablesCount} exhaustedCount={exhaustedCount} pendingProductionCount={pendingProductionCount} waitingBillCount={waitingBillCount} activeDeliveriesCount={activeDeliveriesCount} isMobileOpen={isMobileMenuOpen} onCloseMobile={() => setIsMobileMenuOpen(false)} />
       <div className="app-workspace flex flex-col">
         <PWAInstallBanner />
-        <Header activeTab={activeTab} onChangeTab={setActiveTab} onOpenShiftClick={() => setIsShiftModalOpen(true)} onMenuClick={() => setIsMobileMenuOpen(true)} isMenuOpen={isMobileMenuOpen} />
+        <Header activeTab={activeTab} onOpenShiftClick={() => setIsShiftModalOpen(true)} onMenuClick={() => setIsMobileMenuOpen(true)} isMenuOpen={isMobileMenuOpen} />
         <main id="main-content" ref={mainRef} tabIndex={-1} aria-label={PAGE_TITLES[activeTab]} className="min-w-0 flex-1 pb-8 outline-none">
           {/* key: ao trocar de tela, um erro da tela anterior não fica preso */}
           <ErrorBoundary key={activeTab} area={activeTab} inline>
@@ -181,7 +187,7 @@ function AdminWorkspace() {
           {activeTab === 'cashier' && <CashierModule />}
           {activeTab === 'delivery' && <DeliveryManagementView />}
           {activeTab === 'menu' && <DigitalMenuQrView />}
-          {activeTab === 'whatsapp' && <WhatsAppConnectView />}
+          {activeTab === 'whatsapp' && <WhatsAppView onNavigateTab={setActiveTab} />}
           {activeTab === 'products' && <ProductCatalogManageView />}
           {activeTab === 'finance' && <FinanceView />}
           {activeTab === 'reports' && <ReportsView />}

@@ -31,10 +31,12 @@ export function NavigationTabs({ allowed, activeTab, onChangeTab, openTablesCoun
 
   const content = (mobile: boolean) => (
     <>
-      <div className="flex items-center justify-between gap-2 border-b border-white/10 px-5 py-4">
-        <BrandMark inverted />
-        {mobile && <button type="button" onClick={onCloseMobile} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-300 hover:bg-white/10" aria-label="Fechar menu"><X className="h-5 w-5" /></button>}
-      </div>
+      {mobile && (
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-5 py-4">
+          <BrandMark inverted />
+          <button type="button" onClick={onCloseMobile} className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-stone-300 hover:bg-white/10" aria-label="Fechar menu"><X className="h-5 w-5" /></button>
+        </div>
+      )}
       <nav aria-label={mobile ? 'Menu principal' : 'Navegação principal'} className="min-h-0 flex-1 space-y-5 overflow-y-auto px-3 py-4">
         {NAVIGATION_GROUPS.map((group) => ({ ...group, items: group.items.filter(({ id }) => allowed.includes(id)) }))
           .filter((group) => group.items.length > 0)
@@ -69,7 +71,7 @@ export function NavigationTabs({ allowed, activeTab, onChangeTab, openTablesCoun
 
   return (
     <>
-      <aside className="app-sidebar fixed inset-y-0 left-0 z-40 hidden w-[248px] flex-col lg:flex">{content(false)}</aside>
+      <aside className="app-sidebar fixed bottom-0 left-0 top-[var(--app-topbar-height)] z-20 hidden w-[248px] flex-col lg:flex">{content(false)}</aside>
       {isMobileOpen && <Dialog label="Navegação do sistema" onClose={onCloseMobile} placement="navigation"><div className="dialog-panel app-sidebar flex flex-col !border-0">{content(true)}</div></Dialog>}
     </>
   );

@@ -7,7 +7,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { corsHeadersFor } from '../_shared/cors.ts';
-import { connectedAccount, connectionState, connectQr, logoutInstance } from '../_shared/evolution.ts';
+import { connectedAccount, connectionState, connectQr, logoutInstance, sendText } from '../_shared/evolution.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsHeadersFor(req);
@@ -25,8 +25,31 @@ Deno.serve(async (req) => {
   if (!caller?.is_active || !['MASTER', 'GERENTE'].includes(caller.role)) return json({ error: 'Sem permissão.' }, 403);
 
   const provider = (Deno.env.get('WHATSAPP_PROVIDER') || '').toLowerCase();
-  const { action } = await req.json().catch(() => ({ action: null }));
+  const { action, phone, text } = await req.json().catch(() => ({ action: null, phone: null, text: null }));
   try {
+    if (action === 'send') {
+      const body = String(text ?? '').trim().slice(0, 4000);
+      const to = String(phone ?? '');
+      if (provider !== 'evolution') return json({ error: 'Envio pelo painel exige a Evolution API.' }, 400);
+      if (!to || !body) return json({ error: 'Conversa ou mensagem vazia.' }, 400);
+      const { data: known } = await admin.from('whatsapp_conversations').select('phone').eq('phone', to).maybeSingle();
+      if (!known) return json({ error: 'Conversa não encontrada.' }, 404);
+      const id = await sendText(to, body);
+      await admin.from('whatsapp_bot_messages').upsert(
+        { phone: to, direction: 'HUMAN', body, provider_message_id: id },
+        { onConflict: 'provider_message_id', ignoreDuplicates: true },
+      );
+      // Mesma regra de responder pelo celular: a equipe assumiu, o robô sai da conversa
+      const { data: settings } = await admin.from('restaurant_settings').select('whatsapp_bot').limit(1).maybeSingle();
+      const bot = settings?.whatsapp_bot ?? {};
+      const hours = Number(bot.pause_hours) || 4;
+      await admin.from('whatsapp_conversations').update({
+        last_message_at: new Date().toISOString(),
+        last_message_preview: body.slice(0, 120),
+        ...(bot.pause_on_human === false ? {} : { bot_paused_until: new Date(Date.now() + hours * 3_600_000).toISOString(), pause_reason: 'HUMAN' }),
+      }).eq('phone', to);
+      return json({ ok: true });
+    }
     if (action === 'connect') return json(await connectQr());
     if (action === 'logout') {
       await logoutInstance();

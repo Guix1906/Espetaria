@@ -44,8 +44,8 @@ describe('Shared interface and accessibility', () => {
   it('keeps input borders distinguishable from the field surface', () => expect(contrast(color('line-strong'), color('surface'))).toBeGreaterThanOrEqual(3));
   it('retains every system screen in navigation without duplicate entries', () => {
     const entries = NAVIGATION_GROUPS.flatMap((group) => group.items.map((item) => item.id));
-    // 'tables' é atalho antigo da tela Salão ('waiter'), sem entrada própria no menu
-    const screens = Object.keys(PAGE_TITLES).filter((id) => id !== 'tables');
+    // 'tables' é atalho antigo da tela Salão ('waiter'), sem entrada própria no menu; 'whatsapp' fica nas abas do topo
+    const screens = Object.keys(PAGE_TITLES).filter((id) => id !== 'tables' && id !== 'whatsapp');
     expect(new Set(entries).size).toBe(entries.length);
     expect([...entries].sort()).toEqual(screens.sort());
   });

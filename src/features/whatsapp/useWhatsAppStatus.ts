@@ -11,8 +11,8 @@ export interface WhatsAppStatus {
 }
 
 /** Fala com a Edge Function whatsapp-status: a chave da Evolution nunca chega ao navegador. */
-export async function whatsAppAction<T>(action: 'status' | 'connect' | 'logout'): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('whatsapp-status', { body: { action } });
+export async function whatsAppAction<T>(action: 'status' | 'connect' | 'logout' | 'send', extra?: { phone: string; text: string }): Promise<T> {
+  const { data, error } = await supabase.functions.invoke('whatsapp-status', { body: { action, ...extra } });
   if (error) throw new Error(error.message);
   if (data?.error && action !== 'status') throw new Error(data.error);
   return data as T;

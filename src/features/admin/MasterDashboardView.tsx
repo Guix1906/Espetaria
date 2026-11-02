@@ -2,11 +2,10 @@ import { StatusTag } from '../../components/ui/StatusTag';
 import { VoidTabButton } from '../tables/VoidTabButton';
 import { StockSnapshot } from './StockSnapshot';
 import { LiveBoard } from './LiveBoard';
-import { AlertCircle, AlertTriangle, ArrowRight, Bike, ChevronDown, Clock, Flame, Lock, PackageCheck, PieChart, Plus, ShieldCheck, UtensilsCrossed } from 'lucide-react';
+import { AlertCircle, AlertTriangle, ArrowRight, Bike, ChevronDown, Clock, Flame, Lock, PackageCheck, PieChart, Plus, UtensilsCrossed } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
 import { usePrinterHealth } from '../../components/layout/PrinterStatusWidget';
-import { PageHeader } from '../../components/ui/PageHeader';
 import { formatElapsedMinutes } from '../../lib/formatters';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
@@ -125,13 +124,17 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
 
   return (
     <div className="page-layout">
-      <PageHeader
-        eyebrow="Gestão da espetaria"
-        title="Visão geral"
-        description={<>O que está acontecendo agora na casa e no delivery.<span className="mt-1 block font-medium text-ink-secondary">{currentShift ? currentShift.name : 'Turno fechado'}</span></>}
-        icon={ShieldCheck}
-        actions={currentShift?.status === 'ABERTO' && <button type="button" onClick={() => setIsCloseModalOpen(true)} className="btn-secondary min-h-[44px] text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Lock className="h-4 w-4" aria-hidden="true" />Fechar turno</button>}
-      />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-[12rem] flex-1">
+          <p className="text-[13px] text-ink-muted first-letter:uppercase">{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</p>
+          <h1 className="text-[28px] font-semibold leading-tight text-ink">Visão geral</h1>
+        </div>
+        <span title={currentShift?.name} className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${currentShift ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>
+          <span className={`h-2 w-2 rounded-full ${currentShift ? 'bg-emerald-600' : 'bg-amber-600'}`} aria-hidden="true" />{currentShift ? 'Turno aberto' : 'Turno fechado'}
+        </span>
+        {currentShift?.status === 'ABERTO' && <button type="button" onClick={() => setIsCloseModalOpen(true)} className="btn-secondary min-h-[44px] text-rose-700 hover:bg-rose-50 hover:text-rose-800"><Lock className="h-4 w-4" aria-hidden="true" />Fechar turno</button>}
+        {onNavigateTab && <button type="button" onClick={() => go('waiter')} className="btn-primary min-h-[44px]"><Plus className="h-4 w-4" aria-hidden="true" />Novo pedido</button>}
+      </div>
 
       {!currentShift && (
         <div className="notice flex flex-wrap items-center justify-between gap-3 border-amber-200 bg-amber-50 text-amber-900" role="status">
@@ -179,7 +182,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
       </section>
 
       {/* MOVIMENTO AGORA EM 3 COLUNAS */}
-      <LiveBoard now={now} openTabs={d.salon.openTabs} tabInfo={d.tabInfo} readyOldest={d.salon.readyOldest} activeDeliveries={activeDeliveries} lateIds={lateIds} go={onNavigateTab ? go : undefined} goTable={onNavigateTab ? goTable : undefined} />
+      <LiveBoard now={now} openTabs={d.salon.openTabs} tabInfo={d.tabInfo} activeDeliveries={activeDeliveries} lateIds={lateIds} go={onNavigateTab ? go : undefined} goTable={onNavigateTab ? goTable : undefined} />
 
       {/* MESAS EM ATENDIMENTO (ações: lançar, cobrar, anular) */}
       <Block id="tabs-title" title={`Mesas em atendimento (${d.salon.openTabs.length})`} icon={UtensilsCrossed} action={onNavigateTab && <button type="button" onClick={() => go('waiter')} className={actionBtn}><Plus className="h-4 w-4" />Novo atendimento</button>}>

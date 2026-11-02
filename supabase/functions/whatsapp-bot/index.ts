@@ -151,7 +151,8 @@ async function handle(payload: unknown) {
 
   const { data: settings } = await db.from('restaurant_settings').select('*').limit(1).maybeSingle();
   const bot = resolveBotSettings(settings?.whatsapp_bot);
-  if (!isBotAllowedFor(msg.phone, bot)) return; // fora da lista: nada é gravado
+  // Fora da lista o robô não responde, mas a conversa fica gravada para a tela WhatsApp do painel
+  const botAllowed = isBotAllowedFor(msg.phone, bot);
 
   // Mensagem enviada pelo próprio número da loja
   if (msg.kind === 'self') {
@@ -185,6 +186,16 @@ async function handle(payload: unknown) {
     { onConflict: 'provider_message_id', ignoreDuplicates: true },
   ).select('id');
   if (msg.messageId && !inserted?.length) return;
+
+  if (!botAllowed) {
+    await db.from('whatsapp_conversations').upsert({
+      phone: msg.phone,
+      ...(msg.senderName ? { customer_name: msg.senderName } : {}),
+      last_message_at: new Date().toISOString(),
+      last_message_preview: (msg.text || `[${msg.media}]`).slice(0, 120),
+    }, { onConflict: 'phone' });
+    return;
+  }
 
   // Consultas independentes em paralelo (cada ida ao banco custa tempo de resposta)
   const [{ data: conversation }, { count }, { data: history }, context] = await Promise.all([

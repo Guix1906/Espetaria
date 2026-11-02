@@ -1,5 +1,5 @@
 import type { AppRole } from '../../types/enums';
-import { BarChart3, Bike, ClipboardList, Landmark, LayoutDashboard, LayoutGrid, MessageCircle, PackageCheck, PackagePlus, Receipt, Settings, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
+import { BarChart3, Bike, ClipboardList, Landmark, LayoutDashboard, LayoutGrid, PackageCheck, PackagePlus, Receipt, Settings, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
 
 export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'whatsapp' | 'products' | 'master' | 'finance' | 'reports' | 'stock' | 'audit' | 'team' | 'settings';
 
@@ -29,7 +29,6 @@ export const NAVIGATION_GROUPS = [
     { id: 'cashier', icon: Receipt },
     { id: 'delivery', icon: Bike },
     { id: 'menu', icon: ClipboardList },
-    { id: 'whatsapp', icon: MessageCircle },
   ] },
   { label: 'Controle', items: [
     { id: 'products', icon: PackagePlus },
