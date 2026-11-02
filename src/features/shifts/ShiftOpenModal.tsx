@@ -643,7 +643,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               className="w-full bg-surface border border-line-strong rounded-md px-3.5 py-2 text-base sm:text-sm text-ink placeholder-ink-muted focus:outline-none focus:ring-1 focus:ring-brand-600" />
           </div>
 
-          <div className="pt-2 space-y-2">
+          <div className="sticky -bottom-5 z-10 -mx-5 -mb-5 space-y-2 border-t border-line bg-surface px-5 py-3">
             {disabledCount > 0 && (
               <p className="text-sm font-semibold text-rose-800 flex items-center gap-1.5" role="status">
                 <Ban className="w-4 h-4 shrink-0 text-rose-600" />
@@ -655,7 +655,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 {missingCount === 1 ? '1 produto sem quantidade' : `${missingCount} produtos sem quantidade`} (ficam fora do turno).
               </p>
             )}
-            <button type="submit" className="sticky bottom-0 z-10 btn-primary w-full h-12 rounded-xl text-[15px] font-semibold flex items-center justify-center gap-2">
+            <button type="submit" className="btn-primary w-full h-12 rounded-xl text-[15px] font-semibold flex items-center justify-center gap-2">
               <CheckCircle2 className="w-5 h-5" />
               <span>Confirmar e abrir turno</span>
             </button>
