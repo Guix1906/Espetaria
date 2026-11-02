@@ -45,7 +45,7 @@ function layout() {
 }
 
 function createWindow() {
-  win = new BaseWindow({ width: 1366, height: 800, minWidth: 900, minHeight: 600, title: 'Ponto', autoHideMenuBar: true });
+  win = new BaseWindow({ width: 1366, height: 800, minWidth: 900, minHeight: 600, title: 'Ponto', icon: path.join(__dirname, 'icon.png'), autoHideMenuBar: true });
 
   systemView = new WebContentsView({
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false },
