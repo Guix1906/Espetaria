@@ -15,7 +15,7 @@ const formatPhone = (n: string) => {
 };
 
 /** Liga o celular da loja ao sistema: é este WhatsApp que envia os avisos e atende pelo robô. */
-export function WhatsAppConnectView() {
+export function WhatsAppConnectView({ embedded = false }: { embedded?: boolean }) {
   const confirm = useConfirm();
   const [qr, setQr] = useState<{ image: string | null; pairingCode: string | null } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,8 +64,8 @@ export function WhatsAppConnectView() {
   };
 
   return (
-    <div className="page-layout">
-      <PageHeader eyebrow="Atendimento" title="WhatsApp" description="Ligue o celular da loja ao sistema para enviar os avisos de pedido e atender pelo robô." icon={MessageCircle} />
+    <div className={embedded ? 'space-y-4' : 'page-layout'}>
+      {!embedded && <PageHeader eyebrow="Atendimento" title="WhatsApp" description="Ligue o celular da loja ao sistema para enviar os avisos de pedido e atender pelo robô." icon={MessageCircle} />}
 
       <section className="surface-card max-w-3xl space-y-4 p-4 sm:p-5" aria-live="polite">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -103,13 +103,13 @@ export function WhatsAppConnectView() {
         )}
       </section>
 
-      <section className="surface-card flex max-w-3xl flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
+      {!embedded && <section className="surface-card flex max-w-3xl flex-wrap items-center justify-between gap-3 p-4 sm:p-5">
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold text-ink">Ler e responder conversas</h2>
           <p className="text-sm text-ink-muted">O WhatsApp Web abre em outra aba, porque o WhatsApp não permite que ele fique dentro de outro sistema. Lá você lê um QR Code próprio.</p>
         </div>
         <a href="https://web.whatsapp.com" target="_blank" rel="noreferrer" className="btn-secondary min-h-[44px]"><ExternalLink className="h-4 w-4" aria-hidden="true" />Abrir WhatsApp Web</a>
-      </section>
+      </section>}
     </div>
   );
 }

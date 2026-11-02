@@ -35,7 +35,7 @@ export function TopTabs({ whatsappActive, canUseWhatsApp, onSystem, onWhatsApp, 
       <div className="px-2 pb-2 lg:pr-4 [&_*]:!text-white"><PontoLogo size={20} /></div>
       <button type="button" onClick={onSystem} aria-current={systemActive ? 'page' : undefined} className={tabClass(systemActive)}>Sistema</button>
       {canUseWhatsApp && desktopWeb && <button type="button" onClick={desktopWeb.onOpen} aria-current={webActive ? 'page' : undefined} className={tabClass(webActive)}>WhatsApp</button>}
-      {canUseWhatsApp && <WhatsAppTab label={desktopWeb ? 'Conversas' : 'WhatsApp'} active={whatsappActive && !webActive} onClick={onWhatsApp} />}
+      {canUseWhatsApp && !desktopWeb && <WhatsAppTab label="WhatsApp" active={whatsappActive} onClick={onWhatsApp} />}
     </nav>
   );
 }

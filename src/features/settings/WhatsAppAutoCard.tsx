@@ -14,6 +14,7 @@ import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import type { WhatsAppEvent } from '../../types/domain';
 import { publicAppUrl } from '../../lib/publicUrl';
+import { WhatsAppConnectView } from '../whatsapp/WhatsAppConnectView';
 
 /** URL da Edge Function que envia as mensagens (derivada do projeto Supabase). */
 function defaultDispatchUrl(): string {
@@ -44,6 +45,7 @@ type ConnectionResult = { connected?: boolean; state?: string; provider?: string
 function ConnectionCheck() {
   const [checking, setChecking] = useState(false);
   const [result, setResult] = useState<ConnectionResult | null>(null);
+  const [showConnect, setShowConnect] = useState(false);
 
   const check = async () => {
     setChecking(true);
@@ -66,6 +68,9 @@ function ConnectionCheck() {
       <button type="button" className="btn-secondary text-xs" onClick={check} disabled={checking}>
         {checking ? 'Verificando...' : 'Testar conexão do WhatsApp'}
       </button>
+      <button type="button" className="btn-secondary text-xs" aria-expanded={showConnect} onClick={() => setShowConnect(!showConnect)}>
+        {showConnect ? 'Fechar QR Code do robô' : 'QR Code do robô'}
+      </button>
       {result && (
         <span className={result.connected ? 'font-semibold text-emerald-700' : 'font-semibold text-red-700'}>
           {result.connected
@@ -73,6 +78,7 @@ function ConnectionCheck() {
             : `Não conectado${result.state && result.state !== 'error' ? ` (estado: ${result.state})` : ''}${result.error ? ` — ${result.error}` : ''}`}
         </span>
       )}
+      {showConnect && <div className="w-full"><WhatsAppConnectView embedded /></div>}
     </div>
   );
 }

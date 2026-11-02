@@ -118,7 +118,8 @@ function AdminWorkspace() {
   const allowedTabs = tabsForRole(currentProfile.role);
   const [requestedTab, setRequestedTab] = useState<ActiveTab>(() => getInitialAdminTab(allowedTabs));
   // Nunca renderiza uma tela fora das permissões do papel atual
-  const activeTab: ActiveTab = allowedTabs.includes(requestedTab) ? requestedTab : (allowedTabs[0] ?? 'waiter');
+  // No programa do PC não existe a tela de Conversas: a aba WhatsApp é o WhatsApp Web
+  const activeTab: ActiveTab = allowedTabs.includes(requestedTab) && !(window.pontoDesktop && requestedTab === 'whatsapp') ? requestedTab : (allowedTabs[0] ?? 'waiter');
   const [isShiftModalOpen, setIsShiftModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
