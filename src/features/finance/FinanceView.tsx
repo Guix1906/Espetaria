@@ -91,7 +91,7 @@ export function GroupingPicker({ value, onChange }: { value: CashFlowGrouping; o
   const options: { id: CashFlowGrouping; label: string }[] = [{ id: 'day', label: 'Dia' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'year', label: 'Ano' }];
   return (
     <div role="group" aria-label="Agrupar por" className="inline-flex rounded-xl border border-line bg-surface p-0.5">
-      {options.map((o) => <button key={o.id} type="button" aria-pressed={value === o.id} onClick={() => onChange(o.id)} className={`h-9 min-h-0 rounded-lg px-3 text-sm font-medium ${value === o.id ? 'bg-brand-950 text-white' : 'text-ink-secondary hover:text-ink'}`}>{o.label}</button>)}
+      {options.map((o) => <button key={o.id} type="button" aria-pressed={value === o.id} onClick={() => onChange(o.id)} className={`h-11 rounded-lg px-3 text-sm font-medium ${value === o.id ? 'bg-brand-950 text-white' : 'text-ink-secondary hover:text-ink'}`}>{o.label}</button>)}
     </div>
   );
 }

@@ -4,6 +4,8 @@ import { usePrintStore } from '../../stores/usePrintStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { Dialog } from '../ui/Dialog';
 
+const BANNER_ROLES: string[] = ['MASTER', 'GERENTE', 'CAIXA'];
+
 export const usePrinterHealth = () => {
   const { printerStatus, jobs } = usePrintStore();
   const [now, setNow] = useState(() => Date.now());
@@ -44,7 +46,7 @@ export const PrinterAlertBanner: React.FC = () => {
   const { currentProfile } = useAuthStore();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const isManagerOrCashier = ['MASTER', 'GERENTE', 'CAIXA'].includes(currentProfile.role);
+  const isManagerOrCashier = BANNER_ROLES.includes(currentProfile.role);
 
   if (allOk || !isManagerOrCashier) return null;
 
@@ -53,7 +55,7 @@ export const PrinterAlertBanner: React.FC = () => {
       <div className="bg-rose-600 text-white px-4 py-2 text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 shadow-md animate-fadeIn">
         <div className="flex items-center gap-2 min-w-0">
           <AlertTriangle className="w-4 h-4 shrink-0 text-amber-300" />
-          <span className="truncate">
+          <span>
             {!isBridgeAlive
               ? 'Computador de impressão local da loja está desconectado. Verifique se o PC da loja está ligado.'
               : `Atenção: ${!isKitchenOk ? 'Impressora da Cozinha (192.168.3.12)' : ''}${
@@ -64,7 +66,7 @@ export const PrinterAlertBanner: React.FC = () => {
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
-          className="bg-white text-rose-900 px-3 py-1 rounded-lg text-xs font-bold hover:bg-rose-50 transition shrink-0 shadow-xs"
+          className="min-h-[44px] bg-white text-rose-900 px-3 py-1 rounded-lg text-xs font-bold hover:bg-rose-50 transition shrink-0 shadow-xs"
         >
           Diagnosticar / Testar
         </button>
@@ -77,7 +79,11 @@ export const PrinterAlertBanner: React.FC = () => {
 
 export const PrinterStatusWidget: React.FC = () => {
   const { isBridgeAlive, isGrillOk, isKitchenOk, allOk } = usePrinterHealth();
+  const { currentProfile } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
+
+  // Com problema, quem vê a faixa vermelha (PrinterAlertBanner) não precisa do mesmo aviso aqui
+  if (!allOk && BANNER_ROLES.includes(currentProfile.role)) return null;
 
   return (
     <>

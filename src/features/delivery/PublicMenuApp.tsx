@@ -116,7 +116,7 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
     <div role="radiogroup" aria-label={label} className="flex rounded-md bg-surface-muted p-1">
       {options.map((o) => (
         <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}
-          className={`min-h-[40px] flex-1 rounded-md px-2 text-[15px] ${value === o.id ? 'bg-surface font-semibold text-ink shadow-[0_1px_2px_rgba(43,33,28,.08)]' : 'font-medium text-ink-muted'}`}>{o.label}</button>
+          className={`min-h-[44px] flex-1 rounded-md px-2 text-[15px] ${value === o.id ? 'bg-surface font-semibold text-ink shadow-[0_1px_2px_rgba(43,33,28,.08)]' : 'font-medium text-ink-muted'}`}>{o.label}</button>
       ))}
     </div>
   );
@@ -315,7 +315,8 @@ export function PublicMenuApp() {
     Object.values(sectionsRef.current).forEach((el) => el && io.observe(el));
     return () => io.disconnect();
   }, [groups, step]);
-  useEffect(() => { if (!activeCat && groups[0]) setActiveCat(groups[0].name); }, [groups, activeCat]);
+  // No início da página vale a 1ª categoria, mesmo se a lista mudar depois de carregar
+  useEffect(() => { if (groups[0] && (!activeCat || window.scrollY < 80)) setActiveCat(groups[0].name); }, [groups]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const chip = document.getElementById(`chip-${slug(activeCat)}`);
     const bar = chip?.parentElement;
@@ -336,6 +337,12 @@ export function PublicMenuApp() {
     if (p.allows_doneness) { setSheetProduct(p); return; }
     const e = tryAdd(p, 1); if (e) setMenuError(e);
   };
+
+  useEffect(() => {
+    if (!menuError) return;
+    const id = window.setTimeout(() => setMenuError(null), 5000);
+    return () => window.clearTimeout(id);
+  }, [menuError]);
 
   const saveCustomer = (patch: Partial<Customer>) => setCustomer((c) => { const n = { ...c, ...patch }; try { localStorage.setItem(SAVED_KEY, JSON.stringify(n)); } catch { /* sem armazenamento */ } return n; });
 
@@ -720,7 +727,7 @@ export function PublicMenuApp() {
         <header className="sticky top-0 z-30 border-b border-line bg-surface">
           <div className="mx-auto flex h-[76px] max-w-[1366px] items-center gap-4 px-8">
             {logo}
-            <div className="min-w-0 flex-1"><p className="truncate text-[19px] font-semibold">{settings.name}</p>{statusLine}</div>
+            <div className="min-w-0 flex-1"><h1 className="truncate text-[19px] font-semibold">{settings.name}</h1>{statusLine}</div>
             <div className="w-[320px]">{searchBox}</div>
             <div className="w-[300px]"><Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={[{ id: 'DELIVERY', label: 'Entrega' }, { id: 'PICKUP', label: 'Retirada' }]} /></div>
           </div>
@@ -732,7 +739,6 @@ export function PublicMenuApp() {
           <main className="min-w-0 space-y-8 border-l border-line px-8 py-6">
             {trackingBanner}
             {closedNotice}
-            {menuError && <Alert>{menuError}</Alert>}
             {groups.length === 0 && <p className="py-16 text-center text-[16px] text-ink-muted">Nada encontrado para “{query}”.</p>}
             {groups.map((g) => (
               <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
@@ -761,7 +767,7 @@ export function PublicMenuApp() {
     screen = (
       <div className="mx-auto max-w-xl pb-32">
         <header className="border-b border-line px-5 pb-4 pt-2">
-          <div className="flex items-center gap-3 pt-2">{logo}<div className="min-w-0"><p className="truncate text-[19px] font-semibold leading-tight">{settings.name}</p>{statusLine}</div></div>
+          <div className="flex items-center gap-3 pt-2">{logo}<div className="min-w-0"><h1 className="truncate text-[19px] font-semibold leading-tight">{settings.name}</h1>{statusLine}</div></div>
           <div className="mt-4 space-y-3">
             <Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={typeOptions} />
             {searchBox}
@@ -773,11 +779,10 @@ export function PublicMenuApp() {
         <main className="space-y-6 px-5 pt-4">
           {trackingBanner}
           {closedNotice}
-          {menuError && <Alert>{menuError}</Alert>}
           {groups.length === 0 && <p className="py-16 text-center text-[16px] text-ink-muted">Nada encontrado para “{query}”.</p>}
           {groups.map((g) => (
             <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
-              <h2 className="text-sm font-semibold text-ink-secondary">{g.name} · {g.items.length} {g.items.length === 1 ? 'item' : 'itens'}</h2>
+              <h2 className="text-[20px] font-semibold">{g.name}</h2>
               {g.name === COMBOS && <p className="mt-0.5 text-[14px] text-ink-muted">{COMBO_SIDES}</p>}
               <ul>{g.items.map((p) => productRow(p, g.name === COMBOS))}</ul>
             </section>
@@ -800,6 +805,8 @@ export function PublicMenuApp() {
   return (
     <div className="min-h-screen bg-surface font-sans text-ink">
       {screen}
+      {/* Erro ao adicionar: fica à vista em qualquer ponto da rolagem */}
+      {menuError && step === 'menu' && <div className="fixed inset-x-4 bottom-[88px] z-40 mx-auto max-w-md lg:bottom-6"><Alert>{menuError}</Alert></div>}
       {sheetProduct && (
         <ProductSheet product={sheetProduct} onClose={() => setSheetProduct(null)} onAdd={(q, d, n) => { const e = tryAdd(sheetProduct, q, d, n); if (!e) setSheetProduct(null); return e; }} />
       )}

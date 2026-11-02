@@ -95,7 +95,7 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
     <section className="space-y-3" aria-label="Movimento agora">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-md bg-surface-muted p-1" role="group" aria-label="Filtrar por canal">
-          {FILTERS.map((f) => <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={`min-h-[36px] rounded-sm px-3 text-sm font-medium ${filter === f ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{f}</button>)}
+          {FILTERS.map((f) => <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={`min-h-[44px] rounded-sm px-3 text-sm font-medium ${filter === f ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{f}</button>)}
         </div>
         <label className="relative min-w-[12rem] flex-1">
           <span className="sr-only">Buscar mesa, cliente ou pedido</span>

@@ -286,7 +286,6 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               </span>
               {isRice(p) && selectedRiceFlavors.length > 0 && !isDisabled && (
                 <span className="inline-flex items-center gap-1 font-semibold text-xs text-brand-800 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
-                  <span>🍚</span>
                   <span>Sabor: {selectedRiceFlavors.join(' & ')}</span>
                 </span>
               )}
@@ -465,7 +464,6 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 border-b border-line pb-2.5">
                 <div>
                   <h3 className="font-bold text-ink text-sm flex items-center gap-2">
-                    <span className="text-base">🍚</span>
                     <span>Arroz do Dia & Porções Preparadas</span>
                   </h3>
                   <p className="text-xs text-ink-muted mt-0.5">
@@ -495,7 +493,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                     <option value="" disabled>-- Selecionar da lista de arrozes cadastrados --</option>
                     {allRegisteredRices.map((r) => (
                       <option key={r} value={r}>
-                        🍚 {r} {selectedRiceFlavors.includes(r) ? '✓ (Ativo)' : ''}
+                        {r} {selectedRiceFlavors.includes(r) ? '✓ (Ativo)' : ''}
                       </option>
                     ))}
                     <option value="__NEW__">➕ Digitar outro sabor de arroz...</option>
@@ -560,7 +558,6 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 {selectedRiceFlavors.length > 0 && (
                   <div className="rounded-xl border border-brand-200 bg-brand-50/80 p-2.5 flex items-center justify-between text-xs font-semibold text-brand-900 mt-2">
                     <span className="flex items-center gap-1.5">
-                      <span className="text-sm">🍚</span>
                       <span>Arroz do dia para os garçons:</span>
                       <strong className="text-brand-800 underline decoration-brand-300">
                         {selectedRiceFlavors.join(' & ')}

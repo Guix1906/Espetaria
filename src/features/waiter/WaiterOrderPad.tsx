@@ -1,6 +1,6 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
-import { ArrowLeft, ArrowRight, CheckCircle2, Minus, Plus, Search, X, ArrowLeftRight } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Beer, CheckCircle2, Flame, Minus, Plus, Search, Star, UtensilsCrossed, X, ArrowLeftRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { formatBRL } from '../../lib/formatters';
@@ -269,10 +269,10 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
         {/* 4 Botões Principais Fixos (Acesso Imediato com o Polegar) */}
         <div className="mx-auto mt-2 grid grid-cols-4 gap-1.5 max-w-5xl" aria-label="Grupos principais">
           {[
-            { id: TOP, label: '⭐ Pedidos' },
-            { id: 'GROUP_ESPETOS', label: '🔥 Espetos' },
-            { id: 'GROUP_BEBIDAS', label: '🍺 Bebidas' },
-            { id: 'GROUP_PORCOES', label: '🍟 Porções' },
+            { id: TOP, label: 'Top', icon: Star },
+            { id: 'GROUP_ESPETOS', label: 'Espetos', icon: Flame },
+            { id: 'GROUP_BEBIDAS', label: 'Bebidas', icon: Beer },
+            { id: 'GROUP_PORCOES', label: 'Porções', icon: UtensilsCrossed },
           ].map((grp) => {
             const isGroupActive = selectedCategory === grp.id && !query;
             return (
@@ -280,8 +280,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                 key={grp.id}
                 type="button"
                 onClick={() => { triggerHaptic(20); setSelectedCategory(grp.id); setSearchQuery(''); scrollToCatalog(); }}
-                className={`h-11 rounded-xl text-center text-[15px] font-bold border transition ${isGroupActive ? 'bg-ink text-white border-ink shadow-sm' : 'bg-surface text-ink border-line hover:border-line-strong active:bg-surface-muted'}`}>
-                {grp.label}
+                className={`flex h-11 items-center justify-center gap-1 rounded-xl text-center text-[14px] font-bold border transition min-[375px]:text-[15px] ${isGroupActive ? 'bg-ink text-white border-ink shadow-sm' : 'bg-surface text-ink border-line hover:border-line-strong active:bg-surface-muted'}`}>
+                <grp.icon className="hidden h-4 w-4 shrink-0 min-[375px]:block" aria-hidden="true" />{grp.label}
               </button>
             );
           })}
@@ -334,7 +334,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
             onClick={togglePhotos}
             className={`h-11 shrink-0 px-3 rounded-lg border text-sm font-semibold flex items-center gap-1.5 transition ${showPhotos ? 'border-line bg-surface text-ink-muted active:bg-surface-muted' : 'border-brand-500 bg-brand-50 text-brand-700 font-bold'}`}
             title={showPhotos ? 'Ocultar fotos para carregamento instantâneo' : 'Exibir fotos dos produtos'}>
-            {showPhotos ? 'Ocultar fotos' : '⚡ Sem fotos'}
+            {showPhotos ? 'Ocultar fotos' : 'Mostrar fotos'}
           </button>
           {canManageProducts && <button type="button" onClick={() => setIsProductModalOpen(true)} className="btn-secondary h-11 shrink-0 px-3 text-base" title="Cadastrar novo produto no cardápio"><Plus className="h-4 w-4" /><span className="hidden sm:inline">Novo produto</span></button>}
         </div>
@@ -398,7 +398,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
             </ul>
             {section.id === TOP && !query && (
               <div className="pt-2 pb-2 text-center">
-                <p className="text-xs font-semibold uppercase tracking-wider text-ink-muted mb-2">Ver outras categorias</p>
+                <p className="text-[13px] font-semibold text-ink-muted mb-2">Ver outras categorias</p>
                 <div className="flex flex-wrap justify-center gap-1.5">
                   {categories.map((c) => (
                     <button
@@ -447,7 +447,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                 <span>Enviando...</span>
               ) : (
                 <>
-                  <span>⚡ Enviar</span>
+                  <span>Enviar</span>
                   <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </>
               )}

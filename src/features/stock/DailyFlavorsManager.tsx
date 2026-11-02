@@ -125,7 +125,6 @@ export const DailyFlavorsManager: React.FC = () => {
         <div className="rounded-xl border border-line bg-surface-soft p-3.5 sm:p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-lg">🍚</span>
               <span className="text-sm font-bold text-ink">Sabores de Arroz do Dia</span>
             </div>
             <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">

@@ -36,7 +36,8 @@ export const DONENESS_OPTIONS: { value: MeatDoneness; label: string; description
   { value: 'BEM_PASSADA', label: 'Bem passada', description: 'Totalmente cozida e bem tostada.', swatch: '#5A4A42' },
 ];
 const COMMON_NOTES = ['Sem sal grosso', 'Pouco sal', 'Mais torradinho', 'Cortar em aperitivo', 'Farofa à parte'];
-const ACOMPANHAMENTO_NOTES = ['Com arroz', 'Com baião', 'Com purê', 'Arroz e purê', 'Baião e purê', 'Sem cebola', 'Farofa à parte'];
+// O arroz sai daqui: é escolhido só entre os sabores do dia (Configurações)
+const ACOMPANHAMENTO_NOTES = ['Sem cebola', 'Farofa à parte'];
 
 /** Detecta se o produto é um suco/bebida que precisa de escolha de sabor. */
 function isJuiceProduct(product: Product): boolean {
@@ -47,9 +48,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const isEditing = !!initial;
   const { settings } = useSettingsStore();
 
-  const riceOptions = (settings.daily_rice_flavors && settings.daily_rice_flavors.length > 0)
-    ? settings.daily_rice_flavors
-    : ['Arroz Branco', 'Arroz Carreteiro', 'Arroz com Brócolis', 'Baião de Dois'];
+  const riceOptions = settings.daily_rice_flavors ?? [];
 
   const juiceFlavors = (settings.daily_juice_flavors && settings.daily_juice_flavors.length > 0)
     ? settings.daily_juice_flavors
@@ -248,10 +247,10 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
           })}
         </fieldset>}
         {/* Chips de tipo de arroz do dia para espetos com acompanhamento e porções de arroz */}
-        {isRiceOrCombo && (
+        {isRiceOrCombo && riceOptions.length > 0 && (
           <fieldset className="space-y-2">
             <div className="flex items-center justify-between">
-              <legend className="text-base font-semibold text-ink">🍚 Sabores de Arroz do Dia</legend>
+              <legend className="text-base font-semibold text-ink">Arroz do dia</legend>
               <span className="text-xs text-brand-600 font-medium">Toque para escolher</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -261,7 +260,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
                   type="button"
                   aria-pressed={noteTags.includes(rice)}
                   onClick={() => selectRice(rice)}
-                  className={`min-h-[40px] rounded-lg border px-3 text-base font-semibold transition ${
+                  className={`min-h-[44px] rounded-lg border px-3 text-base font-semibold transition ${
                     noteTags.includes(rice)
                       ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
                       : 'border-line bg-white text-ink hover:bg-surface-muted'
@@ -275,7 +274,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
                   type="button"
                   aria-pressed={noteTags.includes('Sem arroz')}
                   onClick={() => selectRice('Sem arroz')}
-                  className={`min-h-[40px] rounded-lg border px-3 text-base font-semibold transition ${
+                  className={`min-h-[44px] rounded-lg border px-3 text-base font-semibold transition ${
                     noteTags.includes('Sem arroz')
                       ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
                       : 'border-dashed border-line-strong bg-white text-ink-secondary hover:bg-surface-muted'
@@ -291,7 +290,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
         {isJuice && (
           <fieldset className="space-y-2">
             <div className="flex items-center justify-between">
-              <legend className="text-base font-semibold text-ink">🍹 Sabores de Sucos do Dia</legend>
+              <legend className="text-base font-semibold text-ink">Sabores de suco do dia</legend>
               <span className="text-xs text-amber-700 font-medium">Toque para escolher</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -301,7 +300,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
                   type="button"
                   aria-pressed={noteTags.includes(flavor)}
                   onClick={() => selectFlavor(flavor)}
-                  className={`min-h-[40px] rounded-lg border px-3 text-base font-semibold transition ${
+                  className={`min-h-[44px] rounded-lg border px-3 text-base font-semibold transition ${
                     noteTags.includes(flavor)
                       ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
                       : 'border-line bg-white text-ink hover:bg-surface-muted'
@@ -315,8 +314,8 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
         )}
         {product.allows_notes && (showNotes ? <div>
           <label htmlFor="doneness-notes" className="mb-2 block text-base font-semibold text-ink">Alguma observação?</label>
-          {(product.allows_doneness || isCombo) && !isJuice && <div className="mb-2 flex flex-wrap gap-1.5">{suggestedNotes.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`min-h-[38px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(tag) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>{tag}</button>)}</div>}
-          <textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={isJuice ? "Ex.: Com gelo, sem açúcar..." : isCombo ? "Ex.: Arroz, baião, purê, sem cebola..." : "Ex.: Sem cebola, gelo à parte..."} className="w-full rounded-lg border border-line-strong bg-white p-3 text-base" />
+          {(product.allows_doneness || isCombo) && !isJuice && <div className="mb-2 flex flex-wrap gap-1.5">{suggestedNotes.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`min-h-[44px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(tag) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>{tag}</button>)}</div>}
+          <textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={isJuice ? "Ex.: Com gelo, sem açúcar..." : isCombo ? "Ex.: Pouco sal, sem vinagrete..." : "Ex.: Sem cebola, gelo à parte..."} className="w-full rounded-lg border border-line-strong bg-white p-3 text-base" />
         </div> : <button type="button" onClick={() => setShowNotes(true)} className="min-h-[44px] text-base font-semibold text-brand-500">+ Adicionar observação</button>)}
       </div>
       <div className="shrink-0 border-t border-line px-4 pt-3" style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom))' }}>

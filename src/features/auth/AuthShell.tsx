@@ -40,7 +40,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
  * então trocar de aba só troca o formulário.
  */
 export function AccessTabs({ active }: { active: 'owner' | 'waiter' }) {
-  const base = 'flex h-10 items-center justify-center gap-2 rounded-[8px] text-sm font-medium transition-colors';
+  const base = 'flex h-11 items-center justify-center gap-2 rounded-[8px] text-sm font-medium transition-colors';
   const on = `${base} bg-white text-[#2B211C] shadow-[0_1px_2px_rgba(43,33,28,0.08)]`;
   const off = `${base} text-[#6B5D53] hover:text-[#2B211C]`;
   return (

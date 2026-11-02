@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+/* A área do garçom não tem as abas Sistema/WhatsApp: o cabeçalho encosta no topo e a mesa não fica coberta */
+.waiter-portal { --app-topbar-height: 0px; }
 .waiter-portal .page-layout { max-width: 64rem; }
 @media (max-width: 639px) {
   .waiter-portal .page-layout { padding: 0.75rem; gap: 0.75rem; }
@@ -126,7 +128,7 @@
   .skip-link { @apply fixed left-4 top-4 z-50 -translate-y-24 rounded-xl bg-brand-800 px-5 py-3 font-semibold text-white focus:translate-y-0; }
   .app-sidebar { background: rgb(43 33 28); color: rgb(228 218 203); }
   .nav-group-label { @apply mb-1.5 px-3 text-[13px] font-medium text-stone-500; }
-  .nav-item { @apply relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-stone-300; min-height: 40px; }
+  .nav-item { @apply relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-stone-300; min-height: 44px; }
   .nav-item:hover { @apply bg-white/5 text-white; }
   .nav-item[aria-current='page'] { @apply bg-white/10 text-white; }
   .nav-item[aria-current='page']::before { content: ''; @apply absolute -left-3 top-2 bottom-2 w-[3px] bg-brand-300; }
