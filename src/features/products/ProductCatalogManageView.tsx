@@ -17,7 +17,7 @@ const SECTOR_LABEL: Record<ProductionSector, string> = { GRILL: 'Churrasqueira',
 const SECTOR_ICON = { GRILL: Flame, KITCHEN: UtensilsCrossed, BAR: Beer } as Record<string, typeof Flame>;
 
 /** Menu "mais" da linha: guarda a ação de excluir longe dos botões do dia a dia. */
-function MoreMenu({ product, onDelete }: { product: Product; onDelete: () => void }) {
+function MoreMenu({ product, onDelete, onEdit, onToggle }: { product: Product; onDelete: () => void; onEdit: () => void; onToggle: () => void }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -33,6 +33,9 @@ function MoreMenu({ product, onDelete }: { product: Product; onDelete: () => voi
       </button>
       {open && (
         <div role="menu" className="absolute right-0 top-12 z-20 w-40 rounded-2xl border border-line bg-surface p-1 shadow-floating">
+          {/* No celular, Editar e Pausar ficam aqui para a linha não dobrar de altura */}
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); onEdit(); }} className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-semibold text-ink hover:bg-surface-muted md:hidden">Editar</button>
+          <button type="button" role="menuitem" onClick={() => { setOpen(false); onToggle(); }} className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-semibold text-ink hover:bg-surface-muted md:hidden">{product.active ? 'Pausar' : 'Reativar'}</button>
           <button type="button" role="menuitem" onClick={() => { setOpen(false); onDelete(); }} className="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left text-sm font-semibold text-rose-700 hover:bg-rose-50">
             <Trash2 className="h-4 w-4" />Excluir
           </button>
@@ -107,7 +110,7 @@ export const ProductCatalogManageView: React.FC = () => {
       {filteredProducts.length === 0 ? (
         <EmptyState title="Nenhum produto encontrado" description="Nada corresponde à busca ou ao filtro." icon={PackagePlus} action={<button type="button" onClick={handleCreateNew} className="btn-primary"><PackagePlus className="h-4 w-4" />Cadastrar produto</button>} />
       ) : (
-        <div className="surface-card overflow-hidden">
+        <div className="surface-card">
           <div className="hidden grid-cols-[56px_minmax(0,1fr)_130px_110px_90px_auto] items-center gap-4 border-b border-line bg-surface-soft px-4 py-3 text-sm font-semibold text-ink-muted md:grid">
             <span aria-hidden="true" /><span>Produto</span><span>Setor</span><span className="text-right">Preço</span><span>Status</span><span className="text-right">Ações</span>
           </div>
@@ -115,7 +118,7 @@ export const ProductCatalogManageView: React.FC = () => {
             {filteredProducts.map((product) => {
               const Icon = SECTOR_ICON[product.sector] ?? Flame;
               return (
-                <li key={product.id} className="grid grid-cols-[56px_minmax(0,1fr)] items-center gap-x-4 gap-y-3 p-4 md:grid-cols-[56px_minmax(0,1fr)_130px_110px_90px_auto]">
+                <li key={product.id} className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-x-3 p-3 md:gap-x-4 md:p-4 md:grid-cols-[56px_minmax(0,1fr)_130px_110px_90px_auto]">
                   <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-md border border-line bg-surface-muted text-ink-muted">
                     {product.image_url
                       ? <img src={product.image_url} alt="" className="h-full w-full object-cover" onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
@@ -130,16 +133,16 @@ export const ProductCatalogManageView: React.FC = () => {
                     <p className="mt-1 flex flex-wrap items-center gap-2 text-sm md:hidden">
                       <span className="text-ink-secondary">{SECTOR_LABEL[product.sector] ?? product.sector}</span>
                       <span className="font-mono font-semibold text-ink">{formatBRL(product.price)}</span>
-                      <StatusTag kind={product.active ? 'occupied' : 'reserved'}>{product.active ? 'Ativo' : 'Pausado'}</StatusTag>
+                      {!product.active && <StatusTag kind="reserved">Pausado</StatusTag>}
                     </p>
                   </div>
                   <span className="hidden text-sm text-ink-secondary md:block">{SECTOR_LABEL[product.sector] ?? product.sector}</span>
                   <span className="hidden text-right font-mono text-[15px] font-semibold text-ink md:block">{formatBRL(product.price)}</span>
                   <span className="hidden md:block"><StatusTag kind={product.active ? 'occupied' : 'reserved'}>{product.active ? 'Ativo' : 'Pausado'}</StatusTag></span>
-                  <div className="col-span-2 flex items-center justify-end gap-2 md:col-span-1">
-                    <button type="button" onClick={() => toggleProductActive(product.id)} className="btn-secondary min-h-[44px]">{product.active ? 'Pausar' : 'Reativar'}</button>
-                    <button type="button" onClick={() => handleEdit(product)} className="btn-secondary min-h-[44px]">Editar</button>
-                    <MoreMenu product={product} onDelete={() => void handleDelete(product)} />
+                  <div className="flex items-center justify-end gap-2">
+                    <button type="button" onClick={() => toggleProductActive(product.id)} className="btn-secondary hidden min-h-[44px] md:inline-flex">{product.active ? 'Pausar' : 'Reativar'}</button>
+                    <button type="button" onClick={() => handleEdit(product)} className="btn-secondary hidden min-h-[44px] md:inline-flex">Editar</button>
+                    <MoreMenu product={product} onEdit={() => handleEdit(product)} onToggle={() => toggleProductActive(product.id)} onDelete={() => void handleDelete(product)} />
                   </div>
                 </li>
               );

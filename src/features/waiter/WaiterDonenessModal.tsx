@@ -1,5 +1,6 @@
 import { Button } from '../../components/ui/Button';
 import { OptionGroup } from '../../components/ui/OptionGroup';
+import { Stepper } from '../../components/ui/Stepper';
 import { Check, Minus, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
@@ -176,11 +177,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
                     <span className="h-6 w-2 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />{option.label}
                   </button>
                   {count > 0 ? (
-                    <div className="flex h-11 shrink-0 items-center rounded-md border border-line-strong bg-surface">
-                      <button type="button" onClick={() => updateDonenessCount(option.value, -1)} className="flex h-full w-10 items-center justify-center text-ink-muted active:bg-surface-muted" aria-label={`Diminuir ${option.label}`}><Minus className="h-4 w-4" /></button>
-                      <span className="min-w-[28px] text-center font-mono text-base font-bold text-ink">{count}</span>
-                      <button type="button" disabled={!canAddMore} onClick={() => updateDonenessCount(option.value, 1)} className="flex h-full w-10 items-center justify-center text-brand-500 disabled:opacity-40 active:bg-surface-muted" aria-label={`Aumentar ${option.label}`}><Plus className="h-4 w-4" /></button>
-                    </div>
+                    <Stepper qty={count} label={option.label} plusDisabled={!canAddMore} onMinus={() => updateDonenessCount(option.value, -1)} onPlus={() => updateDonenessCount(option.value, 1)} />
                   ) : (
                     <button type="button" disabled={!canAddMore} onClick={() => updateDonenessCount(option.value, 1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-line-strong text-brand-500 disabled:opacity-40 active:bg-surface-muted" aria-label={`Adicionar ${option.label}`}><Plus className="h-4 w-4" /></button>
                   )}

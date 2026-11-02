@@ -3,6 +3,7 @@ import { Printer, AlertTriangle, CheckCircle2, RefreshCw, Server } from 'lucide-
 import { usePrintStore } from '../../stores/usePrintStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { Dialog } from '../ui/Dialog';
+import { useFeedback } from '../ui/FeedbackProvider';
 
 const BANNER_ROLES: string[] = ['MASTER', 'GERENTE', 'CAIXA'];
 
@@ -135,6 +136,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
 }) => {
   const { isBridgeAlive, isGrillOk, isKitchenOk, heartbeatAgeSeconds, printerStatus, grillFailure, kitchenFailure } = usePrinterHealth();
   const { loadPrinterStatus, sendTestPrintAll } = usePrintStore();
+  const { notify } = useFeedback();
   const [isTesting, setIsTesting] = useState(false);
   const [testSuccessMessage, setTestSuccessMessage] = useState<string | null>(null);
 
@@ -146,7 +148,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
       setTestSuccessMessage('Cupons de teste enviados para a Cozinha e Churrasqueira!');
       setTimeout(() => setTestSuccessMessage(null), 5000);
     } catch (err: any) {
-      setTestSuccessMessage(`Falha ao disparar teste: ${err.message || 'Erro desconhecido'}`);
+      notify(`Falha ao disparar teste: ${err.message || 'Erro desconhecido'}`, 'error');
     } finally {
       setIsTesting(false);
     }

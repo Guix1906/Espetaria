@@ -42,6 +42,7 @@ export function FinanceView() {
 /** Gráfico de fluxo: escuras = realizado, claras = previsto; linhas = saldo realizado e projetado. */
 export function CashFlowChart({ data, height = 320, grouping = 'auto', showForecast = false }: { data: FinanceDataset; height?: number; grouping?: CashFlowGrouping; showForecast?: boolean }) {
   const flow = useMemo(() => buildCashFlow(data, grouping), [data, grouping]);
+  if (!flow.some((b) => b.inflow || b.outflow || b.inflowForecast || b.outflowForecast)) return <p className="py-12 text-center text-sm text-ink-muted">Sem movimento no período.</p>;
   const money = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   // Padrão: 3 séries (entradas, saídas, saldo). Previsões só quando pedidas.
   const series = showForecast

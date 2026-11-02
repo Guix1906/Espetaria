@@ -1,4 +1,5 @@
 import { StatusTag } from '../../components/ui/StatusTag';
+import { Stepper } from '../../components/ui/Stepper';
 import { Button } from '../../components/ui/Button';
 import { DEFAULT_DELIVERY_ETA, DEFAULT_PICKUP_ETA } from '../../lib/eta';
 import { ChevronDown, ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
@@ -119,16 +120,6 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
         <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}
           className={`min-h-[44px] flex-1 rounded-md px-2 text-[15px] ${value === o.id ? 'bg-surface font-semibold text-ink shadow-[0_1px_2px_rgba(43,33,28,.08)]' : 'font-medium text-ink-muted'}`}>{o.label}</button>
       ))}
-    </div>
-  );
-}
-
-function Stepper({ qty, onMinus, onPlus, size = 40 }: { qty: number; onMinus: () => void; onPlus: () => void; size?: number }) {
-  return (
-    <div className="flex items-center rounded-md border border-line-strong bg-surface" style={{ height: size }}>
-      <button type="button" onClick={onMinus} aria-label="Diminuir" className="flex h-full w-10 items-center justify-center text-ink-muted"><Minus className="h-4 w-4" /></button>
-      <span className="min-w-[20px] text-center text-[15px] font-semibold tabular-nums">{qty}</span>
-      <button type="button" onClick={onPlus} aria-label="Aumentar" className="flex h-full w-10 items-center justify-center text-brand-500"><Plus className="h-4 w-4" /></button>
     </div>
   );
 }
@@ -479,7 +470,7 @@ export function PublicMenuApp() {
             {(item.doneness || item.notes) && <p className="mt-0.5 text-[14px] text-ink-muted">{[item.doneness && formatDoneness(item.doneness), item.notes && `“${item.notes}”`].filter(Boolean).join(' · ')}</p>}
             <p className="mt-0.5 text-[15px] font-semibold tabular-nums">{formatBRL(item.product.price * item.quantity)}</p>
           </div>
-          <Stepper size={compact ? 36 : 40} qty={item.quantity} onMinus={() => updateCartQuantity(item.id, -1)} onPlus={() => { setCartError(null); const e = tryAdd(item.product, 1, item.doneness ?? null, item.notes || ''); if (e) setCartError(e); }} />
+          <Stepper size={44} qty={item.quantity} onMinus={() => updateCartQuantity(item.id, -1)} onPlus={() => { setCartError(null); const e = tryAdd(item.product, 1, item.doneness ?? null, item.notes || ''); if (e) setCartError(e); }} />
         </li>
       ))}
     </ul>

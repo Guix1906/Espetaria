@@ -26,33 +26,34 @@ export function defaultPeriod(id = 'month'): Period {
   return { ...preset.make(), preset: preset.id };
 }
 
-const dateInput = '!border-0 !shadow-none !ring-0 h-10 min-w-0 flex-1 bg-transparent px-2 font-mono text-[13px] tabular-nums outline-none focus-visible:bg-surface-muted sm:w-[8.5rem] sm:flex-none';
+const dateInput = '!border-0 !shadow-none !ring-0 h-11 min-w-0 flex-1 bg-transparent px-2 font-mono text-[13px] tabular-nums outline-none focus-visible:bg-surface-muted sm:w-[8.5rem] sm:flex-none';
 
 /** Período em uma barra só: lista de atalhos + intervalo de datas. */
 export function PeriodPicker({ value, onChange, presets }: { value: Period; onChange: (p: Period) => void; presets?: string[] }) {
   const list = PERIOD_PRESETS.filter((p) => !presets || presets.includes(p.id));
   return (
     <div className="flex flex-col gap-2 sm:flex-row sm:items-center" aria-label="Período">
-      <div className="flex h-10 items-center rounded-md border border-line-strong bg-surface pl-2.5">
+      <div className="flex h-11 items-center rounded-md border border-line-strong bg-surface pl-2.5">
         <CalendarDays className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />
         <label className="sr-only" htmlFor="period-preset">Período</label>
         <select
           id="period-preset"
           className="!border-0 !shadow-none !ring-0 h-full min-w-0 flex-1 cursor-pointer bg-transparent pl-2 pr-3 text-sm font-medium outline-none sm:flex-none"
           value={value.preset}
-          onChange={(e) => { const p = list.find((x) => x.id === e.target.value); if (p) onChange({ ...p.make(), preset: p.id }); }}
+          onChange={(e) => { const p = list.find((x) => x.id === e.target.value); if (p) onChange({ ...p.make(), preset: p.id }); else onChange({ ...value, preset: 'custom' }); }}
         >
           {list.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}
-          {value.preset === 'custom' && <option value="custom">Personalizado</option>}
+          <option value="custom">Escolher datas</option>
         </select>
       </div>
-      <div className="flex items-center rounded-md border border-line-strong bg-surface text-sm">
+      {/* Datas só aparecem quando pedidas: o atalho já diz o período */}
+      {value.preset === 'custom' && <div className="flex items-center rounded-md border border-line-strong bg-surface text-sm">
         <label className="sr-only" htmlFor="period-from">De</label>
         <input id="period-from" type="date" className={dateInput} value={value.from} max={value.to} onChange={(e) => e.target.value && onChange({ from: e.target.value, to: value.to, preset: 'custom' })} />
         <span className="px-1 text-ink-muted" aria-hidden="true">–</span>
         <label className="sr-only" htmlFor="period-to">Até</label>
         <input id="period-to" type="date" className={dateInput} value={value.to} min={value.from} onChange={(e) => e.target.value && onChange({ from: value.from, to: e.target.value, preset: 'custom' })} />
-      </div>
+      </div>}
     </div>
   );
 }

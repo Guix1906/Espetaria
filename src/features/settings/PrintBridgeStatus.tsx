@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Server, Printer, RefreshCw } from 'lucide-react';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { usePrintStore } from '../../stores/usePrintStore';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import type { PrintJob } from '../../types/domain';
@@ -38,6 +39,7 @@ export function PrinterHealthTag({ jobs, sector }: { jobs: PrintJob[]; sector: P
  * permite disparar teste unificado sem repetição visual.
  */
 export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
+  const { notify } = useFeedback();
   const [now, setNow] = useState(() => Date.now());
   const { printerStatus, loadPrinterStatus, sendTestPrintAll } = usePrintStore();
   const [testingAll, setTestingAll] = useState(false);
@@ -104,7 +106,7 @@ export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
                 setTestSuccess('Cupom de teste enviado para a Cozinha e Churrasqueira!');
                 setTimeout(() => setTestSuccess(null), 5000);
               } catch (e: any) {
-                alert('Erro ao disparar teste: ' + (e.message || 'Erro desconhecido'));
+                notify('Erro ao disparar teste: ' + (e.message || 'Erro desconhecido'), 'error');
               } finally {
                 setTestingAll(false);
               }

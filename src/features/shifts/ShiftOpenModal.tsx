@@ -252,7 +252,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
       filled ? 'bg-surface border-line-strong' : 'bg-amber-50/80 border-amber-300'
     }`;
   const stepButton =
-    'flex h-10 w-11 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface font-mono text-sm font-bold text-ink hover:bg-surface-muted active:scale-95 transition';
+    'flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface font-mono text-sm font-bold text-ink hover:bg-surface-muted active:scale-95 transition';
 
   const unitRow = (p: Product) => {
     const isDisabled = Boolean(disabledProducts[p.id]);
@@ -265,7 +265,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     return (
       <div
         key={p.id}
-        className={`flex flex-col justify-between gap-3 p-3.5 rounded-2xl border transition ${
+        className={`flex flex-col justify-between gap-2 p-3 rounded-2xl border transition ${
           isDisabled
             ? 'bg-rose-50/40 border-rose-200'
             : filled
@@ -299,7 +299,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
           <button
             type="button"
             onClick={() => toggleDisable(p.id)}
-            className={`h-8 px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition shrink-0 ${
+            className={`h-11 w-11 justify-center sm:w-auto px-0 sm:px-2.5 rounded-lg border text-xs font-semibold flex items-center gap-1.5 transition shrink-0 ${
               isDisabled
                 ? 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100 shadow-xs active:scale-95'
                 : 'border-line bg-surface text-ink-muted hover:text-rose-700 hover:border-rose-300 hover:bg-rose-50'
@@ -310,12 +310,12 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             {isDisabled ? (
               <>
                 <RotateCcw className="w-3.5 h-3.5 text-brand-700 shrink-0" />
-                <span>Habilitar</span>
+                <span className="hidden sm:inline">Habilitar</span>
               </>
             ) : (
               <>
                 <Ban className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                <span>Não tem hoje</span>
+                <span className="hidden sm:inline">Não tem hoje</span>
               </>
             )}
           </button>
@@ -331,7 +331,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             <span className="text-[13px] font-normal text-rose-600">Garçons não verão este item</span>
           </div>
         ) : (
-          <div className="pt-2.5 border-t border-line/60 flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-semibold text-ink-secondary">
               {isCuba ? 'Cubas preparadas:' : 'Qtd. preparada:'}
             </span>

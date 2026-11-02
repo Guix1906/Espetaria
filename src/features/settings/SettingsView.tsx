@@ -245,7 +245,7 @@ export const SettingsView: React.FC = () => {
                 role="tab"
                 aria-selected={active}
                 onClick={() => void setActiveTab(group.tabs[0]!.id)}
-                className={`flex h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold transition-colors ${active ? 'bg-brand-700 text-white' : 'bg-surface-soft text-ink-secondary hover:bg-surface-muted'}`}
+                className={`flex h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold transition-colors ${active ? 'border border-brand-500 bg-brand-500 text-white' : 'border border-line-strong bg-surface text-ink-secondary hover:bg-surface-muted'}`}
               >
                 <Icon className="h-4 w-4" aria-hidden="true" />
                 {group.label}
