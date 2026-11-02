@@ -34,6 +34,10 @@ import { useDeliveryStore } from './stores/useDeliveryStore';
 import { useStockStore } from './stores/useStockStore';
 import { useTableStore } from './stores/useTableStore';
 
+declare global {
+  interface Window { pontoDesktop?: { showWhatsApp: (visible: boolean) => void } }
+}
+
 export function App() {
   useRealtimeSync();
   const [hash, setHash] = useState(() => window.location.hash);
@@ -120,6 +124,10 @@ function AdminWorkspace() {
   const mainRef = useRef<HTMLElement>(null);
   const previousTab = useRef(activeTab);
 
+  // Programa do PC: o WhatsApp Web é desenhado pelo programa, por cima desta área
+  const [desktopWebOpen, setDesktopWebOpen] = useState(false);
+  useEffect(() => { window.pontoDesktop?.showWhatsApp(desktopWebOpen); }, [desktopWebOpen]);
+
   // Aba "Sistema" volta para a última tela aberta antes do WhatsApp
   const lastSystemTab = useRef<ActiveTab>(activeTab === 'whatsapp' ? (allowedTabs[0] ?? 'waiter') : activeTab);
   if (activeTab !== 'whatsapp') lastSystemTab.current = activeTab;
@@ -174,7 +182,13 @@ function AdminWorkspace() {
   return (
     <div className="app-shell">
       <a href="#main-content" className="skip-link">Pular para o conteúdo</a>
-      <TopTabs whatsappActive={activeTab === 'whatsapp'} canUseWhatsApp={allowedTabs.includes('whatsapp')} onSystem={() => setActiveTab(lastSystemTab.current)} onWhatsApp={() => setActiveTab('whatsapp')} />
+      <TopTabs
+        whatsappActive={activeTab === 'whatsapp'}
+        canUseWhatsApp={allowedTabs.includes('whatsapp')}
+        onSystem={() => { setDesktopWebOpen(false); setActiveTab(lastSystemTab.current); }}
+        onWhatsApp={() => { setDesktopWebOpen(false); setActiveTab('whatsapp'); }}
+        desktopWeb={window.pontoDesktop ? { active: desktopWebOpen, onOpen: () => setDesktopWebOpen(true) } : undefined}
+      />
       <NavigationTabs allowed={allowedTabs} activeTab={activeTab} onChangeTab={setActiveTab} openTablesCount={openTablesCount} exhaustedCount={exhaustedCount} pendingProductionCount={pendingProductionCount} waitingBillCount={waitingBillCount} activeDeliveriesCount={activeDeliveriesCount} isMobileOpen={isMobileMenuOpen} onCloseMobile={() => setIsMobileMenuOpen(false)} />
       <div className="app-workspace flex flex-col">
         <PWAInstallBanner />
