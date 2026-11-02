@@ -37,6 +37,13 @@ export function localOrderLabel(order: { notes?: string | null }): string {
   return isDineInOrder(order) ? 'Consumir no local' : 'Retirada';
 }
 
+export type OrderKind = 'DELIVERY' | 'DINE_IN' | 'PICKUP';
+/** Os 3 tipos de pedido do cardápio. */
+export function orderKind(order: Pick<DeliveryOrder, 'order_type' | 'notes'>): OrderKind {
+  if (order.order_type !== 'PICKUP') return 'DELIVERY';
+  return isDineInOrder(order) ? 'DINE_IN' : 'PICKUP';
+}
+
 export function isPickupOrder(order: Pick<DeliveryOrder, 'order_type'>): boolean {
   return order.order_type === 'PICKUP';
 }

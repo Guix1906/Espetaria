@@ -1,3 +1,4 @@
+import { isDineInOrder } from '../../lib/deliveryStatus';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
@@ -18,12 +19,12 @@ const DELIVERY_STAGE: Record<DeliveryStage, string> = {
 };
 
 export type BoardColumn = 'preparing' | 'grill' | 'delivery';
-export type BoardChannel = 'Salão' | 'Delivery' | 'Retirada';
-const FILTERS = ['Todos', 'Salão', 'Delivery', 'Retirada'] as const;
+export type BoardChannel = 'Salão' | 'Delivery' | 'Consumir no local' | 'Retirada';
+const FILTERS = ['Todos', 'Salão', 'Delivery', 'Consumir no local', 'Retirada'] as const;
 const COLUMNS: { id: BoardColumn; title: string; dot: string; empty: string }[] = [
   { id: 'preparing', title: 'Em preparo', dot: 'bg-amber-500', empty: 'Nada em preparo' },
   { id: 'grill', title: 'Na brasa', dot: 'bg-brand-700', empty: 'Nada na brasa' },
-  { id: 'delivery', title: 'Delivery', dot: 'bg-emerald-600', empty: 'Nenhum pedido em andamento' },
+  { id: 'delivery', title: 'Cardápio digital', dot: 'bg-emerald-600', empty: 'Nenhum pedido em andamento' },
 ];
 
 /** Espeto pendente vai para Na brasa; a mesa sem espeto fica em Em preparo, para nenhuma mesa aberta sumir do quadro. */
@@ -71,16 +72,17 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
   const deliveryCard = (o: DeliveryOrder): Card => {
     const stage = stageOf(o);
     const pickup = o.order_type === 'PICKUP';
+    const dineIn = isDineInOrder(o);
     return {
       key: o.id,
       // Delivery e retirada ficam sempre nesta coluna, do pedido recebido até a entrega; a etapa aparece no cartão
       column: 'delivery',
-      channel: pickup ? 'Retirada' : 'Delivery',
+      channel: pickup ? (dineIn ? 'Consumir no local' : 'Retirada') : 'Delivery',
       level: lateIds.has(o.id) ? 'urgent' : elapsedLevel(o.created_at, now, 30, 45),
       title: `${o.customer_name.trim().split(' ')[0] || o.customer_name} · #${o.order_number}`,
       time: formatElapsedMinutes(o.created_at, now),
       items: o.items.map((i) => `${i.quantity}× ${i.product_name}`).join(', '),
-      status: stage ? (stage === 'READY' && pickup ? 'Pronto, cliente vem buscar' : DELIVERY_STAGE[stage].charAt(0).toUpperCase() + DELIVERY_STAGE[stage].slice(1)) : '',
+      status: stage ? (stage === 'READY' && pickup ? (dineIn ? 'Pronto no balcão' : 'Pronto, cliente vem buscar') : DELIVERY_STAGE[stage].charAt(0).toUpperCase() + DELIVERY_STAGE[stage].slice(1)) : '',
       onClick: go ? () => go('delivery') : undefined,
     };
   };
@@ -95,7 +97,7 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
     <section className="space-y-3" aria-label="Movimento agora">
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-md bg-surface-muted p-1" role="group" aria-label="Filtrar por canal">
-          {FILTERS.map((f) => <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={`min-h-[44px] rounded-sm px-3 text-sm font-medium ${filter === f ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{f}</button>)}
+          {FILTERS.map((f) => <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-sm px-3 text-sm font-medium ${filter === f ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{f}</button>)}
         </div>
         <label className="relative min-w-[12rem] flex-1">
           <span className="sr-only">Buscar mesa, cliente ou pedido</span>

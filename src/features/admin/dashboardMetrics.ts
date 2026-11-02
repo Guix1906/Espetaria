@@ -1,3 +1,4 @@
+import { isDineInOrder, localOrderLabel } from '../../lib/deliveryStatus';
 import type { DeliveryOrder, Order, OrderItem, Payment, PrintJob, RestaurantTable, StockMovement, Tab } from '../../types/domain';
 import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
 
@@ -35,12 +36,12 @@ export type AlertTone = 'danger' | 'warning';
 export interface DashboardAlert { id: string; tone: AlertTone; text: string; target: 'ready' | 'kds' | 'delivery' | 'settings' | 'cashier'; }
 
 export type DeliveryStage = 'AWAITING_PAYMENT' | 'IN_PRODUCTION' | 'READY' | 'OUT_FOR_DELIVERY';
-export interface ActivityEvent { id: string; time: string; channel: 'Casa' | 'Delivery' | 'Retirada' | 'Sistema'; title: string; description: string; tone: 'success' | 'warning' | 'info' | 'danger' | 'neutral'; }
+export interface ActivityEvent { id: string; time: string; channel: 'Casa' | 'Delivery' | 'Consumir no local' | 'Retirada' | 'Sistema'; title: string; description: string; tone: 'success' | 'warning' | 'info' | 'danger' | 'neutral'; }
 
 const minutesSince = (iso: string | null | undefined, now: number) => (iso ? Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60000)) : 0);
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const isPickup = (d: DeliveryOrder) => d.order_type === 'PICKUP';
-const deliveryLabel = (d: DeliveryOrder) => `${isPickup(d) ? 'Retirada' : 'Delivery'} #${d.order_number}`;
+const deliveryLabel = (d: DeliveryOrder) => `${isPickup(d) ? localOrderLabel(d) : 'Delivery'} #${d.order_number}`;
 
 export function stageOf(d: DeliveryOrder): DeliveryStage | null {
   if (d.status === 'AWAITING_PAYMENT') return 'AWAITING_PAYMENT';
@@ -280,12 +281,12 @@ export function computeDashboard(input: DashboardInput) {
     feed.push({ id: `ord-${order.id}`, time: order.created_at, channel: 'Casa', tone: 'warning', title: `Pedido #${order.order_number} · ${tableNumber(order.table_id)}`, description: items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ') || 'Itens lançados' });
   });
   shiftDeliveries.forEach((d) => {
-    const ch = isPickup(d) ? 'Retirada' : 'Delivery';
+    const ch = isPickup(d) ? (localOrderLabel(d) as 'Consumir no local' | 'Retirada') : 'Delivery';
     const items = d.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ');
-    feed.push({ id: `dl-${d.id}`, time: d.created_at, channel: ch, tone: 'info', title: `${deliveryLabel(d)} ${isPickup(d) ? 'recebida' : 'recebido'}`, description: `${d.customer_name} · ${items}` });
+    feed.push({ id: `dl-${d.id}`, time: d.created_at, channel: ch, tone: 'info', title: `${deliveryLabel(d)} ${isPickup(d) && !isDineInOrder(d) ? 'recebida' : 'recebido'}`, description: `${d.customer_name} · ${items}` });
     if (d.dispatched_at) feed.push({ id: `dls-${d.id}`, time: d.dispatched_at, channel: ch, tone: 'info', title: `${deliveryLabel(d)} saiu para entrega`, description: d.driver_name ? `Entregador: ${d.driver_name}` : d.customer_name });
-    if (d.delivered_at) feed.push({ id: `dld-${d.id}`, time: d.delivered_at, channel: ch, tone: 'success', title: `${deliveryLabel(d)} ${isPickup(d) ? 'retirada pelo cliente' : 'entregue'}`, description: d.customer_name });
-    if (d.status === 'CANCELLED' && d.cancelled_at) feed.push({ id: `dlx-${d.id}`, time: d.cancelled_at, channel: ch, tone: 'danger', title: `${deliveryLabel(d)} ${isPickup(d) ? 'cancelada' : 'cancelado'}`, description: d.cancel_reason || d.customer_name });
+    if (d.delivered_at) feed.push({ id: `dld-${d.id}`, time: d.delivered_at, channel: ch, tone: 'success', title: `${deliveryLabel(d)} ${isDineInOrder(d) ? 'concluído' : isPickup(d) ? 'retirada pelo cliente' : 'entregue'}`, description: d.customer_name });
+    if (d.status === 'CANCELLED' && d.cancelled_at) feed.push({ id: `dlx-${d.id}`, time: d.cancelled_at, channel: ch, tone: 'danger', title: `${deliveryLabel(d)} ${isPickup(d) && !isDineInOrder(d) ? 'cancelada' : 'cancelado'}`, description: d.cancel_reason || d.customer_name });
   });
   losses.forEach((m) => feed.push({ id: `loss-${m.id}`, time: m.created_at, channel: 'Sistema', tone: 'danger', title: `${m.movement_type === 'PERDA' ? 'Perda' : 'Descarte'}: ${m.product_name || 'produto'}`, description: `${m.quantity} un · ${m.reason || 'Sem motivo'}` }));
   feed.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());

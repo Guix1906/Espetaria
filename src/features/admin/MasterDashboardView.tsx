@@ -119,7 +119,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const goTable = (tableId: string, tab: ActiveTab) => { useNavFocusStore.getState().focusTable(tableId); go(tab); };
   const activeDeliveries = (Object.values(d.stages).flat() as DeliveryOrder[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
   const lateIds = new Set(d.lateDeliveries.map((o) => o.id));
-  const feed = d.feed.filter((e) => feedFilter === 'Tudo' || (feedFilter === 'Casa' ? e.channel === 'Casa' : e.channel === 'Delivery' || e.channel === 'Retirada'));
+  const feed = d.feed.filter((e) => feedFilter === 'Tudo' || (feedFilter === 'Casa' ? e.channel === 'Casa' : e.channel === 'Delivery' || e.channel === 'Consumir no local' || e.channel === 'Retirada'));
   const printerProblem = isSupabaseConfigured && (!isBridgeAlive || d.stuckJobs.length > 0 || d.failedJobs.length > 0);
   const topByQty = [...d.topProducts].sort((a, b) => b.qty - a.qty).slice(0, 8);
 

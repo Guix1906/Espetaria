@@ -22,7 +22,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { deliveryPaymentLabel, getDeliveryStatusConfig, isDineInOrder, isPickupOrder } from '../../lib/deliveryStatus';
+import { deliveryPaymentLabel, getDeliveryStatusConfig, isDineInOrder, isPickupOrder, orderKind, type OrderKind } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { buildWhatsAppLink } from '../../lib/whatsapp';
 import { renderWhatsAppTemplate, resolveWhatsAppTemplates, whatsAppVariables } from '../../lib/whatsappTemplates';
@@ -86,7 +86,7 @@ function paymentLine(order: DeliveryOrder): string {
   if (order.cash_change_for) parts.push(`troco p/ ${formatBRL(order.cash_change_for)}`);
   if (order.paid_at) parts.push(`pago ${timeOf(order.paid_at)}`);
   else if (order.payment_method === 'PIX') parts.push('aguardando');
-  else parts.push(pickup ? 'receber na retirada' : 'receber na entrega');
+  else parts.push(isDineInOrder(order) ? 'receber no local' : pickup ? 'receber na retirada' : 'receber na entrega');
   return parts.join(' · ');
 }
 
@@ -149,7 +149,10 @@ export const DeliveryManagementView: React.FC = () => {
   const canCancel = ['MASTER', 'GERENTE', 'CAIXA'].includes(currentProfile.role);
   const canManage = ['MASTER', 'GERENTE'].includes(currentProfile.role);
 
-  const filteredOrders = deliveryOrders.filter((order) => {
+  // Tipo do pedido: entregador vê só as entregas
+  const [kindFilter, setKindFilter] = useState<OrderKind | 'ALL'>(() => (currentProfile.role === 'ENTREGADOR' ? 'DELIVERY' : 'ALL'));
+  const typedOrders = deliveryOrders.filter((order) => kindFilter === 'ALL' || orderKind(order) === kindFilter);
+  const filteredOrders = typedOrders.filter((order) => {
     if (filter === 'ALL_ACTIVE') return isInProduction(order.status);
     if (filter === 'AWAITING_PAYMENT') return order.status === 'AWAITING_PAYMENT';
     if (filter === 'READY') return order.status === 'READY';
@@ -214,11 +217,11 @@ export const DeliveryManagementView: React.FC = () => {
     }
   };
 
-  const countActive = deliveryOrders.filter((o) => isInProduction(o.status)).length;
-  const countAwaiting = deliveryOrders.filter((o) => o.status === 'AWAITING_PAYMENT').length;
-  const countReady = deliveryOrders.filter((o) => o.status === 'READY').length;
-  const countDispatched = deliveryOrders.filter((o) => o.status === 'OUT_FOR_DELIVERY').length;
-  const countDelivered = deliveryOrders.filter((o) => o.status === 'DELIVERED').length;
+  const countActive = typedOrders.filter((o) => isInProduction(o.status)).length;
+  const countAwaiting = typedOrders.filter((o) => o.status === 'AWAITING_PAYMENT').length;
+  const countReady = typedOrders.filter((o) => o.status === 'READY').length;
+  const countDispatched = typedOrders.filter((o) => o.status === 'OUT_FOR_DELIVERY').length;
+  const countDelivered = typedOrders.filter((o) => o.status === 'DELIVERED').length;
 
   return (
     <div className="page-layout">
@@ -254,6 +257,14 @@ export const DeliveryManagementView: React.FC = () => {
         <DriverPayoutsView />
       ) : (
       <>
+      {/* Tipo do pedido: cada um na sua aba */}
+      <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-md bg-surface-muted p-1" role="group" aria-label="Tipo de pedido">
+        {([['ALL', 'Todos'], ['DELIVERY', 'Entrega'], ['DINE_IN', 'Consumir no local'], ['PICKUP', 'Retirada']] as const).map(([key, label]) => {
+          const active = deliveryOrders.filter((o) => isInProduction(o.status) || o.status === 'OUT_FOR_DELIVERY' || o.status === 'AWAITING_PAYMENT');
+          const count = key === 'ALL' ? active.length : active.filter((o) => orderKind(o) === key).length;
+          return <button key={key} type="button" aria-pressed={kindFilter === key} onClick={() => setKindFilter(key)} className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-sm px-3 text-sm font-medium ${kindFilter === key ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{label} <span className="font-mono">{count}</span></button>;
+        })}
+      </div>
       {/* Filtros: a contagem fica no próprio filtro */}
       <div className="flex flex-wrap items-center gap-2 pb-1">
         {([
