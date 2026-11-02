@@ -38,7 +38,7 @@ export function WaiterPortal() {
   const headerRef = useRef<HTMLElement>(null);
   // Gerência logada no painel entra direto, sem novo login
   // (na demonstração local continua a escolha de garçom de exemplo)
-  const isManager = isSupabaseConfigured && isAuthenticated && isManagerProfile(previousProfile.current);
+  const isManager = isSupabaseConfigured && isAuthenticated && isManagerProfile(currentProfile);
   const [identified, setIdentified] = useState(() => isManager || (isSupabaseConfigured && isAuthenticated && isWaiterProfile(currentProfile)));
   const [email, setEmail] = useState(() => rememberedEmail('waiter'));
   const [password, setPassword] = useState('');

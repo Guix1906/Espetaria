@@ -48,7 +48,7 @@ export function categoryOf(p: Product, categoryName?: string) {
   if (categoryName && /^entradas?$/i.test(categoryName.trim())) return 'Entradas';
   if (p.type === 'ESPETO') return ESPETOS;
   if (p.type === 'PORCAO') return 'Acompanhamentos';
-  if (p.type === 'BEBIDA') return /\bdose\b|caipi|gin\b|coquetel|drink|whisky|vodka|cacha/i.test(p.name) ? 'Drinks e doses' : /cerveja|long neck|heineken|original|skol|chopp|600ml/i.test(p.name) ? 'Cervejas' : 'Sem álcool';
+  if (p.type === 'BEBIDA') return /\bdose\b|caipi|\bgin\b|coquetel|drink|whisky|vodka|cacha/i.test(`${p.name} ${p.description ?? ''}`) ? 'Drinks e doses' : /cerveja|long neck|heineken|original|skol|chopp|600ml/i.test(p.name) ? 'Cervejas' : 'Sem álcool';
   if (p.type === 'SOBREMESA') return 'Sobremesas';
   return 'Outros';
 }
