@@ -47,6 +47,24 @@ export function deliverySummarySector(orderType, itemSectors) {
 }
 
 /**
+ * Delivery/retirada: um cupom só com o pedido inteiro, no setor principal (churrasqueira se tiver
+ * espeto; senão cozinha; senão bar). A bebida não sai separada. A cozinha, se tiver o que preparar
+ * num pedido com espeto, continua recebendo o cupom dela. Sem saber os itens, imprime como veio.
+ */
+export function deliveryPrintPlan(job, rows) {
+  if (job.kind !== 'ORDER' || job.origin !== 'DELIVERY' || job.is_reprint || !rows?.length) return { skip: false, items: job.items };
+  const sectors = rows.map((row) => row.sector);
+  const main = ['GRILL', 'KITCHEN', 'BAR'].find((sector) => sectors.includes(sector));
+  if (job.sector === main) {
+    return {
+      skip: false,
+      items: rows.map((row) => ({ name: row.product_name, quantity: row.quantity, unit_price: row.unit_price, doneness: row.doneness, notes: row.notes })),
+    };
+  }
+  return { skip: job.sector === 'BAR', items: job.items };
+}
+
+/**
  * Consome a fila print_queue do Supabase:
  *  - acorda imediatamente em cada INSERT (Realtime)
  *  - e faz polling periódico como garantia (queda de internet, Realtime fora)
@@ -256,16 +274,28 @@ export class PrintWorker {
     const maxRetries = 3;
     const attempt = (job.attempts || 0) + 1;
     try {
-      // Delivery: o resumo é a via do entregador (churrasqueira/cozinha). Retirada já tem os
-      // dados no cupom do setor: expedição separada só se PRINT_DELIVERY_SUMMARY=true no .env
+      // O cupom único do delivery já tem cliente, endereço e pagamento:
+      // resumo separado só se PRINT_DELIVERY_SUMMARY=true no .env
       if (job.kind === 'DELIVERY_SUMMARY') {
-        const sector = await this.summarySector(job);
-        if (!sector && process.env.PRINT_DELIVERY_SUMMARY !== 'true') {
+        if (process.env.PRINT_DELIVERY_SUMMARY !== 'true') {
           await this.complete(job.id, true, null, 'DISPENSADO');
-          log(`[bridge] – ${label} dispensado (retirada no balcão, sem motoboy)`);
+          log(`[bridge] – ${label} dispensado (pedido inteiro no cupom único)`);
           return;
         }
+        const sector = await this.summarySector(job);
         if (sector) job = { ...job, sector };
+      }
+      if (job.kind === 'ORDER' && job.origin === 'DELIVERY' && !job.is_reprint) {
+        const { data, error } = await this.supabase.from('delivery_order_items')
+          .select('product_name, quantity, unit_price, doneness, notes, sector').eq('delivery_order_id', job.order_id);
+        if (error) log('[bridge] Itens do pedido indisponíveis, cupom sai só com o setor:', error.message);
+        const plan = deliveryPrintPlan(job, data);
+        if (plan.skip) {
+          await this.complete(job.id, true, null, 'DISPENSADO');
+          log(`[bridge] – ${label} dispensado (já está no cupom único)`);
+          return;
+        }
+        job = { ...job, items: plan.items };
       }
       const templates = await this.loadTemplates();
       const printConfig = { ...this.config, templates, ...(this.paperColumns ? { paperColumns: this.paperColumns } : {}) };
