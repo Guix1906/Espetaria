@@ -84,8 +84,8 @@ describe('Area dedicada do garcom', () => {
 
   it('oferece selecao de ponto da carne com botoes de distribuicao de quantidade', () => {
     const html = renderToStaticMarkup(<WaiterDonenessModal product={{ ...product, allows_doneness: true, allows_notes: true }} isOpen onClose={vi.fn()} onConfirm={vi.fn()} />);
-    expect(html).toContain('Como você prefere o ponto?');
-    expect(html).toContain('escolha a quantidade por ponto');
+    expect(html).toContain('Ponto da carne');
+    expect(html).toContain('obrigatório');
     expect(html).toContain('Ao ponto');
     expect(html).toContain('Mal passada');
     expect(html).toContain('Bem passada');
@@ -93,8 +93,8 @@ describe('Area dedicada do garcom', () => {
 
   it('permite observacoes sem oferecer ponto da carne para outros produtos', () => {
     const html = renderToStaticMarkup(<WaiterDonenessModal product={{ ...product, allows_doneness: false, allows_notes: true }} isOpen onClose={vi.fn()} onConfirm={vi.fn()} />);
-    expect(html).toContain('Alguma observação?');
-    expect(html).not.toContain('Como você prefere o ponto?');
+    expect(html).toContain('Observação');
+    expect(html).not.toContain('Ponto da carne');
     expect(html).not.toContain('Sem sal grosso');
   });
 

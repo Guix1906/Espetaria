@@ -205,7 +205,7 @@ export const DeliveryZonesView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleEdit(zone)}
-                className="rounded-lg bg-surface-soft px-2 py-1.5 text-[11px] font-semibold text-ink-secondary hover:bg-brand-50 hover:text-brand-700 transition"
+                className="rounded-lg bg-surface-soft px-2 py-1.5 text-[13px] font-semibold text-ink-secondary hover:bg-brand-50 hover:text-brand-700 transition"
                 title="Editar bairro"
               >
                 <Edit3 className="h-3 w-3" />

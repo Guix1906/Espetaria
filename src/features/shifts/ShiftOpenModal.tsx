@@ -328,7 +328,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               <Ban className="w-3.5 h-3.5 shrink-0" />
               Fora do cardápio hoje
             </span>
-            <span className="text-[11px] font-normal text-rose-600">Garçons não verão este item</span>
+            <span className="text-[13px] font-normal text-rose-600">Garçons não verão este item</span>
           </div>
         ) : (
           <div className="pt-2.5 border-t border-line/60 flex items-center justify-between gap-2">
@@ -478,7 +478,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                   <label htmlFor="select-daily-rice" className="text-xs font-bold uppercase tracking-wider text-ink-secondary">
                     Puxar Arroz Cadastrado:
                   </label>
-                  <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
+                  <span className="text-[13px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
                     {selectedRiceFlavors.length === 1 ? '1 sabor selecionado' : `${selectedRiceFlavors.length} sabores selecionados`}
                   </span>
                 </div>
@@ -531,7 +531,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
 
                 {/* Chips rápidos dos arrozes cadastrados mais comuns */}
                 <div className="space-y-1.5 pt-1">
-                  <span className="text-[11px] font-semibold text-ink-muted">Toque para ativar ou desativar do turno:</span>
+                  <span className="text-[13px] font-semibold text-ink-muted">Toque para ativar ou desativar do turno:</span>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {allRegisteredRices.slice(0, 8).map((option) => {
                       const isSelected = selectedRiceFlavors.includes(option);
@@ -563,7 +563,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                         {selectedRiceFlavors.join(' & ')}
                       </strong>
                     </span>
-                    <span className="text-[11px] text-brand-700 bg-white/90 border border-brand-200 px-2 py-0.5 rounded-full font-bold">
+                    <span className="text-[13px] text-brand-700 bg-white/90 border border-brand-200 px-2 py-0.5 rounded-full font-bold">
                       Ativo no turno
                     </span>
                   </div>
@@ -655,7 +655,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 {missingCount === 1 ? '1 produto sem quantidade' : `${missingCount} produtos sem quantidade`} (ficam fora do turno).
               </p>
             )}
-            <button type="submit" className="btn-primary w-full h-12 rounded-xl text-[15px] font-semibold flex items-center justify-center gap-2">
+            <button type="submit" className="sticky bottom-0 z-10 btn-primary w-full h-12 rounded-xl text-[15px] font-semibold flex items-center justify-center gap-2">
               <CheckCircle2 className="w-5 h-5" />
               <span>Confirmar e abrir turno</span>
             </button>

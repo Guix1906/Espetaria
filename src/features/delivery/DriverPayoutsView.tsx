@@ -209,11 +209,11 @@ export function DriverPayoutsView() {
                       <div className="flex items-center gap-2">
                         <h3 className="truncate text-base font-semibold text-ink">{payout.driver_name}</h3>
                         {payout.paid_at ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[13px] font-semibold text-emerald-800">
                             <CheckCircle2 className="h-3 w-3" /> Pago
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[13px] font-semibold text-amber-800">
                             <Clock3 className="h-3 w-3" /> Pendente
                           </span>
                         )}

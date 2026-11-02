@@ -253,10 +253,10 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
               <button
                 type="button"
                 onClick={() => setIsTransferModalOpen(true)}
-                className="flex h-11 w-11 items-center justify-center gap-1.5 rounded-xl border border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100 active:scale-95 transition font-bold text-sm shadow-sm sm:w-auto sm:px-3"
+                className="flex h-11 w-11 items-center justify-center gap-1.5 rounded-md border border-line-strong bg-surface text-ink active:bg-surface-muted font-semibold text-sm sm:w-auto sm:px-3"
                 aria-label="Trocar de mesa"
               >
-                <ArrowLeftRight className="h-4 w-4 text-amber-800 shrink-0" />
+                <ArrowLeftRight className="h-4 w-4 shrink-0" />
                 <span className="hidden whitespace-nowrap sm:inline">Trocar mesa</span>
               </button>
             )}
@@ -282,22 +282,6 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                 onClick={() => { triggerHaptic(20); setSelectedCategory(grp.id); setSearchQuery(''); scrollToCatalog(); }}
                 className={`flex h-11 items-center justify-center gap-1 rounded-xl text-center text-[14px] font-bold border transition min-[375px]:text-[15px] ${isGroupActive ? 'bg-ink text-white border-ink shadow-sm' : 'bg-surface text-ink border-line hover:border-line-strong active:bg-surface-muted'}`}>
                 <grp.icon className="hidden h-4 w-4 shrink-0 min-[375px]:block" aria-hidden="true" />{grp.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Subcategorias em formato de pílulas rápidas */}
-        <div className="mx-auto mt-1.5 flex max-w-5xl flex-nowrap gap-1 overflow-x-auto pb-0.5" aria-label="Subcategorias do cardápio">
-          {[{ id: 'ALL', name: 'Todos' }, ...categories].map((category) => {
-            const isSubActive = selectedCategory === category.id && !query;
-            return (
-              <button
-                key={category.id}
-                type="button"
-                onClick={() => { triggerHaptic(15); setSelectedCategory(category.id); setSearchQuery(''); scrollToCatalog(); }}
-                className={`h-8 shrink-0 whitespace-nowrap rounded-lg border px-2.5 text-xs font-semibold ${isSubActive ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-line bg-surface text-ink-muted active:bg-surface-muted'}`}>
-                {category.id === 'ALL' ? 'Todos' : shortCategoryName(category.name)}
               </button>
             );
           })}
@@ -368,8 +352,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                       />
                     )}
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-[23px] font-bold leading-tight text-ink">{product.name}</h3>
-                      <p className="mt-1.5 flex flex-wrap items-baseline gap-x-3 text-[19px]">
+                      <h3 className="text-[20px] font-bold leading-tight text-ink">{product.name}</h3>
+                      <p className="mt-1.5 flex flex-wrap items-baseline gap-x-3 text-[20px]">
                         <span className={`font-mono font-semibold text-ink ${out && !inCart ? 'opacity-50' : ''}`}>{formatBRL(product.price)}</span>
                         {tag && (out && !inCart ? <StatusTag kind="alert" className="font-semibold">{tag.text}</StatusTag> : <span className={tag.cls}>{tag.text}</span>)}
                       </p>
@@ -396,22 +380,6 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                 );
               })}
             </ul>
-            {section.id === TOP && !query && (
-              <div className="pt-2 pb-2 text-center">
-                <p className="text-[13px] font-semibold text-ink-muted mb-2">Ver outras categorias</p>
-                <div className="flex flex-wrap justify-center gap-1.5">
-                  {categories.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => { setSelectedCategory(c.id); scrollToCatalog(); }}
-                      className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-semibold text-ink active:bg-surface-muted">
-                      {shortCategoryName(c.name)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </section>
         ))}
       </div>

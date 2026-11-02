@@ -38,7 +38,7 @@ const PublicMenuPage = lazyNamed(() => import('./features/delivery/PublicMenuPag
 const PublicOrderTrackingPage = lazyNamed(() => import('./features/delivery/PublicOrderTrackingPage'), 'PublicOrderTrackingPage');
 const TableOrderPage = lazyNamed(() => import('./features/delivery/TableOrderPage'), 'TableOrderPage');
 
-const screenLoading = <p className="py-16 text-center text-sm text-[#6B5D53]" role="status">Carregando...</p>;
+const screenLoading = <p className="py-16 text-center text-sm text-ink-muted" role="status">Carregando...</p>;
 
 declare global {
   interface Window { pontoDesktop?: { showWhatsApp: (visible: boolean) => void } }
@@ -68,7 +68,7 @@ export function App() {
 
   if (isInitializing) {
     // Mesma moldura do login: a tela não "pisca" trocando de layout enquanto a sessão carrega
-    return <AuthShell><p className="py-10 text-center text-sm text-[#6B5D53]" role="status">Verificando sessão...</p></AuthShell>;
+    return <AuthShell><p className="py-10 text-center text-sm text-ink-muted" role="status">Verificando sessão...</p></AuthShell>;
   }
 
   let screen;

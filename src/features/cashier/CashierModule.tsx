@@ -178,7 +178,7 @@ export const CashierModule: React.FC = () => {
       {/* Régua de Acesso Rápido / Atalho Direto para as Mesas Ativas */}
       {effectiveFilter !== 'CLOSED_TODAY' && activeTables.length > 0 && (
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 custom-scrollbar">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted whitespace-nowrap">
+          <span className="text-[13px] font-bold uppercase tracking-wider text-ink-muted whitespace-nowrap">
             Acesso direto:
           </span>
           {activeTables.map((t) => {
@@ -240,7 +240,7 @@ export const CashierModule: React.FC = () => {
                             Mesa {String(table.number).padStart(2, '0')}
                           </span>
                           {isWaitingBill && (
-                            <span className="status-badge bg-brand-500 text-white text-[11px]">
+                            <span className="status-badge bg-brand-500 text-white text-[13px]">
                               Conta pedida {billMinutes(table)}
                             </span>
                           )}

@@ -119,7 +119,7 @@ export function WaiterCartDrawer({ table, isOpen, onClose, onSuccess }: WaiterCa
       </div>
       {items.length > 0 && (
         <div className="space-y-3 border-t border-line px-4 pt-3" style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom))' }}>
-          <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[17px] text-ink-secondary">Subtotal deste pedido</span><span className="font-mono text-[26px] font-bold text-brand-700">{formatBRL(total)}</span></div>
+          <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-[17px] text-ink-secondary">Subtotal deste pedido</span><span className="font-mono text-[24px] font-bold text-brand-700">{formatBRL(total)}</span></div>
           <Button size="lg" block disabled={isSubmitting} onClick={handleSendOrder} className="font-semibold">{isSubmitting ? 'Validando e enviando...' : 'Enviar à produção'}</Button>
           <p className="text-center text-base text-ink-secondary">Imprime em: {sectorSummary}</p>
         </div>

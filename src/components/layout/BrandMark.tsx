@@ -15,7 +15,7 @@ export function PontoLogo({ size = 28, inverted = false }: { size?: number; inve
   const accent = inverted ? '#E08A63' : '#B5502E';
   return (
     <span
-      className={`inline-flex items-center font-semibold leading-none ${inverted ? 'text-[#F5EFE6]' : 'text-[#B5502E]'}`}
+      className={`inline-flex items-center font-semibold leading-none ${inverted ? 'text-canvas' : 'text-brand-500'}`}
       style={{ fontFamily: 'Jost, sans-serif', letterSpacing: '-0.04em', fontSize: size }}
       role="img"
       aria-label="Ponto"

@@ -46,7 +46,7 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   por canal (produtos sem taxas; delivery realizado = entregue ou pago). "Lançar pedido"/"Cobrar" abrem a mesa via `useNavFocusStore`.
 - Estoque amarrado: garçom vê saldo por item e o carrinho bloqueia acima do estoque (`assertStock` em `useCartStore`). Gerente bloqueia/libera item no quadro "Espetos e porções disponíveis" (Visão geral).
 - Login: abas Proprietário/Garçom na mesma moldura (`src/features/auth/AuthShell.tsx`). Perfil GARCOM sempre cai na área do garçom (`#/garcom`).
-- Marca "Ponto": paleta terracota/tinta/papel (tokens em `src/index.css` e `tailwind.config.js`; cores padrão do Tailwind remapeadas para a paleta), fontes Jost e JetBrains Mono (números), logo `PontoLogo` em `BrandMark.tsx`. Visual sóbrio: cantos pequenos, sem emojis, sem pílulas com borda, textos sem Maiúsculas Em Tudo.
+- Marca "Ponto": paleta terracota/tinta/papel (tokens em `src/index.css` e `tailwind.config.js`; cores padrão do Tailwind remapeadas para a paleta), fonte Jost (números com `font-mono` = Jost alinhada; JetBrains Mono só em cupom, `font-ticket`), logo `PontoLogo` em `BrandMark.tsx`. Visual sóbrio: cantos pequenos, sem emojis, sem pílulas com borda, textos sem Maiúsculas Em Tudo.
 - Área do garçom precisa funcionar perfeitamente no celular (testar em 320, 360, 375 e 414px).
 - WhatsApp automático do delivery: fila `whatsapp_outbox` → Edge Function `whatsapp-dispatch` (Z-API, deploy com `--no-verify-jwt`).
   Eventos: recebido, PIX confirmado, pronto (status `READY`), saiu, entregue, cancelado. Textos editáveis em Configurações → WhatsApp
@@ -85,6 +85,8 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   (itens agrupados, taxa, desconto, total, já pago, divisão por pessoa, PIX; "Não é documento fiscal"); botão "Imprimir conta" no
   caixa (`TableSettlementModal`) e "Imprimir conta de novo" no garçom (`WaiterViewTab`). Cupom em `billTicket` (printer-bridge/tickets.js).
 - Impressão: modelos estilo Anota AI ("Produção" e "Completo") configuráveis em Configurações → Modelos de cupom (`restaurant_settings.print_templates`); etiqueta de delivery com dados do cliente.
+
+- Cardápio (02/11): "X" e "X com acompanhamento" viram um card com as duas opções (`comboOf` em `PublicMenuApp`, regra pelo nome); bebidas em Sem álcool/Cervejas/Drinks e doses por nome (`categoryOf`). Folha do garçom: ponto sem pré-seleção, arroz obrigatório no combo e só de `daily_rice_flavors`, `OptionGroup`. Loja fechada não mostra "Esgotado".
 
 - Dados da loja (nome, CNPJ, endereço, telefone, chave PIX) vêm SEMPRE de `restaurant_settings`; nada de valores de exemplo
   no código (sem chave PIX não gera QR Code). Telas ficam dentro de `ErrorBoundary` (uma tela quebrada não derruba o sistema).

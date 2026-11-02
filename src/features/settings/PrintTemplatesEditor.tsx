@@ -148,7 +148,7 @@ export function PrintTemplatesEditor() {
             <FilterChip active={deliveryPreview} onClick={() => setDeliveryPreview(true)}>Delivery</FilterChip>
           </div>
         </div>
-        <pre aria-label="Prévia do cupom" className="overflow-x-auto rounded-xl bg-white p-4 font-mono text-xs leading-5 text-black shadow-inner">{preview}</pre>
+        <pre aria-label="Prévia do cupom" className="overflow-x-auto rounded-xl bg-white p-4 font-ticket text-xs leading-5 text-black shadow-inner">{preview}</pre>
       </div>
     </div>
   );

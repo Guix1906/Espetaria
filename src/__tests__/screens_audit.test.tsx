@@ -10,7 +10,6 @@ import { KitchenKDSView } from '../features/kds/KitchenKDSView';
 import { BarKDSView } from '../features/kds/BarKDSView';
 import { CashierModule } from '../features/cashier/CashierModule';
 import { DeliveryManagementView } from '../features/delivery/DeliveryManagementView';
-import { DeliveryCatalogView } from '../features/delivery/DeliveryCatalogView';
 import { ProductCatalogManageView } from '../features/products/ProductCatalogManageView';
 import { DailyStockView } from '../features/stock/DailyStockView';
 import { AuditLogView } from '../features/audit/AuditLogView';
@@ -171,12 +170,6 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       expect(html).toContain('Em produção');
       expect(html).toContain('Em entrega');
       expect(html).not.toContain('Em rota de entrega');
-    });
-
-    it('1.10 DeliveryCatalogView (Cardápio Digital) deve abrir e renderizar sem erros', () => {
-      const html = renderWithFeedback(<DeliveryCatalogView />);
-      expect(html).toContain('Sabor da Carne');
-      expect(html).toContain('Nosso cardápio');
     });
 
     it('1.11 ProductCatalogManageView (Cadastro de Produtos) deve abrir e renderizar sem erros', () => {

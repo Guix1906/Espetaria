@@ -41,8 +41,8 @@ export function LoginScreen() {
       <form onSubmit={submit} className="space-y-5" aria-labelledby="login-title">
         <AccessTabs active="owner" />
         <div className="pt-2">
-          <h1 id="login-title" className="text-[30px] font-semibold leading-tight tracking-[-0.02em] text-[#2B211C]">Entrar</h1>
-          <p className="mt-1.5 text-sm text-[#6B5D53]">Gestão completa: proprietário, gerência, caixa e cozinha. Garçons usam a aba <strong className="font-medium text-[#2B211C]">Garçom</strong>.</p>
+          <h1 id="login-title" className="text-[30px] font-semibold leading-tight tracking-[-0.02em] text-ink">Entrar</h1>
+          <p className="mt-1.5 text-sm text-ink-muted">Gestão completa: proprietário, gerência, caixa e cozinha. Garçons usam a aba <strong className="font-medium text-ink">Garçom</strong>.</p>
         </div>
         {error && <p role="alert" className={authError}>{error}</p>}
         <div>
@@ -55,7 +55,7 @@ export function LoginScreen() {
         </div>
         <button type="submit" disabled={busy} className={authButton}>{busy ? 'Entrando...' : 'Entrar'}</button>
         <ForgotPassword />
-        <p className="flex items-center justify-center gap-1.5 pt-2 text-xs text-[#6B5D53]"><LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />Cada colaborador usa o próprio login.</p>
+        <p className="flex items-center justify-center gap-1.5 pt-2 text-xs text-ink-muted"><LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />Cada colaborador usa o próprio login.</p>
       </form>
     </AuthShell>
   );
@@ -92,8 +92,8 @@ function FirstAdminSetup({ onDone }: { onDone: () => void }) {
       <form onSubmit={submit} className="space-y-4" aria-labelledby="setup-title">
         <div>
           <p className="text-sm font-semibold text-brand-500">Primeiro acesso</p>
-          <h1 id="setup-title" className="mt-1 text-[30px] font-semibold leading-tight tracking-[-0.02em] text-[#2B211C]">Criar administrador</h1>
-          <p className="mt-1.5 text-sm text-[#6B5D53]">Cadastre o responsável pelo sistema. Depois, ele cadastra gerentes, garçons e demais colaboradores em <strong className="font-medium text-[#2B211C]">Equipe</strong>. Esta tela aparece só uma vez.</p>
+          <h1 id="setup-title" className="mt-1 text-[30px] font-semibold leading-tight tracking-[-0.02em] text-ink">Criar administrador</h1>
+          <p className="mt-1.5 text-sm text-ink-muted">Cadastre o responsável pelo sistema. Depois, ele cadastra gerentes, garçons e demais colaboradores em <strong className="font-medium text-ink">Equipe</strong>. Esta tela aparece só uma vez.</p>
         </div>
         {error && <p role="alert" className={authError}>{error}</p>}
         <div><label htmlFor="setup-name" className={authLabel}>Nome</label><input id="setup-name" className={authInput} autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} /></div>

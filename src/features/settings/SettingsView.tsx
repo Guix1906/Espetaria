@@ -371,7 +371,7 @@ export const SettingsView: React.FC = () => {
 
             <div className="mx-auto flex w-fit flex-col items-center rounded-2xl border border-line bg-white p-4 shadow-sm">
               <PixQrCode payload={samplePayload} size={176} />
-              <span className="mt-2 text-[11px] font-medium text-ink-muted">Leitura com app do banco</span>
+              <span className="mt-2 text-[13px] font-medium text-ink-muted">Leitura com app do banco</span>
             </div>
 
             <div>
@@ -451,7 +451,7 @@ export const SettingsView: React.FC = () => {
                     <span className={`icon-tile ${tone}`}><Icon className="h-5 w-5" /></span>
                     <div>
                       <h4 className="font-bold text-ink">{title}</h4>
-                      <p className="font-mono text-[11px] text-ink-muted">{ip}</p>
+                      <p className="font-mono text-[13px] text-ink-muted">{ip}</p>
                     </div>
                   </div>
                   <PrinterHealthTag jobs={jobs} sector={sector} />
@@ -512,7 +512,7 @@ export const SettingsView: React.FC = () => {
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2">
-                          <span className={`inline-flex rounded-sm px-2 py-0.5 text-[11px] font-medium ${
+                          <span className={`inline-flex rounded-sm px-2 py-0.5 text-[13px] font-medium ${
                             job.sector === 'GRILL' ? 'bg-amber-100 text-amber-900' :
                             job.sector === 'KITCHEN' ? 'bg-emerald-100 text-emerald-900' :
                             'bg-sky-100 text-sky-900'
@@ -524,7 +524,7 @@ export const SettingsView: React.FC = () => {
                             <span className="status-badge bg-rose-600 text-white">2ª via</span>
                           )}
                         </div>
-                        <span className={`text-[11px] font-bold ${
+                        <span className={`text-[13px] font-bold ${
                           job.status === 'PRINTED' ? 'text-emerald-700' :
                           job.status === 'PRINTING' ? 'text-amber-700' :
                           'text-ink-muted'
@@ -534,7 +534,7 @@ export const SettingsView: React.FC = () => {
                       </div>
                       <div className="mt-1 flex items-center justify-between text-xs text-ink-muted">
                         <span>{job.origin === 'DELIVERY' ? `Delivery (${job.customer_name})` : `Mesa ${job.table_number}`}</span>
-                        <span className="text-[11px]">{new Date(job.created_at).toLocaleTimeString('pt-BR')}</span>
+                        <span className="text-[13px]">{new Date(job.created_at).toLocaleTimeString('pt-BR')}</span>
                       </div>
                     </div>
                   ))}
@@ -572,7 +572,7 @@ export const SettingsView: React.FC = () => {
               </div>
 
               {selectedJob ? (
-                <pre className="rounded-xl border border-line-strong bg-slate-950 p-4 font-mono text-[11px] leading-tight text-emerald-400 overflow-x-auto shadow-inner">
+                <pre className="rounded-xl border border-line-strong bg-slate-950 p-4 font-mono text-[13px] leading-tight text-emerald-400 overflow-x-auto shadow-inner">
                   {formatTicketText(selectedJob)}
                 </pre>
               ) : (

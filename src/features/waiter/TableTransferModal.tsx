@@ -152,7 +152,7 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
                     }`}
                   >
                     <span className="text-lg font-bold">{pad2(t.number)}</span>
-                    <span className="text-[10px] font-sans text-ink-muted">
+                    <span className="text-[13px] font-sans text-ink-muted">
                       {isSelected ? '✓ Selecionada' : 'Livre'}
                     </span>
                   </button>

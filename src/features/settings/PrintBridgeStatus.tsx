@@ -79,7 +79,7 @@ export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
           <div>
             <div className="flex items-center gap-2">
               <p className="font-bold text-ink">{healthy ? 'Serviço de impressão funcionando' : 'Atenção na impressão'}</p>
-              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-medium ${isBridgeAlive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[13px] font-medium ${isBridgeAlive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
                 <span className={`h-1.5 w-1.5 rounded-full ${isBridgeAlive ? 'bg-emerald-600 animate-pulse' : 'bg-rose-600'}`} />
                 {isBridgeAlive ? `PC da Loja online (${heartbeatAgeSeconds}s)` : 'PC da Loja sem sinal'}
               </span>

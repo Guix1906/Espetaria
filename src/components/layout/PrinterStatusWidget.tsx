@@ -146,7 +146,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
       setTestSuccessMessage('Cupons de teste enviados para a Cozinha e Churrasqueira!');
       setTimeout(() => setTestSuccessMessage(null), 5000);
     } catch (err: any) {
-      alert(`Falha ao disparar teste: ${err.message || 'Erro desconhecido'}`);
+      setTestSuccessMessage(`Falha ao disparar teste: ${err.message || 'Erro desconhecido'}`);
     } finally {
       setIsTesting(false);
     }
@@ -192,7 +192,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
               Serviço de Impressão Local (PC da Loja)
             </span>
             <span
-              className={`status-badge text-[11px] font-bold ${
+              className={`status-badge text-[13px] font-bold ${
                 isBridgeAlive ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
               }`}
             >
@@ -220,7 +220,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
                 Cozinha
               </span>
               <span
-                className={`status-badge text-[11px] font-bold ${
+                className={`status-badge text-[13px] font-bold ${
                   isKitchenOk ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
                 }`}
               >
@@ -249,7 +249,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
                 Churrasqueira
               </span>
               <span
-                className={`status-badge text-[11px] font-bold ${
+                className={`status-badge text-[13px] font-bold ${
                   isGrillOk ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
                 }`}
               >

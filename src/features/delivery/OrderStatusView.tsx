@@ -73,7 +73,7 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
     <div className="space-y-6 text-ink">
       <div>
         <p className="font-mono text-[13px] text-ink-muted">Pedido #{order.order_number}</p>
-        <h2 className={`mt-1 text-[28px] font-semibold leading-tight ${cancelled ? 'text-rose-600' : ''}`}>{awaitingPix ? 'Aguardando o PIX' : statusTitle(order)}</h2>
+        <h2 className={`mt-1 text-[30px] font-semibold leading-tight ${cancelled ? 'text-rose-600' : ''}`}>{awaitingPix ? 'Aguardando o PIX' : statusTitle(order)}</h2>
         {!cancelled && !done && !awaitingPix && (
           <p className="mt-1 text-[15px] text-ink-muted">
             {`${pickup ? 'Pronto' : 'Chega'} entre ${hhmm(addMin(order.created_at, eta[0]))} e ${hhmm(addMin(order.created_at, eta[1]))}`}

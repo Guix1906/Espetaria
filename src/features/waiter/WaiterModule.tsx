@@ -499,7 +499,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
               <li key={table.id}>
                 <button type="button" onClick={() => setSelectedTableId(table.id)} className="flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 text-left active:bg-surface-muted"
                   aria-label={`Mesa ${pad2(table.number)}, ${tabName(table, tab)}, ${chip.label}. Lançar itens`}>
-                  <span className="w-11 shrink-0 font-mono text-[26px] font-bold text-ink">{pad2(table.number)}</span>
+                  <span className="w-11 shrink-0 font-mono text-[24px] font-bold text-ink">{pad2(table.number)}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-base font-semibold text-ink">{tabName(table, tab)}</span>
                     <span className="block truncate text-base text-ink-muted">{tabSubtitle(tab)}</span>

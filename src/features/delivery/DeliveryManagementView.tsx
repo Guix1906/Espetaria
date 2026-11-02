@@ -114,7 +114,7 @@ function WhatsAppStatus({ messages, onRetry }: { messages: WhatsAppMessage[]; on
   return (
     <ul className="mt-2 flex flex-wrap gap-1.5" aria-label="Mensagens automáticas de WhatsApp">
       {ordered.map((m) => (
-        <li key={m.id} title={m.last_error ?? undefined} className={`inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-[11px] font-semibold ${m.status === 'SENT' ? 'bg-emerald-50 text-emerald-800' : m.status === 'FAILED' ? 'bg-rose-50 text-rose-800' : 'border-line bg-surface-muted text-ink-muted'}`}>
+        <li key={m.id} title={m.last_error ?? undefined} className={`inline-flex items-center gap-1 rounded-sm border px-2 py-1 text-[13px] font-semibold ${m.status === 'SENT' ? 'bg-emerald-50 text-emerald-800' : m.status === 'FAILED' ? 'bg-rose-50 text-rose-800' : 'border-line bg-surface-muted text-ink-muted'}`}>
           <MessageCircle className="h-3 w-3" aria-hidden="true" />
           {EVENT_LABEL[m.event] ?? m.event}: {MESSAGE_STATUS_LABEL[m.status]}
           {m.status === 'FAILED' && <button type="button" className="ml-1 underline" onClick={() => onRetry(m.id)}>reenviar</button>}

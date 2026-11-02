@@ -35,7 +35,7 @@ export function PublicMenuPage() {
   // Status do pedido: atualiza sozinho (cliente não precisa recarregar a página)
   useLivePolling(refreshTrackingStatus, 5_000);
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center bg-[#FBF8F3] text-[16px] text-[#6B5D53]" role="status">Carregando cardápio...</div>;
+  if (loading) return <div className="flex min-h-screen items-center justify-center bg-surface text-[16px] text-ink-muted" role="status">Carregando cardápio...</div>;
   return (
     <>
       {error && <p role="alert" className="bg-[#FBEDED] px-5 py-3 text-[14px] text-[#9B2C2C]">{error}</p>}

@@ -35,7 +35,7 @@ interface GrillTicket {
 
 /** Faixa do cartão: mesma cor do Salão; amarela e vermelha conforme a espera. */
 const STRIP: Record<ElapsedLevel, string> = {
-  ok: 'bg-[#f87152] text-white',
+  ok: 'bg-brand-500 text-white',
   warning: 'bg-amber-400 text-amber-950',
   urgent: 'bg-rose-700 text-white',
 };
@@ -281,7 +281,7 @@ export const GrillKDSView: React.FC = () => {
             return (
               <button key={product.id} type="button" onClick={() => handleQuickToggleExhaust(product.id, isExhausted)} className={`flex flex-col items-center justify-center rounded-lg border p-3 text-center transition ${isExhausted ? 'border-rose-200 bg-rose-100 text-rose-950' : 'border-emerald-200 bg-white text-ink hover:border-emerald-400'}`} title={isExhausted ? 'Toque para liberar' : 'Toque para marcar como esgotado'}>
                 <span className="line-clamp-1 text-xs font-bold leading-tight">{product.name}</span>
-                <span className={`mt-1.5 rounded-sm px-2 py-0.5 text-[10px] font-medium ${isExhausted ? 'bg-rose-200 text-rose-950' : 'bg-emerald-100 text-emerald-900'}`}>{isExhausted ? 'Esgotado' : 'Disponível'}</span>
+                <span className={`mt-1.5 rounded-sm px-2 py-0.5 text-[13px] font-medium ${isExhausted ? 'bg-rose-200 text-rose-950' : 'bg-emerald-100 text-emerald-900'}`}>{isExhausted ? 'Esgotado' : 'Disponível'}</span>
               </button>
             );
           })}

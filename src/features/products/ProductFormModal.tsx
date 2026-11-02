@@ -279,7 +279,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               >
                 <Flame className="w-5 h-5 text-brand-600" />
                 <span className="text-xs">Churrasqueira</span>
-                <span className="text-[10px] text-stone-400">Grelha e espetos</span>
+                <span className="text-[13px] text-stone-400">Grelha e espetos</span>
               </button>
 
               <button
@@ -293,7 +293,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               >
                 <UtensilsCrossed className="w-5 h-5 text-amber-600" />
                 <span className="text-xs">Cozinha</span>
-                <span className="text-[10px] text-stone-400">Porções & Cubas</span>
+                <span className="text-[13px] text-stone-400">Porções & Cubas</span>
               </button>
 
               <button
@@ -307,7 +307,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               >
                 <Beer className="w-5 h-5 text-sky-600" />
                 <span className="text-xs">Bar e copa</span>
-                <span className="text-[10px] text-stone-400">Bebidas e chopp</span>
+                <span className="text-[13px] text-stone-400">Bebidas e chopp</span>
               </button>
             </div>
           </div>
@@ -361,7 +361,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   className="w-full pl-9 pr-3 py-2.5 bg-white border border-stone-300 rounded-xl text-stone-900 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 transition-shadow"
                 />
               </div>
-              <p className="mt-1 text-[11px] text-stone-500">
+              <p className="mt-1 text-[13px] text-stone-500">
                 Quanto a casa gasta para servir uma unidade (carne, espeto, embalagem). Usado no lucro do Financeiro.
               </p>
             </div>
@@ -441,7 +441,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             <label className="flex items-center justify-between cursor-pointer py-1.5">
               <div>
                 <div className="font-semibold text-stone-900 text-xs">Exigir seleção de ponto da carne?</div>
-                <div className="text-[11px] text-stone-500">
+                <div className="text-[13px] text-stone-500">
                   Abre o modal de pontos (*Malpassada, Ao Ponto, etc.*) ao garçom ou cliente pedir
                 </div>
               </div>
@@ -460,7 +460,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   <Layers className="w-3.5 h-3.5 text-amber-600" />
                   <span>Controlar por cubas?</span>
                 </div>
-                <div className="text-[11px] text-stone-500">
+                <div className="text-[13px] text-stone-500">
                   Ideal para arroz, feijão tropeiro e mandioca (Cálculo: Cubas × Porções)
                 </div>
               </div>
@@ -491,7 +491,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             <label className="flex items-center justify-between cursor-pointer py-1.5 border-t border-stone-200">
               <div>
                 <div className="font-semibold text-stone-900 text-xs">Controla estoque operacional diário?</div>
-                <div className="text-[11px] text-stone-500">
+                <div className="text-[13px] text-stone-500">
                   Exige contagem na abertura de turno e debita saldo a cada espeto vendido
                 </div>
               </div>
@@ -526,7 +526,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
             <label className="flex items-center justify-between cursor-pointer py-1.5 border-t border-stone-200">
               <div>
                 <div className="font-semibold text-stone-900 text-xs">Ativo no cardápio</div>
-                <div className="text-[11px] text-stone-500">
+                <div className="text-[13px] text-stone-500">
                   Se desativado, o produto é ocultado tanto do salão quanto do delivery
                 </div>
               </div>
@@ -548,7 +548,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
                   Turno atual Aberto ({currentShift.name})
                 </span>
               </div>
-              <p className="text-[11px] text-brand-800 leading-snug">
+              <p className="text-[13px] text-brand-800 leading-snug">
                 Deseja disponibilizar este corte imediatamente para venda hoje à noite? Informe a quantidade preparada:
               </p>
               <div className="flex items-center gap-3 pt-1">

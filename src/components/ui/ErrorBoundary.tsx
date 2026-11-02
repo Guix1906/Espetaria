@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-sm bg-rose-50 text-rose-700"><AlertCircle className="h-6 w-6" aria-hidden="true" /></span>
         <h2 className="text-lg font-bold text-ink">Esta tela teve um problema</h2>
         <p className="text-sm text-ink-muted">Nenhum dado foi perdido. Tente abrir de novo. Se continuar, recarregue a página.</p>
-        <p className="break-words font-mono text-[11px] text-ink-muted">Detalhe: {this.state.error.message.slice(0, 160)}</p>
+        <p className="break-words font-mono text-[13px] text-ink-muted">Detalhe: {this.state.error.message.slice(0, 160)}</p>
         <div className="flex flex-wrap justify-center gap-2">
           <button type="button" className="btn-primary" onClick={this.retry}><RotateCcw className="h-4 w-4" aria-hidden="true" />Tentar de novo</button>
           <button type="button" className="btn-secondary" onClick={() => window.location.reload()}>Recarregar página</button>

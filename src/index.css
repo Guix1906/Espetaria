@@ -46,8 +46,9 @@
   body { @apply m-0 bg-canvas font-sans text-ink antialiased; line-height: 1.5; }
   ::selection { background: rgb(var(--color-brand-100)); color: rgb(var(--color-brand-900)); }
   h1, h2, h3, h4 { text-wrap: balance; letter-spacing: -0.01em; }
-  /* Números, códigos e cupom em JetBrains Mono */
-  .tabular-nums, .stat-value, pre, code, kbd { font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
+  /* Números em Jost alinhada; códigos e cupom em largura fixa */
+  .tabular-nums, .stat-value, .font-mono { font-family: Jost, 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+  pre, code, kbd, .font-ticket { font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace; font-variant-numeric: tabular-nums; }
   button, input, select, textarea { font: inherit; }
   button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   button, a { touch-action: manipulation; }
@@ -127,7 +128,7 @@
   .floating-cart { @apply fixed inset-x-0 bottom-0 z-20 p-3 sm:p-4; padding-bottom: max(12px, env(safe-area-inset-bottom)); background: linear-gradient(0deg, rgb(var(--color-canvas)) 65%, transparent); }
   .skip-link { @apply fixed left-4 top-4 z-50 -translate-y-24 rounded-xl bg-brand-800 px-5 py-3 font-semibold text-white focus:translate-y-0; }
   .app-sidebar { background: rgb(43 33 28); color: rgb(228 218 203); }
-  .nav-group-label { @apply mb-1.5 px-3 text-[13px] font-medium text-stone-500; }
+  .nav-group-label { @apply mb-1.5 px-3 text-[13px] font-medium text-stone-300; }
   .nav-item { @apply relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-stone-300; min-height: 44px; }
   .nav-item:hover { @apply bg-white/5 text-white; }
   .nav-item[aria-current='page'] { @apply bg-white/10 text-white; }

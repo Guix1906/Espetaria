@@ -52,7 +52,9 @@ export default {
       },
       fontFamily: {
         sans: ['Jost', 'Segoe UI', 'system-ui', 'sans-serif'],
-        mono: ['"JetBrains Mono"', 'Cascadia Code', 'Consolas', 'ui-monospace', 'monospace'],
+        // "mono" é o estilo dos números: Jost com colunas alinhadas (o zero do JetBrains parecia 8)
+        mono: ['Jost', 'Segoe UI', 'system-ui', 'sans-serif'],
+        ticket: ['"JetBrains Mono"', 'Cascadia Code', 'Consolas', 'ui-monospace', 'monospace'],
       },
       fontSize: {
         xs: ['0.75rem', { lineHeight: '1.5' }],

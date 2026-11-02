@@ -209,7 +209,7 @@ export const TableManagementView: React.FC = () => {
                 </span>
               </div>
               <span
-                className={`rounded-sm px-1.5 py-0.5 text-[10px] font-bold ${
+                className={`rounded-sm px-1.5 py-0.5 text-[13px] font-bold ${
                   table.status === 'OCUPADA'
                     ? 'bg-amber-100 text-amber-800'
                     : table.status === 'AGUARDANDO_CONTA'
@@ -225,7 +225,7 @@ export const TableManagementView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => handleEdit(table)}
-                className="flex-1 rounded-lg bg-surface-soft py-1.5 text-[11px] font-semibold text-ink-secondary hover:bg-brand-50 hover:text-brand-700 transition"
+                className="flex-1 rounded-lg bg-surface-soft py-1.5 text-[13px] font-semibold text-ink-secondary hover:bg-brand-50 hover:text-brand-700 transition"
                 title="Editar mesa"
               >
                 <Edit3 className="mr-1 inline h-3 w-3" />

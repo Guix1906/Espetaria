@@ -1,5 +1,6 @@
 import { Button } from '../../components/ui/Button';
-import { Check, Flame, Minus, Plus, X } from 'lucide-react';
+import { OptionGroup } from '../../components/ui/OptionGroup';
+import { Check, Minus, Plus, X } from 'lucide-react';
 import { useState } from 'react';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import type { Product } from '../../types/domain';
@@ -38,6 +39,8 @@ export const DONENESS_OPTIONS: { value: MeatDoneness; label: string; description
 const COMMON_NOTES = ['Sem sal grosso', 'Pouco sal', 'Mais torradinho', 'Cortar em aperitivo', 'Farofa à parte'];
 // O arroz sai daqui: é escolhido só entre os sabores do dia (Configurações)
 const ACOMPANHAMENTO_NOTES = ['Sem cebola', 'Farofa à parte'];
+const NO_RICE = 'Sem arroz';
+const NO_COUNTS: Record<string, number> = { MAL_PASSADA: 0, AO_PONTO: 0, BEM_PASSADA: 0 };
 
 /** Detecta se o produto é um suco/bebida que precisa de escolha de sabor. */
 function isJuiceProduct(product: Product): boolean {
@@ -48,37 +51,29 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const isEditing = !!initial;
   const { settings } = useSettingsStore();
 
-  const riceOptions = settings.daily_rice_flavors ?? [];
-
-  const juiceFlavors = (settings.daily_juice_flavors && settings.daily_juice_flavors.length > 0)
-    ? settings.daily_juice_flavors
-    : ['Laranja', 'Maracujá', 'Limão', 'Abacaxi com Hortelã', 'Acerola'];
-
-  const [selectedDoneness, setSelectedDoneness] = useState<MeatDoneness | null>(initial?.doneness ?? null);
-  const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
-  const [donenessCounts, setDonenessCounts] = useState<Record<string, number>>(() => {
-    if (initial?.doneness) {
-      return {
-        MAL_PASSADA: initial.doneness === 'MAL_PASSADA' ? initial.quantity : 0,
-        AO_PONTO: initial.doneness === 'AO_PONTO' ? initial.quantity : 0,
-        BEM_PASSADA: initial.doneness === 'BEM_PASSADA' ? initial.quantity : 0,
-      };
-    }
-    return {
-      MAL_PASSADA: 0,
-      AO_PONTO: 1,
-      BEM_PASSADA: 0,
-    };
-  });
-  const [notes, setNotes] = useState(initial?.notes ?? '');
   const isCombo = /acompanhamento/i.test(product.name);
   const isRiceOnly = /arroz/i.test(product.name) && !isCombo;
   const isRiceOrCombo = isCombo || isRiceOnly;
   const isJuice = isJuiceProduct(product) || (product.sector === 'KITCHEN' && product.type === 'BEBIDA');
-  const showNotesDefault = !product.allows_doneness || !!initial?.notes || isJuice || isRiceOrCombo;
-  const [showNotes, setShowNotes] = useState(showNotesDefault);
+  const riceOptions = settings.daily_rice_flavors ?? [];
+  // Sabores vêm só das Configurações do dia: sem cadastro, o grupo não aparece
+  const choices = isRiceOrCombo && riceOptions.length ? (isCombo ? [...riceOptions, NO_RICE] : riceOptions) : isJuice ? settings.daily_juice_flavors ?? [] : [];
+  const choiceRequired = isCombo && riceOptions.length > 0;
+
+  // Arroz/sabor fica separado da observação livre; os dois só se juntam ao salvar
+  const initialTags = (initial?.notes ?? '').split(',').map((note) => note.trim()).filter(Boolean);
+  const [choice, setChoice] = useState<string | null>(() => initialTags.find((tag) => choices.includes(tag)) ?? null);
+  const [notes, setNotes] = useState(() => initialTags.filter((tag) => !choices.includes(tag)).join(', '));
+  const [selectedDoneness, setSelectedDoneness] = useState<MeatDoneness | null>(initial?.doneness ?? null);
+  const [quantity, setQuantity] = useState(initial?.quantity ?? 1);
+  // Nenhum ponto vem marcado: o garçom sempre pergunta ao cliente
+  const [donenessCounts, setDonenessCounts] = useState<Record<string, number>>(() => (
+    initial?.doneness ? { ...NO_COUNTS, [initial.doneness]: initial.quantity } : NO_COUNTS
+  ));
+  const [showNotes, setShowNotes] = useState(!!notes);
+  const [addedCount, setAddedCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const suggestedNotes = isJuice ? [] : isCombo ? ACOMPANHAMENTO_NOTES : COMMON_NOTES;
+  const suggestedNotes = isJuice ? [] : isCombo ? ACOMPANHAMENTO_NOTES : product.allows_doneness ? COMMON_NOTES : [];
   const noteTags = notes.split(',').map((note) => note.trim()).filter(Boolean);
 
   const totalDonenessQuantity = Object.values(donenessCounts).reduce((sum, n) => sum + (n || 0), 0);
@@ -90,6 +85,9 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
     : [...DONENESS_OPTIONS, { value: selectedDoneness, label: formatDoneness(selectedDoneness), description: 'Ponto escolhido antes.', swatch: '#C98A1B' }];
 
   const needsDoneness = product.allows_doneness && (isEditing ? !selectedDoneness : totalDonenessQuantity === 0);
+  const needsChoice = choiceRequired && !choice && !isEditing;
+  const missingLabel = needsDoneness ? 'Escolha o ponto da carne' : needsChoice ? 'Escolha o arroz' : null;
+  const canRepeat = !isEditing && (product.allows_doneness || choiceRequired);
 
   const updateDonenessCount = (d: MeatDoneness, delta: number) => {
     triggerHaptic(25);
@@ -104,58 +102,44 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
     });
   };
 
+  // Com até 1 espeto, tocar na linha troca o ponto; o "+" é que soma outro espeto
   const handleRowClick = (d: MeatDoneness) => {
     triggerHaptic(25);
-    if (totalDonenessQuantity <= 1) {
-      setErrorMessage(null);
-      setDonenessCounts({
-        MAL_PASSADA: d === 'MAL_PASSADA' ? 1 : 0,
-        AO_PONTO: d === 'AO_PONTO' ? 1 : 0,
-        BEM_PASSADA: d === 'BEM_PASSADA' ? 1 : 0,
-      });
-    } else {
-      updateDonenessCount(d, 1);
-    }
+    setErrorMessage(null);
+    if (totalDonenessQuantity <= 1) setDonenessCounts({ ...NO_COUNTS, [d]: 1 });
   };
 
   const toggleNote = (tag: string) => {
     setNotes((noteTags.includes(tag) ? noteTags.filter((note) => note !== tag) : [...noteTags, tag]).join(', '));
   };
 
-  /** Seleciona exclusivamente um tipo de arroz (só um pode estar ativo por vez). */
-  const selectRice = (rice: string) => {
-    const withoutRice = noteTags.filter((t) => !riceOptions.includes(t) && t !== 'Sem arroz');
-    const alreadySelected = noteTags.includes(rice);
-    const next = alreadySelected ? withoutRice : [...withoutRice, rice];
-    setNotes(next.join(', '));
-  };
-
-  /** Seleciona exclusivamente um sabor de suco (só um pode estar ativo por vez). */
-  const selectFlavor = (flavor: string) => {
-    const withoutFlavor = noteTags.filter((t) => !juiceFlavors.includes(t));
-    const alreadySelected = noteTags.includes(flavor);
-    const next = alreadySelected ? withoutFlavor : [...withoutFlavor, flavor];
-    setNotes(next.join(', '));
-  };
-
-  const handleConfirm = () => {
+  const handleConfirm = (repeat = false) => {
     triggerHaptic(40);
-    if (needsDoneness) {
-      setErrorMessage('Escolha o ponto da carne para continuar.');
+    if (missingLabel) {
+      setErrorMessage(`${missingLabel} para continuar.`);
       return;
     }
     setErrorMessage(null);
+    const typedNotes = product.allows_notes ? notes.trim() : '';
+    const finalNotes = [choice, typedNotes].filter(Boolean).join(', ');
     try {
       if (product.allows_doneness && !isEditing) {
         const multi: MultiDonenessItem[] = Object.entries(donenessCounts)
           .filter(([_, q]) => q > 0)
           .map(([d, q]) => ({ doneness: d as MeatDoneness, quantity: q }));
         const primary = multi[0]?.doneness ?? null;
-        onConfirm(primary, product.allows_notes ? notes.trim() : '', totalDonenessQuantity, multi);
+        onConfirm(primary, finalNotes, totalDonenessQuantity, multi);
       } else {
-        onConfirm(product.allows_doneness ? selectedDoneness : null, product.allows_notes ? notes.trim() : '', quantity);
+        onConfirm(product.allows_doneness ? selectedDoneness : null, finalNotes, quantity);
       }
-      onClose();
+      if (!repeat) { onClose(); return; }
+      // Próximo espeto da mesma mesa, com outras escolhas
+      setAddedCount((count) => count + effectiveQuantity);
+      setDonenessCounts(NO_COUNTS);
+      setQuantity(1);
+      setChoice(null);
+      setNotes('');
+      setShowNotes(false);
     } catch (error: unknown) {
       setErrorMessage(error instanceof Error ? error.message : 'Não foi possível adicionar este produto. Tente novamente.');
     }
@@ -164,16 +148,14 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   return (
     <WaiterSheet label={`Personalizar ${product.name}`} onClose={onClose}>
       <div className="flex items-start justify-between gap-3 border-b border-line px-4 pb-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500"><Flame className="h-5 w-5" aria-hidden="true" /></span>
-          <div className="min-w-0"><h2 className="text-lg font-bold leading-tight text-ink">{product.name}</h2><p className="mt-0.5 font-mono text-base text-ink-muted">{formatBRL(product.price)} por unidade</p></div>
-        </div>
+        <div className="min-w-0"><h2 className="text-lg font-bold leading-tight text-ink">{product.name}</h2><p className="mt-0.5 font-mono text-base text-ink-muted">{formatBRL(product.price)} por unidade</p></div>
         <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink" aria-label="Fechar personalização" onClick={onClose}><X className="h-5 w-5" /></button>
       </div>
-      <div className="flex-1 space-y-3.5 overflow-y-auto px-4 py-3">
+      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3">
+        {addedCount > 0 && <p role="status" className="notice items-center border-emerald-200 bg-emerald-50 py-2 text-emerald-800"><Check className="h-4 w-4 shrink-0" aria-hidden="true" />{addedCount} {addedCount === 1 ? 'adicionado' : 'adicionados'} ao pedido. Escolha o próximo.</p>}
         {errorMessage && <div className="notice border-rose-200 bg-rose-50 text-rose-800" role="alert">{errorMessage}</div>}
         {(!product.allows_doneness || isEditing) && (
-          <div className="flex items-center justify-between gap-3 rounded-lg bg-white px-3.5 py-2">
+          <div className="flex items-center justify-between gap-3">
             <span className="text-base font-semibold text-ink">Quantidade</span>
             <div className="flex items-center gap-2">
               <button type="button" className="flex h-11 w-11 items-center justify-center rounded-md border border-line disabled:opacity-40" aria-label="Diminuir quantidade" disabled={quantity <= 1} onClick={() => setQuantity(Math.max(1, quantity - 1))}><Minus className="h-4 w-4" /></button>
@@ -183,146 +165,59 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
           </div>
         )}
         {product.allows_doneness && <fieldset className="space-y-2">
-          <legend className="mb-2 text-base font-semibold text-ink">Como você prefere o ponto? {!isEditing && <span className="font-normal text-base text-ink-muted">· escolha a quantidade por ponto</span>}</legend>
+          <legend className="mb-2 text-base font-semibold text-ink">Ponto da carne <span className="font-normal text-ink-muted">· obrigatório</span></legend>
           {options.map((option) => {
             const on = selectedDoneness === option.value;
             const count = donenessCounts[option.value] || 0;
             if (!isEditing) {
               return (
-                <div
-                  key={option.value}
-                  onClick={() => handleRowClick(option.value)}
-                  className={`flex min-h-[72px] items-center justify-between gap-3 rounded-lg border px-3.5 py-2.5 transition cursor-pointer ${count > 0 ? 'border-brand-500 bg-brand-50 shadow-sm' : 'border-line bg-white'}`}>
-                  <div className="flex min-w-0 items-center gap-3">
-                    <span className="h-[32px] w-2.5 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />
-                    <div className="min-w-0">
-                      <span className="block text-[17px] font-semibold text-ink leading-tight">{option.label}</span>
-                      <span className="mt-0.5 block text-base text-ink-muted leading-tight">{option.description}</span>
+                <div key={option.value} className={`flex items-center gap-2 rounded-md border pr-1.5 ${count > 0 ? 'border-brand-500 bg-brand-50' : 'border-line-strong bg-surface'}`}>
+                  <button type="button" aria-pressed={count > 0} onClick={() => handleRowClick(option.value)} className="flex min-h-[52px] min-w-0 flex-1 items-center gap-2.5 px-3 text-left text-[17px] font-semibold text-ink">
+                    <span className="h-6 w-2 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />{option.label}
+                  </button>
+                  {count > 0 ? (
+                    <div className="flex h-11 shrink-0 items-center rounded-md border border-line-strong bg-surface">
+                      <button type="button" onClick={() => updateDonenessCount(option.value, -1)} className="flex h-full w-10 items-center justify-center text-ink-muted active:bg-surface-muted" aria-label={`Diminuir ${option.label}`}><Minus className="h-4 w-4" /></button>
+                      <span className="min-w-[28px] text-center font-mono text-base font-bold text-ink">{count}</span>
+                      <button type="button" disabled={!canAddMore} onClick={() => updateDonenessCount(option.value, 1)} className="flex h-full w-10 items-center justify-center text-brand-500 disabled:opacity-40 active:bg-surface-muted" aria-label={`Aumentar ${option.label}`}><Plus className="h-4 w-4" /></button>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-                    {count > 0 ? (
-                      <div className="flex items-center rounded-lg border border-line-strong bg-white shadow-sm h-11">
-                        <button
-                          type="button"
-                          onClick={() => updateDonenessCount(option.value, -1)}
-                          className="flex h-full w-10 items-center justify-center text-ink-muted hover:text-ink active:bg-surface-muted"
-                          aria-label={`Diminuir ${option.label}`}>
-                          <Minus className="h-4 w-4" />
-                        </button>
-                        <span className="min-w-[28px] text-center font-mono text-base font-bold text-ink">
-                          {count}
-                        </span>
-                        <button
-                          type="button"
-                          disabled={!canAddMore}
-                          onClick={() => updateDonenessCount(option.value, 1)}
-                          className="flex h-full w-10 items-center justify-center text-brand-500 hover:text-brand-700 disabled:opacity-40 active:bg-surface-muted"
-                          aria-label={`Aumentar ${option.label}`}>
-                          <Plus className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={!canAddMore}
-                        onClick={() => updateDonenessCount(option.value, 1)}
-                        className="flex h-11 items-center gap-1.5 rounded-lg border border-line bg-surface-soft px-3 text-[14px] font-semibold text-ink hover:bg-surface-muted disabled:opacity-40 active:brightness-95">
-                        <Plus className="h-4 w-4 text-brand-500" />
-                        <span>Adicionar</span>
-                      </button>
-                    )}
-                  </div>
+                  ) : (
+                    <button type="button" disabled={!canAddMore} onClick={() => updateDonenessCount(option.value, 1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-line-strong text-brand-500 disabled:opacity-40 active:bg-surface-muted" aria-label={`Adicionar ${option.label}`}><Plus className="h-4 w-4" /></button>
+                  )}
                 </div>
               );
             }
             return (
-              <label key={option.value} className={`flex min-h-[76px] cursor-pointer items-center gap-3 rounded-lg border px-3.5 py-2.5 ${on ? 'border-brand-500 bg-brand-50' : 'border-line bg-white'}`}>
+              <label key={option.value} className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-md border px-3.5 py-2 ${on ? 'border-brand-500 bg-brand-50' : 'border-line-strong bg-surface'}`}>
                 <input type="radio" name="meat-doneness" value={option.value} checked={on} onChange={() => { setSelectedDoneness(option.value); setErrorMessage(null); }} className="h-[22px] w-[22px] shrink-0 accent-brand-500" />
-                <span className="h-[30px] w-2 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />
-                <span className="flex-1"><span className="block text-[17px] font-semibold text-ink">{option.label}</span><span className="mt-0.5 block text-base text-ink-muted">{option.description}</span></span>
+                <span className="h-6 w-2 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />
+                <span className="flex-1 text-[17px] font-semibold text-ink">{option.label}</span>
                 {on && <Check className="h-5 w-5 text-brand-500" aria-hidden="true" />}
               </label>
             );
           })}
         </fieldset>}
-        {/* Chips de tipo de arroz do dia para espetos com acompanhamento e porções de arroz */}
-        {isRiceOrCombo && riceOptions.length > 0 && (
-          <fieldset className="space-y-2">
-            <div className="flex items-center justify-between">
-              <legend className="text-base font-semibold text-ink">Arroz do dia</legend>
-              <span className="text-xs text-brand-600 font-medium">Toque para escolher</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {riceOptions.map((rice) => (
-                <button
-                  key={rice}
-                  type="button"
-                  aria-pressed={noteTags.includes(rice)}
-                  onClick={() => selectRice(rice)}
-                  className={`min-h-[44px] rounded-lg border px-3 text-base font-semibold transition ${
-                    noteTags.includes(rice)
-                      ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
-                      : 'border-line bg-white text-ink hover:bg-surface-muted'
-                  }`}
-                >
-                  {rice}
-                </button>
-              ))}
-              {isCombo && (
-                <button
-                  type="button"
-                  aria-pressed={noteTags.includes('Sem arroz')}
-                  onClick={() => selectRice('Sem arroz')}
-                  className={`min-h-[44px] rounded-lg border px-3 text-base font-semibold transition ${
-                    noteTags.includes('Sem arroz')
-                      ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
-                      : 'border-dashed border-line-strong bg-white text-ink-secondary hover:bg-surface-muted'
-                  }`}
-                >
-                  Sem arroz
-                </button>
-              )}
-            </div>
-          </fieldset>
-        )}
-        {/* Chips de sabor do dia para sucos */}
-        {isJuice && (
-          <fieldset className="space-y-2">
-            <div className="flex items-center justify-between">
-              <legend className="text-base font-semibold text-ink">Sabores de suco do dia</legend>
-              <span className="text-xs text-amber-700 font-medium">Toque para escolher</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {juiceFlavors.map((flavor) => (
-                <button
-                  key={flavor}
-                  type="button"
-                  aria-pressed={noteTags.includes(flavor)}
-                  onClick={() => selectFlavor(flavor)}
-                  className={`min-h-[44px] rounded-lg border px-3 text-base font-semibold transition ${
-                    noteTags.includes(flavor)
-                      ? 'border-amber-600 bg-amber-600 text-white shadow-sm'
-                      : 'border-line bg-white text-ink hover:bg-surface-muted'
-                  }`}
-                >
-                  {flavor}
-                </button>
-              ))}
-            </div>
-          </fieldset>
-        )}
-        {product.allows_notes && (showNotes ? <div>
-          <label htmlFor="doneness-notes" className="mb-2 block text-base font-semibold text-ink">Alguma observação?</label>
-          {(product.allows_doneness || isCombo) && !isJuice && <div className="mb-2 flex flex-wrap gap-1.5">{suggestedNotes.map((tag) => <button key={tag} type="button" aria-pressed={noteTags.includes(tag)} onClick={() => toggleNote(tag)} className={`min-h-[44px] rounded-md border px-2.5 text-base font-medium ${noteTags.includes(tag) ? 'border-ink bg-ink text-white' : 'border-line bg-white text-ink-secondary'}`}>{tag}</button>)}</div>}
-          <textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={isJuice ? "Ex.: Com gelo, sem açúcar..." : isCombo ? "Ex.: Pouco sal, sem vinagrete..." : "Ex.: Sem cebola, gelo à parte..."} className="w-full rounded-lg border border-line-strong bg-white p-3 text-base" />
-        </div> : <button type="button" onClick={() => setShowNotes(true)} className="min-h-[44px] text-base font-semibold text-brand-500">+ Adicionar observação</button>)}
+        {choices.length > 0 && <OptionGroup title={isRiceOrCombo ? 'Arroz do dia' : 'Sabor do dia'} hint={choiceRequired ? 'obrigatório' : 'opcional'} options={choices} value={choice} onChange={(value) => { setChoice(value); setErrorMessage(null); }} />}
+        {product.allows_notes && <div>
+          {suggestedNotes.length > 0 && <>
+            <p className="mb-2 text-base font-semibold text-ink">Pedidos comuns <span className="font-normal text-ink-muted">· opcional</span></p>
+            <div className="mb-2 flex flex-wrap gap-2">{suggestedNotes.map((tag) => {
+              const on = noteTags.includes(tag);
+              return <button key={tag} type="button" aria-pressed={on} onClick={() => toggleNote(tag)} className={`flex min-h-[44px] items-center gap-1.5 rounded-md border px-3 text-[15px] font-medium ${on ? 'border-brand-500 bg-brand-500 text-white' : 'border-line-strong bg-surface text-ink'}`}>{on && <Check className="h-4 w-4" aria-hidden="true" />}{tag}</button>;
+            })}</div>
+          </>}
+          {showNotes || (!suggestedNotes.length && !choices.length && !product.allows_doneness) ? <>
+            <label htmlFor="doneness-notes" className="mb-2 block text-base font-semibold text-ink">Observação</label>
+            <textarea id="doneness-notes" rows={2} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder={isJuice ? 'Ex.: Com gelo, sem açúcar...' : isCombo ? 'Ex.: Pouco sal, sem vinagrete...' : 'Ex.: Sem cebola, gelo à parte...'} className="w-full rounded-lg border border-line-strong bg-surface p-3 text-base" />
+          </> : <button type="button" onClick={() => setShowNotes(true)} className="min-h-[44px] text-base font-semibold text-brand-700">+ Escrever observação</button>}
+        </div>}
       </div>
-      <div className="shrink-0 border-t border-line px-4 pt-3" style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom))' }}>
-        <Button size="lg" block onClick={handleConfirm} disabled={needsDoneness} className="justify-between font-semibold">
-          <span>{needsDoneness ? 'Escolha o ponto da carne' : isEditing ? 'Salvar alteração' : `Adicionar ${effectiveQuantity} ${effectiveQuantity === 1 ? 'item' : 'itens'}`}</span>
-          <span className="font-mono font-bold">{formatBRL(product.price * effectiveQuantity)}</span>
+      <div className="shrink-0 space-y-2 border-t border-line px-4 pt-3" style={{ paddingBottom: 'max(0.875rem, env(safe-area-inset-bottom))' }}>
+        <Button size="lg" block onClick={() => handleConfirm()} disabled={!!missingLabel} className="justify-between font-semibold">
+          <span>{missingLabel ?? (isEditing ? 'Salvar alteração' : `Adicionar ${effectiveQuantity} ${effectiveQuantity === 1 ? 'item' : 'itens'}`)}</span>
+          {!missingLabel && <span className="font-mono font-bold">{formatBRL(product.price * effectiveQuantity)}</span>}
         </Button>
+        {canRepeat && !missingLabel && <button type="button" onClick={() => handleConfirm(true)} className="min-h-[44px] w-full text-[15px] font-semibold text-brand-700">Adicionar e pedir outro diferente</button>}
       </div>
     </WaiterSheet>
   );

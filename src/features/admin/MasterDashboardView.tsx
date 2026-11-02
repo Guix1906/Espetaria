@@ -127,7 +127,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-[12rem] flex-1">
           <p className="text-[13px] text-ink-muted first-letter:uppercase">{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</p>
-          <h1 className="text-[28px] font-semibold leading-tight text-ink">Visão geral</h1>
+          <h1 className="text-[30px] font-semibold leading-tight text-ink">Visão geral</h1>
         </div>
         <span title={currentShift?.name} className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium ${currentShift ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>
           <span className={`h-2 w-2 rounded-full ${currentShift ? 'bg-emerald-600' : 'bg-amber-600'}`} aria-hidden="true" />{currentShift ? 'Turno aberto' : 'Turno fechado'}

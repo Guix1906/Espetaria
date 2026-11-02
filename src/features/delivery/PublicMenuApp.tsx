@@ -32,18 +32,19 @@ const PAYMENTS: { id: DeliveryPaymentMethod; label: string; hint: string }[] = [
   { id: 'CARTAO_ENTREGA', label: 'Cartão na entrega', hint: 'Débito ou crédito na maquininha' },
   { id: 'DINHEIRO', label: 'Dinheiro', hint: 'Pague ao entregador' },
 ];
-// "Combos" = espetos com acompanhamento (nome curto na aba; o cadastro continua igual)
-const COMBOS = 'Combos';
-const COMBO_SIDES = 'Todos acompanham arroz, vinagrete, farofa e purê';
-export const CATEGORY_ORDER = [COMBOS, 'Espetos', 'Entradas', 'Porções', 'Bebidas', 'Sobremesas', 'Outros'];
+// "X" e "X com acompanhamento" viram um card só, com as duas opções (o cadastro continua igual)
+const ESPETOS = 'Espetos';
+const COMBO_SIDES = 'Com acompanhamento: arroz, vinagrete, farofa e purê';
+const COMBO_SUFFIX = /\s+com acompanhamento\s*$/i;
+export const CATEGORY_ORDER = [ESPETOS, 'Entradas', 'Acompanhamentos', 'Sem álcool', 'Cervejas', 'Drinks e doses', 'Sobremesas', 'Outros'];
 const SAVED_KEY = 'ponto.cardapio.cliente';
 
 /** Aba do cardápio. Produtos da categoria "Entradas" do cadastro ganham aba própria. */
 export function categoryOf(p: Product, categoryName?: string) {
   if (categoryName && /^entradas?$/i.test(categoryName.trim())) return 'Entradas';
-  if (p.type === 'ESPETO') return /acompanhamento/i.test(p.name) ? COMBOS : 'Espetos';
-  if (p.type === 'PORCAO') return 'Porções';
-  if (p.type === 'BEBIDA') return 'Bebidas';
+  if (p.type === 'ESPETO') return ESPETOS;
+  if (p.type === 'PORCAO') return 'Acompanhamentos';
+  if (p.type === 'BEBIDA') return /\bdose\b|caipi|gin\b|coquetel|drink|whisky|vodka|cacha/i.test(p.name) ? 'Drinks e doses' : /cerveja|long neck|heineken|original|skol|chopp|600ml/i.test(p.name) ? 'Cervejas' : 'Sem álcool';
   if (p.type === 'SOBREMESA') return 'Sobremesas';
   return 'Outros';
 }
@@ -107,8 +108,8 @@ const inputCls = 'h-12 w-full rounded-md border border-line bg-surface px-3.5 te
 const labelCls = 'mb-1.5 block text-[14px] font-medium text-ink-secondary';
 
 function Photo({ product, className }: { product: Product; className: string }) {
-  if (product.image_url) return <img src={product.image_url} alt="" decoding="async" className={`${className} object-cover`} />;
-  return <div aria-hidden="true" className={`${className} flex items-center justify-center bg-[repeating-linear-gradient(135deg,rgb(var(--color-surface-muted))_0_8px,rgb(var(--color-canvas))_8px_16px)] text-[22px] font-semibold text-ink-muted`}>{product.name.replace(/^espeto (de )?/i, '').charAt(0).toUpperCase()}</div>;
+  if (product.image_url) return <img src={product.image_url} alt="" loading="lazy" decoding="async" className={`${className} object-cover`} />;
+  return <div aria-hidden="true" className={`${className} flex items-center justify-center bg-[repeating-linear-gradient(135deg,rgb(var(--color-surface-muted))_0_8px,rgb(var(--color-canvas))_8px_16px)] text-[24px] font-semibold text-ink-muted`}>{product.name.replace(/^espeto (de )?/i, '').charAt(0).toUpperCase()}</div>;
 }
 
 function Segmented<T extends string>({ value, options, onChange, label }: { value: T; options: { id: T; label: ReactNode }[]; onChange: (v: T) => void; label: string }) {
@@ -283,11 +284,18 @@ export function PublicMenuApp() {
     return products.filter((p) => p.active && (!q || `${p.name} ${p.description || ''}`.toLocaleLowerCase('pt-BR').includes(q)));
   }, [products, query]);
   const catName = useMemo(() => new Map(categories.map((c) => [c.id, c.name])), [categories]);
-  // Baixa todas as fotos assim que o cardápio chega: rolar e abrir um produto não espera a imagem
-  useEffect(() => {
-    products.forEach((p) => { if (p.active && p.image_url) { const img = new Image(); img.decoding = 'async'; img.src = p.image_url; } });
+  // Espeto com a versão "com acompanhamento": o combo sai da lista e vira opção do card
+  const comboOf = useMemo(() => {
+    const byName = new Map(products.filter((p) => p.active && COMBO_SUFFIX.test(p.name)).map((p) => [p.name.replace(COMBO_SUFFIX, '').trim().toLowerCase(), p]));
+    return new Map(products.filter((p) => p.active && !COMBO_SUFFIX.test(p.name) && byName.has(p.name.trim().toLowerCase())).map((p) => [p.id, byName.get(p.name.trim().toLowerCase())!]));
   }, [products]);
-  const groups = useMemo(() => CATEGORY_ORDER.map((c) => ({ name: c, items: visible.filter((p) => categoryOf(p, catName.get(p.category_id)) === c) })).filter((g) => g.items.length), [visible, catName]);
+  const groups = useMemo(() => {
+    const merged = new Set([...comboOf.values()].map((p) => p.id));
+    const baseOfCombo = new Map([...comboOf].map(([baseId, combo]) => [combo.id, baseId]));
+    // Busca achou só o combo: mostra o card do espeto, que tem as duas opções
+    const shown = visible.filter((p) => !merged.has(p.id) || !visible.some((v) => v.id === baseOfCombo.get(p.id)));
+    return CATEGORY_ORDER.map((c) => ({ name: c, items: shown.filter((p) => categoryOf(p, catName.get(p.category_id)) === c) })).filter((g) => g.items.length);
+  }, [visible, catName, comboOf]);
   const qtyInCart = (id: string) => cart.filter((c) => c.productId === id).reduce((s, c) => s + c.quantity, 0);
   const count = cart.reduce((s, c) => s + c.quantity, 0);
   const subtotal = cart.reduce((s, c) => s + c.product.price * c.quantity, 0);
@@ -392,7 +400,7 @@ export function PublicMenuApp() {
 
   /* ---------- telas ---------- */
   const typeOptions = [
-    { id: 'DELIVERY' as const, label: <span className="whitespace-nowrap">Entrega{zones.length > 0 && <span className="font-normal text-ink-muted"> · {formatBRL(minFee)}</span>}</span> },
+    { id: 'DELIVERY' as const, label: 'Entrega' },
     { id: 'PICKUP' as const, label: 'Retirada' },
   ];
 
@@ -411,51 +419,56 @@ export function PublicMenuApp() {
     </label>
   );
 
-  const productRow = (p: Product, inCombos = false) => {
+  const pickProduct = (p: Product) => (p.allows_doneness ? setSheetProduct(p) : onPlus(p));
+  /** Tira a última linha do item na sacola. */
+  const removeOne = (p: Product) => {
+    const line = [...cart].reverse().find((c) => c.productId === p.id);
+    if (line) updateCartQuantity(line.id, -1);
+  };
+
+  /** Uma opção de compra: linha inteira tocável, com preço e "+" (ou a quantidade no pedido). */
+  const buyLine = (p: Product, label?: string) => {
     const { isAvailable } = stockOf(p);
+    // Loja fechada não é "esgotado": o estoque do turno só ainda não existe
+    const soldOut = isOpen && !isAvailable;
     const q = qtyInCart(p.id);
-    const description = inCombos && isSidesDescription(p.description) ? null : p.description;
     return (
-      <li key={p.id} className="border-b border-surface-muted last:border-b-0">
-        <button type="button" disabled={!isAvailable} onClick={() => (p.allows_doneness ? setSheetProduct(p) : onPlus(p))} className={`flex w-full gap-3.5 text-left disabled:cursor-not-allowed ${description ? 'py-3.5' : 'items-center py-2.5'}`}>
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[17px] font-semibold leading-snug">{p.name}</h3>
-            {description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{description}</p>}
-            {isAvailable ? <p className="mt-1.5 text-[16px] font-semibold tabular-nums">{formatBRL(p.price)}</p> : <p className="mt-1.5 flex items-center gap-2"><span className="text-[16px] font-semibold tabular-nums text-ink-muted opacity-60">{formatBRL(p.price)}</span><StatusTag kind="alert" className="text-[13px] font-semibold">Esgotado</StatusTag></p>}
-          </div>
-          {/* "+" dentro da foto: não passa da borda da imagem nem da tela */}
-          <div className="relative shrink-0 overflow-hidden rounded-md">
-            <Photo product={p} className={`${description ? 'h-24 w-24' : 'h-[92px] w-[92px]'} ${isAvailable ? '' : 'opacity-50 grayscale'}`} />
-            {isAvailable && (q > 0
-              ? <span aria-label={`${q} no pedido`} className="absolute bottom-1.5 right-1.5 flex h-10 min-w-[40px] items-center justify-center rounded-full bg-ink px-2 text-[15px] font-semibold text-white shadow-[0_2px_6px_rgba(43,33,28,.25)]">{q}</span>
-              : <span aria-hidden="true" className="absolute bottom-1.5 right-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white shadow-[0_2px_6px_rgba(43,33,28,.25)]"><Plus className="h-5 w-5" /></span>)}
-          </div>
+      <div className="flex min-h-[48px] items-center gap-2">
+        <button type="button" disabled={!isOpen || !isAvailable} onClick={() => pickProduct(p)} aria-label={`Adicionar ${p.name}, ${formatBRL(p.price)}`} className="flex min-h-[48px] min-w-0 flex-1 items-center justify-between gap-2 text-left disabled:cursor-not-allowed">
+          <span className="min-w-0 text-[15px] leading-tight text-ink-secondary">{label}</span>
+          <span className="flex shrink-0 items-center gap-2">
+            {soldOut ? <StatusTag kind="alert" className="text-[13px] font-semibold">Esgotado</StatusTag> : <span className="text-[16px] font-semibold tabular-nums">{formatBRL(p.price)}</span>}
+            {isOpen && !soldOut && q === 0 && <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white"><Plus className="h-5 w-5" /></span>}
+          </span>
         </button>
-      </li>
+        {q > 0 && <Stepper size={44} qty={q} onMinus={() => removeOne(p)} onPlus={() => pickProduct(p)} />}
+      </div>
     );
   };
 
-  const productCard = (p: Product) => {
-    const { isAvailable } = stockOf(p);
-    const q = qtyInCart(p.id);
+  const productBody = (p: Product, photoCls: string) => {
+    const combo = comboOf.get(p.id);
+    const hideDescription = !combo && COMBO_SUFFIX.test(p.name) && isSidesDescription(p.description);
+    const soldOut = isOpen && !stockOf(p).isAvailable && (!combo || !stockOf(combo).isAvailable);
     return (
-      <button key={p.id} type="button" disabled={!isAvailable} onClick={() => (p.allows_doneness ? setSheetProduct(p) : onPlus(p))}
-        className={`relative flex gap-3.5 rounded-md bg-surface p-3.5 text-left transition hover:shadow-[0_2px_8px_rgba(43,33,28,.08)] disabled:cursor-not-allowed ${q > 0 ? 'border-2 border-ink' : 'border border-line'}`}>
-        <div className="flex min-w-0 flex-1 flex-col">
-          <h3 className="text-[17px] font-semibold leading-snug">{p.name}</h3>
-          {p.description && !(categoryOf(p, catName.get(p.category_id)) === COMBOS && isSidesDescription(p.description)) && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{p.description}</p>}
-          <div className="mt-auto flex items-center gap-2 pt-2">
-            {isAvailable ? <span className="text-[16px] font-semibold tabular-nums">{formatBRL(p.price)}</span> : <><span className="text-[16px] font-semibold tabular-nums text-ink-muted opacity-60">{formatBRL(p.price)}</span><StatusTag kind="alert" className="text-[13px] font-semibold">Esgotado</StatusTag></>}
-            {q > 0 && <span className="rounded-2xl bg-ink px-2 py-0.5 text-[12px] font-semibold text-surface">{q} no pedido</span>}
+      <>
+        <div className="flex gap-3.5">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-[17px] font-semibold leading-snug">{p.name}</h3>
+            {p.description && !hideDescription && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{p.description}</p>}
           </div>
+          <Photo product={p} className={`${photoCls} shrink-0 rounded-md ${soldOut ? 'opacity-50 grayscale' : ''}`} />
         </div>
-        <div className="relative shrink-0 overflow-hidden rounded-md">
-          <Photo product={p} className={`h-[96px] w-[96px] xl:h-[110px] xl:w-[110px] ${isAvailable ? '' : 'opacity-50 grayscale'}`} />
-          {isAvailable && <span aria-hidden="true" className="absolute bottom-1.5 right-1.5 flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white shadow-[0_2px_6px_rgba(43,33,28,.2)]"><Plus className="h-5 w-5" /></span>}
+        <div className="mt-1 divide-y divide-surface-muted">
+          {combo ? <>{buyLine(p, 'Só o espeto')}{buyLine(combo, 'Com acompanhamento')}</> : buyLine(p)}
         </div>
-      </button>
+      </>
     );
   };
+
+  const productRow = (p: Product) => <li key={p.id} className="border-b border-surface-muted py-3 last:border-b-0">{productBody(p, 'h-[72px] w-[72px]')}</li>;
+
+  const productCard = (p: Product) => <article key={p.id} className="flex flex-col justify-between rounded-md border border-line bg-surface p-3.5">{productBody(p, 'h-[88px] w-[88px]')}</article>;
 
   const cartLines = (compact = false) => (
     <ul className="divide-y divide-surface-muted">
@@ -557,7 +570,7 @@ export function PublicMenuApp() {
 
   const trackingBanner = tracking && (
     <button type="button" onClick={() => go('sent')} className="flex w-full items-center justify-between gap-3 rounded-md border border-line bg-surface px-4 py-3 text-left">
-      <span><span className="block font-mono text-[12px] text-ink-muted">Pedido #{tracking.order_number}</span><span className="block text-[15px] font-semibold">Acompanhar o seu pedido</span></span>
+      <span><span className="block font-mono text-[13px] text-ink-muted">Pedido #{tracking.order_number}</span><span className="block text-[15px] font-semibold">Acompanhar o seu pedido</span></span>
       <span className="text-[14px] font-semibold text-brand-700">Ver</span>
     </button>
   );
@@ -583,7 +596,7 @@ export function PublicMenuApp() {
         {showPixColumn && (
           <div className="pb-6 pt-6 text-center">
             <p className="font-mono text-[13px] text-ink-muted">Pedido #{o.order_number}</p>
-            <h2 className="mt-1 text-[26px] font-semibold">Falta só o pagamento</h2>
+            <h2 className="mt-1 text-[24px] font-semibold">Falta só o pagamento</h2>
             <p className="mx-auto mt-2 max-w-sm text-[15px] text-ink-muted">Pague pelo app do seu banco. A brasa começa assim que a loja confirmar o PIX.</p>
             <div className="mt-5 text-left"><OrderPixBlock order={o} /></div>
             <div className="mt-6 border-t border-line" />
@@ -695,7 +708,7 @@ export function PublicMenuApp() {
     const num = (n: number) => <span className="flex h-[26px] w-[26px] items-center justify-center rounded-full bg-ink text-[14px] font-semibold text-surface">{n}</span>;
     screen = (
       <div className="min-h-screen">
-        <header className="border-b border-line bg-surface"><div className="mx-auto flex h-[76px] max-w-[1366px] items-center gap-4 px-12"><button type="button" onClick={back} aria-label="Voltar ao cardápio" className="flex h-11 w-11 items-center justify-center rounded-md hover:bg-surface-muted"><ChevronLeft className="h-6 w-6" /></button><h1 className="text-[22px] font-semibold">Finalizar pedido</h1></div></header>
+        <header className="border-b border-line bg-surface"><div className="mx-auto flex h-[76px] max-w-[1366px] items-center gap-4 px-12"><button type="button" onClick={back} aria-label="Voltar ao cardápio" className="flex h-11 w-11 items-center justify-center rounded-md hover:bg-surface-muted"><ChevronLeft className="h-6 w-6" /></button><h1 className="text-[24px] font-semibold">Finalizar pedido</h1></div></header>
         <div className="mx-auto grid max-w-[1366px] grid-cols-[1fr_400px] gap-12 px-12 py-7">
           <div className="space-y-10">
             <section>
@@ -708,7 +721,7 @@ export function PublicMenuApp() {
             <section><h2 className="mb-4 flex items-center gap-3 text-[20px] font-semibold">{num(2)}Pagamento</h2>{paymentOptions(true)}</section>
           </div>
           <aside className="sticky top-6 h-fit space-y-4 rounded-md border border-line bg-surface p-5">
-            <h2 className="text-[19px] font-semibold">Resumo do pedido</h2>
+            <h2 className="text-[20px] font-semibold">Resumo do pedido</h2>
             {cartError && <Alert>{cartError}</Alert>}
             {cartLines(true)}
             <p className="rounded-md border border-line bg-canvas px-3 py-2 text-[13px] text-ink-secondary">Espeto com acompanhamento vai com arroz, vinagrete, farofa e purê.</p>
@@ -727,7 +740,7 @@ export function PublicMenuApp() {
         <header className="sticky top-0 z-30 border-b border-line bg-surface">
           <div className="mx-auto flex h-[76px] max-w-[1366px] items-center gap-4 px-8">
             {logo}
-            <div className="min-w-0 flex-1"><h1 className="truncate text-[19px] font-semibold">{settings.name}</h1>{statusLine}</div>
+            <div className="min-w-0 flex-1"><h1 className="truncate text-[20px] font-semibold">{settings.name}</h1>{statusLine}</div>
             <div className="w-[320px]">{searchBox}</div>
             <div className="w-[300px]"><Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={[{ id: 'DELIVERY', label: 'Entrega' }, { id: 'PICKUP', label: 'Retirada' }]} /></div>
           </div>
@@ -742,14 +755,14 @@ export function PublicMenuApp() {
             {groups.length === 0 && <p className="py-16 text-center text-[16px] text-ink-muted">Nada encontrado para “{query}”.</p>}
             {groups.map((g) => (
               <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
-                <h2 className={`text-[24px] font-semibold ${g.name === COMBOS ? '' : 'mb-4'}`}>{g.name}</h2>
-                {g.name === COMBOS && <p className="mb-4 mt-1 text-[15px] text-ink-muted">{COMBO_SIDES}</p>}
+                <h2 className={`text-[24px] font-semibold ${g.name === ESPETOS ? '' : 'mb-4'}`}>{g.name}</h2>
+                {g.name === ESPETOS && <p className="mb-4 mt-1 text-[15px] text-ink-muted">{COMBO_SIDES}</p>}
                 <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">{g.items.map(productCard)}</div>
               </section>
             ))}
           </main>
           <aside className="sticky top-[76px] flex h-[calc(100vh-76px)] flex-col border-l border-line bg-surface">
-            <h2 className="px-5 pb-2 pt-6 text-[19px] font-semibold">Sua sacola</h2>
+            <h2 className="px-5 pb-2 pt-6 text-[20px] font-semibold">Sua sacola</h2>
             <div className="flex-1 overflow-y-auto px-5">
               {cartError && <Alert>{cartError}</Alert>}
               {cart.length ? cartLines(true) : <p className="py-10 text-center text-[15px] text-ink-muted">Escolha os itens no cardápio.</p>}
@@ -765,9 +778,9 @@ export function PublicMenuApp() {
     );
   } else {
     screen = (
-      <div className="mx-auto max-w-xl pb-32">
+      <div className="mx-auto max-w-xl pb-32 md:max-w-4xl">
         <header className="border-b border-line px-5 pb-4 pt-2">
-          <div className="flex items-center gap-3 pt-2">{logo}<div className="min-w-0"><h1 className="truncate text-[19px] font-semibold leading-tight">{settings.name}</h1>{statusLine}</div></div>
+          <div className="flex items-center gap-3 pt-2">{logo}<div className="min-w-0"><h1 className="truncate text-[20px] font-semibold leading-tight">{settings.name}</h1>{statusLine}</div></div>
           <div className="mt-4 space-y-3">
             <Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={typeOptions} />
             {searchBox}
@@ -783,8 +796,8 @@ export function PublicMenuApp() {
           {groups.map((g) => (
             <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
               <h2 className="text-[20px] font-semibold">{g.name}</h2>
-              {g.name === COMBOS && <p className="mt-0.5 text-[14px] text-ink-muted">{COMBO_SIDES}</p>}
-              <ul>{g.items.map((p) => productRow(p, g.name === COMBOS))}</ul>
+              {g.name === ESPETOS && <p className="mt-0.5 text-[14px] text-ink-muted">{COMBO_SIDES}</p>}
+              <ul className="md:grid md:grid-cols-2 md:gap-x-6">{g.items.map(productRow)}</ul>
             </section>
           ))}
         </main>

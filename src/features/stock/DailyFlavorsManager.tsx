@@ -183,7 +183,7 @@ export const DailyFlavorsManager: React.FC = () => {
 
           {/* Sugestões rápidas de 1 toque */}
           <div className="space-y-1 pt-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+            <span className="text-[13px] font-semibold uppercase tracking-wider text-ink-muted">
               Sugestões rápidas:
             </span>
             <div className="flex flex-wrap gap-1">
@@ -264,7 +264,7 @@ export const DailyFlavorsManager: React.FC = () => {
 
           {/* Sugestões rápidas de 1 toque */}
           <div className="space-y-1 pt-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-ink-muted">
+            <span className="text-[13px] font-semibold uppercase tracking-wider text-ink-muted">
               Sugestões rápidas:
             </span>
             <div className="flex flex-wrap gap-1">

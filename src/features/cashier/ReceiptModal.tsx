@@ -53,7 +53,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
         </div>
 
         {/* Cupom Térmico Formatado (Estilo Impressora 80mm / Recibo Não Fiscal) */}
-        <div className="overflow-y-auto flex-1 bg-amber-50/95 text-stone-900 rounded-2xl p-5 font-mono text-xs shadow-inner select-all print-section space-y-3 border border-stone-300">
+        <div className="overflow-y-auto flex-1 bg-amber-50/95 text-stone-900 rounded-2xl p-5 font-ticket text-xs shadow-inner select-all print-section space-y-3 border border-stone-300">
 
           {/* Cabeçalho do Cupom */}
           <div className="text-center space-y-0.5 border-b border-dashed border-stone-400 pb-3">
@@ -98,7 +98,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                   <span className="pr-2 leading-tight">
                     {String(idx + 1).padStart(2, '0')} {item.quantity}x {item.product_name}
                   </span>
-                  <span className="font-bold whitespace-nowrap font-mono">
+                  <span className="font-bold whitespace-nowrap font-ticket">
                     {formatBRL(item.unit_price * item.quantity)}
                   </span>
                 </div>
@@ -162,7 +162,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <div className="text-center pt-2 text-[10px] text-stone-600 space-y-1">
             <p className="font-bold text-stone-800">OBRIGADO PELA PREFERÊNCIA!</p>
             <p>Volte sempre à Espetaria Sabor da Carne!</p>
-            <p className="text-xs print:text-[9px] text-stone-600 font-mono">Sabor da Carne</p>
+            <p className="text-xs print:text-[9px] text-stone-600 font-ticket">Sabor da Carne</p>
           </div>
 
         </div>

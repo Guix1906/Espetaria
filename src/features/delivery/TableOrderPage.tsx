@@ -1,5 +1,6 @@
 import { Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { remainingFor } from '../../lib/comboStock';
 import { formatBRL } from '../../lib/formatters';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
@@ -54,9 +55,9 @@ export function TableOrderPage({ token }: { token: string }) {
   }, [products, categories]);
 
   const remaining = (product: Product, except = 0) => {
-    if (!product.tracks_stock) return Infinity;
-    const inCart = lines.filter((l) => l.product.id === product.id).reduce((s, l) => s + l.quantity, 0) - except;
-    return (stock.find((s) => s.product_id === product.id)?.current_quantity ?? 0) - inCart;
+    // Combo também ocupa o espeto e o arroz
+    const left = remainingFor(product, products, stock, lines);
+    return left === null ? Infinity : left + except;
   };
 
   const add = (product: Product, doneness: MeatDoneness | null) => {
@@ -88,7 +89,7 @@ export function TableOrderPage({ token }: { token: string }) {
     });
     setSending(false);
     if (rpcError) {
-      setError(rpcError.message);
+      setError(/estoque|esgot|dispon/i.test(rpcError.message) ? 'Um item acabou enquanto você pedia. Ajuste o pedido e envie de novo.' : 'Não foi possível enviar o pedido. Tente de novo ou chame o garçom.');
       void load();
       return;
     }

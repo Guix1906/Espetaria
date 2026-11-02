@@ -142,7 +142,7 @@ export function WhatsAppAutoCard() {
                 className={`flex w-full items-center justify-between gap-2 rounded-sm px-3 py-2 text-left text-sm ${selected === event ? 'bg-brand-50 font-semibold text-brand-900' : 'text-ink hover:bg-surface-muted'}`}
               >
                 <span>{label}</span>
-                <span className={`text-[11px] ${draft[event].enabled ? 'text-emerald-700' : 'text-ink-muted'}`}>{draft[event].enabled ? 'ligada' : 'desligada'}</span>
+                <span className={`text-[13px] ${draft[event].enabled ? 'text-emerald-700' : 'text-ink-muted'}`}>{draft[event].enabled ? 'ligada' : 'desligada'}</span>
               </button>
             </li>
           ))}

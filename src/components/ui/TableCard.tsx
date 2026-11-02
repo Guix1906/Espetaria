@@ -220,7 +220,7 @@ export function TableCard({
         className={`px-3.5 py-1.5 rounded-b-xl flex items-center justify-between text-xs font-semibold select-none transition cursor-pointer ${
           isWaitingBill
             ? 'bg-amber-400 hover:bg-amber-500 text-amber-950'
-            : 'bg-[#f87152] hover:bg-[#eb6546] text-white'
+            : 'bg-brand-500 hover:bg-[#eb6546] text-white'
         }`}
         title="Clique para cobrar e fechar a mesa"
       >

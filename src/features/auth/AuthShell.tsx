@@ -15,7 +15,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-[100dvh] items-stretch justify-center bg-[#EFE7DB] lg:items-center lg:p-10">
       <div className="flex w-full flex-col overflow-hidden bg-white lg:min-h-[600px] lg:max-w-[1040px] lg:flex-row lg:rounded-[20px] lg:shadow-[0_30px_80px_-30px_rgba(43,33,28,0.35)]">
-        <aside className="relative flex shrink-0 flex-col justify-end gap-3 overflow-hidden bg-[#B5502E] px-5 py-4 text-[#F5EFE6] lg:w-[44%] lg:gap-4 lg:p-12" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
+        <aside className="relative flex shrink-0 flex-col justify-end gap-3 overflow-hidden bg-brand-500 px-5 py-4 text-canvas lg:w-[44%] lg:gap-4 lg:p-12" style={{ paddingTop: 'max(1rem, env(safe-area-inset-top))' }}>
           {/* Alvo da marca em grande escala, como textura do painel */}
           <PontoSymbol className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 opacity-[0.1] lg:-right-32 lg:-top-20 lg:h-[560px] lg:w-[560px] lg:opacity-[0.09]" color="#F5EFE6" />
           <span className="relative hidden text-sm text-[#FBE9DF]/80 lg:absolute lg:left-12 lg:top-12 lg:block">{storeLabel}</span>
@@ -24,7 +24,7 @@ export function AuthShell({ children }: { children: ReactNode }) {
             <span className="hidden lg:inline"><PontoLogo size={64} inverted /></span>
           </div>
           <p className="relative hidden max-w-xs text-xl leading-snug text-[#FBE9DF] lg:block">Seu restaurante sempre no ponto.</p>
-          <div className="relative mt-2 hidden h-px w-16 bg-[#F5EFE6]/40 lg:block" aria-hidden="true" />
+          <div className="relative mt-2 hidden h-px w-16 bg-canvas/40 lg:block" aria-hidden="true" />
           <p className="relative hidden text-sm text-[#FBE9DF]/80 lg:block">Salão, churrasqueira, cozinha e delivery em um só lugar.</p>
         </aside>
         <main className="flex flex-1 flex-col justify-start bg-white px-5 py-6 sm:px-12 sm:py-10 lg:justify-center lg:px-[72px]">
@@ -41,12 +41,12 @@ export function AuthShell({ children }: { children: ReactNode }) {
  */
 export function AccessTabs({ active }: { active: 'owner' | 'waiter' }) {
   const base = 'flex h-11 items-center justify-center gap-2 rounded-[8px] text-sm font-medium transition-colors';
-  const on = `${base} bg-white text-[#2B211C] shadow-[0_1px_2px_rgba(43,33,28,0.08)]`;
-  const off = `${base} text-[#6B5D53] hover:text-[#2B211C]`;
+  const on = `${base} bg-white text-ink shadow-[0_1px_2px_rgba(43,33,28,0.08)]`;
+  const off = `${base} text-ink-muted hover:text-ink`;
   return (
-    <div role="tablist" aria-label="Tipo de acesso" className="grid grid-cols-2 gap-1 rounded-[10px] bg-[#F5EFE6] p-1">
-      <a role="tab" aria-selected={active === 'owner'} href="#/" className={active === 'owner' ? on : off}><ShieldCheck className={`h-4 w-4 ${active === 'owner' ? 'text-[#B5502E]' : ''}`} aria-hidden="true" />Proprietário</a>
-      <a role="tab" aria-selected={active === 'waiter'} href="#/garcom" className={active === 'waiter' ? on : off}><UserRound className={`h-4 w-4 ${active === 'waiter' ? 'text-[#B5502E]' : ''}`} aria-hidden="true" />Garçom</a>
+    <div role="tablist" aria-label="Tipo de acesso" className="grid grid-cols-2 gap-1 rounded-[10px] bg-canvas p-1">
+      <a role="tab" aria-selected={active === 'owner'} href="#/" className={active === 'owner' ? on : off}><ShieldCheck className={`h-4 w-4 ${active === 'owner' ? 'text-brand-500' : ''}`} aria-hidden="true" />Proprietário</a>
+      <a role="tab" aria-selected={active === 'waiter'} href="#/garcom" className={active === 'waiter' ? on : off}><UserRound className={`h-4 w-4 ${active === 'waiter' ? 'text-brand-500' : ''}`} aria-hidden="true" />Garçom</a>
     </div>
   );
 }
@@ -57,7 +57,7 @@ export function PasswordField({ id, value, onChange, autoComplete = 'current-pas
   return (
     <div className="relative">
       <input id={id} className={`${authInput} pr-12 ${visible ? '' : 'tracking-[0.08em]'}`} type={visible ? 'text' : 'password'} autoComplete={autoComplete} minLength={minLength} required value={value} onChange={(event) => onChange(event.target.value)} />
-      <button type="button" onClick={() => setVisible((v) => !v)} className="absolute right-1 top-[calc(50%+3px)] flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-[8px] text-[#6B5D53] hover:text-[#2B211C]" aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'} aria-pressed={visible}>
+      <button type="button" onClick={() => setVisible((v) => !v)} className="absolute right-1 top-[calc(50%+3px)] flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-[8px] text-ink-muted hover:text-ink" aria-label={visible ? 'Ocultar senha' : 'Mostrar senha'} aria-pressed={visible}>
         {visible ? <EyeOff className="h-5 w-5" aria-hidden="true" /> : <Eye className="h-5 w-5" aria-hidden="true" />}
       </button>
     </div>
@@ -69,8 +69,8 @@ export function ForgotPassword() {
   const [open, setOpen] = useState(false);
   return (
     <div className="text-sm">
-      <button type="button" className="!min-h-0 !min-w-0 text-[#8E3C20] underline-offset-2 hover:underline" aria-expanded={open} onClick={() => setOpen((v) => !v)}>Esqueci minha senha</button>
-      {open && <p className="mt-2 rounded-[10px] bg-[#F5EFE6] px-3.5 py-3 text-[#6B5D53]">Peça ao gerente ou ao proprietário para definir uma nova senha em <strong className="font-medium text-[#2B211C]">Equipe → Editar</strong>.</p>}
+      <button type="button" className="!min-h-0 !min-w-0 text-brand-700 underline-offset-2 hover:underline" aria-expanded={open} onClick={() => setOpen((v) => !v)}>Esqueci minha senha</button>
+      {open && <p className="mt-2 rounded-[10px] bg-canvas px-3.5 py-3 text-ink-muted">Peça ao gerente ou ao proprietário para definir uma nova senha em <strong className="font-medium text-ink">Equipe → Editar</strong>.</p>}
     </div>
   );
 }
@@ -98,8 +98,8 @@ export function friendlyAuthError(failure: unknown, fallback = 'Não foi possív
 
 /** Campo no estilo da marca: rótulo discreto, borda clara, foco em terracota. */
 export const authInput =
-  'mt-1.5 h-12 w-full rounded-[10px] border border-[#E4DACB] bg-white px-3.5 text-base text-[#2B211C] outline-none transition-[border-color,box-shadow] focus:border-[#B5502E] focus:shadow-[0_0_0_1px_#B5502E]';
-export const authLabel = 'text-sm text-[#6B5D53]';
+  'mt-1.5 h-12 w-full rounded-[10px] border border-line bg-white px-3.5 text-base text-ink outline-none transition-[border-color,box-shadow] focus:border-brand-500 focus:shadow-[0_0_0_1px_#B5502E]';
+export const authLabel = 'text-sm text-ink-muted';
 export const authButton =
-  'flex h-[52px] w-full items-center justify-center rounded-[10px] bg-[#2B211C] text-[17px] font-medium text-[#F5EFE6] transition-colors hover:bg-[#B5502E] disabled:opacity-60';
+  'flex h-[52px] w-full items-center justify-center rounded-[10px] bg-ink text-[17px] font-medium text-canvas transition-colors hover:bg-brand-500 disabled:opacity-60';
 export const authError = 'rounded-[10px] bg-[#F8ECEC] px-3.5 py-3 text-sm text-[#9B2C2C]';
