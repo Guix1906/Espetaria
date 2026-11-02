@@ -38,13 +38,16 @@ export function initAutoUpdate() {
   let registrationRef: ServiceWorkerRegistration | undefined;
 
   const RELOAD_COOLDOWN_MS = 60000;
-  const MAX_RELOADS_PER_SESSION = 3;
+  const MAX_RELOADS_IN_A_ROW = 3;
+  const RELOAD_COUNT_RESET_MS = 10 * 60000;
 
   const doReload = () => {
     try {
-      sessionStorage.setItem('ponto_last_pwa_reload', String(Date.now()));
-      const count = Number(sessionStorage.getItem('ponto_pwa_reload_count') || '0');
+      // O limite só freia recarga em sequência: o programa da loja fica aberto por dias
+      const previous = Number(sessionStorage.getItem('ponto_last_pwa_reload') || '0');
+      const count = Date.now() - previous > RELOAD_COUNT_RESET_MS ? 0 : Number(sessionStorage.getItem('ponto_pwa_reload_count') || '0');
       sessionStorage.setItem('ponto_pwa_reload_count', String(count + 1));
+      sessionStorage.setItem('ponto_last_pwa_reload', String(Date.now()));
     } catch {}
     window.location.reload();
   };
@@ -56,7 +59,8 @@ export function initAutoUpdate() {
     try {
       const lastReload = Number(sessionStorage.getItem('ponto_last_pwa_reload') || '0');
       const count = Number(sessionStorage.getItem('ponto_pwa_reload_count') || '0');
-      if (Date.now() - lastReload < RELOAD_COOLDOWN_MS || count >= MAX_RELOADS_PER_SESSION) {
+      const elapsed = Date.now() - lastReload;
+      if (elapsed < RELOAD_COOLDOWN_MS || (count >= MAX_RELOADS_IN_A_ROW && elapsed < RELOAD_COUNT_RESET_MS)) {
         return;
       }
     } catch {}

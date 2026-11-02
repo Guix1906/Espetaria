@@ -129,8 +129,14 @@ function AdminWorkspace() {
   const previousTab = useRef(activeTab);
 
   // Programa do PC: o WhatsApp Web é desenhado pelo programa, por cima desta área
-  const [desktopWebOpen, setDesktopWebOpen] = useState(false);
-  useEffect(() => { window.pontoDesktop?.showWhatsApp(desktopWebOpen); }, [desktopWebOpen]);
+  // A escolha sobrevive à atualização automática: quem está no WhatsApp continua nele
+  const [desktopWebOpen, setDesktopWebOpen] = useState(() => {
+    try { return !!window.pontoDesktop && sessionStorage.getItem('ponto_desktop_whatsapp') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    window.pontoDesktop?.showWhatsApp(desktopWebOpen);
+    try { sessionStorage.setItem('ponto_desktop_whatsapp', desktopWebOpen ? '1' : '0'); } catch {}
+  }, [desktopWebOpen]);
 
   // Aba "Sistema" volta para a última tela aberta antes do WhatsApp
   const lastSystemTab = useRef<ActiveTab>(activeTab === 'whatsapp' ? (allowedTabs[0] ?? 'waiter') : activeTab);
