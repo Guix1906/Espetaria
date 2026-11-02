@@ -1,8 +1,9 @@
 import { PontoLogo } from './BrandMark';
-import { CalendarDays, Check, ChevronDown, Clock3, LogOut, Menu, Smartphone, UserRound, Volume2, VolumeX, WifiOff } from 'lucide-react';
+import { CalendarDays, Check, ChevronDown, Clock3, LogOut, Menu, MessageCircle, Smartphone, UserRound, Volume2, VolumeX, WifiOff } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { audioService } from '../../lib/audio';
 import { formatRole } from '../../lib/formatters';
+import { useWhatsAppStatus } from '../../features/whatsapp/useWhatsAppStatus';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { BrandMark } from './BrandMark';
@@ -11,12 +12,26 @@ import { PAGE_TITLES, type ActiveTab } from './navigation';
 
 interface HeaderProps {
   activeTab: ActiveTab;
+  onChangeTab: (tab: ActiveTab) => void;
   onOpenShiftClick: () => void;
   onMenuClick: () => void;
   isMenuOpen: boolean;
 }
 
-export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }: HeaderProps) {
+/** Atalho do topo para a tela WhatsApp; o ponto mostra se o celular está conectado. */
+function WhatsAppShortcut({ active, onClick }: { active: boolean; onClick: () => void }) {
+  const { status } = useWhatsAppStatus(true);
+  const label = !status ? 'WhatsApp' : status.connected ? 'WhatsApp conectado' : 'WhatsApp desconectado';
+  return (
+    <button type="button" onClick={onClick} aria-current={active ? 'page' : undefined} aria-label={label} title={label} className={`btn-secondary relative min-h-[44px] px-3 ${active ? 'bg-brand-50 text-brand-800' : ''}`}>
+      <MessageCircle className="h-4 w-4" aria-hidden="true" />
+      <span className="hidden sm:inline">WhatsApp</span>
+      {status && <span className={`h-2 w-2 shrink-0 rounded-full ${status.connected ? 'bg-emerald-600' : 'bg-rose-600'}`} aria-hidden="true" />}
+    </button>
+  );
+}
+
+export function Header({ activeTab, onChangeTab, onOpenShiftClick, onMenuClick, isMenuOpen }: HeaderProps) {
   const { currentProfile, availableProfiles, switchProfile, canSwitchProfile, signOut } = useAuthStore();
   const { currentShift } = useShiftStore();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -75,6 +90,7 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
 
         <div className="hidden flex-wrap items-center gap-2 sm:flex">
           <PrinterStatusWidget />
+          {isManager && <WhatsAppShortcut active={activeTab === 'whatsapp'} onClick={() => onChangeTab('whatsapp')} />}
           {currentShift?.status === 'ABERTO' ? (
             <div className="status-badge max-w-full bg-emerald-50 py-2 text-emerald-800" title={currentShift.name}>
               <span className="h-2 w-2 shrink-0 rounded-full bg-emerald-600" aria-hidden="true" />
@@ -103,6 +119,7 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
           </button>
         </div>
         <div className="flex items-center gap-2 sm:hidden">
+          {isManager && <WhatsAppShortcut active={activeTab === 'whatsapp'} onClick={() => onChangeTab('whatsapp')} />}
           <PrinterStatusWidget />
         </div>
         <div ref={profileRef} className="relative shrink-0">

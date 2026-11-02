@@ -7,7 +7,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { corsHeadersFor } from '../_shared/cors.ts';
-import { connectionState } from '../_shared/evolution.ts';
+import { connectedAccount, connectionState, connectQr, logoutInstance } from '../_shared/evolution.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsHeadersFor(req);
@@ -25,6 +25,17 @@ Deno.serve(async (req) => {
   if (!caller?.is_active || !['MASTER', 'GERENTE'].includes(caller.role)) return json({ error: 'Sem permissão.' }, 403);
 
   const provider = (Deno.env.get('WHATSAPP_PROVIDER') || '').toLowerCase();
+  const { action } = await req.json().catch(() => ({ action: null }));
+  try {
+    if (action === 'connect') return json(await connectQr());
+    if (action === 'logout') {
+      await logoutInstance();
+      return json({ ok: true });
+    }
+  } catch (err) {
+    return json({ error: err instanceof Error ? err.message : String(err) }, 502);
+  }
   const state = await connectionState();
-  return json({ provider, instance: Deno.env.get('EVOLUTION_INSTANCE') || null, ...state });
+  const account = state.connected ? await connectedAccount() : { number: null, profileName: null };
+  return json({ provider, instance: Deno.env.get('EVOLUTION_INSTANCE') || null, ...state, ...account });
 });

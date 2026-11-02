@@ -1,7 +1,7 @@
 import type { AppRole } from '../../types/enums';
-import { BarChart3, Bike, ClipboardList, Landmark, LayoutDashboard, LayoutGrid, PackageCheck, PackagePlus, Receipt, Settings, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
+import { BarChart3, Bike, ClipboardList, Landmark, LayoutDashboard, LayoutGrid, MessageCircle, PackageCheck, PackagePlus, Receipt, Settings, ShieldCheck, Users, UtensilsCrossed } from 'lucide-react';
 
-export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'products' | 'master' | 'finance' | 'reports' | 'stock' | 'audit' | 'team' | 'settings';
+export type ActiveTab = 'waiter' | 'tables' | 'kds' | 'cashier' | 'delivery' | 'menu' | 'whatsapp' | 'products' | 'master' | 'finance' | 'reports' | 'stock' | 'audit' | 'team' | 'settings';
 
 export const PAGE_TITLES: Record<ActiveTab, string> = {
   master: 'Visão geral',
@@ -13,6 +13,7 @@ export const PAGE_TITLES: Record<ActiveTab, string> = {
   cashier: 'Caixa',
   delivery: 'Delivery',
   menu: 'Cardápio digital',
+  whatsapp: 'WhatsApp',
   products: 'Cadastro de produtos',
   stock: 'Estoque diário',
   audit: 'Auditoria',
@@ -28,6 +29,7 @@ export const NAVIGATION_GROUPS = [
     { id: 'cashier', icon: Receipt },
     { id: 'delivery', icon: Bike },
     { id: 'menu', icon: ClipboardList },
+    { id: 'whatsapp', icon: MessageCircle },
   ] },
   { label: 'Controle', items: [
     { id: 'products', icon: PackagePlus },
@@ -43,7 +45,7 @@ const ALL_TABS = Object.keys(PAGE_TITLES) as ActiveTab[];
 /** Telas que cada papel pode acessar (a primeira é a tela inicial). */
 export const ROLE_TABS: Record<AppRole, ActiveTab[]> = {
   MASTER: ['master', ...ALL_TABS.filter((t) => t !== 'master')],
-  GERENTE: ['master', 'finance', 'reports', 'waiter', 'tables', 'kds', 'cashier', 'delivery', 'menu', 'products', 'stock', 'audit', 'team', 'settings'],
+  GERENTE: ['master', 'finance', 'reports', 'waiter', 'tables', 'kds', 'cashier', 'delivery', 'menu', 'whatsapp', 'products', 'stock', 'audit', 'team', 'settings'],
   CAIXA: ['cashier', 'waiter', 'tables', 'delivery', 'menu'],
   CHURRASQUEIRA: ['kds', 'stock'],
   COZINHA: ['kds', 'stock'],

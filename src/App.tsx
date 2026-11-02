@@ -19,6 +19,7 @@ import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
 import { DailyStockView } from './features/stock/DailyStockView';
 import { WaiterModule } from './features/waiter/WaiterModule';
 import { WaiterPortal } from './features/waiter/WaiterPortal';
+import { WhatsAppConnectView } from './features/whatsapp/WhatsAppConnectView';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { AuthShell } from './features/auth/AuthShell';
@@ -80,6 +81,7 @@ const TAB_HASH_MAP: Record<ActiveTab, string> = {
   cashier: '#/painel/caixa',
   delivery: '#/painel/delivery',
   menu: '#/painel/cardapio-digital',
+  whatsapp: '#/painel/whatsapp',
   products: '#/painel/produtos',
   stock: '#/painel/estoque',
   audit: '#/painel/auditoria',
@@ -170,7 +172,7 @@ function AdminWorkspace() {
       <NavigationTabs allowed={allowedTabs} activeTab={activeTab} onChangeTab={setActiveTab} openTablesCount={openTablesCount} exhaustedCount={exhaustedCount} pendingProductionCount={pendingProductionCount} waitingBillCount={waitingBillCount} activeDeliveriesCount={activeDeliveriesCount} isMobileOpen={isMobileMenuOpen} onCloseMobile={() => setIsMobileMenuOpen(false)} />
       <div className="app-workspace flex flex-col">
         <PWAInstallBanner />
-        <Header activeTab={activeTab} onOpenShiftClick={() => setIsShiftModalOpen(true)} onMenuClick={() => setIsMobileMenuOpen(true)} isMenuOpen={isMobileMenuOpen} />
+        <Header activeTab={activeTab} onChangeTab={setActiveTab} onOpenShiftClick={() => setIsShiftModalOpen(true)} onMenuClick={() => setIsMobileMenuOpen(true)} isMenuOpen={isMobileMenuOpen} />
         <main id="main-content" ref={mainRef} tabIndex={-1} aria-label={PAGE_TITLES[activeTab]} className="min-w-0 flex-1 pb-8 outline-none">
           {/* key: ao trocar de tela, um erro da tela anterior não fica preso */}
           <ErrorBoundary key={activeTab} area={activeTab} inline>
@@ -179,6 +181,7 @@ function AdminWorkspace() {
           {activeTab === 'cashier' && <CashierModule />}
           {activeTab === 'delivery' && <DeliveryManagementView />}
           {activeTab === 'menu' && <DigitalMenuQrView />}
+          {activeTab === 'whatsapp' && <WhatsAppConnectView />}
           {activeTab === 'products' && <ProductCatalogManageView />}
           {activeTab === 'finance' && <FinanceView />}
           {activeTab === 'reports' && <ReportsView />}

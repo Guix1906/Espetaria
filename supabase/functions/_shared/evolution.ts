@@ -41,6 +41,49 @@ export async function sendText(phone: string, text: string): Promise<string | nu
   return body?.key?.id ?? null;
 }
 
+/** Pede um QR Code novo para ligar o celular. Lança erro se a Evolution recusar. */
+export async function connectQr(): Promise<{ qr: string | null; pairingCode: string | null }> {
+  const { url, key, instance } = config();
+  const res = await fetch(`${url}/instance/connect/${instance}`, {
+    headers: { apikey: key },
+    signal: AbortSignal.timeout(20000),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Evolution ${res.status}: ${JSON.stringify(body).slice(0, 300)}`);
+  const raw = String(body?.base64 ?? body?.qrcode?.base64 ?? '');
+  const qr = raw ? (raw.startsWith('data:') ? raw : `data:image/png;base64,${raw}`) : null;
+  return { qr, pairingCode: body?.pairingCode ?? body?.qrcode?.pairingCode ?? null };
+}
+
+/** Desliga o celular da instância. Lança erro se a Evolution recusar. */
+export async function logoutInstance(): Promise<void> {
+  const { url, key, instance } = config();
+  const res = await fetch(`${url}/instance/logout/${instance}`, {
+    method: 'DELETE',
+    headers: { apikey: key },
+    signal: AbortSignal.timeout(15000),
+  });
+  if (!res.ok) throw new Error(`Evolution ${res.status}: ${(await res.text().catch(() => '')).slice(0, 300)}`);
+}
+
+/** Número e nome do WhatsApp ligado à instância. Nunca lança erro (é só informativo). */
+export async function connectedAccount(): Promise<{ number: string | null; profileName: string | null }> {
+  try {
+    const { url, key, instance } = config();
+    const res = await fetch(`${url}/instance/fetchInstances?instanceName=${instance}`, {
+      headers: { apikey: key },
+      signal: AbortSignal.timeout(10000),
+    });
+    const body = await res.json().catch(() => null);
+    const row = Array.isArray(body) ? body[0] : body;
+    const data = row?.instance ?? row;
+    const jid = String(data?.ownerJid ?? data?.owner ?? '');
+    return { number: jid ? jid.split('@')[0].split(':')[0] : null, profileName: data?.profileName ?? null };
+  } catch {
+    return { number: null, profileName: null };
+  }
+}
+
 /** Estado da conexão da instância: "open" = conectado. Nunca lança erro. */
 export async function connectionState(): Promise<{ connected: boolean; state: string; error?: string }> {
   try {

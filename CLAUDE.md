@@ -71,6 +71,7 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   HANDOFF_FALLBACK e a conversa pausa; Visão geral mostra alerta por 2 h (`botErrorAt`). Trocar chave: `supabase/TROCAR-CHAVE-GEMINI.bat`. Botão "Testar conexão"
   em Configurações → WhatsApp chama `whatsapp-status` (com JWT, Master/Gerente). Ativação: `supabase/ATIVAR-EVOLUTION.bat`.
   Evento novo `PREPARING` ("Pedido em preparo", só na transição PENDING/CONFIRMED → PREPARING) exige a migração 00034.
+- Tela WhatsApp (02/11, `src/features/whatsapp`, botão no topo com ponto de status): QR Code para ligar o celular à Evolution via `whatsapp-status` (`action`: status/connect/logout, só Master/Gerente). WhatsApp Web só abre em outra aba (não pode ficar em iframe).
 - PIX automático (00030, Mercado Pago): com `restaurant_settings.pix_auto_enabled`, pedido do cardápio por PIX nasce
   `AWAITING_PAYMENT` (estoque reservado, sem cupom nem produção). Edge Function `pix-mercadopago` (deploy `--no-verify-jwt`;
   secrets `MP_ACCESS_TOKEN`, `PIX_WEBHOOK_TOKEN`) gera o QR do pedido e, aprovado, chama `release_paid_delivery_order`

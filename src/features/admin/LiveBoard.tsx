@@ -1,4 +1,5 @@
-import { Bike, Flame, UtensilsCrossed } from 'lucide-react';
+import { Bike, Flame, Plus, Search, UtensilsCrossed } from 'lucide-react';
+import { useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
 import { formatElapsedMinutes } from '../../lib/formatters';
 import { LOW_STOCK_THRESHOLD } from '../../lib/productAvailability';
@@ -38,6 +39,7 @@ interface LiveBoardProps {
 export function LiveBoard({ now, openTabs, tabInfo, readyOldest, activeDeliveries, lateIds, go, goTable }: LiveBoardProps) {
   const { tables, orders, orderItems } = useTableStore();
   const { products, dailyPrepStock } = useStockStore();
+  const [search, setSearch] = useState('');
 
   const salonRows: Row[] = openTabs.map((tab) => {
     const table = tables.find((t) => t.id === tab.table_id);
@@ -106,17 +108,31 @@ export function LiveBoard({ now, openTabs, tabInfo, readyOldest, activeDeliverie
     { id: 'delivery', title: 'Delivery e retirada', icon: Bike, head: 'bg-sky-50 text-sky-900', count: `${activeDeliveries.length} ${activeDeliveries.length === 1 ? 'pedido' : 'pedidos'}`, rows: deliveryRows, empty: 'Nenhum pedido em andamento.' },
   ];
 
+  const term = search.trim().toLowerCase();
+  const matches = (row: Row) => !term || `${row.title} ${row.status} ${row.detail}`.toLowerCase().includes(term);
+
   return (
-    <section className="grid grid-cols-1 gap-3 lg:grid-cols-3" aria-label="Movimento agora">
-      {columns.map((col) => (
+    <section className="space-y-3" aria-label="Movimento agora">
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="relative min-w-[12rem] flex-1">
+          <span className="sr-only">Buscar mesa, cliente ou pedido</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar mesa, cliente ou pedido" className="min-h-[44px] w-full rounded-md border border-line-strong bg-surface pl-9 pr-3 text-[15px] text-ink" />
+        </label>
+        {go && <button type="button" onClick={() => go('waiter')} className="btn-primary min-h-[44px]"><Plus className="h-4 w-4" aria-hidden="true" />Novo pedido</button>}
+      </div>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+      {columns.map((col) => {
+        const rows = col.rows.filter(matches);
+        return (
         <div key={col.id} className="overflow-hidden rounded-lg border border-line bg-surface">
           <h2 className={`flex items-center justify-between gap-2 px-4 py-3 text-base font-semibold ${col.head}`}>
             <span className="flex items-center gap-2"><col.icon className="h-5 w-5" aria-hidden="true" />{col.title}</span>
             <span className="text-sm font-medium">{col.count}</span>
           </h2>
-          {col.rows.length === 0 ? <p className="px-4 py-8 text-center text-sm text-ink-muted">{col.empty}</p> : (
+          {rows.length === 0 ? <p className="px-4 py-8 text-center text-sm text-ink-muted">{term ? 'Nada encontrado.' : col.empty}</p> : (
             <ul className="max-h-[32rem] space-y-2 overflow-y-auto p-2.5">
-              {[...col.rows].sort((a, b) => RANK[a.level] - RANK[b.level]).map((row) => (
+              {[...rows].sort((a, b) => RANK[a.level] - RANK[b.level]).map((row) => (
                 <li key={row.key}>
                   <button type="button" onClick={row.onClick} disabled={!row.onClick} className={`block w-full border border-line border-l-[6px] bg-surface-soft px-3 py-2 text-left transition hover:bg-surface-muted ${LEVEL_CARD[row.level]}`}>
                     <span className="flex items-baseline justify-between gap-2">
@@ -130,7 +146,9 @@ export function LiveBoard({ now, openTabs, tabInfo, readyOldest, activeDeliverie
             </ul>
           )}
         </div>
-      ))}
+        );
+      })}
+      </div>
     </section>
   );
 }
