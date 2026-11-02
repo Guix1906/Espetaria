@@ -1,13 +1,17 @@
 import { ClipboardList, Copy, ExternalLink, Printer } from 'lucide-react';
 import { useState } from 'react';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useAuthStore } from '../../stores/useAuthStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
+import { TableQrSection } from './TableQrSection';
 import { PixQrCode } from '../pix/PixQrCode';
 import { publicAppUrl } from '../../lib/publicUrl';
 
 /** Cardápio digital no painel: link para abrir em outra aba e QR Code para imprimir nas mesas e no balcão. */
 export function DigitalMenuQrView() {
   const storeName = useSettingsStore((s) => s.settings.name);
+  const role = useAuthStore((s) => s.currentProfile.role);
+  const canManageTableQr = role === 'MASTER' || role === 'GERENTE';
   const url = `${publicAppUrl()}/cardapio`;
   const [copied, setCopied] = useState(false);
 
@@ -40,6 +44,7 @@ export function DigitalMenuQrView() {
           <button type="button" onClick={() => void copy()} className="btn-secondary min-h-[44px]"><Copy className="h-4 w-4" />{copied ? 'Copiado' : 'Copiar link'}</button>
         </div>
       </section>
+      {canManageTableQr && <TableQrSection />}
     </div>
   );
 }

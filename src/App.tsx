@@ -26,6 +26,7 @@ import { LoginScreen } from './features/auth/LoginScreen';
 import { AuthShell } from './features/auth/AuthShell';
 import { PublicMenuPage } from './features/delivery/PublicMenuPage';
 import { PublicOrderTrackingPage } from './features/delivery/PublicOrderTrackingPage';
+import { TableOrderPage } from './features/delivery/TableOrderPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { RemoteErrorBanner } from './components/ui/RemoteErrorBanner';
 import { ConfirmDialogProvider } from './components/ui/ConfirmDialog';
@@ -55,6 +56,8 @@ export function App() {
   // Endereço oficial: /cardapio (o antigo #/cardapio continua funcionando)
   const onMenuPath = window.location.pathname.replace(/\/+$/, '') === '/cardapio';
   if (hash.startsWith('#/cardapio') || (onMenuPath && !hash.startsWith('#/pedido/'))) return <PublicMenuPage />;
+  // Pedido do cliente pelo QR Code da mesa
+  if (hash.startsWith('#/mesa/')) return <TableOrderPage token={hash.slice('#/mesa/'.length).split(/[?/]/)[0] ?? ''} />;
   // Acompanhamento do pedido: link enviado na mensagem de WhatsApp
   if (hash.startsWith('#/pedido/')) return <PublicOrderTrackingPage orderId={hash.slice('#/pedido/'.length).split(/[?/]/)[0] ?? ''} />;
 

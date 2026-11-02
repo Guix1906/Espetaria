@@ -22,7 +22,7 @@ import { OrderPixBlock, OrderStatusView } from './OrderStatusView';
 
 type Step = 'menu' | 'cart' | 'delivery' | 'payment' | 'review' | 'checkout' | 'sent';
 const TOP_DRINKS = ['refrigerante lata', 'água mineral sem gás', 'refrigerante 1l', 'água mineral com gás', 'long neck', 'suco de maracujá'];
-const DONENESS:{ id: MeatDoneness; label: string }[] = [
+export const DONENESS:{ id: MeatDoneness; label: string }[] = [
   { id: 'MAL_PASSADA', label: 'Mal passada' },
   { id: 'AO_PONTO', label: 'Ao ponto' },
   { id: 'BEM_PASSADA', label: 'Bem passada' },
@@ -35,11 +35,11 @@ const PAYMENTS: { id: DeliveryPaymentMethod; label: string; hint: string }[] = [
 // "Combos" = espetos com acompanhamento (nome curto na aba; o cadastro continua igual)
 const COMBOS = 'Combos';
 const COMBO_SIDES = 'Todos acompanham arroz, vinagrete, farofa e purê';
-const CATEGORY_ORDER = [COMBOS, 'Espetos', 'Entradas', 'Porções', 'Bebidas', 'Sobremesas', 'Outros'];
+export const CATEGORY_ORDER = [COMBOS, 'Espetos', 'Entradas', 'Porções', 'Bebidas', 'Sobremesas', 'Outros'];
 const SAVED_KEY = 'ponto.cardapio.cliente';
 
 /** Aba do cardápio. Produtos da categoria "Entradas" do cadastro ganham aba própria. */
-function categoryOf(p: Product, categoryName?: string) {
+export function categoryOf(p: Product, categoryName?: string) {
   if (categoryName && /^entradas?$/i.test(categoryName.trim())) return 'Entradas';
   if (p.type === 'ESPETO') return /acompanhamento/i.test(p.name) ? COMBOS : 'Espetos';
   if (p.type === 'PORCAO') return 'Porções';
