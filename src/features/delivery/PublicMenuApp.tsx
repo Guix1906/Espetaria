@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { DEFAULT_DELIVERY_ETA, DEFAULT_PICKUP_ETA } from '../../lib/eta';
 import { ChevronDown, ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { comboBlockedByBase } from '../../lib/comboStock';
 import { DINE_IN_NOTE } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { getProductAvailability } from '../../lib/productAvailability';
@@ -288,7 +289,10 @@ export function PublicMenuApp() {
   // Notebook: etapas do celular viram a página única de finalização
   useEffect(() => { if (isDesktop && (step === 'cart' || step === 'delivery' || step === 'payment' || step === 'review')) setStep('checkout'); if (!isDesktop && step === 'checkout') setStep('cart'); }, [isDesktop, step]);
 
-  const stockOf = (p: Product) => getProductAvailability(p, dailyPrepStock.find((s) => s.product_id === p.id));
+  const stockOf = (p: Product) => {
+    const availability = getProductAvailability(p, dailyPrepStock.find((s) => s.product_id === p.id));
+    return comboBlockedByBase(p, products, dailyPrepStock) ? { ...availability, isAvailable: false } : availability;
+  };
   const visible = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('pt-BR');
     return products.filter((p) => p.active && (!q || `${p.name} ${p.description || ''}`.toLocaleLowerCase('pt-BR').includes(q)));

@@ -22,6 +22,17 @@ export function stockUnitIds(product: Product, products: Product[]): string[] {
 
 interface Line { product: Product; quantity: number }
 
+/** Combo com espeto cadastrado, mas sem saldo (espeto não contado no turno, esgotado ou pausado): não pode ser vendido. */
+export function comboBlockedByBase(product: Product, products: Product[], stocks: DailyPrepStock[]): boolean {
+  if (!isComboProduct(product) || product.tracks_stock === false) return false;
+  const baseName = norm(product.name.replace(COMBO_SUFFIX, ''));
+  const base = products.find((p) => p.active !== false && p.id !== product.id && norm(p.name) === baseName);
+  if (!base) return false;
+  if (base.available === false) return true;
+  const stock = stocks.find((s) => s.product_id === base.id);
+  return !stock || stock.is_exhausted || stock.current_quantity <= 0;
+}
+
 /**
  * Quanto ainda dá para pedir do produto, já descontando o rascunho
  * (um combo no rascunho também ocupa o espeto e o arroz). `null` = sem controle de estoque.

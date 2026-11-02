@@ -1,6 +1,6 @@
 import { Minus, Plus } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { remainingFor } from '../../lib/comboStock';
+import { comboBlockedByBase, remainingFor } from '../../lib/comboStock';
 import { formatBRL } from '../../lib/formatters';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
@@ -47,7 +47,7 @@ export function TableOrderPage({ token }: { token: string }) {
   const groups = useMemo(() => {
     const byName = new Map(categories.map((c) => [c.id, c.name]));
     const map = new Map<string, Product[]>();
-    products.filter((p) => p.active && p.available).forEach((p) => {
+    products.filter((p) => p.active && p.available && !comboBlockedByBase(p, products, stock)).forEach((p) => {
       const name = categoryOf(p, byName.get(p.category_id));
       map.set(name, [...(map.get(name) ?? []), p]);
     });
