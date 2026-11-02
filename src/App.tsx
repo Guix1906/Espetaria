@@ -1,39 +1,44 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Header } from './components/layout/Header';
 import { isPendingProduction } from './lib/productionStatus';
 import { NavigationTabs } from './components/layout/NavigationTabs';
 import { PAGE_TITLES, tabsForRole, type ActiveTab } from './components/layout/navigation';
 import { PWAInstallBanner } from './components/pwa/PWAInstallBanner';
-import { MasterDashboardView } from './features/admin/MasterDashboardView';
-import { FinanceView } from './features/finance/FinanceView';
-import { ReportsView } from './features/reports/ReportsView';
-import { AuditLogView } from './features/audit/AuditLogView';
-import { CashierModule } from './features/cashier/CashierModule';
-import { DigitalMenuQrView } from './features/delivery/DigitalMenuQrView';
-import { DeliveryManagementView } from './features/delivery/DeliveryManagementView';
-import { KDSModule } from './features/kds/KDSModule';
-import { ProductCatalogManageView } from './features/products/ProductCatalogManageView';
-import { SettingsView } from './features/settings/SettingsView';
-import { TeamManagementView } from './features/team/TeamManagementView';
 import { ShiftOpenModal } from './features/shifts/ShiftOpenModal';
-import { DailyStockView } from './features/stock/DailyStockView';
-import { WaiterModule } from './features/waiter/WaiterModule';
-import { WaiterPortal } from './features/waiter/WaiterPortal';
 import { TopTabs } from './components/layout/TopTabs';
-import { WhatsAppView } from './features/whatsapp/WhatsAppView';
 import { useRealtimeSync } from './hooks/useRealtimeSync';
 import { LoginScreen } from './features/auth/LoginScreen';
 import { AuthShell } from './features/auth/AuthShell';
-import { PublicMenuPage } from './features/delivery/PublicMenuPage';
-import { PublicOrderTrackingPage } from './features/delivery/PublicOrderTrackingPage';
-import { TableOrderPage } from './features/delivery/TableOrderPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { lazyNamed } from './lib/lazyWithReload';
 import { RemoteErrorBanner } from './components/ui/RemoteErrorBanner';
 import { ConfirmDialogProvider } from './components/ui/ConfirmDialog';
 import { useAuthStore } from './stores/useAuthStore';
 import { useDeliveryStore } from './stores/useDeliveryStore';
 import { useStockStore } from './stores/useStockStore';
 import { useTableStore } from './stores/useTableStore';
+
+// Cada tela é baixada só quando abre: o sistema inicia bem mais rápido
+const MasterDashboardView = lazyNamed(() => import('./features/admin/MasterDashboardView'), 'MasterDashboardView');
+const FinanceView = lazyNamed(() => import('./features/finance/FinanceView'), 'FinanceView');
+const ReportsView = lazyNamed(() => import('./features/reports/ReportsView'), 'ReportsView');
+const AuditLogView = lazyNamed(() => import('./features/audit/AuditLogView'), 'AuditLogView');
+const CashierModule = lazyNamed(() => import('./features/cashier/CashierModule'), 'CashierModule');
+const DigitalMenuQrView = lazyNamed(() => import('./features/delivery/DigitalMenuQrView'), 'DigitalMenuQrView');
+const DeliveryManagementView = lazyNamed(() => import('./features/delivery/DeliveryManagementView'), 'DeliveryManagementView');
+const KDSModule = lazyNamed(() => import('./features/kds/KDSModule'), 'KDSModule');
+const ProductCatalogManageView = lazyNamed(() => import('./features/products/ProductCatalogManageView'), 'ProductCatalogManageView');
+const SettingsView = lazyNamed(() => import('./features/settings/SettingsView'), 'SettingsView');
+const TeamManagementView = lazyNamed(() => import('./features/team/TeamManagementView'), 'TeamManagementView');
+const DailyStockView = lazyNamed(() => import('./features/stock/DailyStockView'), 'DailyStockView');
+const WaiterModule = lazyNamed(() => import('./features/waiter/WaiterModule'), 'WaiterModule');
+const WaiterPortal = lazyNamed(() => import('./features/waiter/WaiterPortal'), 'WaiterPortal');
+const WhatsAppView = lazyNamed(() => import('./features/whatsapp/WhatsAppView'), 'WhatsAppView');
+const PublicMenuPage = lazyNamed(() => import('./features/delivery/PublicMenuPage'), 'PublicMenuPage');
+const PublicOrderTrackingPage = lazyNamed(() => import('./features/delivery/PublicOrderTrackingPage'), 'PublicOrderTrackingPage');
+const TableOrderPage = lazyNamed(() => import('./features/delivery/TableOrderPage'), 'TableOrderPage');
+
+const screenLoading = <p className="py-16 text-center text-sm text-[#6B5D53]" role="status">Carregando...</p>;
 
 declare global {
   interface Window { pontoDesktop?: { showWhatsApp: (visible: boolean) => void } }
@@ -55,11 +60,11 @@ export function App() {
   // Cardápio digital público: não depende de login nem da sessão da equipe
   // Endereço oficial: /cardapio (o antigo #/cardapio continua funcionando)
   const onMenuPath = window.location.pathname.replace(/\/+$/, '') === '/cardapio';
-  if (hash.startsWith('#/cardapio') || (onMenuPath && !hash.startsWith('#/pedido/'))) return <PublicMenuPage />;
+  if (hash.startsWith('#/cardapio') || (onMenuPath && !hash.startsWith('#/pedido/'))) return <Suspense fallback={screenLoading}><PublicMenuPage /></Suspense>;
   // Pedido do cliente pelo QR Code da mesa
-  if (hash.startsWith('#/mesa/')) return <TableOrderPage token={hash.slice('#/mesa/'.length).split(/[?/]/)[0] ?? ''} />;
+  if (hash.startsWith('#/mesa/')) return <Suspense fallback={screenLoading}><TableOrderPage token={hash.slice('#/mesa/'.length).split(/[?/]/)[0] ?? ''} /></Suspense>;
   // Acompanhamento do pedido: link enviado na mensagem de WhatsApp
-  if (hash.startsWith('#/pedido/')) return <PublicOrderTrackingPage orderId={hash.slice('#/pedido/'.length).split(/[?/]/)[0] ?? ''} />;
+  if (hash.startsWith('#/pedido/')) return <Suspense fallback={screenLoading}><PublicOrderTrackingPage orderId={hash.slice('#/pedido/'.length).split(/[?/]/)[0] ?? ''} /></Suspense>;
 
   if (isInitializing) {
     // Mesma moldura do login: a tela não "pisca" trocando de layout enquanto a sessão carrega
@@ -73,7 +78,7 @@ export function App() {
 
   return (
     <ConfirmDialogProvider>
-      {screen}
+      <Suspense fallback={screenLoading}>{screen}</Suspense>
       <RemoteErrorBanner />
     </ConfirmDialogProvider>
   );
@@ -206,6 +211,7 @@ function AdminWorkspace() {
         <main id="main-content" ref={mainRef} tabIndex={-1} aria-label={PAGE_TITLES[activeTab]} className="min-w-0 flex-1 pb-8 outline-none">
           {/* key: ao trocar de tela, um erro da tela anterior não fica preso */}
           <ErrorBoundary key={activeTab} area={activeTab} inline>
+          <Suspense fallback={screenLoading}>
           {(activeTab === 'waiter' || activeTab === 'tables') && <WaiterModule onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
           {activeTab === 'kds' && <KDSModule />}
           {activeTab === 'cashier' && <CashierModule />}
@@ -220,6 +226,7 @@ function AdminWorkspace() {
           {activeTab === 'audit' && <AuditLogView />}
           {activeTab === 'team' && <TeamManagementView />}
           {activeTab === 'settings' && <SettingsView />}
+          </Suspense>
           </ErrorBoundary>
         </main>
       </div>

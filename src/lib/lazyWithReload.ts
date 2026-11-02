@@ -19,6 +19,11 @@ export function reloadForNewVersion(): boolean {
   return true;
 }
 
+/** lazyWithReload para telas com export nomeado: lazyNamed(() => import('./Tela'), 'Tela'). */
+export function lazyNamed<M, K extends keyof M>(load: () => Promise<M>, name: K) {
+  return lazyWithReload(() => load().then((module) => ({ default: module[name] as ComponentType<any> }))) as unknown as M[K];
+}
+
 /** lazy() que, se o arquivo sumiu depois de uma publicação, recarrega o app em vez de quebrar a tela. */
 export function lazyWithReload<T extends ComponentType<any>>(load: () => Promise<{ default: T }>) {
   return lazy(() => load().catch((error: unknown) => {
