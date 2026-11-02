@@ -1,3 +1,4 @@
+import { localOrderLabel } from '../../lib/deliveryStatus';
 import { BellRing, Check, PackageCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -58,7 +59,7 @@ export function GrillReadyAlerts() {
       const count = o.items.reduce((sum, i) => sum + i.quantity, 0);
       return {
         key: `remote-${o.id}`,
-        title: `${isPickup ? 'Retirada' : 'Delivery'} #${o.order_number} · ${o.customer_name}`,
+        title: `${isPickup ? localOrderLabel(o) : 'Delivery'} #${o.order_number} · ${o.customer_name}`,
         action: isPickup ? 'Embalar e deixar no balcão (cliente já foi avisado)' : 'Embalar e separar para o entregador',
         detail: `${count} ${count === 1 ? 'item' : 'itens'}`,
         readyAt: o.ready_at ?? null,
@@ -114,7 +115,7 @@ export function GrillReadyAlerts() {
           <h2 className="flex items-center gap-2 text-sm font-semibold text-ink"><PackageCheck className="h-4 w-4" aria-hidden="true" />Delivery e retirada sem espeto</h2>
           <ul className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
             {noGrillOrders.map((o) => {
-              const label = `${o.order_type === 'PICKUP' ? 'Retirada' : 'Delivery'} #${o.order_number}`;
+              const label = `${o.order_type === 'PICKUP' ? localOrderLabel(o) : 'Delivery'} #${o.order_number}`;
               return (
                 <li key={o.id} className="flex flex-col gap-2 rounded-lg border border-line bg-surface-soft p-3">
                   <p className="text-sm font-bold text-ink">{label} · {o.customer_name}</p>

@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { DEFAULT_DELIVERY_ETA, DEFAULT_PICKUP_ETA } from '../../lib/eta';
 import { ChevronDown, ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { DINE_IN_NOTE } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { getProductAvailability } from '../../lib/productAvailability';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
@@ -21,6 +22,8 @@ import { OrderPixBlock, OrderStatusView } from './OrderStatusView';
  * painel do pedido ao lado e finalização em uma página só.
  */
 
+type OrderMode = 'DELIVERY' | 'DINE_IN' | 'PICKUP';
+const MODE_OPTIONS: { id: OrderMode; label: string }[] = [{ id: 'DELIVERY', label: 'Entrega' }, { id: 'DINE_IN', label: 'Consumir no local' }, { id: 'PICKUP', label: 'Retirada no local' }];
 type Step = 'menu' | 'cart' | 'delivery' | 'payment' | 'review' | 'checkout' | 'sent';
 const TOP_DRINKS = ['refrigerante lata', 'água mineral sem gás', 'refrigerante 1l', 'água mineral com gás', 'long neck', 'suco de maracujá'];
 export const DONENESS:{ id: MeatDoneness; label: string }[] = [
@@ -118,7 +121,7 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
     <div role="radiogroup" aria-label={label} className="flex rounded-md bg-surface-muted p-1">
       {options.map((o) => (
         <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}
-          className={`min-h-[44px] flex-1 rounded-md px-2 text-[15px] ${value === o.id ? 'bg-surface font-semibold text-ink shadow-[0_1px_2px_rgba(43,33,28,.08)]' : 'font-medium text-ink-muted'}`}>{o.label}</button>
+          className={`min-h-[44px] flex-1 rounded-md px-1.5 text-[14px] leading-tight sm:text-[15px] ${value === o.id ? 'bg-surface font-semibold text-ink shadow-[0_1px_2px_rgba(43,33,28,.08)]' : 'font-medium text-ink-muted'}`}>{o.label}</button>
       ))}
     </div>
   );
@@ -238,7 +241,7 @@ export function PublicMenuApp() {
   const isOpen = currentShift?.status === 'ABERTO';
 
   const [step, setStep] = useState<Step>('menu');
-  const [orderType, setOrderType] = useState<DeliveryOrderType>('DELIVERY');
+  const [orderMode, setOrderMode] = useState<OrderMode>('DELIVERY');
   const [query, setQuery] = useState('');
   const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
   const [menuError, setMenuError] = useState<string | null>(null);
@@ -290,7 +293,10 @@ export function PublicMenuApp() {
   const qtyInCart = (id: string) => cart.filter((c) => c.productId === id).reduce((s, c) => s + c.quantity, 0);
   const count = cart.reduce((s, c) => s + c.quantity, 0);
   const subtotal = cart.reduce((s, c) => s + c.product.price * c.quantity, 0);
-  const isPickup = orderType === 'PICKUP';
+  const isPickup = orderMode !== 'DELIVERY';
+  const isDineIn = orderMode === 'DINE_IN';
+  const orderType: DeliveryOrderType = isPickup ? 'PICKUP' : 'DELIVERY';
+  const localLabel = isDineIn ? 'Consumir no local' : 'Retirada no local';
   const zone = zones.find((z) => z.name === customer.neighborhood);
   const minFee = zones.length ? Math.min(...zones.map((z) => z.fee)) : 0;
   const fee = isPickup ? 0 : zone?.fee ?? 0;
@@ -372,7 +378,7 @@ export function PublicMenuApp() {
     setSending(true);
     try {
       await submitDeliveryOrder({
-        shiftId: currentShift.id, orderType, customerName: customer.name.trim(), phone: customer.phone.trim(),
+        shiftId: currentShift.id, orderType, notes: isDineIn ? DINE_IN_NOTE : undefined, customerName: customer.name.trim(), phone: customer.phone.trim(),
         addressStreet: isPickup ? '' : customer.street.trim(), addressNumber: isPickup ? '' : customer.number.trim(), addressNeighborhood: isPickup ? '' : customer.neighborhood,
         addressComplement: isPickup ? undefined : customer.complement.trim() || undefined,
         deliveryFee: fee, paymentMethod: payment,
@@ -390,10 +396,6 @@ export function PublicMenuApp() {
   const initials = settings.name.replace(/^espetaria\s+/i, '').split(/\s+/).filter((w) => w.length > 2).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'SC';
 
   /* ---------- telas ---------- */
-  const typeOptions = [
-    { id: 'DELIVERY' as const, label: 'Entrega' },
-    { id: 'PICKUP' as const, label: 'Consumir no local' },
-  ];
 
   const statusLine = (
     <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-muted">
@@ -485,7 +487,7 @@ export function PublicMenuApp() {
         <p className="mt-1.5 text-[13px] text-ink-muted">Enviamos a confirmação e o link de acompanhamento.</p>
       </div>
       {isPickup ? (
-        <p className={`rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary ${twoCols ? 'col-span-2' : ''}`}>Consuma aqui ou leve para viagem. Avisamos no WhatsApp quando estiver pronto.{settings.address && <> Endereço: <strong className="font-semibold">{settings.address}</strong></>}</p>
+        <p className={`rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary ${twoCols ? 'col-span-2' : ''}`}>{isDineIn ? 'Você consome aqui na loja. Avisamos no WhatsApp quando estiver pronto.' : 'Avisamos no WhatsApp quando estiver pronto para buscar.'}{settings.address && <> Endereço: <strong className="font-semibold">{settings.address}</strong></>}</p>
       ) : (
         <>
           <div className={twoCols ? 'col-span-2' : ''}>
@@ -552,7 +554,7 @@ export function PublicMenuApp() {
   const totals = (big = 20) => (
     <div className="space-y-2 text-[15px]">
       <div className="flex justify-between text-ink-secondary"><span>Subtotal</span><span className="tabular-nums">{formatBRL(subtotal)}</span></div>
-      <div className="flex justify-between text-ink-secondary"><span>{isPickup ? 'Consumir no local' : zone ? `Entrega · ${zone.name}` : 'Entrega'}</span><span className="tabular-nums">{isPickup ? 'Grátis' : zone ? formatBRL(fee) : 'escolha o bairro'}</span></div>
+      <div className="flex justify-between text-ink-secondary"><span>{isPickup ? localLabel : zone ? `Entrega · ${zone.name}` : 'Entrega'}</span><span className="tabular-nums">{isPickup ? 'Grátis' : zone ? formatBRL(fee) : 'escolha o bairro'}</span></div>
       <div className="flex justify-between border-t border-line pt-3 font-semibold" style={{ fontSize: big }}><span>Total</span><span className="tabular-nums">{formatBRL(total)}</span></div>
     </div>
   );
@@ -643,10 +645,10 @@ export function PublicMenuApp() {
   } else if (step === 'delivery') {
     screen = (
       <div className="mx-auto max-w-xl pb-44">
-        <TopBar title={isPickup ? 'Consumir no local' : 'Entrega'} onBack={back} />
+        <TopBar title={isPickup ? localLabel : 'Entrega'} onBack={back} />
         <Progress n={1} />
         <div className="space-y-5 px-5 pt-5">
-          <Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={[{ id: 'DELIVERY', label: 'Entregar' }, { id: 'PICKUP', label: 'Consumir no local' }]} />
+          <Segmented label="Como você quer receber" value={orderMode} onChange={setOrderMode} options={MODE_OPTIONS} />
           {deliveryFields()}
           {formError && <Alert>{formError}</Alert>}
         </div>
@@ -680,7 +682,7 @@ export function PublicMenuApp() {
         <TopBar title="Revisão" onBack={back} />
         <Progress n={3} />
         <div className="px-5 pt-1">
-          {block(isPickup ? 'Consumir ou retirar em' : 'Entregar em', () => window.history.go(-2), isPickup
+          {block(isPickup ? (isDineIn ? 'Consumir em' : 'Retirar em') : 'Entregar em', () => window.history.go(-2), isPickup
             ? <p className="text-[16px]">{settings.address || 'Na loja'}<span className="block text-[14px] text-ink-muted">Pronto em {pickupEta} · {customer.name}</span></p>
             : <p className="text-[16px]">{customer.street}, {customer.number}{customer.complement ? ` · ${customer.complement}` : ''}<span className="block text-[14px] text-ink-muted">{customer.neighborhood} · {deliveryEta} · {customer.name}</span></p>)}
           {block('Pagamento', back, <p className="text-[16px]">{paymentSummary}</p>)}
@@ -704,8 +706,8 @@ export function PublicMenuApp() {
           <div className="space-y-10">
             <section>
               <h2 className="mb-4 flex items-center gap-3 text-[20px] font-semibold">{num(1)}Como você quer receber?</h2>
-              <div className="mb-5 grid grid-cols-2 gap-3">
-                {(['DELIVERY', 'PICKUP'] as const).map((t) => <button key={t} type="button" role="radio" aria-checked={orderType === t} onClick={() => setOrderType(t)} className={`flex items-center gap-3 rounded-md bg-surface text-left ${orderType === t ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}><Radio on={orderType === t} /><span><span className="block text-[16px] font-semibold">{t === 'DELIVERY' ? 'Entrega' : 'Consumir no local'}</span><span className="block text-[14px] text-ink-muted">{t === 'DELIVERY' ? `${deliveryEta}${zones.length ? ` · a partir de ${formatBRL(minFee)}` : ''}` : `${pickupEta} · sem taxa · também para retirar`}</span></span></button>)}
+              <div className="mb-5 grid grid-cols-3 gap-3">
+                {MODE_OPTIONS.map((m) => m.id).map((t) => <button key={t} type="button" role="radio" aria-checked={orderMode === t} onClick={() => setOrderMode(t)} className={`flex items-center gap-3 rounded-md bg-surface text-left ${orderMode === t ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}><Radio on={orderMode === t} /><span><span className="block text-[16px] font-semibold">{MODE_OPTIONS.find((m) => m.id === t)!.label}</span><span className="block text-[14px] text-ink-muted">{t === 'DELIVERY' ? `${deliveryEta}${zones.length ? ` · a partir de ${formatBRL(minFee)}` : ''}` : `${pickupEta} · sem taxa`}</span></span></button>)}
               </div>
               {deliveryFields(true)}
             </section>
@@ -733,7 +735,7 @@ export function PublicMenuApp() {
             {logo}
             <div className="min-w-0 flex-1"><h1 className="truncate text-[20px] font-semibold">{settings.name}</h1>{statusLine}</div>
             <div className="w-[320px]">{searchBox}</div>
-            <div className="w-[300px]"><Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={[{ id: 'DELIVERY', label: 'Entrega' }, { id: 'PICKUP', label: 'Consumir no local' }]} /></div>
+            <div className="w-[440px]"><Segmented label="Como você quer receber" value={orderMode} onChange={setOrderMode} options={MODE_OPTIONS} /></div>
           </div>
         </header>
         <div className="mx-auto grid max-w-[1366px] grid-cols-[180px_1fr_320px] xl:grid-cols-[200px_1fr_360px]">
@@ -760,7 +762,7 @@ export function PublicMenuApp() {
             </div>
             <div className="space-y-2 border-t border-line p-5 text-[15px]">
               <div className="flex justify-between"><span className="text-ink-secondary">Subtotal</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
-              <p className="text-[14px] text-ink-muted">{isPickup ? 'Consumir no local: sem taxa' : 'Entrega: calculada no bairro'}</p>
+              <p className="text-[14px] text-ink-muted">{isPickup ? `${localLabel}: sem taxa` : 'Entrega: calculada no bairro'}</p>
               <Button size="lg" block disabled={!cart.length || !isOpen} onClick={() => go('checkout')} className="mt-2 font-semibold">{!isOpen ? 'Loja fechada no momento' : `Finalizar pedido · ${formatBRL(subtotal)}`}</Button>
             </div>
           </aside>
@@ -773,7 +775,7 @@ export function PublicMenuApp() {
         <header className="border-b border-line px-5 pb-4 pt-2">
           <div className="flex items-center gap-3 pt-2">{logo}<div className="min-w-0"><h1 className="truncate text-[20px] font-semibold leading-tight">{settings.name}</h1>{statusLine}</div></div>
           <div className="mt-4 space-y-3">
-            <Segmented label="Como você quer receber" value={orderType} onChange={setOrderType} options={typeOptions} />
+            <Segmented label="Como você quer receber" value={orderMode} onChange={setOrderMode} options={MODE_OPTIONS} />
             {searchBox}
           </div>
         </header>

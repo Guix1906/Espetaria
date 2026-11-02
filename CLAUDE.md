@@ -53,7 +53,7 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
   (`restaurant_settings.whatsapp_templates`); `{link}` aponta para a página pública `#/pedido/<id>` (RPC `get_delivery_tracking`, 00027); padrões em `src/lib/whatsappTemplates.ts` e cópia em `supabase/functions/whatsapp-dispatch/templates.ts` (teste garante que são iguais).
 - Fluxo da churrasqueira (00028): espeto enviado já entra "Na brasa" (item GRILL nasce IN_PREPARATION por trigger; delivery/retirada nasce PREPARING).
   Churrasqueiro tem só "Espeto pronto" (`GrillKDSView`, 4 s para desfazer). Mesa → aviso na cozinha (`GrillReadyAlerts`); retirada → WhatsApp READY;
-  delivery → pronto interno, cliente só é avisado no "Saiu para entrega". Retirada = `delivery_orders.order_type = 'PICKUP'` (cardápio digital, sem endereço/taxa).
+  delivery → pronto interno, cliente só é avisado no "Saiu para entrega". Retirada = `delivery_orders.order_type = 'PICKUP'` (cardápio digital, sem endereço/taxa). Consumir no local (02/11) = PICKUP com `notes` começando em `CONSUMIR NO LOCAL` (`isDineInOrder`, sem migração).
   Cancelar algo na brasa pergunta se volta ao estoque (`p_return_stock` em cancel_order_item_atomic, void_tab_atomic, cancel_delivery_order).
   Horários: `preparing_at/ready_at/cancelled_at` + tabela `delivery_order_status_history`.
 - Robô de atendimento no WhatsApp (00029): Edge Function `whatsapp-bot` recebe o webhook "Ao receber" da Z-API (`?token=WHATSAPP_BOT_TOKEN`)

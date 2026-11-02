@@ -44,7 +44,7 @@ describe('Mensagens automáticas de WhatsApp', () => {
     expect(confirmed).toContain('Retirada no local');
     expect(confirmed).toContain('Cartão na retirada');
     expect(confirmed).not.toContain('taxa');
-    expect(renderWhatsAppTemplate(DEFAULT_WHATSAPP_TEMPLATES.READY.text, vars)).toContain('pronto para retirada');
+    expect(renderWhatsAppTemplate(DEFAULT_WHATSAPP_TEMPLATES.READY.text, vars)).toContain('Pode vir buscar no balcão');
   });
 
   it('entrega mostra endereço e taxa no pedido recebido', () => {

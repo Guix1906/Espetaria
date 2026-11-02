@@ -24,6 +24,19 @@ export function getDeliveryStatusConfig(status: DeliveryStatus, orderType: Deliv
   return orderType === 'PICKUP' ? { ...statuses[status], ...pickupStatuses[status] } : statuses[status];
 }
 
+/**
+ * Consumir no local: no banco é um pedido PICKUP (sem endereço nem taxa) marcado na observação,
+ * que já chega aos cupons e não exige mudança nas funções do banco.
+ */
+export const DINE_IN_NOTE = 'CONSUMIR NO LOCAL';
+export function isDineInOrder(order: { notes?: string | null }): boolean {
+  return /^CONSUMIR NO LOCAL/i.test(order.notes?.trim() ?? '');
+}
+/** Nome do tipo de pedido sem entrega: "Consumir no local" ou "Retirada". */
+export function localOrderLabel(order: { notes?: string | null }): string {
+  return isDineInOrder(order) ? 'Consumir no local' : 'Retirada';
+}
+
 export function isPickupOrder(order: Pick<DeliveryOrder, 'order_type'>): boolean {
   return order.order_type === 'PICKUP';
 }

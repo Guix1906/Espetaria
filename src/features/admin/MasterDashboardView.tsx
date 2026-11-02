@@ -1,3 +1,4 @@
+import { localOrderLabel } from '../../lib/deliveryStatus';
 import { StatusTag } from '../../components/ui/StatusTag';
 import { VoidTabButton } from '../tables/VoidTabButton';
 import { StockSnapshot } from './StockSnapshot';
@@ -234,7 +235,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                   <span className="w-12 shrink-0 font-mono font-bold text-ink">#{o.order_number}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium text-ink">{o.customer_name}</span>
-                    <span className="block text-[13px] text-ink-muted">{o.order_type === 'PICKUP' ? 'Retirada' : `Entrega · ${o.address_neighborhood || 'sem bairro'}`} · {STAGE_LABEL[stageOf(o)!]}</span>
+                    <span className="block text-[13px] text-ink-muted">{o.order_type === 'PICKUP' ? localOrderLabel(o) : `Entrega · ${o.address_neighborhood || 'sem bairro'}`} · {STAGE_LABEL[stageOf(o)!]}</span>
                   </span>
                   <span className="flex shrink-0 items-center justify-end gap-1 text-[13px] text-ink-muted">{formatElapsedMinutes(o.created_at, now)}{late && <StatusTag kind="alert">Atrasado</StatusTag>}</span>
                 </li>

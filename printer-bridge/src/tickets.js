@@ -20,7 +20,10 @@ const PAYMENT = { PIX: 'PIX', DINHEIRO: 'DINHEIRO', CARTAO_ENTREGA: 'CARTÃO NA 
 
 /** Retirada no local (pedido do cardápio sem entrega). */
 const isPickup = (job) => (job.payload?.order_type || job.delivery?.order_type) === 'PICKUP';
-const remoteTitle = (job) => `${isPickup(job) ? 'RETIRADA' : 'DELIVERY'} #${job.order_number}`;
+/** Consumir no local: pedido sem entrega marcado na observação. */
+const isDineIn = (job) => /^CONSUMIR NO LOCAL/i.test(String(job.delivery?.notes || job.payload?.order_notes || '').trim());
+const localLine = (job) => (isDineIn(job) ? 'CONSUMIR NO LOCAL' : 'RETIRADA NO LOCAL');
+const remoteTitle = (job) => `${isPickup(job) ? (isDineIn(job) ? 'CONSUMIR NO LOCAL' : 'RETIRADA') : 'DELIVERY'} #${job.order_number}`;
 
 const payLabel = (job, method) => (isPickup(job) && method === 'CARTAO_ENTREGA' ? 'CARTÃO NA RETIRADA' : PAYMENT[method] || method || '');
 
@@ -112,7 +115,7 @@ export function buildTicket(job, config) {
     r.bold().line(`CLIENTE: ${o.customer_name || job.customer_name || ''}`).bold(false);
     if (o.phone) r.line(`TEL: ${o.phone}`);
     if (isPickup(job)) {
-      r.size(2).bold().line('RETIRADA NO LOCAL').bold(false).size(1);
+      r.size(2).bold().line(localLine(job)).bold(false).size(1);
     } else {
       r.line(`END: ${o.address_street || ''}, ${o.address_number || ''}`);
       if (o.address_complement) r.line(`COMPL: ${o.address_complement}`);
@@ -172,7 +175,7 @@ export function compactDeliveryTicket(r, job, config, tpl) {
   const name = d.customer_name || job.customer_name || '';
   r.bold().line([name, d.phone].filter(Boolean).join(' - ')).bold(false);
   if (isPickup(job)) {
-    r.bold().line('RETIRADA NO LOCAL').bold(false);
+    r.bold().line(localLine(job)).bold(false);
   } else {
     const street = [d.address_street, d.address_number].filter(Boolean).join(', ');
     if (street) r.line([street, d.address_complement].filter(Boolean).join(' - '));
@@ -211,7 +214,7 @@ function productionTicket(r, job, config, tpl, label) {
     r.size(2).bold().line(remoteTitle(job)).bold(false).size(1);
     r.line(`Cliente: ${job.customer_name || ''}`);
     const hood = job.delivery?.address_neighborhood || payload.neighborhood;
-    if (isPickup(job)) r.bold().line('RETIRADA NO LOCAL').bold(false);
+    if (isPickup(job)) r.bold().line(localLine(job)).bold(false);
     else if (hood) r.line(`Bairro: ${hood}`);
   } else {
     r.size(2).bold().line(`MESA ${job.table_number ?? '-'}`).bold(false).size(1);
@@ -319,7 +322,7 @@ function formatDateFull(iso) {
 export function anotaTicket(r, job, config, tpl, { complete, data }) {
   const d = data || {};
   const payload = job.payload || {};
-  const modality = job.origin !== 'DELIVERY' ? 'CONSUMO NO LOCAL' : isPickup(job) ? 'RETIRADA NO LOCAL' : 'PARA ENTREGA';
+  const modality = job.origin !== 'DELIVERY' ? 'CONSUMO NO LOCAL' : isPickup(job) ? localLine(job) : 'PARA ENTREGA';
   if (job.is_reprint) {
     r.align('center').invert().bold().line(' 2ª VIA ').bold(false).invert(false);
     if (job.reprint_reason) r.line(job.reprint_reason);
@@ -397,7 +400,7 @@ export function deliveryLabel(r, job, config, label) {
   r.size(3).bold().line(String(d.customer_name || job.customer_name || '').toUpperCase()).bold(false).size(1);
   if (label.show_phone && d.phone) r.bold().line(`TEL: ${d.phone}`).bold(false);
   if (isPickup(job)) {
-    r.size(3).bold().line('RETIRADA NO LOCAL').bold(false).size(1);
+    r.size(3).bold().line(localLine(job)).bold(false).size(1);
   } else if (label.show_address) {
     r.line(`END: ${d.address_street || ''}, ${d.address_number || ''}`);
     if (d.address_complement) r.line(`COMPL: ${d.address_complement}`);

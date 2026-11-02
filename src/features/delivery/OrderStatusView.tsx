@@ -1,5 +1,5 @@
 import { Check } from 'lucide-react';
-import { isPickupOrder } from '../../lib/deliveryStatus';
+import { isDineInOrder, isPickupOrder } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { DEFAULT_DELIVERY_ETA, DEFAULT_PICKUP_ETA, parseEta } from '../../lib/eta';
@@ -21,9 +21,9 @@ function buildSteps(order: DeliveryOrder): { steps: Step[]; current: number } {
     { title: 'Confirmado pela loja', desc: order.payment_method === 'PIX' ? 'Pagamento conferido pela loja.' : 'A loja aceitou o seu pedido.', at: order.confirmed_at ?? o.preparing_at },
     { title: 'Na brasa', desc: 'Seu pedido está sendo preparado.', at: o.preparing_at },
     pickup
-      ? { title: 'Pronto', desc: 'Seu pedido está pronto no balcão.', at: order.ready_at }
+      ? { title: 'Pronto', desc: isDineInOrder(order) ? 'Seu pedido está pronto no balcão.' : 'Pode vir retirar no balcão.', at: order.ready_at }
       : { title: 'Saiu para entrega', desc: order.driver_name ? `Entregador: ${order.driver_name}.` : 'O entregador está a caminho.', at: order.dispatched_at },
-    { title: pickup ? 'Concluído' : 'Entregue', desc: 'Bom apetite!', at: order.delivered_at },
+    { title: pickup ? (isDineInOrder(order) ? 'Concluído' : 'Retirado') : 'Entregue', desc: 'Bom apetite!', at: order.delivered_at },
   ];
   const map: Record<string, number> = pickup
     ? { AWAITING_PAYMENT: 0, CONFIRMED: 1, PREPARING: 2, READY: 3, DELIVERED: 4 }
@@ -39,7 +39,7 @@ export function statusTitle(order: DeliveryOrder) {
     case 'PREPARING': return 'Na brasa';
     case 'READY': return pickup ? 'Pronto' : 'Na brasa';
     case 'OUT_FOR_DELIVERY': return 'Saiu para entrega';
-    case 'DELIVERED': return pickup ? 'Concluído' : 'Entregue';
+    case 'DELIVERED': return pickup ? (isDineInOrder(order) ? 'Concluído' : 'Retirado') : 'Entregue';
     case 'CANCELLED': return 'Pedido cancelado';
     default: return 'Pedido recebido';
   }
@@ -140,7 +140,7 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
           <div className="flex justify-between pt-1"><span>Pagamento</span><span>{PAY_LABEL[order.payment_method] ?? order.payment_method}{order.paid_at ? ' · pago' : ''}</span></div>
         </div>
         <p className="mt-3 border-t border-surface-muted pt-3 text-[14px] text-ink-secondary">
-          {pickup ? <>Consumir no local{restaurantAddress ? ` · ${restaurantAddress}` : ''}</> : <>{order.address_street}, {order.address_number} · {order.address_neighborhood}{order.address_complement ? ` · ${order.address_complement}` : ''}</>}
+          {pickup ? <>{isDineInOrder(order) ? 'Consumir no local' : 'Retirada no local'}{restaurantAddress ? ` · ${restaurantAddress}` : ''}</> : <>{order.address_street}, {order.address_number} · {order.address_neighborhood}{order.address_complement ? ` · ${order.address_complement}` : ''}</>}
         </p>
       </section>
 

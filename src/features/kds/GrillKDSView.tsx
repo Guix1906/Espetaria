@@ -4,6 +4,7 @@ import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { audioService } from '../../lib/audio';
+import { isDineInOrder } from '../../lib/deliveryStatus';
 import { formatDoneness } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
@@ -18,7 +19,7 @@ import { KDSElapsedTimer, elapsedLevel, useNow, type ElapsedLevel } from './KDSE
 /** Tempo para desfazer um toque errado antes de avisar cozinha/cliente. */
 const UNDO_MS = 4000;
 
-type TicketKind = 'LOCAL' | 'PICKUP' | 'DELIVERY';
+type TicketKind = 'LOCAL' | 'DINE_IN' | 'PICKUP' | 'DELIVERY';
 
 interface GrillTicket {
   key: string;
@@ -42,6 +43,7 @@ const STRIP: Record<ElapsedLevel, string> = {
 
 const KIND_LABEL: Record<TicketKind, { label: string; classes: string }> = {
   LOCAL: { label: 'Local', classes: 'bg-surface-muted text-ink-secondary' },
+  DINE_IN: { label: 'Consumir no local', classes: 'bg-surface-muted text-ink-secondary' },
   PICKUP: { label: 'Retirada', classes: 'bg-sky-800 text-white' },
   DELIVERY: { label: 'Delivery', classes: 'bg-brand-100 text-brand-900' },
 };
@@ -146,14 +148,14 @@ export const GrillKDSView: React.FC = () => {
       const firstName = order.customer_name.trim().split(' ')[0] || order.customer_name;
       return {
         key: `remote-${order.id}`,
-        kind: isPickup ? 'PICKUP' as const : 'DELIVERY' as const,
+        kind: isDineInOrder(order) ? 'DINE_IN' as const : isPickup ? 'PICKUP' as const : 'DELIVERY' as const,
         title: order.customer_name,
         subtitle: `Pedido #${order.order_number}`,
         createdAt: order.created_at,
         notes: order.notes,
         items: order.items.filter((i) => i.sector === 'GRILL').map((i) => ({ id: i.id, quantity: i.quantity, name: i.product_name, doneness: i.doneness, notes: i.notes })),
         ready: () => updateDeliveryStatus(order.id, 'READY'),
-        doneMessage: isPickup ? `Retirada de ${firstName}: cliente avisado que pode buscar.` : `Delivery #${order.order_number} pronto: equipe avisada.`,
+        doneMessage: isDineInOrder(order) ? `${firstName}: pedido para consumir no local está pronto.` : isPickup ? `Retirada de ${firstName}: cliente avisado que pode buscar.` : `Delivery #${order.order_number} pronto: equipe avisada.`,
       };
     });
 

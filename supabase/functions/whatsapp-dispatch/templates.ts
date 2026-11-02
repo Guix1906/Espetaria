@@ -18,7 +18,7 @@ export const DEFAULT_TEMPLATES: Record<string, Template> = {
   },
   READY: {
     enabled: true,
-    text: '{nome}, seu pedido *#{pedido}* está pronto para retirada. Pode vir buscar!\n{loja}',
+    text: '{nome}, seu pedido *#{pedido}* está pronto. Pode vir buscar no balcão!\n{loja}',
   },
   OUT_FOR_DELIVERY: {
     enabled: true,
@@ -51,7 +51,8 @@ const PAYMENT_LABEL: Record<string, string> = { PIX: 'PIX', DINHEIRO: 'Dinheiro'
 // deno-lint-ignore no-explicit-any
 export function variables(order: any, restaurant: string, appUrl: string): Record<string, string> {
   const pickup = order.order_type === 'PICKUP';
-  const endereco = pickup ? 'Retirada no local' : `${order.address_street}, ${order.address_number} — ${order.address_neighborhood}`;
+  const localLabel = /^CONSUMIR NO LOCAL/i.test((order as { notes?: string | null }).notes?.trim() ?? '') ? 'Consumir no local' : 'Retirada no local';
+  const endereco = pickup ? localLabel : `${order.address_street}, ${order.address_number} — ${order.address_neighborhood}`;
   const taxa = brl(order.delivery_fee);
   return {
     nome: String(order.customer_name || '').trim().split(' ')[0] || 'cliente',
@@ -62,7 +63,7 @@ export function variables(order: any, restaurant: string, appUrl: string): Recor
     pagamento: pickup && order.payment_method === 'CARTAO_ENTREGA' ? 'Cartão na retirada' : PAYMENT_LABEL[order.payment_method] ?? order.payment_method,
     troco: order.payment_method === 'DINHEIRO' && order.cash_change_for ? ` — troco para ${brl(order.cash_change_for)}` : '',
     endereco,
-    modalidade: pickup ? 'Retirada no local' : `Entrega em: ${endereco} (taxa ${taxa})`,
+    modalidade: pickup ? localLabel : `Entrega em: ${endereco} (taxa ${taxa})`,
     entregador: order.driver_name || 'nosso entregador',
     motivo: order.cancel_reason || 'não informado',
     loja: restaurant,

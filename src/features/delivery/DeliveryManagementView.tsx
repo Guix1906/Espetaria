@@ -22,7 +22,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { deliveryPaymentLabel, getDeliveryStatusConfig, isPickupOrder } from '../../lib/deliveryStatus';
+import { deliveryPaymentLabel, getDeliveryStatusConfig, isDineInOrder, isPickupOrder } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { buildWhatsAppLink } from '../../lib/whatsapp';
 import { renderWhatsAppTemplate, resolveWhatsAppTemplates, whatsAppVariables } from '../../lib/whatsappTemplates';
@@ -208,7 +208,7 @@ export const DeliveryManagementView: React.FC = () => {
       case 'AWAITING_PAYMENT': return { label: 'Reenviar link do PIX', icon: Send, tone: 'btn-secondary', run: () => resendPixLink(order) };
       case 'CONFIRMED': return { label: 'Iniciar preparo', icon: Flame, tone: 'btn-primary', run: advance };
       case 'PREPARING': return { label: 'Pedido pronto', icon: PackageCheck, tone: 'btn-success', run: advance };
-      case 'READY': return pickup ? { label: 'Cliente retirou', icon: CheckCheck, tone: 'btn-success', run: advance } : { label: 'Saiu para entrega', icon: Bike, tone: 'btn-primary', run: advance };
+      case 'READY': return pickup ? { label: isDineInOrder(order) ? 'Concluir pedido' : 'Cliente retirou', icon: CheckCheck, tone: 'btn-success', run: advance } : { label: 'Saiu para entrega', icon: Bike, tone: 'btn-primary', run: advance };
       case 'OUT_FOR_DELIVERY': return { label: 'Confirmar entrega', icon: CheckCheck, tone: 'btn-success', run: advance };
       default: return null;
     }
@@ -304,7 +304,7 @@ export const DeliveryManagementView: React.FC = () => {
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusTag kind={status.kind} className="font-semibold">{status.label}{isActive && <> · <KDSElapsedTimer compact createdAt={stageStart(order)} /></>}</StatusTag>
                   {lateBy > 0 && <StatusTag kind="alert" className="font-semibold">Atrasado {lateBy} min</StatusTag>}
-                  <span className="text-[15px] text-ink-secondary">{isPickup ? 'Retirada no balcão' : `Entrega · ${order.address_neighborhood || 'sem bairro'}`}</span>
+                  <span className="text-[15px] text-ink-secondary">{isPickup ? (isDineInOrder(order) ? 'Consumir no local' : 'Retirada no balcão') : `Entrega · ${order.address_neighborhood || 'sem bairro'}`}</span>
                 </div>
 
                 {/* Endereço e telefone */}
