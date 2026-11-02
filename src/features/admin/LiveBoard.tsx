@@ -23,19 +23,12 @@ const FILTERS = ['Todos', 'Salão', 'Delivery', 'Retirada'] as const;
 const COLUMNS: { id: BoardColumn; title: string; dot: string; empty: string }[] = [
   { id: 'preparing', title: 'Em preparo', dot: 'bg-amber-500', empty: 'Nada em preparo' },
   { id: 'grill', title: 'Na brasa', dot: 'bg-brand-700', empty: 'Nada na brasa' },
-  { id: 'delivery', title: 'Delivery', dot: 'bg-emerald-600', empty: 'Nada esperando' },
+  { id: 'delivery', title: 'Delivery', dot: 'bg-emerald-600', empty: 'Nenhum pedido em andamento' },
 ];
 
 /** Espeto pendente vai para Na brasa; a mesa sem espeto fica em Em preparo, para nenhuma mesa aberta sumir do quadro. */
 export function tabColumn(items: Pick<OrderItem, 'sector' | 'status'>[]): BoardColumn {
   return items.some((i) => i.sector === 'GRILL' && isPendingProduction(i)) ? 'grill' : 'preparing';
-}
-
-/** Pronto e a caminho ficam em Delivery; antes disso segue a produção. */
-export function deliveryColumn(order: Pick<DeliveryOrder, 'status' | 'items'>): BoardColumn {
-  if (order.status === 'READY' || order.status === 'OUT_FOR_DELIVERY') return 'delivery';
-  if (order.status === 'AWAITING_PAYMENT') return 'preparing';
-  return order.items.some((i) => i.sector === 'GRILL') ? 'grill' : 'preparing';
 }
 
 interface Card { key: string; column: BoardColumn; channel: BoardChannel; level: ElapsedLevel; title: string; time: string; items: string; status: string; onClick?: () => void }
@@ -80,7 +73,8 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
     const pickup = o.order_type === 'PICKUP';
     return {
       key: o.id,
-      column: deliveryColumn(o),
+      // Delivery e retirada ficam sempre nesta coluna, do pedido recebido até a entrega; a etapa aparece no cartão
+      column: 'delivery',
       channel: pickup ? 'Retirada' : 'Delivery',
       level: lateIds.has(o.id) ? 'urgent' : elapsedLevel(o.created_at, now, 30, 45),
       title: `${o.customer_name.trim().split(' ')[0] || o.customer_name} · #${o.order_number}`,
