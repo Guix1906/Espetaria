@@ -28,8 +28,8 @@ export const DEFAULT_SETTINGS: RestaurantSettings = {
   printer_grill_enabled: true,
   printer_kitchen_enabled: true,
   printer_cashier_enabled: true,
-  daily_rice_flavors: ['Arroz Branco', 'Arroz Carreteiro', 'Arroz com Brócolis', 'Baião de Dois'],
-  daily_juice_flavors: ['Laranja', 'Maracujá', 'Limão', 'Abacaxi com Hortelã', 'Acerola'],
+  daily_rice_flavors: [],
+  daily_juice_flavors: [],
   updated_at: new Date().toISOString(),
 };
 

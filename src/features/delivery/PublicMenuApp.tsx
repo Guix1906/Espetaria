@@ -1,3 +1,4 @@
+import { OptionGroup } from '../../components/ui/OptionGroup';
 import { StatusTag } from '../../components/ui/StatusTag';
 import { Stepper } from '../../components/ui/Stepper';
 import { Button } from '../../components/ui/Button';
@@ -158,7 +159,7 @@ function Alert({ children }: { children: ReactNode }) {
 }
 
 /* ---------- produto (folha no celular, modal no notebook) ---------- */
-function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: () => void; onAdd: (qty: number, doneness: MeatDoneness | null, notes: string) => string | null }) {
+function ProductSheet({ product, riceOptions, onClose, onAdd }: { product: Product; riceOptions: string[]; onClose: () => void; onAdd: (qty: number, doneness: MeatDoneness | null, notes: string) => string | null }) {
   const [qty, setQty] = useState(1);
   const [doneness, setDoneness] = useState<MeatDoneness | null>(null);
   const [notes, setNotes] = useState('');
@@ -167,6 +168,12 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
   const donenessRef = useRef<HTMLFieldSetElement>(null);
   const needsDoneness = product.allows_doneness;
   const missingDoneness = needsDoneness && !doneness;
+  // Combo: o cliente escolhe um dos arrozes do dia (Configurações)
+  const needsRice = COMBO_SUFFIX.test(product.name) && riceOptions.length > 0;
+  const [rice, setRice] = useState<string | null>(null);
+  const [flagRice, setFlagRice] = useState(false);
+  const riceRef = useRef<HTMLDivElement>(null);
+  const missingRice = needsRice && !rice;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -180,7 +187,12 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
       scrollToCenter(donenessRef.current);
       return;
     }
-    const e = onAdd(qty, doneness, notes); if (e) setErr(e); };
+    if (missingRice) {
+      setFlagRice(true);
+      scrollToCenter(riceRef.current);
+      return;
+    }
+    const e = onAdd(qty, doneness, [rice, notes.trim()].filter(Boolean).join(', ')); if (e) setErr(e); };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(43,33,28,.5)] lg:items-center lg:p-6" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={product.name} onClick={(e) => e.stopPropagation()}
@@ -211,6 +223,10 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
                 </div>
               </fieldset>
             )}
+            {needsRice && <div ref={riceRef}>
+              <OptionGroup title="Arroz do dia" hint="escolha 1" options={riceOptions} value={rice} onChange={(value) => { setRice(value); setFlagRice(false); }} />
+              {flagRice && missingRice && <p role="alert" className="mt-2 text-[14px] font-semibold text-rose-700">Escolha o arroz para continuar.</p>}
+            </div>}
             <div><label htmlFor="pm-notes" className="mb-2 block text-[17px] font-semibold">Observação</label><input id="pm-notes" value={notes} onChange={(e) => setNotes(e.target.value)}
               onFocus={(e) => { const el = e.currentTarget; window.setTimeout(() => scrollToCenter(el), 300); }} placeholder="Ex.: pouco sal" className={inputCls} /></div>
             {err && <Alert>{err}</Alert>}
@@ -221,7 +237,7 @@ function ProductSheet({ product, onClose, onAdd }: { product: Product; onClose: 
               <span className="w-9 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
               <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-[52px] w-11 items-center justify-center text-brand-500"><Plus className="h-5 w-5" /></button>
             </div>
-            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness} className={`px-3 text-[15px] font-semibold leading-tight ${missingDoneness ? '' : 'whitespace-nowrap'}`}>{missingDoneness ? 'Escolha o ponto da carne' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
+            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness || missingRice} className={`px-3 text-[15px] font-semibold leading-tight ${missingDoneness || missingRice ? '' : 'whitespace-nowrap'}`}>{missingDoneness ? 'Escolha o ponto da carne' : missingRice ? 'Escolha o arroz' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
           </div>
         </div>
       </div>
@@ -412,7 +428,7 @@ export function PublicMenuApp() {
     </label>
   );
 
-  const pickProduct = (p: Product) => (p.allows_doneness ? setSheetProduct(p) : onPlus(p));
+  const pickProduct = (p: Product) => (p.allows_doneness || (COMBO_SUFFIX.test(p.name) && (settings.daily_rice_flavors?.length ?? 0) > 0) ? setSheetProduct(p) : onPlus(p));
   /** Tira a última linha do item na sacola. */
   const removeOne = (p: Product) => {
     const line = [...cart].reverse().find((c) => c.productId === p.id);
@@ -608,7 +624,7 @@ export function PublicMenuApp() {
           {closedNotice}
           {cart.length ? cartLines() : <p className="py-10 text-center text-[15px] text-ink-muted">Sua sacola está vazia.</p>}
           <button type="button" onClick={back} className="flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-brand-700"><Plus className="h-4 w-4" />Adicionar mais itens</button>
-          <p className="rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Espeto com acompanhamento vai com arroz, vinagrete, farofa e purê.</p>
+          <p className="rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Espeto com acompanhamento vai com o arroz escolhido, vinagrete, farofa e purê.</p>
           {drinks.length > 0 && (
             <div>
               <h2 className="mb-3 text-[17px] font-semibold">Que tal uma bebida?</h2>
@@ -717,7 +733,7 @@ export function PublicMenuApp() {
             <h2 className="text-[20px] font-semibold">Resumo do pedido</h2>
             {cartError && <Alert>{cartError}</Alert>}
             {cartLines(true)}
-            <p className="rounded-md border border-line bg-canvas px-3 py-2 text-[13px] text-ink-secondary">Espeto com acompanhamento vai com arroz, vinagrete, farofa e purê.</p>
+            <p className="rounded-md border border-line bg-canvas px-3 py-2 text-[13px] text-ink-secondary">Espeto com acompanhamento vai com o arroz escolhido, vinagrete, farofa e purê.</p>
             {totals(22)}
             {closedNotice}
             {formError && <Alert>{formError}</Alert>}
@@ -814,7 +830,7 @@ export function PublicMenuApp() {
       {/* Erro ao adicionar: fica à vista em qualquer ponto da rolagem */}
       {menuError && step === 'menu' && <div className="fixed inset-x-4 bottom-[88px] z-40 mx-auto max-w-md lg:bottom-6"><Alert>{menuError}</Alert></div>}
       {sheetProduct && (
-        <ProductSheet product={sheetProduct} onClose={() => setSheetProduct(null)} onAdd={(q, d, n) => { const e = tryAdd(sheetProduct, q, d, n); if (!e) setSheetProduct(null); return e; }} />
+        <ProductSheet product={sheetProduct} riceOptions={settings.daily_rice_flavors ?? []} onClose={() => setSheetProduct(null)} onAdd={(q, d, n) => { const e = tryAdd(sheetProduct, q, d, n); if (!e) setSheetProduct(null); return e; }} />
       )}
     </div>
   );
