@@ -1,4 +1,4 @@
-import { ArrowLeft, Plus, Settings2 } from 'lucide-react';
+import { ArrowLeft, Download, Plus, Settings2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -16,6 +16,19 @@ const CHAT_REFRESH_MS = 4000;
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 const titleOf = (c: WhatsAppConversation) => c.customer_name?.trim() || c.phone;
 
+const DESKTOP_DOWNLOAD_URL = 'https://github.com/Guix1906/Espetaria/releases/latest/download/Ponto.exe';
+
+/** No navegador o WhatsApp Web não abre dentro da aba; só no programa do PC. */
+function DesktopDownload() {
+  if (window.pontoDesktop) return null;
+  return (
+    <div className="space-y-2 border-b border-line bg-surface-soft p-4">
+      <p className="text-sm text-ink-secondary">Para usar o WhatsApp oficial dentro do Ponto, baixe o programa para o computador.</p>
+      <a href={DESKTOP_DOWNLOAD_URL} className="btn-primary min-h-[44px] w-full justify-center"><Download className="h-4 w-4" aria-hidden="true" />Baixar programa</a>
+    </div>
+  );
+}
+
 /** Conversas reais do WhatsApp da loja. Sem celular conectado, mostra o QR Code. */
 export function WhatsAppView({ onNavigateTab }: { onNavigateTab: (tab: ActiveTab) => void }) {
   const { status } = useWhatsAppStatus(true, 30000);
@@ -27,6 +40,7 @@ export function WhatsAppView({ onNavigateTab }: { onNavigateTab: (tab: ActiveTab
   if (wantsConnection || (status && !status.connected)) {
     return (
       <div>
+        <DesktopDownload />
         {wantsConnection && <div className="px-4 pt-4 sm:px-6 xl:px-8"><button type="button" className="btn-secondary min-h-[44px]" onClick={() => setWantsConnection(false)}><ArrowLeft className="h-4 w-4" aria-hidden="true" />Voltar às conversas</button></div>}
         <WhatsAppConnectView />
       </div>
@@ -40,6 +54,7 @@ export function WhatsAppView({ onNavigateTab }: { onNavigateTab: (tab: ActiveTab
   return (
     <div className="flex h-[calc(100dvh-var(--app-header-height)-1px)] min-h-[420px]">
       <div className={`w-full shrink-0 flex-col border-r border-line bg-surface md:flex md:w-80 ${active ? 'hidden' : 'flex'}`}>
+        <DesktopDownload />
         <div className="space-y-3 p-4">
           <div className="flex items-center justify-between gap-2">
             <h1 className="text-xl font-semibold text-ink">Conversas</h1>
