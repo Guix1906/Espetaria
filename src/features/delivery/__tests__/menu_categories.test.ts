@@ -2,7 +2,7 @@ import { menuFlavors } from '../../../lib/productAvailability';
 import { productFlavors } from '../../../lib/productAvailability';
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../../../types/domain';
-import { categoryOf, comboNotes, parseComboNotes } from '../PublicMenuApp';
+import { categoryOf, comboNotes, parseComboNotes, sheetLines } from '../PublicMenuApp';
 
 const drink = (name: string, description?: string) => categoryOf({ type: 'BEBIDA', name, description } as Product);
 
@@ -47,5 +47,21 @@ describe('sabores de suco no cardápio', () => {
     expect(menuFlavors({ name: 'Jarra de suco' }, juices)).toEqual(juices);
     expect(menuFlavors({ name: 'Suco de maracujá' }, juices)).toEqual([]);
     expect(menuFlavors({ name: 'Picanha' }, juices)).toEqual([]);
+  });
+});
+
+describe('escolha por unidade no cardápio', () => {
+  it('dois Completos com arroz diferente viram duas linhas, com o ponto e o que foi tirado', () => {
+    expect(sheetLines(2, ['Baião de Dois', 'Arroz Branco'], 'AO_PONTO', ['Farofa'], 'pouco sal')).toEqual([
+      { qty: 1, doneness: 'AO_PONTO', notes: 'Baião de Dois, Sem farofa, pouco sal' },
+      { qty: 1, doneness: 'AO_PONTO', notes: 'Arroz Branco, Sem farofa, pouco sal' },
+    ]);
+  });
+  it('mesma escolha soma; sem escolha fica uma linha', () => {
+    expect(sheetLines(3, ['Arroz Branco', 'Arroz Branco', 'Sem arroz'], null, [], '')).toEqual([
+      { qty: 2, doneness: null, notes: 'Arroz Branco' },
+      { qty: 1, doneness: null, notes: 'Sem arroz' },
+    ]);
+    expect(sheetLines(2, [], 'BEM_PASSADA', [], '')).toEqual([{ qty: 2, doneness: 'BEM_PASSADA', notes: '' }]);
   });
 });

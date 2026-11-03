@@ -11,6 +11,7 @@ import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { menuPhotoUrl } from '../../lib/imageOptimization';
 import { getProductAvailability, menuFlavors } from '../../lib/productAvailability';
 import { storeClosedText } from '../../lib/storeHours';
+import { expandUnits, groupUnits } from '../waiter/orderUnits';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useShiftStore } from '../../stores/useShiftStore';
@@ -187,8 +188,15 @@ function Alert({ children }: { children: ReactNode }) {
   return <p role="alert" className="rounded-md border border-rose-200 bg-rose-50 p-3 text-[14px] text-rose-600">{children}</p>;
 }
 
+/** Linhas que entram na sacola: unidades com a mesma escolha ficam juntas. */
+export function sheetLines(qty: number, choices: (string | null)[], doneness: MeatDoneness | null, removed: string[], notes: string) {
+  const units = expandUnits([], null, qty);
+  const index = new Map(units.map((unit, i) => [unit.key, i]));
+  return groupUnits(units, (unit) => choices[index.get(unit.key) ?? 0] ?? null, comboNotes(null, removed, notes)).map((line) => ({ qty: line.quantity, doneness, notes: line.notes }));
+}
+
 /* ---------- produto (folha no celular, modal no notebook) ---------- */
-function ProductSheet({ product, riceOptions, juiceOptions, initial, onClose, onAdd }: { product: Product; riceOptions: string[]; juiceOptions: string[]; initial?: { qty: number; doneness: MeatDoneness | null; notes: string }; onClose: () => void; onAdd: (qty: number, doneness: MeatDoneness | null, notes: string) => string | null }) {
+function ProductSheet({ product, riceOptions, juiceOptions, initial, onClose, onAdd }: { product: Product; riceOptions: string[]; juiceOptions: string[]; initial?: { qty: number; doneness: MeatDoneness | null; notes: string }; onClose: () => void; onAdd: (lines: { qty: number; doneness: MeatDoneness | null; notes: string }[]) => string | null }) {
   const flavors = menuFlavors(product, juiceOptions);
   const parsed = parseComboNotes(initial?.notes ?? '', flavors.length ? flavors : riceOptions);
   const [qty, setQty] = useState(initial?.qty ?? 1);
@@ -203,10 +211,16 @@ function ProductSheet({ product, riceOptions, juiceOptions, initial, onClose, on
   const isCombo = COMBO_SUFFIX.test(product.name);
   const needsRice = flavors.length > 0 || (isCombo && riceOptions.length > 0);
   const [removedSides, setRemovedSides] = useState<string[]>(parsed.removed);
-  const [rice, setRice] = useState<string | null>(parsed.rice);
+  // Arroz ou sabor de cada unidade: dois Completos podem ter arroz diferente
+  const [choices, setChoices] = useState<(string | null)[]>(() => Array(initial?.qty ?? 1).fill(parsed.rice));
   const [flagRice, setFlagRice] = useState(false);
   const riceRef = useRef<HTMLDivElement>(null);
-  const missingRice = needsRice && !rice;
+  const missingChoices = needsRice ? Array.from({ length: qty }, (_, i) => choices[i] ?? null).filter((choice) => !choice).length : 0;
+  const missingRice = missingChoices > 0;
+  const pickChoice = (index: number, value: string | null) => {
+    setChoices((current) => { const next = [...current]; next[index] = value; return next; });
+    setFlagRice(false);
+  };
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
@@ -225,7 +239,7 @@ function ProductSheet({ product, riceOptions, juiceOptions, initial, onClose, on
       scrollToCenter(riceRef.current);
       return;
     }
-    const e = onAdd(qty, doneness, comboNotes(rice, removedSides, notes)); if (e) setErr(e); };
+    const e = onAdd(sheetLines(qty, needsRice ? choices : [], doneness, removedSides, notes)); if (e) setErr(e); };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(43,33,28,.5)] lg:items-center lg:p-6" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={product.name} onClick={(e) => e.stopPropagation()}
@@ -244,7 +258,7 @@ function ProductSheet({ product, riceOptions, juiceOptions, initial, onClose, on
             {needsDoneness && (
               <fieldset ref={donenessRef} className={`rounded-md border-2 border-brand-500 bg-brand-50 px-4 pb-2 pt-3 ${flagDoneness && missingDoneness ? 'ring-4 ring-brand-500/30' : ''}`}>
                 <legend className="sr-only">Ponto da carne</legend>
-                <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"><span className="text-[17px] font-semibold">Ponto da carne</span><span className="text-[13px] font-semibold text-brand-700">Escolha 1 · obrigatório</span></p>
+                <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"><span className="text-[17px] font-semibold">Ponto da carne</span><span className="text-[13px] font-semibold text-brand-700">{qty > 1 ? `Vale para os ${qty} · obrigatório` : 'Escolha 1 · obrigatório'}</span></p>
                 {flagDoneness && missingDoneness && <p role="alert" className="mt-1 text-[14px] font-semibold text-rose-700">Escolha o ponto da carne para continuar.</p>}
                 <div className="mt-1 divide-y divide-brand-500/15 lg:mt-3 lg:grid lg:grid-cols-3 lg:gap-2 lg:divide-y-0">
                   {DONENESS.map((d) => (
@@ -257,7 +271,7 @@ function ProductSheet({ product, riceOptions, juiceOptions, initial, onClose, on
               </fieldset>
             )}
             {needsRice && <div ref={riceRef}>
-              <OptionGroup title={flavors.length ? 'Sabor' : 'Arroz do dia'} hint="escolha 1" options={flavors.length ? flavors : [...riceOptions, NO_RICE]} value={rice} onChange={(value) => { setRice(value); setFlagRice(false); }} />
+              <div className="space-y-4">{Array.from({ length: qty }, (_, i) => <OptionGroup key={i} title={qty > 1 ? `${flavors.length ? 'Sabor' : 'Arroz'} do ${i + 1}º` : flavors.length ? 'Sabor' : 'Arroz do dia'} hint="escolha 1" options={flavors.length ? flavors : [...riceOptions, NO_RICE]} value={choices[i] ?? null} onChange={(value) => pickChoice(i, value)} />)}</div>
               {flagRice && missingRice && <p role="alert" className="mt-2 text-[14px] font-semibold text-rose-700">{flavors.length ? 'Escolha o sabor para continuar.' : 'Escolha o arroz para continuar.'}</p>}
             </div>}
             {isCombo && <div>
@@ -282,7 +296,7 @@ function ProductSheet({ product, riceOptions, juiceOptions, initial, onClose, on
               <span className="w-9 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
               <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-[52px] w-11 items-center justify-center text-brand-500"><Plus className="h-5 w-5" /></button>
             </div>
-            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness || missingRice} className={`min-w-0 px-2 text-[15px] font-semibold leading-tight min-[360px]:whitespace-nowrap`}>{missingDoneness ? 'Escolha o ponto da carne' : missingRice ? (flavors.length ? 'Escolha o sabor' : 'Escolha o arroz') : `${initial ? 'Salvar' : 'Adicionar'} · ${formatBRL(product.price * qty)}`}</Button>
+            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness || missingRice} className={`min-w-0 px-2 text-[15px] font-semibold leading-tight min-[360px]:whitespace-nowrap`}>{missingDoneness ? 'Escolha o ponto da carne' : missingRice ? `${flavors.length ? 'Escolha o sabor' : 'Escolha o arroz'}${qty > 1 ? ` (falta ${missingChoices})` : ''}` : `${initial ? 'Salvar' : 'Adicionar'} · ${formatBRL(product.price * qty)}`}</Button>
           </div>
         </div>
       </div>
@@ -411,6 +425,14 @@ export function PublicMenuApp() {
   const tryAdd = (p: Product, qty: number, doneness: MeatDoneness | null = null, notes = '') => {
     try { addToCart(p, qty, doneness, notes); return null; }
     catch (e) { return e instanceof Error ? e.message.replace('não possui quantidade suficiente em estoque', 'não tem mais unidades disponíveis hoje') : 'Não foi possível adicionar.'; }
+  };
+  /** Várias linhas do mesmo produto: ou entram todas, ou a sacola volta como estava. */
+  const addLines = (p: Product, lines: { qty: number; doneness: MeatDoneness | null; notes: string }[], restore: typeof cart) => {
+    for (const line of lines) {
+      const e = tryAdd(p, line.qty, line.doneness, line.notes);
+      if (e) { useDeliveryStore.setState({ cart: restore }); return e; }
+    }
+    return null;
   };
   const juiceFlavors = settings.daily_juice_flavors ?? [];
   const onPlus = (p: Product) => {
@@ -919,17 +941,17 @@ export function PublicMenuApp() {
       {menuError && step === 'menu' && <div className="fixed inset-x-4 bottom-[88px] z-40 mx-auto max-w-md lg:bottom-6"><Alert>{menuError}</Alert></div>}
       {editingItem && (
         <ProductSheet key={editingItem.id} product={editingItem.product} riceOptions={settings.daily_rice_flavors ?? []} juiceOptions={juiceFlavors} initial={{ qty: editingItem.quantity, doneness: editingItem.doneness ?? null, notes: editingItem.notes || '' }} onClose={() => setEditingItem(null)}
-          onAdd={(q, d, n) => {
-            // Troca o item: se o estoque recusar, o item antigo volta como estava
+          onAdd={(lines) => {
+            // Troca o item: se o estoque recusar, a sacola volta como estava
+            const before = useDeliveryStore.getState().cart;
             updateCartQuantity(editingItem.id, -editingItem.quantity);
-            const e = tryAdd(editingItem.product, q, d, n);
-            if (e) tryAdd(editingItem.product, editingItem.quantity, editingItem.doneness ?? null, editingItem.notes || '');
-            else setEditingItem(null);
+            const e = addLines(editingItem.product, lines, before);
+            if (!e) setEditingItem(null);
             return e;
           }} />
       )}
       {sheetProduct && (
-        <ProductSheet product={sheetProduct} riceOptions={settings.daily_rice_flavors ?? []} juiceOptions={juiceFlavors} onClose={() => setSheetProduct(null)} onAdd={(q, d, n) => { const e = tryAdd(sheetProduct, q, d, n); if (!e) setSheetProduct(null); return e; }} />
+        <ProductSheet product={sheetProduct} riceOptions={settings.daily_rice_flavors ?? []} juiceOptions={juiceFlavors} onClose={() => setSheetProduct(null)} onAdd={(lines) => { const e = addLines(sheetProduct, lines, useDeliveryStore.getState().cart); if (!e) setSheetProduct(null); return e; }} />
       )}
     </div>
   );
