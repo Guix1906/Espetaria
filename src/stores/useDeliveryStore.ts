@@ -13,6 +13,7 @@ import { logger } from '../lib/logger';
 import { formatBRL } from '../lib/formatters';
 import { usePrintStore } from './usePrintStore';
 import { appStorage } from '../lib/storage';
+import { loadCartDraft, reconcileCart, saveCartDraft } from '../lib/menuDraft';
 import { remainingFor, limitingName } from '../lib/comboStock';
 
 export interface DeliveryCartItem {
@@ -147,12 +148,15 @@ function saveTrackedOrder(order: DeliveryOrder | null) {
   }
 }
 
+// Sacola guardada: atualizar a página no meio do pedido não perde nada
+const cartDraft = isSupabaseConfigured ? loadCartDraft<DeliveryCartItem>() : null;
+
 export const useDeliveryStore = create<DeliveryState>((set, get) => ({
   deliveryOrders: [],
-  cart: [],
+  cart: cartDraft?.cart ?? [],
   activeTrackingOrder: loadTrackedOrder(),
   zones: NEIGHBORHOOD_FEES,
-  checkoutKey: generateId(),
+  checkoutKey: cartDraft?.checkoutKey ?? generateId(),
 
   loadPublicMenu: async () => {
     if (!isSupabaseConfigured) return;
@@ -202,6 +206,9 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
     if (menu.zones.length > 0) {
       set({ zones: menu.zones.map((z) => ({ name: z.name, fee: Number(z.fee) })) });
     }
+
+    // Sacola guardada: preço atual e sem o que saiu do cardápio
+    if (get().cart.length) set({ cart: reconcileCart(get().cart, useStockStore.getState().products.filter((p) => p.active)) });
   },
 
   loadRemoteDeliveryOrders: async () => {
@@ -667,3 +674,9 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
     await callRpc('mark_delivery_paid', { p_order_id: orderId, p_paid: paid }, 'DeliveryStore');
   },
 }));
+
+if (isSupabaseConfigured) {
+  useDeliveryStore.subscribe((state, previous) => {
+    if (state.cart !== previous.cart || state.checkoutKey !== previous.checkoutKey) saveCartDraft(state.cart, state.checkoutKey);
+  });
+}

@@ -11,6 +11,7 @@ import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { menuPhotoUrl } from '../../lib/imageOptimization';
 import { getProductAvailability, menuFlavors } from '../../lib/productAvailability';
 import { storeClosedText } from '../../lib/storeHours';
+import { loadMenuForm, saveMenuForm } from '../../lib/menuDraft';
 import { expandUnits, groupUnits } from '../waiter/orderUnits';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
@@ -315,17 +316,24 @@ export function PublicMenuApp() {
   const isDesktop = useIsDesktop();
   const isOpen = currentShift?.status === 'ABERTO';
 
-  const [step, setStep] = useState<Step>('menu');
-  const [orderMode, setOrderMode] = useState<OrderMode>('DELIVERY');
+  // Atualizar a página: continua na mesma etapa, com a sacola e as escolhas guardadas
+  const [step, setStep] = useState<Step>(() => {
+    const saved = window.history.state?.pmStep as Step | undefined;
+    if (!saved || saved === 'menu') return 'menu';
+    if (saved === 'sent') return activeTrackingOrder ? 'sent' : 'menu';
+    return cart.length ? saved : 'menu';
+  });
+  const [savedForm] = useState(() => loadMenuForm<{ orderMode: OrderMode; payment: DeliveryPaymentMethod; changeFor: string; noChange: boolean; otherChange: boolean }>());
+  const [orderMode, setOrderMode] = useState<OrderMode>(savedForm.orderMode ?? 'DELIVERY');
   const [query, setQuery] = useState('');
   const [sheetProduct, setSheetProduct] = useState<Product | null>(null);
   const [menuError, setMenuError] = useState<string | null>(null);
   const [activeCat, setActiveCat] = useState<string>('');
   const [customer, setCustomer] = useState<Customer>(loadCustomer);
-  const [payment, setPayment] = useState<DeliveryPaymentMethod>('PIX');
-  const [changeFor, setChangeFor] = useState('');
-  const [noChange, setNoChange] = useState(false);
-  const [otherChange, setOtherChange] = useState(false);
+  const [payment, setPayment] = useState<DeliveryPaymentMethod>(savedForm.payment ?? 'PIX');
+  const [changeFor, setChangeFor] = useState(savedForm.changeFor ?? '');
+  const [noChange, setNoChange] = useState(savedForm.noChange ?? false);
+  const [otherChange, setOtherChange] = useState(savedForm.otherChange ?? false);
   const [formError, setFormError] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<(typeof cart)[number] | null>(null);
@@ -333,7 +341,7 @@ export function PublicMenuApp() {
 
   /* navegação por etapa com o botão voltar do navegador */
   useEffect(() => {
-    window.history.replaceState({ ...(window.history.state || {}), pmStep: 'menu' }, '');
+    window.history.replaceState({ ...(window.history.state || {}), pmStep: step }, '');
     const onPop = (e: PopStateEvent) => { setStep((e.state?.pmStep as Step) || 'menu'); window.scrollTo(0, 0); };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
@@ -345,6 +353,9 @@ export function PublicMenuApp() {
     window.scrollTo(0, 0);
   }, []);
   const back = () => window.history.back();
+  useEffect(() => { saveMenuForm({ orderMode, payment, changeFor, noChange, otherChange }); }, [orderMode, payment, changeFor, noChange, otherChange]);
+  // Voltar para uma etapa depois de enviar o pedido (sacola vazia): volta ao cardápio, nunca a uma tela vazia
+  useEffect(() => { if (!sending && !cart.length && (step === 'delivery' || step === 'payment' || step === 'review')) go('menu', true); }, [sending, cart.length, step, go]);
   // Notebook: etapas do celular viram a página única de finalização
   useEffect(() => { if (isDesktop && (step === 'cart' || step === 'delivery' || step === 'payment' || step === 'review')) setStep('checkout'); if (!isDesktop && step === 'checkout') setStep('cart'); }, [isDesktop, step]);
 
