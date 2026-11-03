@@ -21,7 +21,7 @@ describe('cópia dos acompanhamentos para a cozinha', () => {
   const base = { id: 'j1', kind: 'ORDER', sector: 'GRILL', order_number: 10 };
 
   it('gera cópia para a cozinha só com os espetos com acompanhamento', () => {
-    const copy = sideDishCopy({ ...base, items: [
+    const copy = sideDishCopy({ ...base, kind: 'CANCEL', items: [
       { name: 'Picanha com acompanhamento', quantity: 1, doneness: 'AO_PONTO' },
       { name: 'Frango', quantity: 2 },
     ] });
@@ -32,7 +32,9 @@ describe('cópia dos acompanhamentos para a cozinha', () => {
   });
 
   it('não gera cópia sem acompanhamento, fora da churrasqueira ou para resumo', () => {
-    expect(sideDishCopy({ ...base, items: [{ name: 'Frango', quantity: 1 }] })).toBeNull();
+    expect(sideDishCopy({ ...base, kind: 'CANCEL', items: [{ name: 'Frango', quantity: 1 }] })).toBeNull();
+    // Pedido novo: o cupom da cozinha vem do banco, sem cópia em dobro
+    expect(sideDishCopy({ ...base, kind: 'ORDER', items: [{ name: 'Picanha com acompanhamento', quantity: 1 }] })).toBeNull();
     expect(sideDishCopy({ ...base, sector: 'KITCHEN', items: [{ name: 'Picanha com acompanhamento', quantity: 1 }] })).toBeNull();
     expect(sideDishCopy({ ...base, kind: 'DELIVERY_SUMMARY', items: [{ name: 'Picanha com acompanhamento', quantity: 1 }] })).toBeNull();
   });

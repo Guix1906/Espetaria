@@ -27,7 +27,8 @@ export async function printJob(job, config) {
  * arroz, vinagrete, farofa e purê. Gera uma cópia do cupom para a COZINHA só com esses itens.
  */
 export function sideDishCopy(job) {
-  if (job.sector !== 'GRILL' || !['ORDER', 'CANCEL'].includes(job.kind)) return null;
+  // Pedido novo: o banco já cria o cupom da cozinha; a cópia aqui saía em dobro. Só o cancelamento precisa dela.
+  if (job.sector !== 'GRILL' || job.kind !== 'CANCEL') return null;
   const items = (job.items || []).filter((item) =>
     /acompanhamento/i.test(item.name || '') ||
     /(?:arroz|bai[aã]o|pur[eê]|vinagrete|farofa|salada|mandioca|batata|fritas)/i.test(item.notes || '')
