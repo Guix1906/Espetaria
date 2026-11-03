@@ -659,7 +659,7 @@ export function PublicMenuApp() {
     screen = isDesktop ? (
       <div className="min-h-screen px-12 py-10">
         <div className={`mx-auto grid max-w-[1000px] gap-10 rounded-2xl border border-line bg-surface p-8 ${showPixColumn ? 'grid-cols-[420px_1fr]' : 'max-w-[620px]'}`}>
-          {showPixColumn && <div className="space-y-4 border-r border-surface-muted pr-10"><h2 className="text-[24px] font-semibold">Falta só o pagamento</h2><p className="text-[15px] text-ink-muted">Pague pelo app do seu banco. A brasa começa assim que a loja confirmar o PIX.</p><OrderPixBlock order={o} /></div>}
+          {showPixColumn && <div className="space-y-4 border-r border-surface-muted pr-10"><h2 className="text-[24px] font-semibold">Pague o PIX</h2><p className="text-[15px] text-ink-muted">Pague pelo app do seu banco. Seu pedido já foi para o preparo.</p><OrderPixBlock order={o} /></div>}
           <div>
             <OrderStatusView order={o} showPix={false} />
             <button type="button" onClick={() => go('menu', true)} className="mt-3 h-[52px] w-full rounded-md text-[16px] font-semibold text-brand-700 hover:bg-canvas">Fazer novo pedido</button>
@@ -672,8 +672,8 @@ export function PublicMenuApp() {
         {showPixColumn && (
           <div className="pb-6 pt-6 text-center">
             <p className="font-mono text-[13px] text-ink-muted">Pedido #{o.order_number}</p>
-            <h2 className="mt-1 text-[24px] font-semibold">Falta só o pagamento</h2>
-            <p className="mx-auto mt-2 max-w-sm text-[15px] text-ink-muted">Pague pelo app do seu banco. A brasa começa assim que a loja confirmar o PIX.</p>
+            <h2 className="mt-1 text-[24px] font-semibold">Pague o PIX</h2>
+            <p className="mx-auto mt-2 max-w-sm text-[15px] text-ink-muted">Pague pelo app do seu banco. Seu pedido já foi para o preparo.</p>
             <div className="mt-5 text-left"><OrderPixBlock order={o} /></div>
             <div className="mt-6 border-t border-line" />
           </div>

@@ -18,7 +18,7 @@ function buildSteps(order: DeliveryOrder): { steps: Step[]; current: number } {
   const o = order as DeliveryOrder & { preparing_at?: string | null };
   const steps: Step[] = [
     { title: 'Pedido recebido', desc: 'Recebemos o seu pedido.', at: order.created_at },
-    { title: 'Confirmado pela loja', desc: order.payment_method === 'PIX' ? 'Pagamento conferido pela loja.' : 'A loja aceitou o seu pedido.', at: order.confirmed_at ?? o.preparing_at },
+    { title: 'Confirmado pela loja', desc: 'A loja aceitou o seu pedido.', at: order.confirmed_at ?? o.preparing_at },
     { title: 'Em preparo', desc: 'Seu pedido está sendo preparado.', at: o.preparing_at },
     pickup
       ? { title: 'Pronto', desc: isDineInOrder(order) ? 'Seu pedido está pronto no balcão.' : 'Pode vir retirar no balcão.', at: order.ready_at }
@@ -52,7 +52,7 @@ export function OrderPixBlock({ order }: { order: DeliveryOrder }) {
   return (
     <div className="space-y-3">
       {order.status === 'AWAITING_PAYMENT' ? <AutoPixPanel order={order} /> : <DeliveryPixPanel order={order} />}
-      <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-[14px] leading-snug text-amber-900">A loja confere o pagamento e avisa no seu WhatsApp. Não precisa enviar comprovante.</p>
+      <p className="rounded-md border border-amber-200 bg-amber-50 p-3 text-[14px] leading-snug text-amber-900">Seu pedido segue para o preparo sem esperar confirmação. Não precisa enviar comprovante.</p>
     </div>
   );
 }
@@ -67,8 +67,8 @@ export function OrderStatusView({ order, showPix = true }: { order: DeliveryOrde
   const { steps, current } = buildSteps(order);
   const cancelled = order.status === 'CANCELLED';
   const done = order.status === 'DELIVERED';
-  // PIX ainda não confirmado: no lugar da linha do tempo, só "aguardando confirmação"
-  const awaitingPix = order.payment_method === 'PIX' && !order.paid_at && !cancelled && !done;
+  // Por enquanto só o PIX automático segura o pedido; PIX comum segue direto para o preparo
+  const awaitingPix = order.status === 'AWAITING_PAYMENT';
   return (
     <div className="space-y-6 text-ink">
       <div>
