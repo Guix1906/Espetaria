@@ -78,13 +78,13 @@ function stageStart(order: DeliveryOrder): string {
   return order.preparing_at ?? order.confirmed_at ?? order.created_at;
 }
 
-/** Pagamento numa linha: "PIX · pago 20:06", "PIX · aguardando", "Dinheiro · troco p/ R$ 100 · receber na entrega". */
+/** Pagamento numa linha: "PIX", "PIX · pago 20:06", "Dinheiro · troco p/ R$ 100 · receber na entrega". */
 function paymentLine(order: DeliveryOrder): string {
   const pickup = isPickupOrder(order);
   const parts = [deliveryPaymentLabel(order.payment_method, order.order_type)];
   if (order.cash_change_for) parts.push(`troco p/ ${formatBRL(order.cash_change_for)}`);
   if (order.paid_at) parts.push(`pago ${timeOf(order.paid_at)}`);
-  else if (order.payment_method === 'PIX') parts.push('aguardando');
+  else if (order.payment_method === 'PIX') return parts.join(' · ');
   else parts.push(isDineInOrder(order) ? 'receber no local' : pickup ? 'receber na retirada' : 'receber na entrega');
   return parts.join(' · ');
 }
@@ -357,10 +357,11 @@ export const DeliveryManagementView: React.FC = () => {
                 {/* Pagamento numa linha só */}
                 <div className="flex flex-wrap items-center justify-between gap-2 text-[15px]">
                   <span className="text-ink">{paymentLine(order)}</span>
-                  {canCancel && order.status !== 'CANCELLED' && (
+                  {/* PIX não pede confirmação por enquanto: sem botão de marcar recebido */}
+                  {canCancel && order.status !== 'CANCELLED' && order.payment_method !== 'PIX' && (
                     order.paid_at
                       ? <button type="button" className="min-h-[44px] text-sm font-semibold text-ink-secondary underline" onClick={() => void markDeliveryPaid(order.id, false)}>Desfazer</button>
-                      : <button type="button" className="btn-secondary min-h-[44px] px-3 text-sm" onClick={() => void markDeliveryPaid(order.id, true)}><BadgeCheck className="h-4 w-4" aria-hidden="true" />{order.payment_method === 'PIX' ? 'PIX recebido' : 'Marcar pago'}</button>
+                      : <button type="button" className="btn-secondary min-h-[44px] px-3 text-sm" onClick={() => void markDeliveryPaid(order.id, true)}><BadgeCheck className="h-4 w-4" aria-hidden="true" />Marcar pago</button>
                   )}
                 </div>
 
