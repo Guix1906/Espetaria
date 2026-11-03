@@ -29,10 +29,10 @@ const payLabel = (job, method) => (isPickup(job) && method === 'CARTAO_ENTREGA' 
 
 const brl = (value) => `R$ ${Number(value || 0).toFixed(2).replace('.', ',')}`;
 
-/** Situação do pagamento para quem entrega: PIX confirmado não se cobra. */
+/** Situação do pagamento para quem entrega: PIX confirmado não se cobra; PIX ainda sem confirmação não imprime aviso (pedido do dono, 03/11). */
 export function paymentStatus(job, d) {
   if (!d.payment_method) return '';
-  if (d.payment_method === 'PIX') return d.paid_at ? 'PIX PAGO - NÃO COBRAR' : 'PIX NÃO CONFIRMADO - CONFERIR';
+  if (d.payment_method === 'PIX') return d.paid_at ? 'PIX PAGO - NÃO COBRAR' : '';
   return d.paid_at ? 'PAGO - NÃO COBRAR' : `COBRAR ${payLabel(job, d.payment_method)}`;
 }
 
@@ -134,7 +134,7 @@ export function buildTicket(job, config) {
     r.bold().size(3).pair('TOTAL', brl(o.total)).size(1).bold(false);
     r.divider();
     r.bold().line(`PAGAMENTO: ${payLabel(job, o.payment_method)}`).bold(false);
-    r.bold().line(paymentStatus(job, o)).bold(false);
+    if (paymentStatus(job, o)) r.bold().line(paymentStatus(job, o)).bold(false);
     if (o.payment_method === 'DINHEIRO' && o.cash_change_for) {
       r.line(`Troco para ${brl(o.cash_change_for)} (levar ${brl(o.cash_change_for - o.total)})`);
     }
@@ -185,7 +185,7 @@ export function compactDeliveryTicket(r, job, config, tpl) {
   }
   if (d.payment_method || d.total != null) {
     r.bold().pair(payLabel(job, d.payment_method), d.total != null ? brl(d.total) : '').bold(false);
-    if (d.payment_method) r.bold().line(paymentStatus(job, d)).bold(false);
+    if (paymentStatus(job, d)) r.bold().line(paymentStatus(job, d)).bold(false);
     if (d.payment_method === 'DINHEIRO' && d.cash_change_for) {
       r.line(`Troco p/ ${brl(d.cash_change_for)}${d.total != null ? ` (levar ${brl(d.cash_change_for - d.total)})` : ''}`);
     }
@@ -301,7 +301,7 @@ export function driverTicket(r, job, config) {
   r.bold().size(2).pair('TOTAL', brl(o.total)).size(1).bold(false);
   r.divider();
   r.bold().line(`PAGAMENTO: ${payLabel(job, o.payment_method)}`).bold(false);
-  r.align('center').invert().size(2).bold().line(` ${paymentStatus(job, o)} `).bold(false).size(1).invert(false).align('left');
+  if (paymentStatus(job, o)) r.align('center').invert().size(2).bold().line(` ${paymentStatus(job, o)} `).bold(false).size(1).invert(false).align('left');
   if (o.payment_method === 'DINHEIRO' && o.cash_change_for) {
     r.bold().line(`Troco para ${brl(o.cash_change_for)} - levar ${brl(o.cash_change_for - o.total)}`).bold(false);
   }
@@ -377,7 +377,7 @@ export function anotaTicket(r, job, config, tpl, { complete, data }) {
         r.line(`Troco para: ${brl(d.cash_change_for)}`);
         if (d.total != null) r.bold().line(`Levar troco: ${brl(d.cash_change_for - d.total)}`).bold(false);
       }
-      r.divider().align('center').bold().line(`* ${paymentStatus(job, d)} *`).bold(false).align('left');
+      if (paymentStatus(job, d)) r.divider().align('center').bold().line(`* ${paymentStatus(job, d)} *`).bold(false).align('left');
     }
     if (d.total != null) {
       r.divider();
