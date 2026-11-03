@@ -49,6 +49,14 @@ const COMBO_SUFFIX = /\s+com acompanhamento\s*$/i;
 const STORE_OPENS_AT = 18;
 const NO_RICE = 'Sem arroz';
 export const COMBO_SIDE_ITEMS = ['Vinagrete', 'Farofa', 'Purê'];
+/** Caminho inverso de comboNotes, para editar o item na sacola. */
+export function parseComboNotes(text: string, riceOptions: string[]) {
+  const tags = text.split(',').map((tag) => tag.trim()).filter(Boolean);
+  const rice = tags.find((tag) => tag === NO_RICE || riceOptions.includes(tag)) ?? null;
+  const removed = COMBO_SIDE_ITEMS.filter((side) => tags.includes(`Sem ${side.toLocaleLowerCase('pt-BR')}`));
+  const notes = tags.filter((tag) => tag !== rice && !removed.some((side) => tag === `Sem ${side.toLocaleLowerCase('pt-BR')}`)).join(', ');
+  return { rice, removed, notes };
+}
 /** Observação que vai para a cozinha: arroz escolhido, o que o cliente tirou e o texto livre. */
 export function comboNotes(rice: string | null, removed: string[], notes: string) {
   return [rice, ...removed.map((side) => `Sem ${side.toLocaleLowerCase('pt-BR')}`), notes.trim()].filter(Boolean).join(', ');
@@ -182,10 +190,11 @@ function Alert({ children }: { children: ReactNode }) {
 }
 
 /* ---------- produto (folha no celular, modal no notebook) ---------- */
-function ProductSheet({ product, riceOptions, onClose, onAdd }: { product: Product; riceOptions: string[]; onClose: () => void; onAdd: (qty: number, doneness: MeatDoneness | null, notes: string) => string | null }) {
-  const [qty, setQty] = useState(1);
-  const [doneness, setDoneness] = useState<MeatDoneness | null>(null);
-  const [notes, setNotes] = useState('');
+function ProductSheet({ product, riceOptions, initial, onClose, onAdd }: { product: Product; riceOptions: string[]; initial?: { qty: number; doneness: MeatDoneness | null; notes: string }; onClose: () => void; onAdd: (qty: number, doneness: MeatDoneness | null, notes: string) => string | null }) {
+  const parsed = parseComboNotes(initial?.notes ?? '', riceOptions);
+  const [qty, setQty] = useState(initial?.qty ?? 1);
+  const [doneness, setDoneness] = useState<MeatDoneness | null>(initial?.doneness ?? null);
+  const [notes, setNotes] = useState(parsed.notes);
   const [err, setErr] = useState<string | null>(null);
   const [flagDoneness, setFlagDoneness] = useState(false);
   const donenessRef = useRef<HTMLFieldSetElement>(null);
@@ -194,8 +203,8 @@ function ProductSheet({ product, riceOptions, onClose, onAdd }: { product: Produ
   // Combo: o cliente escolhe um dos arrozes do dia (Configurações)
   const isCombo = COMBO_SUFFIX.test(product.name);
   const needsRice = isCombo && riceOptions.length > 0;
-  const [removedSides, setRemovedSides] = useState<string[]>([]);
-  const [rice, setRice] = useState<string | null>(null);
+  const [removedSides, setRemovedSides] = useState<string[]>(parsed.removed);
+  const [rice, setRice] = useState<string | null>(parsed.rice);
   const [flagRice, setFlagRice] = useState(false);
   const riceRef = useRef<HTMLDivElement>(null);
   const missingRice = needsRice && !rice;
@@ -274,7 +283,7 @@ function ProductSheet({ product, riceOptions, onClose, onAdd }: { product: Produ
               <span className="w-9 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
               <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-[52px] w-11 items-center justify-center text-brand-500"><Plus className="h-5 w-5" /></button>
             </div>
-            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness || missingRice} className={`min-w-0 px-2 text-[15px] font-semibold leading-tight min-[360px]:whitespace-nowrap`}>{missingDoneness ? 'Escolha o ponto da carne' : missingRice ? 'Escolha o arroz' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
+            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness || missingRice} className={`min-w-0 px-2 text-[15px] font-semibold leading-tight min-[360px]:whitespace-nowrap`}>{missingDoneness ? 'Escolha o ponto da carne' : missingRice ? 'Escolha o arroz' : `${initial ? 'Salvar' : 'Adicionar'} · ${formatBRL(product.price * qty)}`}</Button>
           </div>
         </div>
       </div>
@@ -306,6 +315,7 @@ export function PublicMenuApp() {
   const [otherChange, setOtherChange] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [cartError, setCartError] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<(typeof cart)[number] | null>(null);
   const [sending, setSending] = useState(false);
 
   /* navegação por etapa com o botão voltar do navegador */
@@ -674,30 +684,44 @@ export function PublicMenuApp() {
     screen = (
       <div className="mx-auto max-w-xl pb-44">
         <TopBar title="Sua sacola" onBack={back} />
-        <div className="space-y-5 px-5 pt-2">
-          {cartError && <div className="pt-3"><Alert>{cartError}</Alert></div>}
+        <div className="space-y-7 px-4 pb-6 pt-5">
+          {cartError && <Alert>{cartError}</Alert>}
           {closedNotice}
-          {cart.length ? cartLines() : <p className="py-10 text-center text-[15px] text-ink-muted">Sua sacola está vazia.</p>}
-          <button type="button" onClick={back} className="flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-brand-700"><Plus className="h-4 w-4" />Adicionar mais itens</button>
-          <p className="rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">O que você tirou do acompanhamento aparece no item, acima.</p>
+          <section className="space-y-3">
+            <h2 className="text-[13px] uppercase tracking-[.08em] text-ink-muted">Seu pedido</h2>
+            {cart.length ? cart.map((item) => (
+              <article key={item.id} className="rounded-xl border border-line bg-surface-soft p-4">
+                <div className="flex justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-[17px] font-semibold leading-snug">{item.product.name}</h3>
+                    {(item.doneness || item.notes) && <p className="mt-1 text-[14px] text-ink-muted">{[item.doneness && formatDoneness(item.doneness), item.notes && `“${item.notes}”`].filter(Boolean).join(' · ')}</p>}
+                  </div>
+                  <p className="whitespace-nowrap text-[16px] font-semibold tabular-nums">{formatBRL(item.product.price * item.quantity)}</p>
+                </div>
+                <div className="mt-3.5 flex items-center justify-between border-t border-line pt-3">
+                  <button type="button" onClick={() => setEditingItem(item)} className="min-h-[44px] text-[14px] text-ink-muted underline">Editar item</button>
+                  <Stepper qty={item.quantity} label={item.product.name} onMinus={() => updateCartQuantity(item.id, -1)} onPlus={() => { setCartError(null); const e = tryAdd(item.product, 1, item.doneness ?? null, item.notes || ''); if (e) setCartError(e); }} />
+                </div>
+              </article>
+            )) : <p className="py-10 text-center text-[15px] text-ink-muted">Sua sacola está vazia.</p>}
+            <button type="button" onClick={back} className="flex min-h-[44px] items-center gap-1.5 text-[16px] font-medium text-[#e2b04a]"><Plus className="h-4 w-4" />Adicionar mais itens</button>
+          </section>
           {drinks.length > 0 && (
-            <div>
-              <h2 className="mb-3 text-[17px] font-semibold">Que tal uma bebida?</h2>
-              <ul className="no-scrollbar -mx-5 flex snap-x gap-2.5 overflow-x-auto px-5 pb-1" aria-label="Bebidas sugeridas">
-                {drinks.map((d) => {
+            <section className="space-y-3">
+              <h2 className="text-[13px] uppercase tracking-[.08em] text-ink-muted">Que tal uma bebida?</h2>
+              <ul className="space-y-2" aria-label="Bebidas sugeridas">
+                {drinks.slice(0, 3).map((d) => {
                   const q = qtyInCart(d.id);
                   return (
-                    <li key={d.id} className="w-[132px] shrink-0 snap-start">
-                      <button type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="relative block w-full overflow-hidden rounded-md border border-line bg-surface text-left">
-                        <Photo product={d} variant="s" className="h-[90px] w-full" />
-                        <span className="block p-2.5 pr-11"><span className="line-clamp-2 block min-h-[2.5em] text-[14px] font-semibold leading-snug">{d.name}</span><span className="mt-1 block whitespace-nowrap text-[14px] font-semibold tabular-nums">{formatBRL(d.price)}</span></span>
-                        <span aria-hidden="true" className={`absolute bottom-2.5 right-2.5 flex h-[34px] min-w-[34px] items-center justify-center rounded-full px-1.5 text-[14px] font-semibold text-white ${q > 0 ? 'bg-ink' : 'bg-brand-500'}`}>{q > 0 ? q : <Plus className="h-[18px] w-[18px]" />}</span>
-                      </button>
+                    <li key={d.id} className="grid grid-cols-[56px_1fr_auto] items-center gap-3 rounded-xl border border-line bg-surface-soft p-2.5">
+                      <Photo product={d} variant="s" className="h-14 w-14 rounded-lg" />
+                      <div className="min-w-0"><p className="text-[15px] font-medium leading-snug">{d.name}</p><p className="mt-0.5 text-[14px] tabular-nums text-ink-muted">{formatBRL(d.price)}</p></div>
+                      <button type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="flex h-11 min-w-[44px] items-center justify-center rounded-full bg-brand-500 px-2 text-[15px] font-semibold text-white">{q > 0 ? q : <Plus className="h-5 w-5" />}</button>
                     </li>
                   );
                 })}
               </ul>
-            </div>
+            </section>
           )}
         </div>
         <Footer>
@@ -890,6 +914,17 @@ export function PublicMenuApp() {
       {screen}
       {/* Erro ao adicionar: fica à vista em qualquer ponto da rolagem */}
       {menuError && step === 'menu' && <div className="fixed inset-x-4 bottom-[88px] z-40 mx-auto max-w-md lg:bottom-6"><Alert>{menuError}</Alert></div>}
+      {editingItem && (
+        <ProductSheet key={editingItem.id} product={editingItem.product} riceOptions={settings.daily_rice_flavors ?? []} initial={{ qty: editingItem.quantity, doneness: editingItem.doneness ?? null, notes: editingItem.notes || '' }} onClose={() => setEditingItem(null)}
+          onAdd={(q, d, n) => {
+            // Troca o item: se o estoque recusar, o item antigo volta como estava
+            updateCartQuantity(editingItem.id, -editingItem.quantity);
+            const e = tryAdd(editingItem.product, q, d, n);
+            if (e) tryAdd(editingItem.product, editingItem.quantity, editingItem.doneness ?? null, editingItem.notes || '');
+            else setEditingItem(null);
+            return e;
+          }} />
+      )}
       {sheetProduct && (
         <ProductSheet product={sheetProduct} riceOptions={settings.daily_rice_flavors ?? []} onClose={() => setSheetProduct(null)} onAdd={(q, d, n) => { const e = tryAdd(sheetProduct, q, d, n); if (!e) setSheetProduct(null); return e; }} />
       )}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../../../types/domain';
-import { categoryOf, comboNotes } from '../PublicMenuApp';
+import { categoryOf, comboNotes, parseComboNotes } from '../PublicMenuApp';
 
 const drink = (name: string, description?: string) => categoryOf({ type: 'BEBIDA', name, description } as Product);
 
@@ -20,5 +20,12 @@ describe('observação do combo', () => {
   it('junta arroz, o que saiu e o texto do cliente', () => {
     expect(comboNotes('Baião de Dois', ['Farofa', 'Purê'], ' pouco sal ')).toBe('Baião de Dois, Sem farofa, Sem purê, pouco sal');
     expect(comboNotes(null, [], '')).toBe('');
+  });
+});
+
+describe('editar item da sacola', () => {
+  it('recupera arroz, o que saiu e a observação', () => {
+    expect(parseComboNotes('Baião de Dois, Sem farofa, pouco sal', ['Baião de Dois'])).toEqual({ rice: 'Baião de Dois', removed: ['Farofa'], notes: 'pouco sal' });
+    expect(parseComboNotes('', [])).toEqual({ rice: null, removed: [], notes: '' });
   });
 });
