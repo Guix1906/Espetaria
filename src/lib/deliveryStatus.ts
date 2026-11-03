@@ -42,7 +42,8 @@ export type OrderKind = 'DELIVERY' | 'DINE_IN' | 'PICKUP';
 let kindFocus: OrderKind | null = null;
 /** Abre a tela de pedidos já no tipo escolhido (cartão de consumir no local da Visão geral). */
 export function focusOrderKind(kind: OrderKind) { kindFocus = kind; }
-export function takeOrderKindFocus(): OrderKind | null { const kind = kindFocus; kindFocus = null; return kind; }
+export function peekOrderKindFocus(): OrderKind | null { return kindFocus; }
+export function clearOrderKindFocus() { kindFocus = null; }
 
 /** Os 3 tipos de pedido do cardápio. */
 export function orderKind(order: Pick<DeliveryOrder, 'order_type' | 'notes'>): OrderKind {

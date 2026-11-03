@@ -22,7 +22,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { deliveryPaymentLabel, getDeliveryStatusConfig, hasGrillItems, isDineInOrder, isPickupOrder, orderKind, takeOrderKindFocus, type OrderKind } from '../../lib/deliveryStatus';
+import { deliveryPaymentLabel, getDeliveryStatusConfig, hasGrillItems, isDineInOrder, isPickupOrder, clearOrderKindFocus, orderKind, peekOrderKindFocus, type OrderKind } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { buildWhatsAppLink } from '../../lib/whatsapp';
 import { renderWhatsAppTemplate, resolveWhatsAppTemplates, whatsAppVariables } from '../../lib/whatsappTemplates';
@@ -151,7 +151,8 @@ export const DeliveryManagementView: React.FC = () => {
   const canManage = ['MASTER', 'GERENTE'].includes(currentProfile.role);
 
   // Tipo do pedido: entregador vê só as entregas
-  const [kindFilter, setKindFilter] = useState<OrderKind | 'ALL'>(() => takeOrderKindFocus() ?? (currentProfile.role === 'ENTREGADOR' ? 'DELIVERY' : 'ALL'));
+  const [kindFilter, setKindFilter] = useState<OrderKind | 'ALL'>(() => peekOrderKindFocus() ?? (currentProfile.role === 'ENTREGADOR' ? 'DELIVERY' : 'ALL'));
+  useEffect(() => { clearOrderKindFocus(); }, []);
   const typedOrders = deliveryOrders.filter((order) => (kindFilter === 'ALL' ? orderKind(order) !== 'DINE_IN' : orderKind(order) === kindFilter));
   const openShiftId = useShiftStore((s) => (s.currentShift?.status === 'ABERTO' ? s.currentShift.id : null));
   const isDeliveredHere = (o: DeliveryOrder) => o.status === 'DELIVERED' && (!openShiftId || o.shift_id === openShiftId);
