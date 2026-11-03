@@ -20,6 +20,22 @@ export function stockUnitIds(product: Product, products: Product[]): string[] {
   return [product.id, ...(base ? [base.id] : []), ...(rice ? [rice.id] : [])];
 }
 
+/** Junta "X" e "X com acompanhamento" em um item só da lista (usam o mesmo estoque). */
+export function pairCombos(list: Product[], allActive: Product[]): { product: Product; combo: Product | null }[] {
+  const pairs: { product: Product; combo: Product | null }[] = [];
+  const seen = new Set<string>();
+  for (const item of list) {
+    const baseName = norm(item.name.replace(COMBO_SUFFIX, ''));
+    const combo = isComboProduct(item) ? item : allActive.find((p) => isComboProduct(p) && norm(p.name.replace(COMBO_SUFFIX, '')) === baseName) ?? null;
+    const base = isComboProduct(item) ? allActive.find((p) => !isComboProduct(p) && norm(p.name) === baseName) ?? null : item;
+    const product = base ?? item;
+    if (seen.has(product.id)) continue;
+    seen.add(product.id);
+    pairs.push({ product, combo: base ? combo : null });
+  }
+  return pairs;
+}
+
 interface Line { product: Product; quantity: number }
 
 /** Combo com espeto cadastrado, mas sem saldo (espeto não contado no turno, esgotado ou pausado): não pode ser vendido. */

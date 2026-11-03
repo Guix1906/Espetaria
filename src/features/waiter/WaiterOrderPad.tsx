@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { formatBRL } from '../../lib/formatters';
 import { getProductAvailability, getStockLevel, productFlavors, type StockLevel } from '../../lib/productAvailability';
-import { remainingFor } from '../../lib/comboStock';
+import { pairCombos, remainingFor } from '../../lib/comboStock';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCartStore } from '../../stores/useCartStore';
 import { useStockStore } from '../../stores/useStockStore';
@@ -159,9 +159,12 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
     const left = remainingFor(product, products, dailyPrepStock, cart);
     return { product, inCart, left, level: getStockLevel(isAvailable, left) };
   };
-  const sortRows = (list: Product[]) => list.map(rowFor).sort((a, b) => Number(a.level === 'out') - Number(b.level === 'out'));
+  // Espeto e "com acompanhamento" usam o mesmo estoque: um cartão só, com as duas opções
+  const sortRows = (list: Product[]) => pairCombos(list, activeProducts)
+    .map(({ product, combo }) => ({ ...rowFor(product), combo: combo ? rowFor(combo) : null }))
+    .sort((a, b) => Number(a.level === 'out' && a.combo?.level !== 'ok' && a.combo?.level !== 'low') - Number(b.level === 'out' && b.combo?.level !== 'ok' && b.combo?.level !== 'low'));
 
-  const sections: { id: string; title: string; rows: ReturnType<typeof rowFor>[] }[] = query
+  const sections: { id: string; title: string; rows: ReturnType<typeof sortRows> }[] = query
     ? [{ id: 'search', title: 'Resultados', rows: sortRows(activeProducts.filter((p) => p.name.toLocaleLowerCase('pt-BR').includes(query)).sort(byOrder)) }]
     : selectedCategory === TOP
       ? [{ id: TOP, title: 'Mais pedidos', rows: sortRows(topProducts) }]
@@ -234,6 +237,27 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
     if (level === 'low') return { text: left === 1 ? 'resta 1' : `restam ${left}`, cls: 'font-semibold text-amber-700' };
     if (level === 'ok') return { text: `${left} disponíveis`, cls: 'text-ink-muted' };
     return null;
+  };
+
+  /** Uma das opções do cartão do espeto: "Só o espeto" ou "Completo". */
+  const renderOption = (row: ReturnType<typeof rowFor>, label: string) => {
+    const out = row.level === 'out';
+    return (
+      <div className="min-w-0">
+        <button type="button" disabled={!activeTab || out} onClick={() => handleAdd(row.product)} aria-label={`Adicionar ${row.product.name}, ${formatBRL(row.product.price)}`}
+          className={`block min-h-[64px] w-full rounded-lg border px-2.5 py-2 text-left transition active:bg-surface-muted disabled:cursor-not-allowed ${out ? 'border-line' : 'border-brand-500'}`}>
+          <span className="block text-[15px] font-medium leading-tight text-ink-secondary">{label}</span>
+          {out ? <StatusTag kind="alert" className="mt-1 font-semibold">Esgotado</StatusTag> : <span className="mt-0.5 block font-mono text-[18px] font-semibold text-ink">{formatBRL(row.product.price)}</span>}
+        </button>
+        {row.inCart > 0 && (
+          <div className="mt-1.5 flex h-11 items-center justify-between rounded-md bg-brand-500 text-white">
+            <button type="button" className="flex h-11 w-10 items-center justify-center active:bg-brand-600" onClick={() => decrement(row.product)} aria-label={`Tirar 1 ${row.product.name}`}><Minus className="h-5 w-5" /></button>
+            <output className="min-w-[1.5rem] text-center font-mono text-lg font-bold" aria-live="polite" aria-label={`${row.inCart} no pedido`}>{row.inCart}</output>
+            <button type="button" className="flex h-11 w-10 items-center justify-center disabled:opacity-40 active:bg-brand-600" disabled={!activeTab || out} onClick={() => increment(row.product)} aria-label={`Mais 1 ${row.product.name}`}><Plus className="h-5 w-5" /></button>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -326,7 +350,25 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
           <section key={section.id} aria-label={section.title} className="space-y-2">
             <h2 className="pt-2 text-[20px] font-bold text-ink">{section.title}</h2>
             <ul className="waiter-products grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {section.rows.map(({ product, level, left, inCart }) => {
+              {section.rows.map(({ product, level, left, inCart, combo }) => {
+                if (combo) {
+                  const pairTag = stockText(level, left, inCart + combo.inCart);
+                  return (
+                    <li key={product.id} className="rounded-2xl border border-line bg-surface px-3.5 py-3">
+                      <div className="flex items-center gap-3">
+                        {showPhotos && product.image_url && <img src={optimizeThumbnailUrl(product.image_url, 112)} alt="" loading="lazy" decoding="async" width={48} height={48} className={`h-12 w-12 shrink-0 rounded-md object-cover ${level === 'out' ? 'opacity-50 grayscale' : ''}`} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />}
+                        <div className="min-w-0 flex-1">
+                          <h3 className="text-[20px] font-bold leading-tight text-ink">{product.name}</h3>
+                          {pairTag && <p className={`mt-0.5 text-[17px] ${pairTag.cls}`}>{pairTag.text}</p>}
+                        </div>
+                      </div>
+                      <div className="mt-2.5 grid grid-cols-2 items-start gap-2">
+                        {renderOption({ product, level, left, inCart }, 'Só o espeto')}
+                        {renderOption(combo, 'Completo')}
+                      </div>
+                    </li>
+                  );
+                }
                 const out = level === 'out';
                 const blocked = !activeTab || (out && inCart === 0);
                 const tag = stockText(level, left, inCart);
