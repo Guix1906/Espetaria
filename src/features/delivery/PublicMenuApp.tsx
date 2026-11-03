@@ -40,7 +40,9 @@ const PAYMENTS: { id: DeliveryPaymentMethod; label: string; hint: string }[] = [
 ];
 // "X" e "X com acompanhamento" viram um card só, com as duas opções (o cadastro continua igual)
 const ESPETOS = 'Espetos';
-const COMBO_SIDES = 'Com acompanhamento: arroz, vinagrete, farofa e purê';
+const COMBO_SIDES = '★ Completo inclui arroz, vinagrete, farofa e purê';
+const display = "font-['Oswald',sans-serif]";
+const MENU_MODES: { id: OrderMode; label: string }[] = [{ id: 'DELIVERY', label: 'Entrega' }, { id: 'DINE_IN', label: 'No local' }, { id: 'PICKUP', label: 'Retirada' }];
 const COMBO_SUFFIX = /\s+com acompanhamento\s*$/i;
 export const CATEGORY_ORDER = [ESPETOS, 'Entradas', 'Acompanhamentos', 'Sem álcool', 'Cervejas', 'Drinks e doses', 'Sobremesas', 'Outros'];
 const SAVED_KEY = 'ponto.cardapio.cliente';
@@ -123,7 +125,7 @@ function Segmented<T extends string>({ value, options, onChange, label }: { valu
     <div role="radiogroup" aria-label={label} className="flex rounded-md bg-surface-muted p-1">
       {options.map((o) => (
         <button key={o.id} type="button" role="radio" aria-checked={value === o.id} onClick={() => onChange(o.id)}
-          className={`min-h-[44px] flex-1 rounded-md px-1.5 text-[14px] leading-tight sm:text-[15px] ${value === o.id ? 'bg-surface font-semibold text-ink shadow-[0_1px_2px_rgba(43,33,28,.08)]' : 'font-medium text-ink-muted'}`}>{o.label}</button>
+          className={`min-h-[44px] flex-1 rounded-md px-1.5 text-[14px] leading-tight sm:text-[15px] ${value === o.id ? 'bg-brand-500 font-semibold text-white' : 'font-medium text-ink-secondary'}`}>{o.label}</button>
       ))}
     </div>
   );
@@ -347,6 +349,13 @@ export function PublicMenuApp() {
     const bar = chip?.parentElement;
     if (chip && bar) bar.scrollTo({ left: chip.offsetLeft - bar.clientWidth / 2 + chip.clientWidth / 2, behavior: 'smooth' });
   }, [activeCat]);
+  // No topo da página vale sempre a 1ª categoria
+  useEffect(() => {
+    if (step !== 'menu') return;
+    const onScroll = () => { if (window.scrollY < 200 && groups[0]) setActiveCat(groups[0].name); };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [groups, step]);
   const jumpTo = (cat: string) => {
     setActiveCat(cat);
     const el = sectionsRef.current[cat];
@@ -422,7 +431,7 @@ export function PublicMenuApp() {
       {isOpen ? `Aberto agora · ${isPickup ? pickupEta : deliveryEta}` : 'Fechado no momento'}
     </p>
   );
-  const logo = <img src="/brand/logo-sabor-da-carne.webp" alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover" />;
+  const logo = <img src="/brand/logo-sabor-da-carne.webp" alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-full border border-[#e8b64a] object-cover" />;
   const searchBox = (
     <label className="relative block">
       <span className="sr-only">Buscar no cardápio</span>
@@ -438,49 +447,58 @@ export function PublicMenuApp() {
     if (line) updateCartQuantity(line.id, -1);
   };
 
-  /** Uma opção de compra: linha inteira tocável, com preço e "+" (ou a quantidade no pedido). */
-  const buyLine = (p: Product, label?: string) => {
+  /** Uma opção de compra: caixa com rótulo e preço; depois do primeiro toque, mostra a quantidade. */
+  const buyBox = (p: Product, label: string, featured = false) => {
     const { isAvailable } = stockOf(p);
-    // Loja fechada não é "esgotado": o estoque do turno só ainda não existe
     const soldOut = isOpen && !isAvailable;
     const q = qtyInCart(p.id);
     return (
-      <div className="flex min-h-[48px] items-center gap-2">
-        <button type="button" disabled={!isOpen || !isAvailable} onClick={() => pickProduct(p)} aria-label={`Adicionar ${p.name}, ${formatBRL(p.price)}`} className="flex min-h-[48px] min-w-0 flex-1 items-center justify-between gap-2 text-left disabled:cursor-not-allowed">
-          <span className="min-w-0 text-[15px] leading-tight text-ink-secondary">{label}</span>
-          <span className="flex shrink-0 items-center gap-2">
-            {soldOut ? <StatusTag kind="alert" className="text-[13px] font-semibold">Esgotado</StatusTag> : <span className="text-[16px] font-semibold tabular-nums">{formatBRL(p.price)}</span>}
-            {isOpen && !soldOut && q === 0 && <span aria-hidden="true" className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-500 text-white"><Plus className="h-5 w-5" /></span>}
-          </span>
+      <div className="min-w-0 space-y-2">
+        <button type="button" disabled={!isOpen || !isAvailable} onClick={() => pickProduct(p)} aria-label={`Adicionar ${p.name}, ${formatBRL(p.price)}`}
+          className={`block min-h-[64px] w-full rounded-[10px] border px-3 py-2.5 text-left disabled:cursor-not-allowed ${featured ? 'border-brand-500 bg-brand-50' : 'border-line-strong'}`}>
+          <span className={`block text-[13px] ${featured ? 'text-[#f0b9a8]' : 'text-ink-muted'}`}>{label}</span>
+          {soldOut ? <StatusTag kind="alert" className="mt-1 text-[13px] font-semibold">Esgotado</StatusTag> : <span className={`mt-0.5 block text-[17px] font-semibold tabular-nums ${featured ? 'text-[#ff6a55]' : ''}`}>{formatBRL(p.price)}</span>}
         </button>
-        {q > 0 && <Stepper size={44} qty={q} onMinus={() => removeOne(p)} onPlus={() => pickProduct(p)} />}
+        {q > 0 && <div className="flex justify-center"><Stepper qty={q} label={p.name} onMinus={() => removeOne(p)} onPlus={() => pickProduct(p)} /></div>}
       </div>
     );
   };
 
-  const productBody = (p: Product, photoCls: string) => {
+  const productBody = (p: Product) => {
     const combo = comboOf.get(p.id);
-    const hideDescription = !combo && COMBO_SUFFIX.test(p.name) && isSidesDescription(p.description);
+    const isCombo = COMBO_SUFFIX.test(p.name);
+    const featuredCard = !!combo || isCombo;
     const soldOut = isOpen && !stockOf(p).isAvailable && (!combo || !stockOf(combo).isAvailable);
-    return (
-      <>
-        <div className="flex gap-3.5">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[17px] font-semibold leading-snug">{p.name}</h3>
-            {p.description && !hideDescription && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{p.description}</p>}
+    const description = p.description && !(isSidesDescription(p.description)) ? p.description : null;
+    const title = <h3 className={`${display} text-[21px] font-semibold uppercase leading-tight tracking-[.3px]`}>{p.name.replace(COMBO_SUFFIX, '')}</h3>;
+    // Espeto: foto grande e as duas opções, como no layout. Demais itens: linha compacta para a página não ficar enorme
+    if (featuredCard) return (
+      <article className="overflow-hidden rounded-2xl border border-line bg-surface-soft">
+        <Photo product={p} className={`aspect-video w-full ${soldOut ? 'opacity-50 grayscale' : ''}`} />
+        <div className="p-4">
+          {title}
+          {description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{description}</p>}
+          <div className={`mt-3 grid gap-2.5 ${combo ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            {combo ? <>{buyBox(p, 'Só o espeto')}{buyBox(combo, 'Completo', true)}</> : buyBox(p, 'Completo', true)}
           </div>
-          <Photo product={p} className={`${photoCls} shrink-0 rounded-md ${soldOut ? 'opacity-50 grayscale' : ''}`} />
         </div>
-        <div className="mt-1 divide-y divide-surface-muted">
-          {combo ? <>{buyLine(p, 'Só o espeto')}{buyLine(combo, 'Com acompanhamento')}</> : buyLine(p)}
+      </article>
+    );
+    return (
+      <article className="flex gap-3 rounded-2xl border border-line bg-surface-soft p-3">
+        <Photo product={p} className={`h-[92px] w-[92px] shrink-0 rounded-[10px] ${soldOut ? 'opacity-50 grayscale' : ''}`} />
+        <div className="min-w-0 flex-1">
+          <h3 className="text-[16px] font-semibold leading-snug">{p.name}</h3>
+          {description && <p className="mt-0.5 line-clamp-2 text-[13px] leading-[1.35] text-ink-muted">{description}</p>}
+          <div className="mt-2">{buyBox(p, 'Adicionar')}</div>
         </div>
-      </>
+      </article>
     );
   };
 
-  const productRow = (p: Product) => <li key={p.id} className="border-b border-surface-muted py-3 last:border-b-0">{productBody(p, 'h-[72px] w-[72px]')}</li>;
+  const productRow = (p: Product) => <li key={p.id}>{productBody(p)}</li>;
 
-  const productCard = (p: Product) => <article key={p.id} className="flex flex-col justify-between rounded-md border border-line bg-surface p-3.5">{productBody(p, 'h-[88px] w-[88px]')}</article>;
+  const productCard = (p: Product) => <div key={p.id}>{productBody(p)}</div>;
 
   const cartLines = (compact = false) => (
     <ul className="divide-y divide-surface-muted">
@@ -759,7 +777,7 @@ export function PublicMenuApp() {
         </header>
         <div className="mx-auto grid max-w-[1366px] grid-cols-[180px_1fr_320px] xl:grid-cols-[200px_1fr_360px]">
           <nav aria-label="Categorias" className="sticky top-[76px] h-[calc(100vh-76px)] space-y-1 overflow-y-auto px-4 py-6">
-            {groups.map((g) => <button key={g.name} type="button" onClick={() => jumpTo(g.name)} aria-current={activeCat === g.name ? 'true' : undefined} className={`block w-full rounded-2xl px-3 py-2.5 text-left text-[15px] ${activeCat === g.name ? 'bg-ink font-semibold text-surface' : 'text-ink-secondary hover:bg-surface-muted'}`}>{g.name}</button>)}
+            {groups.map((g) => <button key={g.name} type="button" onClick={() => jumpTo(g.name)} aria-current={activeCat === g.name ? 'true' : undefined} className={`block w-full rounded-2xl px-3 py-2.5 text-left text-[15px] ${activeCat === g.name ? 'bg-brand-500 font-semibold text-white' : 'text-ink-secondary hover:bg-surface-muted'}`}>{g.name}</button>)}
           </nav>
           <main className="min-w-0 space-y-8 border-l border-line px-8 py-6">
             {trackingBanner}
@@ -767,8 +785,8 @@ export function PublicMenuApp() {
             {groups.length === 0 && <p className="py-16 text-center text-[16px] text-ink-muted">Nada encontrado para “{query}”.</p>}
             {groups.map((g) => (
               <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
-                <h2 className={`text-[24px] font-semibold ${g.name === ESPETOS ? '' : 'mb-4'}`}>{g.name}</h2>
-                {g.name === ESPETOS && <p className="mb-4 mt-1 text-[15px] text-ink-muted">{COMBO_SIDES}</p>}
+                <h2 className={`${display} text-[26px] font-semibold uppercase tracking-[.5px] ${g.name === ESPETOS ? '' : 'mb-4'}`}>{g.name}</h2>
+                {g.name === ESPETOS && <p className="mb-4 mt-2.5 rounded-[10px] border border-[#4d3c22] bg-[#2a2116] px-3 py-2.5 text-[13.5px] text-[#f0d9a8]">{COMBO_SIDES}</p>}
                 <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">{g.items.map(productCard)}</div>
               </section>
             ))}
@@ -791,25 +809,31 @@ export function PublicMenuApp() {
   } else {
     screen = (
       <div className="mx-auto max-w-xl pb-32 md:max-w-4xl">
-        <header className="border-b border-line px-5 pb-4 pt-2">
-          <div className="flex items-center gap-3 pt-2">{logo}<div className="min-w-0"><h1 className="truncate text-[20px] font-semibold leading-tight">{settings.name}</h1>{statusLine}</div></div>
-          <div className="mt-4 space-y-3">
-            <Segmented label="Como você quer receber" value={orderMode} onChange={setOrderMode} options={MODE_OPTIONS} />
+        <header className="pb-1">
+          {/* Brasa acesa atrás da logo */}
+          <div aria-hidden="true" className="h-[170px]" style={{ background: 'radial-gradient(circle at 50% 100%,rgba(255,170,70,.55) 0%,rgba(232,96,40,.45) 18%,rgba(196,38,31,.28) 38%,rgba(120,30,20,.12) 58%,rgba(23,18,15,0) 78%)', WebkitMaskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)', maskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)' }} />
+          <div className="relative -mt-[110px] flex flex-col items-center px-5">
+            <div className="rounded-full bg-surface p-[5px] shadow-[0_0_0_1px_rgba(232,182,74,.4),0_0_40px_rgba(232,120,40,.35)]"><img src="/brand/logo-sabor-da-carne.webp" alt="" width={128} height={128} className="h-32 w-32 rounded-full border-2 border-[#e8b64a] object-cover" /></div>
+            <h1 className={`${display} mt-4 text-center text-[21px] font-semibold uppercase leading-tight tracking-[1px]`}>{settings.name}</h1>
+            <p className="mt-2 flex items-center gap-2.5 text-[12px] uppercase tracking-[3px] text-[#e8b64a]"><span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" />Espetos na brasa<span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" /></p>
+          </div>
+          <div className="mt-[18px] space-y-3 px-5">
+            <p className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[14px] ${isOpen ? 'border-line bg-surface-soft' : 'border-[#4a2620] bg-[#2a1a16]'}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-[#d8382f]'}`} />{isOpen ? <span><b className="font-semibold">Aberto agora</b> · {isPickup ? pickupEta : deliveryEta}</span> : <span><b className="font-semibold">Fechado no momento</b> · pedidos só no horário de funcionamento</span>}</p>
+            <Segmented label="Como você quer receber" value={orderMode} onChange={setOrderMode} options={MENU_MODES} />
             {searchBox}
           </div>
         </header>
-        <nav aria-label="Categorias" className="no-scrollbar sticky top-0 z-20 flex gap-2 overflow-x-auto border-b border-surface-muted bg-surface px-5 py-3">
-          {groups.map((g) => <button id={`chip-${slug(g.name)}`} key={g.name} type="button" onClick={() => jumpTo(g.name)} aria-current={activeCat === g.name ? 'true' : undefined} className={`h-9 shrink-0 rounded-2xl border px-3.5 text-[14px] ${activeCat === g.name ? 'border-ink bg-ink font-semibold text-surface' : 'border-line-strong bg-surface font-medium text-ink-secondary'}`}>{g.name}</button>)}
+        <nav aria-label="Categorias" className="no-scrollbar sticky top-0 z-20 mt-2 flex gap-2 overflow-x-auto border-b border-line bg-surface px-5 py-3">
+          {groups.map((g) => <button id={`chip-${slug(g.name)}`} key={g.name} type="button" onClick={() => jumpTo(g.name)} aria-current={activeCat === g.name ? 'true' : undefined} className={`min-h-[44px] shrink-0 rounded-md border px-4 text-[15px] ${activeCat === g.name ? 'border-brand-500 bg-brand-500 font-semibold text-white' : 'border-line-strong bg-surface text-ink-secondary'}`}>{g.name}</button>)}
         </nav>
-        <main className="space-y-6 px-5 pt-4">
+        <main className="space-y-8 px-5 pt-5">
           {trackingBanner}
-          {closedNotice}
           {groups.length === 0 && <p className="py-16 text-center text-[16px] text-ink-muted">Nada encontrado para “{query}”.</p>}
           {groups.map((g) => (
             <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
-              <h2 className="text-[20px] font-semibold">{g.name}</h2>
-              {g.name === ESPETOS && <p className="mt-0.5 text-[14px] text-ink-muted">{COMBO_SIDES}</p>}
-              <ul className="md:grid md:grid-cols-2 md:gap-x-6">{g.items.map(productRow)}</ul>
+              <h2 className={`${display} text-[26px] font-semibold uppercase tracking-[.5px]`}>{g.name}</h2>
+              {g.name === ESPETOS && <p className="mt-2.5 rounded-[10px] border border-[#4d3c22] bg-[#2a2116] px-3 py-2.5 text-[13.5px] text-[#f0d9a8]">{COMBO_SIDES}</p>}
+              <ul className={`mt-4 grid grid-cols-1 md:grid-cols-2 ${g.name === ESPETOS ? 'gap-5' : 'gap-3'}`}>{g.items.map(productRow)}</ul>
             </section>
           ))}
         </main>
@@ -817,9 +841,9 @@ export function PublicMenuApp() {
         {count > 0 && (
           <div className="fixed inset-x-0 bottom-0 z-30 px-4" style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom))' }}>
             <button type="button" onClick={() => { setCartError(null); go('cart'); }}
-              className="mx-auto flex h-14 w-full max-w-xl items-center justify-between gap-3 rounded-xl bg-[#2A201B] px-5 text-[17px] font-semibold text-white shadow-[0_8px_24px_rgba(43,33,28,.35)] active:opacity-90">
+              className="mx-auto flex h-14 w-full max-w-xl items-center justify-between gap-3 rounded-[14px] bg-brand-500 px-5 text-[17px] font-semibold text-white shadow-[0_8px_24px_rgba(43,33,28,.35)] active:opacity-90">
               <span className="truncate">Ver pedido · {count} {count === 1 ? 'item' : 'itens'}</span>
-              <span className="shrink-0 font-mono tabular-nums">{formatBRL(subtotal)}</span>
+              <span className="shrink-0 tabular-nums">{formatBRL(subtotal)}</span>
             </button>
           </div>
         )}
@@ -828,7 +852,7 @@ export function PublicMenuApp() {
   }
 
   return (
-    <div className="min-h-screen bg-surface font-sans text-ink">
+    <div className="menu-dark min-h-screen bg-surface font-sans text-ink">
       {screen}
       {/* Erro ao adicionar: fica à vista em qualquer ponto da rolagem */}
       {menuError && step === 'menu' && <div className="fixed inset-x-4 bottom-[88px] z-40 mx-auto max-w-md lg:bottom-6"><Alert>{menuError}</Alert></div>}

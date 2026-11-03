@@ -222,3 +222,19 @@
 @keyframes pm-flow { from { transform: translateY(-100%); } to { transform: translateY(260%); } }
 .pm-step-flow { animation: pm-flow 2.4s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .pm-step-halo, .pm-step-flow { animation: none; } .pm-step-flow { display: none; } }
+/* Cardápio digital: tema escuro de churrasco (só dentro de .menu-dark) */
+.menu-dark {
+  color-scheme: dark;
+  --color-canvas: 33 25 19; --color-surface: 23 18 15; --color-surface-soft: 33 25 19; --color-surface-muted: 36 28 23;
+  --color-ink: 243 236 228; --color-ink-secondary: 205 188 171; --color-ink-muted: 168 150 138;
+  --color-line: 47 36 28; --color-line-strong: 74 58 46;
+  --color-brand-50: 46 23 20; --color-brand-100: 60 28 24; --color-brand-200: 110 40 34;
+  --color-brand-500: 196 38 31; --color-brand-600: 170 32 26; --color-brand-700: 232 182 74;
+}
+.menu-dark .text-brand-500 { color: #ff6a55; }
+.menu-dark .bg-rose-50 { background: #2a1a16; }
+.menu-dark .border-rose-200 { border-color: #4a2620; }
+.menu-dark .text-rose-600, .menu-dark .text-rose-700 { color: #ff8a78; }
+.menu-dark .bg-amber-50 { background: #2a2116; }
+.menu-dark .border-amber-200 { border-color: #4d3c22; }
+.menu-dark .text-amber-900 { color: #f0d9a8; }
