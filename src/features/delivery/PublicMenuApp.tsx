@@ -9,7 +9,7 @@ import { comboBlockedByBase } from '../../lib/comboStock';
 import { DINE_IN_NOTE } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { menuPhotoUrl } from '../../lib/imageOptimization';
-import { getProductAvailability, productFlavors } from '../../lib/productAvailability';
+import { getProductAvailability, menuFlavors } from '../../lib/productAvailability';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useShiftStore } from '../../stores/useShiftStore';
@@ -189,8 +189,8 @@ function Alert({ children }: { children: ReactNode }) {
 }
 
 /* ---------- produto (folha no celular, modal no notebook) ---------- */
-function ProductSheet({ product, riceOptions, initial, onClose, onAdd }: { product: Product; riceOptions: string[]; initial?: { qty: number; doneness: MeatDoneness | null; notes: string }; onClose: () => void; onAdd: (qty: number, doneness: MeatDoneness | null, notes: string) => string | null }) {
-  const flavors = productFlavors(product.description);
+function ProductSheet({ product, riceOptions, juiceOptions, initial, onClose, onAdd }: { product: Product; riceOptions: string[]; juiceOptions: string[]; initial?: { qty: number; doneness: MeatDoneness | null; notes: string }; onClose: () => void; onAdd: (qty: number, doneness: MeatDoneness | null, notes: string) => string | null }) {
+  const flavors = menuFlavors(product, juiceOptions);
   const parsed = parseComboNotes(initial?.notes ?? '', flavors.length ? flavors : riceOptions);
   const [qty, setQty] = useState(initial?.qty ?? 1);
   const [doneness, setDoneness] = useState<MeatDoneness | null>(initial?.doneness ?? null);
@@ -410,6 +410,7 @@ export function PublicMenuApp() {
     try { addToCart(p, qty, doneness, notes); return null; }
     catch (e) { return e instanceof Error ? e.message.replace('não possui quantidade suficiente em estoque', 'não tem mais unidades disponíveis hoje') : 'Não foi possível adicionar.'; }
   };
+  const juiceFlavors = settings.daily_juice_flavors ?? [];
   const onPlus = (p: Product) => {
     setMenuError(null);
     if (p.allows_doneness) { setSheetProduct(p); return; }
@@ -484,7 +485,7 @@ export function PublicMenuApp() {
     </label>
   );
 
-  const pickProduct = (p: Product) => (p.allows_doneness || COMBO_SUFFIX.test(p.name) || productFlavors(p.description).length ? setSheetProduct(p) : onPlus(p));
+  const pickProduct = (p: Product) => (p.allows_doneness || COMBO_SUFFIX.test(p.name) || menuFlavors(p, juiceFlavors).length ? setSheetProduct(p) : onPlus(p));
   /** Tira a última linha do item na sacola. */
   const removeOne = (p: Product) => {
     const line = [...cart].reverse().find((c) => c.productId === p.id);
@@ -513,7 +514,8 @@ export function PublicMenuApp() {
     const isCombo = COMBO_SUFFIX.test(p.name);
     const featuredCard = !!combo || isCombo;
     const soldOut = isOpen && !stockOf(p).isAvailable && (!combo || !stockOf(combo).isAvailable);
-    const description = p.description && !(isSidesDescription(p.description)) ? p.description : null;
+    const dailyJuices = !p.description && menuFlavors(p, juiceFlavors).length ? `Sabores: ${juiceFlavors.join(', ')}` : null;
+    const description = dailyJuices ?? (p.description && !(isSidesDescription(p.description)) ? p.description : null);
     const title = <h3 className={`${display} text-[21px] font-semibold uppercase leading-tight tracking-[.3px]`}>{p.name.replace(COMBO_SUFFIX, '')}</h3>;
     // Espeto: foto grande e as duas opções, como no layout. Demais itens: linha compacta para a página não ficar enorme
     if (featuredCard) return (
@@ -716,7 +718,7 @@ export function PublicMenuApp() {
                     <li key={d.id} className="grid grid-cols-[56px_1fr_auto] items-center gap-3 rounded-xl border border-line bg-surface-soft p-2.5">
                       <Photo product={d} variant="s" className="h-14 w-14 rounded-lg" />
                       <div className="min-w-0"><p className="text-[15px] font-medium leading-snug">{d.name}</p><p className="mt-0.5 text-[14px] tabular-nums text-ink-muted">{formatBRL(d.price)}</p></div>
-                      <button type="button" onClick={() => { if (productFlavors(d.description).length) { setSheetProduct(d); return; } const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="flex h-11 min-w-[44px] items-center justify-center rounded-full bg-brand-500 px-2 text-[15px] font-semibold text-white">{q > 0 ? q : <Plus className="h-5 w-5" />}</button>
+                      <button type="button" onClick={() => { if (menuFlavors(d, juiceFlavors).length) { setSheetProduct(d); return; } const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="flex h-11 min-w-[44px] items-center justify-center rounded-full bg-brand-500 px-2 text-[15px] font-semibold text-white">{q > 0 ? q : <Plus className="h-5 w-5" />}</button>
                     </li>
                   );
                 })}
@@ -914,7 +916,7 @@ export function PublicMenuApp() {
       {/* Erro ao adicionar: fica à vista em qualquer ponto da rolagem */}
       {menuError && step === 'menu' && <div className="fixed inset-x-4 bottom-[88px] z-40 mx-auto max-w-md lg:bottom-6"><Alert>{menuError}</Alert></div>}
       {editingItem && (
-        <ProductSheet key={editingItem.id} product={editingItem.product} riceOptions={settings.daily_rice_flavors ?? []} initial={{ qty: editingItem.quantity, doneness: editingItem.doneness ?? null, notes: editingItem.notes || '' }} onClose={() => setEditingItem(null)}
+        <ProductSheet key={editingItem.id} product={editingItem.product} riceOptions={settings.daily_rice_flavors ?? []} juiceOptions={juiceFlavors} initial={{ qty: editingItem.quantity, doneness: editingItem.doneness ?? null, notes: editingItem.notes || '' }} onClose={() => setEditingItem(null)}
           onAdd={(q, d, n) => {
             // Troca o item: se o estoque recusar, o item antigo volta como estava
             updateCartQuantity(editingItem.id, -editingItem.quantity);
@@ -925,7 +927,7 @@ export function PublicMenuApp() {
           }} />
       )}
       {sheetProduct && (
-        <ProductSheet product={sheetProduct} riceOptions={settings.daily_rice_flavors ?? []} onClose={() => setSheetProduct(null)} onAdd={(q, d, n) => { const e = tryAdd(sheetProduct, q, d, n); if (!e) setSheetProduct(null); return e; }} />
+        <ProductSheet product={sheetProduct} riceOptions={settings.daily_rice_flavors ?? []} juiceOptions={juiceFlavors} onClose={() => setSheetProduct(null)} onAdd={(q, d, n) => { const e = tryAdd(sheetProduct, q, d, n); if (!e) setSheetProduct(null); return e; }} />
       )}
     </div>
   );

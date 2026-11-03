@@ -1,3 +1,4 @@
+import { menuFlavors } from '../../../lib/productAvailability';
 import { productFlavors } from '../../../lib/productAvailability';
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../../../types/domain';
@@ -36,5 +37,15 @@ describe('sabores do produto', () => {
     expect(productFlavors('Sabores: Coca-Cola, Guaraná e Fanta')).toEqual(['Coca-Cola', 'Guaraná', 'Fanta']);
     expect(productFlavors('Lata 350ml gelada')).toEqual([]);
     expect(productFlavors(null)).toEqual([]);
+  });
+});
+
+describe('sabores de suco no cardápio', () => {
+  const juices = ['Goiaba', 'Caju'];
+  it('usa a lista do dia nos sucos, menos quando o nome já diz o sabor', () => {
+    expect(menuFlavors({ name: 'Sucos' }, juices)).toEqual(juices);
+    expect(menuFlavors({ name: 'Jarra de suco' }, juices)).toEqual(juices);
+    expect(menuFlavors({ name: 'Suco de maracujá' }, juices)).toEqual([]);
+    expect(menuFlavors({ name: 'Picanha' }, juices)).toEqual([]);
   });
 });
