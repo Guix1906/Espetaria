@@ -62,8 +62,8 @@ export function DeliveryPixPanel({ order }: { order: DeliveryOrder }) {
   return (
     <section className="space-y-3 rounded-2xl border border-brand-200 bg-brand-50 p-4" aria-labelledby="delivery-pix-title">
       <div className="text-center">
-        <h3 id="delivery-pix-title" className="flex items-center justify-center gap-2 font-semibold text-brand-900"><QrCode className="h-4 w-4" aria-hidden="true" />Pague com PIX</h3>
-        <p className="mt-1 text-2xl font-bold text-brand-800 tabular-nums">{formatBRL(order.total)}</p>
+        <h3 id="delivery-pix-title" className="flex items-center justify-center gap-2 font-semibold text-ink"><QrCode className="h-4 w-4" aria-hidden="true" />Pague com PIX</h3>
+        <p className="mt-1 text-2xl font-bold text-ink tabular-nums">{formatBRL(order.total)}</p>
         <p className="text-xs text-ink-secondary">Favorecido: {settings.pix_merchant_name}</p>
       </div>
       <PixQrCode payload={payload} size={208} />
@@ -146,8 +146,8 @@ export function AutoPixPanel({ order }: { order: DeliveryOrder }) {
   return (
     <section className="space-y-3 rounded-2xl border border-brand-200 bg-brand-50 p-4" aria-labelledby="delivery-autopix-title">
       <div className="text-center">
-        <h3 id="delivery-autopix-title" className="flex items-center justify-center gap-2 font-semibold text-brand-900"><QrCode className="h-4 w-4" aria-hidden="true" />Pague com PIX para confirmar</h3>
-        <p className="mt-1 text-2xl font-bold text-brand-800 tabular-nums">{formatBRL(order.total)}</p>
+        <h3 id="delivery-autopix-title" className="flex items-center justify-center gap-2 font-semibold text-ink"><QrCode className="h-4 w-4" aria-hidden="true" />Pague com PIX para confirmar</h3>
+        <p className="mt-1 text-2xl font-bold text-ink tabular-nums">{formatBRL(order.total)}</p>
         {secondsLeft !== null && <p className="text-xs text-ink-secondary tabular-nums">{secondsLeft > 0 ? `Pague em até ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, '0')}` : 'Prazo do PIX encerrado'}</p>}
       </div>
       <button type="button" onClick={() => void copy()} className={`${copied ? 'btn-success' : 'btn-primary'} w-full`}>
