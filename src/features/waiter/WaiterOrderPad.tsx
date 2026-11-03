@@ -218,12 +218,12 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
       updateQuantity(table.id, line.id, -1);
     }
   };
-  const handleDonenessConfirm = (doneness: MeatDoneness | null, notes: string, quantity: number, multiDoneness?: { doneness: MeatDoneness; quantity: number }[]) => {
+  const handleDonenessConfirm = (doneness: MeatDoneness | null, notes: string, quantity: number, multiDoneness?: { doneness: MeatDoneness | null; quantity: number; notes?: string }[]) => {
     if (!modalProduct) return;
     if (multiDoneness && multiDoneness.length > 0) {
       for (const item of multiDoneness) {
         if (item.quantity > 0) {
-          addItem(table.id, modalProduct, item.quantity, item.doneness, notes);
+          addItem(table.id, modalProduct, item.quantity, item.doneness, item.notes ?? notes);
         }
       }
     } else {

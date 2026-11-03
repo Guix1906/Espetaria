@@ -10,9 +10,12 @@ import { WaiterSheet } from './WaiterSheet';
 import { triggerHaptic } from '../../lib/haptics';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { productFlavors } from '../../lib/productAvailability';
+import { expandUnits, groupUnits, type OrderUnit } from './orderUnits';
 
 export interface MultiDonenessItem {
-  doneness: MeatDoneness;
+  /** Observação desta linha (arroz ou sabor próprio da unidade). */
+  notes?: string;
+  doneness: MeatDoneness | null;
   quantity: number;
 }
 
@@ -73,6 +76,8 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const [donenessCounts, setDonenessCounts] = useState<Record<string, number>>(() => (
     initial?.doneness ? { ...NO_COUNTS, [initial.doneness]: initial.quantity } : NO_COUNTS
   ));
+  // Arroz ou sabor de cada unidade: dois Completos podem ter arroz diferente
+  const [unitChoices, setUnitChoices] = useState<Record<string, string | null>>({});
   const [showNotes, setShowNotes] = useState(!!notes);
   const [addedCount, setAddedCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -88,8 +93,20 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
     : [...DONENESS_OPTIONS, { value: selectedDoneness, label: formatDoneness(selectedDoneness), description: 'Ponto escolhido antes.', swatch: '#C98A1B' }];
 
   const needsDoneness = product.allows_doneness && (isEditing ? !selectedDoneness : totalDonenessQuantity === 0);
-  const needsChoice = choiceRequired && !choice && !isEditing;
-  const missingLabel = needsDoneness ? 'Escolha o ponto da carne' : needsChoice ? (flavors.length ? 'Escolha o sabor' : 'Escolha o arroz') : null;
+  const units: OrderUnit[] = isEditing ? [] : expandUnits(DONENESS_OPTIONS.map((o) => o.value), product.allows_doneness ? donenessCounts : null, quantity);
+  const choiceOf = (unit: OrderUnit, index: number) => (unit.key in unitChoices ? unitChoices[unit.key] ?? null : index === 0 && Object.keys(unitChoices).length === 0 ? choice : null);
+  const pickChoice = (unit: OrderUnit | undefined, index: number, value: string | null) => {
+    setErrorMessage(null);
+    if (index === 0) setChoice(value);
+    if (!unit) return;
+    setUnitChoices((current) => {
+      const seeded = Object.keys(current).length === 0 && units[0] ? { [units[0].key]: choice } : current;
+      return { ...seeded, [unit.key]: value };
+    });
+  };
+  const missingChoices = choiceRequired && !isEditing ? units.filter((unit, index) => !choiceOf(unit, index)).length : 0;
+  const needsChoice = choiceRequired && !isEditing && (units.length === 0 ? !choice : missingChoices > 0);
+  const missingLabel = needsDoneness ? 'Escolha o ponto da carne' : needsChoice ? (flavors.length ? 'Escolha o sabor' : 'Escolha o arroz') + (units.length > 1 ? ` (falta ${missingChoices})` : '') : null;
   const canRepeat = !isEditing && (product.allows_doneness || choiceRequired);
 
   const updateDonenessCount = (d: MeatDoneness, delta: number) => {
@@ -126,7 +143,11 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
     const typedNotes = product.allows_notes ? notes.trim() : '';
     const finalNotes = [choice, typedNotes].filter(Boolean).join(', ');
     try {
-      if (product.allows_doneness && !isEditing) {
+      if (choiceRequired && !isEditing) {
+        const byIndex = new Map(units.map((unit, index) => [unit.key, choiceOf(unit, index)]));
+        const lines = groupUnits(units, (unit) => byIndex.get(unit.key) ?? null, typedNotes);
+        onConfirm(lines[0]?.doneness ?? null, lines[0]?.notes ?? typedNotes, units.length, lines);
+      } else if (product.allows_doneness && !isEditing) {
         const multi: MultiDonenessItem[] = Object.entries(donenessCounts)
           .filter(([_, q]) => q > 0)
           .map(([d, q]) => ({ doneness: d as MeatDoneness, quantity: q }));
@@ -141,6 +162,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
       setDonenessCounts(NO_COUNTS);
       setQuantity(1);
       setChoice(null);
+      setUnitChoices({});
       setNotes('');
       setShowNotes(false);
     } catch (error: unknown) {
@@ -196,7 +218,11 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
             );
           })}
         </fieldset>}
-        {choices.length > 0 && <OptionGroup title={flavors.length ? 'Sabor' : isRiceOrCombo ? 'Arroz do dia' : 'Sabor do dia'} hint={choiceRequired ? 'obrigatório' : 'opcional'} options={choices} value={choice} onChange={(value) => { setChoice(value); setErrorMessage(null); }} />}
+        {choices.length > 0 && (choiceRequired && units.length > 1
+          ? units.map((unit, index) => (
+              <OptionGroup key={unit.key} title={`${flavors.length ? 'Sabor' : 'Arroz'} do ${index + 1}º${unit.doneness ? ` · ${formatDoneness(unit.doneness)}` : ''}`} hint="obrigatório" options={choices} value={choiceOf(unit, index)} onChange={(value) => pickChoice(unit, index, value)} />
+            ))
+          : <OptionGroup title={flavors.length ? 'Sabor' : isRiceOrCombo ? 'Arroz do dia' : 'Sabor do dia'} hint={choiceRequired ? 'obrigatório' : 'opcional'} options={choices} value={choiceRequired && units[0] ? choiceOf(units[0], 0) : choice} onChange={(value) => (choiceRequired && !isEditing ? pickChoice(units[0], 0, value) : (setChoice(value), setErrorMessage(null)))} />)}
         {product.allows_notes && <div>
           {suggestedNotes.length > 0 && <>
             <p className="mb-2 text-base font-semibold text-ink">Pedidos comuns <span className="font-normal text-ink-muted">· opcional</span></p>
