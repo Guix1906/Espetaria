@@ -353,6 +353,10 @@ export const DeliveryManagementView: React.FC = () => {
                         <span className="shrink-0 font-mono text-ink-muted">{formatBRL(item.unit_price * item.quantity)}</span>
                       </div>
                     ))}
+                    <div className="space-y-1 border-t border-line pt-1.5">
+                      {!isPickup && <p className="flex justify-between gap-2 text-ink-secondary"><span>Taxa de entrega</span><span className="font-mono">{formatBRL(order.delivery_fee)}</span></p>}
+                      <p className="flex justify-between gap-2 font-semibold text-ink"><span>Total</span><span className="font-mono font-bold">{formatBRL(order.total)}</span></p>
+                    </div>
                     <StatusTimeline order={order} />
                     <WhatsAppStatus messages={whatsappMessages.filter((m) => m.delivery_order_id === order.id)} onRetry={(id) => void retryWhatsAppMessage(id)} />
                   </div>
