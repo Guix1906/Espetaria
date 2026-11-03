@@ -43,7 +43,6 @@ const PAYMENTS: { id: DeliveryPaymentMethod; label: string; hint: string }[] = [
 const ESPETOS = 'Espetos';
 const COMBO_SIDES = '★ Completo inclui arroz, vinagrete, farofa e purê';
 const display = "font-['Oswald',sans-serif]";
-const MENU_MODES: { id: OrderMode; label: string }[] = [{ id: 'DELIVERY', label: 'Entrega' }, { id: 'DINE_IN', label: 'No local' }, { id: 'PICKUP', label: 'Retirada' }];
 const COMBO_SUFFIX = /\s+com acompanhamento\s*$/i;
 /** Hora em que a loja abre (aviso de loja fechada no cardápio). */
 const STORE_OPENS_AT = 18;
@@ -831,7 +830,6 @@ export function PublicMenuApp() {
             {logo}
             <div className="min-w-0 flex-1"><h1 className="truncate text-[20px] font-semibold">{settings.name}</h1>{statusLine}</div>
             <div className="w-[320px]">{searchBox}</div>
-            <div className="w-[440px]"><Segmented label="Como você quer receber" value={orderMode} onChange={setOrderMode} options={MODE_OPTIONS} /></div>
           </div>
         </header>
         <div className="mx-auto grid max-w-[1366px] grid-cols-[180px_1fr_320px] xl:grid-cols-[200px_1fr_360px]">
@@ -878,7 +876,7 @@ export function PublicMenuApp() {
           </div>
           <div className="mt-[18px] space-y-3 px-5">
             <p className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[14px] ${isOpen ? 'border-line bg-surface-soft' : 'border-[#4a2620] bg-[#2a1a16]'}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-[#d8382f]'}`} />{isOpen ? <span><b className="font-semibold">Aberto agora</b> · {isPickup ? pickupEta : deliveryEta}</span> : <span><b className="font-semibold">Fechado</b> · abre {new Date().getHours() < STORE_OPENS_AT ? 'hoje' : 'amanhã'} às {STORE_OPENS_AT}h</span>}</p>
-            <Segmented label="Como você quer receber" value={orderMode} onChange={setOrderMode} options={MENU_MODES} />
+            
             {searchBox}
           </div>
         </header>
