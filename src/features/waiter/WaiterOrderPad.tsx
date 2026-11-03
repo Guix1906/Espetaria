@@ -24,14 +24,15 @@ import { TabItemsPanel } from './TabItemsPanel';
 import { optimizeThumbnailUrl } from '../../lib/imageOptimization';
 
 const TOP = 'TOP';
-function isEspetoProduct(p: Product) {
-  return p.sector === 'GRILL' || /espeto/i.test(p.name);
+/** Aba Espetos: só os de carne. Assados da categoria Entradas (queijo, pão de alho, cebola) ficam em Porções, como no cardápio digital. */
+export function isEspetoProduct(p: Pick<Product, 'type'>, categoryName?: string) {
+  return p.type === 'ESPETO' && !/^entradas?$/i.test(categoryName?.trim() ?? '');
 }
 function isBebidaProduct(p: Product) {
   return p.sector === 'BAR' || p.type === 'BEBIDA' || /bebida|cerveja|suco|refresco|jarra|refrigerante|água|drink|gin|dose|whisky|original|heineken|skol|long neck|red bull/i.test(p.name);
 }
-function isPorcaoProduct(p: Product) {
-  return !isEspetoProduct(p) && !isBebidaProduct(p);
+export function isPorcaoProduct(p: Product, categoryName?: string) {
+  return !isEspetoProduct(p, categoryName) && !isBebidaProduct(p);
 }
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -139,6 +140,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   const query = searchQuery.trim().toLocaleLowerCase('pt-BR');
   const activeProducts = products.filter((product) => product.active);
   const categories = [...storeCategories].sort((a, b) => a.display_order - b.display_order).filter((category) => category.active && activeProducts.some((product) => product.category_id === category.id));
+  const categoryNameOf = (p: Product) => storeCategories.find((c) => c.id === p.category_id)?.name;
   const byOrder = (a: Product, b: Product) => a.display_order - b.display_order || a.name.localeCompare(b.name, 'pt-BR');
 
   // "Mais pedidos": os 8 mais lançados (dados carregados do turno); sem dados, os primeiros do cardápio
@@ -169,11 +171,11 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
     : selectedCategory === TOP
       ? [{ id: TOP, title: 'Mais pedidos', rows: sortRows(topProducts) }]
       : selectedCategory === 'GROUP_ESPETOS'
-        ? [{ id: 'GROUP_ESPETOS', title: 'Espetos', rows: sortRows(activeProducts.filter(isEspetoProduct).sort(byOrder)) }]
+        ? [{ id: 'GROUP_ESPETOS', title: 'Espetos', rows: sortRows(activeProducts.filter((p) => isEspetoProduct(p, categoryNameOf(p))).sort(byOrder)) }]
         : selectedCategory === 'GROUP_BEBIDAS'
           ? [{ id: 'GROUP_BEBIDAS', title: 'Bebidas', rows: sortRows(activeProducts.filter(isBebidaProduct).sort(byOrder)) }]
           : selectedCategory === 'GROUP_PORCOES'
-            ? [{ id: 'GROUP_PORCOES', title: 'Porções & Acompanhamentos', rows: sortRows(activeProducts.filter(isPorcaoProduct).sort(byOrder)) }]
+            ? [{ id: 'GROUP_PORCOES', title: 'Porções e entradas', rows: sortRows(activeProducts.filter((p) => isPorcaoProduct(p, categoryNameOf(p))).sort(byOrder)) }]
             : selectedCategory === 'ALL'
               ? categories.map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }))
               : categories.filter((c) => c.id === selectedCategory).map((c) => ({ id: c.id, title: c.name, rows: sortRows(activeProducts.filter((p) => p.category_id === c.id).sort(byOrder)) }));
