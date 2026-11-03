@@ -365,7 +365,10 @@ export function PublicMenuApp() {
   const localLabel = isDineIn ? 'Consumir no local' : 'Retirada no local';
   const zone = zones.find((z) => z.name === customer.neighborhood);
   const minFee = zones.length ? Math.min(...zones.map((z) => z.fee)) : 0;
-  const fee = isPickup ? 0 : zone?.fee ?? 0;
+  // Taxa igual em todos os bairros: já entra na conta antes de escolher o bairro (o banco confere ao enviar)
+  const uniformFee = zones.length && zones.every((z) => z.fee === zones[0]!.fee) ? zones[0]!.fee : null;
+  const fee = isPickup ? 0 : zone?.fee ?? uniformFee ?? 0;
+  const feeKnown = !!zone || uniformFee !== null;
   const total = subtotal + fee;
   // Sugestões no "Seu pedido": as bebidas mais pedidas primeiro, depois as demais
   const drinkRank = (name: string) => {
@@ -637,7 +640,7 @@ export function PublicMenuApp() {
   const totals = (big = 20) => (
     <div className="space-y-2 text-[15px]">
       <div className="flex justify-between text-ink-secondary"><span>Subtotal</span><span className="tabular-nums">{formatBRL(subtotal)}</span></div>
-      <div className="flex justify-between text-ink-secondary"><span>{isPickup ? localLabel : zone ? `Entrega · ${zone.name}` : 'Entrega'}</span><span className="tabular-nums">{isPickup ? 'Grátis' : zone ? formatBRL(fee) : 'escolha o bairro'}</span></div>
+      <div className="flex justify-between text-ink-secondary"><span>{isPickup ? localLabel : zone ? `Entrega · ${zone.name}` : 'Entrega'}</span><span className="tabular-nums">{isPickup ? 'Grátis' : feeKnown ? formatBRL(fee) : 'escolha o bairro'}</span></div>
       <div className="flex justify-between border-t border-line pt-3 font-semibold" style={{ fontSize: big }}><span>Total</span><span className="tabular-nums">{formatBRL(total)}</span></div>
     </div>
   );
@@ -750,7 +753,7 @@ export function PublicMenuApp() {
           {formError && <Alert>{formError}</Alert>}
         </div>
         <Footer>
-          <div className="mb-3 flex justify-between text-[15px]"><span className="text-ink-secondary">{isPickup ? 'Total' : zone ? 'Total com entrega' : 'Subtotal'}</span><span className="font-semibold tabular-nums">{formatBRL(isPickup || zone ? total : subtotal)}</span></div>
+          <div className="mb-3 flex justify-between text-[15px]"><span className="text-ink-secondary">{isPickup ? 'Total' : feeKnown ? 'Total com entrega' : 'Subtotal'}</span><span className="font-semibold tabular-nums">{formatBRL(isPickup || feeKnown ? total : subtotal)}</span></div>
           <Button size="lg" block onClick={() => { const e = validateDelivery(); setFormError(e); if (!e) go('payment'); }} className="font-semibold">Ir para pagamento</Button>
         </Footer>
       </div>
@@ -858,7 +861,7 @@ export function PublicMenuApp() {
             </div>
             <div className="space-y-2 border-t border-line p-5 text-[15px]">
               <div className="flex justify-between"><span className="text-ink-secondary">Subtotal</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
-              <p className="text-[14px] text-ink-muted">{isPickup ? `${localLabel}: sem taxa` : 'Entrega: calculada no bairro'}</p>
+              <p className="text-[14px] text-ink-muted">{isPickup ? `${localLabel}: sem taxa` : uniformFee !== null ? `Entrega: ${formatBRL(uniformFee)}` : 'Entrega: calculada no bairro'}</p>
               <Button size="lg" block disabled={!cart.length || !isOpen} onClick={() => go('checkout')} className="mt-2 font-semibold">{!isOpen ? 'Loja fechada no momento' : `Finalizar pedido · ${formatBRL(subtotal)}`}</Button>
             </div>
           </aside>

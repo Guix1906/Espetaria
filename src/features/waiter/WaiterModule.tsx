@@ -400,8 +400,8 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   // ---------------- Área do garçom (celular) ----------------
   const occupied = activeTables.filter(isTableOccupied);
   const free = activeTables.filter((table) => !isTableOccupied(table));
-  // Sem mesa ocupada, começa mostrando todas (não abre numa lista vazia)
-  const tableFilter: TableFilter = chosenFilter ?? (occupied.length ? 'occupied' : 'all');
+  // Sempre abre em Todas (pedido do dono, 03/11)
+  const tableFilter: TableFilter = chosenFilter ?? 'all';
   const readyCount = readyTables.reduce((sum, table) => sum + readyItemsOf(table.id).length, 0);
   const showOccupied = tableFilter !== 'free' ? occupied.filter(matches) : [];
   const showFree = tableFilter !== 'occupied' ? free.filter(matches) : [];
