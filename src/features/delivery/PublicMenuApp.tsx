@@ -766,7 +766,7 @@ export function PublicMenuApp() {
     );
   } else if (step === 'delivery') {
     screen = (
-      <div className="mx-auto max-w-xl pb-44">
+      <div className="mx-auto max-w-xl pb-64">
         <TopBar title={isPickup ? localLabel : 'Entrega'} onBack={back} />
         <Progress n={1} />
         <div className="space-y-5 px-5 pt-5">
@@ -782,7 +782,7 @@ export function PublicMenuApp() {
     );
   } else if (step === 'payment') {
     screen = (
-      <div className="mx-auto max-w-xl pb-44">
+      <div className="mx-auto max-w-xl pb-64">
         <TopBar title="Pagamento" onBack={back} />
         <Progress n={2} />
         <div className="space-y-4 px-5 pt-5">{paymentOptions()}{formError && <Alert>{formError}</Alert>}</div>
