@@ -624,11 +624,34 @@ class SyncService {
           useTableStore.setState({ tables: mergedTables, tabs: mergedTabs });
         }
       }
+      await this.pollOpenTabOrders(normalizedOpenTabs.map((t) => t.id));
     } catch (err) {
       logger.debug({ context: 'SyncService', message: 'Aviso em pollOperationalDelta', error: err });
     } finally {
       this.isPolling = false;
     }
+  }
+
+  /**
+   * Tempo real caído: a comanda chega pela consulta de segurança e os pedidos dela precisam vir junto,
+   * senão a mesa aparece ocupada com "Sem pedido" até alguém recarregar a tela.
+   */
+  private async pollOpenTabOrders(tabIds: string[]): Promise<void> {
+    if (!tabIds.length) return;
+    const remoteOrders = await selectInChunks<Order>('orders', 'tab_id', tabIds);
+    const remoteItems = await selectInChunks<OrderItem>('order_items', 'order_id', remoteOrders.map((o) => o.id));
+    const isNewer = (remote: { version?: number | null }, local: { version?: number | null }) => (remote.version ?? 0) > (local.version ?? 0);
+    const store = useTableStore.getState();
+    remoteOrders.forEach((order) => {
+      const local = store.orders.find((o) => o.id === order.id);
+      if (!local) store.applyRemoteOrderChange('INSERT', order);
+      else if (isNewer(order, local)) store.applyRemoteOrderChange('UPDATE', order);
+    });
+    remoteItems.forEach((item) => {
+      const local = store.orderItems.find((i) => i.id === item.id);
+      if (!local) store.applyRemoteOrderItemChange('INSERT', item);
+      else if (isNewer(item, local)) store.applyRemoteOrderItemChange('UPDATE', item);
+    });
   }
 
   public unsubscribe(): void {

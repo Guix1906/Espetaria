@@ -143,3 +143,22 @@ describe('eventos entre aparelhos', () => {
     expect(useTableStore.getState().tabs[0]!.total).toBe(80);
   });
 });
+
+describe('consulta de segurança com tempo real caído', () => {
+  it('mesa aberta em outro aparelho chega com os pedidos, sem "Sem pedido"', async () => {
+    const { useShiftStore } = await import('../../stores/useShiftStore');
+    useShiftStore.setState({ currentShift: { id: 's1', status: 'ABERTO' } as never });
+    useTableStore.setState({ tabs: [], orders: [], orderItems: [] });
+    db.tables = {
+      shifts: ok({ id: 's1', status: 'ABERTO' }),
+      tabs: ok([{ id: 'tab1', status: 'OPEN', table_id: 'mesa4', shift_id: 's1', opened_at: new Date().toISOString(), people_count: 1, subtotal: 0, total: 0 }]),
+      restaurant_tables: ok([{ id: 'mesa4', number: 4, status: 'OCUPADA' }]),
+      orders: ok([{ id: 'o1', tab_id: 'tab1', table_id: 'mesa4', status: 'IN_PREPARATION', order_number: 1, version: 1 }]),
+      order_items: ok([{ id: 'i1', order_id: 'o1', product_name: 'Long neck', quantity: 1, unit_price: 10, status: 'DELIVERED', version: 1 }]),
+    };
+    await syncService.pollOperationalDelta(true);
+    const state = useTableStore.getState();
+    expect(state.tabs.map((t) => t.id)).toContain('tab1');
+    expect(state.getTabOrderItems('tab1').map((i) => i.id)).toEqual(['i1']);
+  });
+});

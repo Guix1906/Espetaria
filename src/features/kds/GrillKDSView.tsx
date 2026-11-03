@@ -37,7 +37,7 @@ interface GrillTicket {
 
 const KIND_LABEL: Record<TicketKind, { label: string; classes: string }> = {
   LOCAL: { label: 'Local', classes: 'bg-surface-muted text-ink-secondary' },
-  DINE_IN: { label: 'Consumir no local', classes: 'bg-surface-muted text-ink-secondary' },
+  DINE_IN: { label: 'No local', classes: 'bg-surface-muted text-ink-secondary' },
   PICKUP: { label: 'Retirada', classes: 'bg-sky-800 text-white' },
   DELIVERY: { label: 'Delivery', classes: 'bg-brand-100 text-brand-900' },
 };
@@ -144,7 +144,7 @@ export const GrillKDSView: React.FC = () => {
         key: `remote-${order.id}`,
         kind: isDineInOrder(order) ? 'DINE_IN' as const : isPickup ? 'PICKUP' as const : 'DELIVERY' as const,
         title: order.customer_name,
-        subtitle: `Pedido #${order.order_number}`,
+        subtitle: `#${order.order_number}`,
         createdAt: order.created_at,
         notes: order.notes,
         items: order.items.filter((i) => i.sector === 'GRILL').map((i) => ({ id: i.id, quantity: i.quantity, name: i.product_name, doneness: i.doneness, notes: i.notes })),
@@ -207,12 +207,15 @@ export const GrillKDSView: React.FC = () => {
             return (
               <li key={ticket.key} className="flex flex-col rounded-xl border border-line bg-surface shadow-xs">
                 {/* Mesmo formato do cartão do Salão: nome em cima, itens e faixa colorida embaixo */}
-                <div className="flex h-10 items-center gap-2 px-3">
-                  <button type="button" onClick={() => toggleOpen(ticket.key)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Fechar' : 'Ver'} pedido de ${ticket.title}`} className="flex h-full min-w-0 flex-1 items-center gap-2 text-left">
-                    <h2 className="max-w-[70%] shrink-0 truncate font-sans text-base font-bold leading-tight tracking-tight text-ink tabular-nums">{ticket.title}</h2>
-                    <span className="flex min-w-0 flex-1 items-center gap-1.5 text-xs text-ink-muted tabular-nums">
-                      {ticket.kind !== 'LOCAL' && <span className={`shrink-0 rounded-sm px-1.5 py-0.5 font-semibold ${kind.classes}`}>{kind.label}</span>}
-                      <span className="truncate">{ticket.subtitle}</span>
+                <div className="flex min-h-14 items-center gap-2 px-3 py-1.5">
+                  <button type="button" onClick={() => toggleOpen(ticket.key)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Fechar' : 'Ver'} pedido de ${ticket.title}`} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    {/* Duas linhas: nome em cima, tipo e número embaixo. Nome grande corta com reticências e nunca passa por cima do botão */}
+                    <span className="min-w-0 flex-1">
+                      <h2 className="truncate font-sans text-base font-bold leading-tight tracking-tight text-ink tabular-nums">{ticket.title}</h2>
+                      <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-ink-muted tabular-nums">
+                        {ticket.kind !== 'LOCAL' && <span className={`shrink-0 rounded-sm px-1.5 py-0.5 font-semibold ${kind.classes}`}>{kind.label}</span>}
+                        <span className="min-w-0 truncate">{ticket.subtitle}</span>
+                      </span>
                     </span>
                     <ChevronDown className={`h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                   </button>

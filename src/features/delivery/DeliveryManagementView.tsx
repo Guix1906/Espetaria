@@ -306,10 +306,12 @@ export const DeliveryManagementView: React.FC = () => {
             return (
               <li key={order.id} className="flex flex-col rounded-xl border border-line bg-surface shadow-xs">
                 {/* Mesmo formato do cartão da Produção: fechado todos têm a mesma altura */}
-                <div className="flex h-10 items-center gap-2 px-3">
-                  <button type="button" onClick={() => toggleCard(order.id)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Fechar' : 'Ver'} pedido #${order.order_number} de ${order.customer_name}`} className="flex h-full min-w-0 flex-1 items-center gap-2 text-left">
-                    <h4 className="max-w-[70%] shrink-0 truncate text-base font-bold leading-tight tracking-tight text-ink tabular-nums">#{order.order_number} {order.customer_name}</h4>
-                    <span className="min-w-0 flex-1 truncate text-xs text-ink-muted">{isPickup ? (isDineInOrder(order) ? 'Local' : 'Retirada') : order.address_neighborhood || 'Entrega'}</span>
+                <div className="flex min-h-14 items-center gap-2 px-3 py-1.5">
+                  <button type="button" onClick={() => toggleCard(order.id)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Fechar' : 'Ver'} pedido #${order.order_number} de ${order.customer_name}`} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    <span className="min-w-0 flex-1">
+                      <h4 className="truncate text-base font-bold leading-tight tracking-tight text-ink">{order.customer_name}</h4>
+                      <span className="mt-0.5 block truncate text-xs text-ink-muted tabular-nums">#{order.order_number} · {isPickup ? (isDineInOrder(order) ? 'No local' : 'Retirada') : order.address_neighborhood || 'Entrega'}</span>
+                    </span>
                     <ChevronDown className={`h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                   </button>
                   {action && (
