@@ -64,7 +64,7 @@ export function PublicOrderTrackingPage({ orderId }: { orderId: string }) {
   const restaurant = useSettingsStore((s) => s.settings.name);
 
   useEffect(() => {
-    document.title = 'Seu pedido | Ponto';
+    document.title = 'Seu pedido';
     void useSettingsStore.getState().loadRemoteSettings();
     if (!isSupabaseConfigured) {
       // Demonstração local: procura nos pedidos deste aparelho
@@ -95,18 +95,21 @@ export function PublicOrderTrackingPage({ orderId }: { orderId: string }) {
   useLivePolling(load, REFRESH_MS, isSupabaseConfigured && state !== 'not_found' && !finished);
 
   return (
-    <div className="min-h-screen bg-surface text-ink">
-      <header className="border-b border-line">
-        <div className="mx-auto flex h-14 max-w-xl items-center justify-between gap-3 px-5">
-          <span className="truncate text-[17px] font-semibold">{restaurant}</span>
-          <span className="text-[13px] text-ink-muted">Acompanhar pedido</span>
+    <div className="menu-dark min-h-screen bg-surface font-sans text-ink">
+      {/* Mesma identidade do cardápio digital: brasa acesa atrás da logo */}
+      <header>
+        <div aria-hidden="true" className="h-[120px]" style={{ background: 'radial-gradient(circle at 50% 100%,rgba(255,170,70,.55) 0%,rgba(232,96,40,.45) 18%,rgba(196,38,31,.28) 38%,rgba(120,30,20,.12) 58%,rgba(23,18,15,0) 78%)', WebkitMaskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)', maskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)' }} />
+        <div className="relative -mt-[76px] flex flex-col items-center px-5">
+          <div className="rounded-full bg-surface p-1 shadow-[0_0_0_1px_rgba(232,182,74,.4),0_0_40px_rgba(232,120,40,.35)]"><img src="/brand/logo-sabor-da-carne-288.webp" alt="" width={88} height={88} className="h-[88px] w-[88px] rounded-full border-2 border-[#e8b64a] object-cover" /></div>
+          <p className="mt-3 text-center font-['Oswald',sans-serif] text-[19px] font-semibold uppercase leading-tight tracking-[1px]">{restaurant}</p>
+          <p className="mt-1.5 flex items-center gap-2.5 text-[12px] uppercase tracking-[3px] text-[#e8b64a]"><span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" />Acompanhar pedido<span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" /></p>
         </div>
       </header>
       <main className="mx-auto max-w-xl space-y-5 px-5 pb-10 pt-6">
         {state === 'loading' && <p className="p-8 text-center text-ink-muted" role="status">Carregando seu pedido...</p>}
         {state === 'error' && <p role="alert" className="rounded-md bg-rose-50 p-3 text-[14px] text-rose-600">Não foi possível carregar o pedido agora. Verifique sua internet e tente de novo.</p>}
         {state === 'not_found' && (
-          <div className="space-y-3 rounded-md border border-line bg-white p-6 text-center">
+          <div className="space-y-3 rounded-md border border-line bg-surface-soft p-6 text-center">
             <h1 className="text-[20px] font-semibold">Pedido não encontrado</h1>
             <p className="text-[15px] text-ink-muted">Confira se o link está completo ou fale com a gente pelo WhatsApp.</p>
             <a href="/cardapio" className="inline-flex h-12 items-center rounded-md bg-brand-500 px-5 text-[16px] font-semibold text-white">Ver cardápio</a>

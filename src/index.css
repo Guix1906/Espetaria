@@ -236,6 +236,6 @@
 .menu-dark .border-rose-200 { border-color: #4a2620; }
 .menu-dark .text-rose-600, .menu-dark .text-rose-700 { color: #ff8a78; }
 .menu-dark .bg-amber-50 { background: #2a2116; }
-.menu-dark .border-amber-200 { border-color: #4d3c22; }
+.menu-dark .border-amber-200, .menu-dark .border-amber-300 { border-color: #4d3c22; }
 .menu-dark .text-amber-900 { color: #f0d9a8; }
 .menu-dark .btn-primary:hover:not(:disabled) { background: rgb(var(--color-brand-600)); border-color: rgb(var(--color-brand-600)); }
