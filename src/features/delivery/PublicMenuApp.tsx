@@ -660,8 +660,8 @@ export function PublicMenuApp() {
 
   const totals = (big = 20) => (
     <div className="space-y-2 text-[15px]">
-      <div className="flex justify-between text-ink-secondary"><span>Subtotal</span><span className="tabular-nums">{formatBRL(subtotal)}</span></div>
-      <div className="flex justify-between text-ink-secondary"><span>{isPickup ? localLabel : zone ? `Entrega · ${zone.name}` : 'Entrega'}</span><span className="tabular-nums">{isPickup ? 'Grátis' : feeKnown ? formatBRL(fee) : 'escolha o bairro'}</span></div>
+      <div className="flex justify-between text-ink-secondary"><span>Produtos</span><span className="tabular-nums">{formatBRL(subtotal)}</span></div>
+      <div className="flex justify-between gap-3 text-ink-secondary"><span className="min-w-0">{isPickup ? localLabel : zone ? `Taxa de entrega · ${zone.name}` : 'Taxa de entrega'}</span><span className="tabular-nums">{isPickup ? 'Grátis' : feeKnown ? formatBRL(fee) : 'escolha o bairro'}</span></div>
       <div className="flex justify-between border-t border-line pt-3 font-semibold" style={{ fontSize: big }}><span>Total</span><span className="tabular-nums">{formatBRL(total)}</span></div>
     </div>
   );
@@ -751,7 +751,8 @@ export function PublicMenuApp() {
           )}
         </div>
         <Footer>
-          <div className="mb-3 flex justify-between text-[15px]"><span className="text-ink-secondary">Subtotal · {count} {count === 1 ? 'item' : 'itens'}</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
+          <div className="mb-3 flex justify-between text-[15px]"><span className="text-ink-secondary">Produtos · {count} {count === 1 ? 'item' : 'itens'}</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
+          {uniformFee !== null && <p className="-mt-2 mb-3 text-[14px] text-ink-muted">Entrega: mais {formatBRL(uniformFee)} de taxa. Retirada e consumo no local: sem taxa.</p>}
           {isOpen ? (
             <Button size="lg" block disabled={!cart.length} onClick={() => { setCartError(null); go('delivery'); }} className="font-semibold">Continuar</Button>
           ) : (
@@ -774,7 +775,7 @@ export function PublicMenuApp() {
           {formError && <Alert>{formError}</Alert>}
         </div>
         <Footer>
-          <div className="mb-3 flex justify-between text-[15px]"><span className="text-ink-secondary">{isPickup ? 'Total' : feeKnown ? 'Total com entrega' : 'Subtotal'}</span><span className="font-semibold tabular-nums">{formatBRL(isPickup || feeKnown ? total : subtotal)}</span></div>
+          <div className="mb-3">{totals(17)}</div>
           <Button size="lg" block onClick={() => { const e = validateDelivery(); setFormError(e); if (!e) go('payment'); }} className="font-semibold">Ir para pagamento</Button>
         </Footer>
       </div>
@@ -786,7 +787,7 @@ export function PublicMenuApp() {
         <Progress n={2} />
         <div className="space-y-4 px-5 pt-5">{paymentOptions()}{formError && <Alert>{formError}</Alert>}</div>
         <Footer>
-          <div className="mb-3 flex justify-between text-[15px]"><span className="text-ink-secondary">Total</span><span className="font-semibold tabular-nums">{formatBRL(total)}</span></div>
+          <div className="mb-3">{totals(17)}</div>
           <Button size="lg" block onClick={() => { const e = validatePayment(); setFormError(e); if (!e) go('review'); }} className="font-semibold">Revisar pedido</Button>
         </Footer>
       </div>
@@ -881,7 +882,7 @@ export function PublicMenuApp() {
               {cart.length ? cartLines(true) : <p className="py-10 text-center text-[15px] text-ink-muted">Escolha os itens no cardápio.</p>}
             </div>
             <div className="space-y-2 border-t border-line p-5 text-[15px]">
-              <div className="flex justify-between"><span className="text-ink-secondary">Subtotal</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
+              <div className="flex justify-between"><span className="text-ink-secondary">Produtos</span><span className="font-semibold tabular-nums">{formatBRL(subtotal)}</span></div>
               <p className="text-[14px] text-ink-muted">{isPickup ? `${localLabel}: sem taxa` : uniformFee !== null ? `Entrega: ${formatBRL(uniformFee)}` : 'Entrega: calculada no bairro'}</p>
               <Button size="lg" block disabled={!cart.length || !isOpen} onClick={() => go('checkout')} className="mt-2 font-semibold">{!isOpen ? 'Loja fechada no momento' : `Finalizar pedido · ${formatBRL(subtotal)}`}</Button>
             </div>
