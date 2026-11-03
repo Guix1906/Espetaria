@@ -1,7 +1,7 @@
 {
   "name": "ponto-desktop",
   "productName": "Ponto",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Ponto para o PC da loja: sistema e WhatsApp Web na mesma janela",
   "author": "Espetaria Sabor da Carne",
   "main": "main.js",

@@ -252,8 +252,8 @@ export const DeliveryManagementView: React.FC = () => {
             aria-pressed={activeTab === 'payouts'}
           >
             <DollarSign className="h-4 w-4" />
-            <span className="sm:hidden">Entregadores</span>
-            <span className="hidden sm:inline">Pagamentos dos entregadores</span>
+            <span className="sm:hidden">Motoboys</span>
+            <span className="hidden sm:inline">Pagamento dos motoboys</span>
           </button>
         )}
       </div>

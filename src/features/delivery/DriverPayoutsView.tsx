@@ -1,258 +1,222 @@
-import { Bike, Calculator, CheckCircle2, Clock3, DollarSign } from 'lucide-react';
-import { useState, type FormEvent } from 'react';
+import { Bike, CheckCircle2, ChevronDown, Settings2 } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
-import { PageHeader } from '../../components/ui/PageHeader';
 import { formatBRL } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
+import { payoutRows, summarizeDrivers, type DeliveryPayState, type DriverSummary, type PayoutOrder, type PayoutRecord } from './driverPayouts';
 
-interface DriverPayout {
-  id: string;
-  driver_name: string;
-  deliveries_count: number;
-  per_delivery_rate: number;
-  fuel_fixed: number;
-  total: number;
-  created_at: string;
-  paid_at: string | null;
-}
+type Period = 'SHIFT' | 'WEEK' | 'MONTH';
+const PERIODS: { id: Period; label: string; days?: number }[] = [
+  { id: 'SHIFT', label: 'Turno atual' },
+  { id: 'WEEK', label: '7 dias', days: 7 },
+  { id: 'MONTH', label: '30 dias', days: 30 },
+];
+const STATE: Record<DeliveryPayState, { label: string; className: string }> = {
+  TO_PAY: { label: 'A pagar', className: 'text-amber-800' },
+  PAID: { label: 'Pago', className: 'text-emerald-700' },
+  ON_ROUTE: { label: 'Em rota', className: 'text-ink-muted' },
+};
+const ORDER_COLUMNS = 'id, order_number, customer_name, address_neighborhood, driver_name, delivery_fee, status, shift_id, created_at, dispatched_at, delivered_at';
 
+const moment = (iso?: string | null) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }).replace(',', '') : '');
+const parseMoney = (text: string) => { const clean = text.trim().replace(',', '.') || '0'; return /^\d+(\.\d{1,2})?$/.test(clean) ? Number(clean) : NaN; };
+
+/** Cada entrega concluída soma no motoboy até o pagamento ser registrado. */
 export function DriverPayoutsView() {
-  const { notify } = useFeedback();
-  const { currentProfile } = useAuthStore();
-  const { currentShift } = useShiftStore();
-  const [payouts, setPayouts] = useState<DriverPayout[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [calculating, setCalculating] = useState(false);
-
-  const canManage = ['MASTER', 'GERENTE'].includes(currentProfile.role);
+  const { notify, requestChoice } = useFeedback();
+  const canManage = useAuthStore((s) => ['MASTER', 'GERENTE'].includes(s.currentProfile.role));
+  const shiftId = useShiftStore((s) => s.currentShift?.id ?? null);
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
-  const perDelivery = Number(settings.driver_per_delivery ?? 0);
-  const fuelFixed = Number(settings.driver_fuel_fixed ?? 0);
-  const [rateText, setRateText] = useState(() => perDelivery.toFixed(2));
-  const [fuelText, setFuelText] = useState(() => fuelFixed.toFixed(2));
+  const localOrders = useDeliveryStore((s) => s.deliveryOrders);
+  const rates = { perDelivery: Number(settings.driver_per_delivery ?? 0), fixedPerShift: Number(settings.driver_fuel_fixed ?? 0) };
+
+  const [period, setPeriod] = useState<Period>(shiftId ? 'SHIFT' : 'WEEK');
+  const [orders, setOrders] = useState<PayoutOrder[]>([]);
+  const [records, setRecords] = useState<PayoutRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState<string | null>(null);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [rateText, setRateText] = useState(() => rates.perDelivery.toFixed(2).replace('.', ','));
+  const [fixedText, setFixedText] = useState(() => rates.fixedPerShift.toFixed(2).replace('.', ','));
+
+  // Pedido que muda de etapa em qualquer aparelho atualiza a lista sozinho
+  const changeKey = localOrders.map((o) => `${o.id}:${o.status}`).join('|');
+  const since = useMemo(() => {
+    const days = PERIODS.find((p) => p.id === period)?.days;
+    return days ? new Date(Date.now() - days * 86400000).toISOString() : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, changeKey]);
+
+  useEffect(() => {
+    let alive = true;
+    const scoped = period === 'SHIFT' ? shiftId : null;
+    if (!isSupabaseConfigured) {
+      setOrders(localOrders
+        .filter((o) => o.order_type === 'DELIVERY' && (scoped ? o.shift_id === scoped : !since || o.created_at >= since))
+        .map((o) => ({ ...o, driver_name: o.driver_name ?? null })) as PayoutOrder[]);
+      setLoading(false);
+      return;
+    }
+    if (period === 'SHIFT' && !shiftId) { setOrders([]); setRecords([]); setLoading(false); return; }
+    setLoading(true);
+    void (async () => {
+      let orderQuery = supabase.from('delivery_orders').select(ORDER_COLUMNS).eq('order_type', 'DELIVERY').in('status', ['DELIVERED', 'OUT_FOR_DELIVERY']);
+      let payoutQuery = supabase.from('driver_payouts').select('*');
+      if (scoped) { orderQuery = orderQuery.eq('shift_id', scoped); payoutQuery = payoutQuery.eq('shift_id', scoped); }
+      else if (since) { orderQuery = orderQuery.gte('created_at', since); payoutQuery = payoutQuery.gte('created_at', since); }
+      const [ordersResult, payoutsResult] = await Promise.all([orderQuery.order('created_at', { ascending: false }).limit(1000), payoutQuery.limit(1000)]);
+      if (!alive) return;
+      if (ordersResult.error || payoutsResult.error) notify('Não foi possível carregar as entregas. Tente de novo.', 'error');
+      else {
+        setOrders((ordersResult.data ?? []) as unknown as PayoutOrder[]);
+        setRecords((payoutsResult.data ?? []) as unknown as PayoutRecord[]);
+      }
+      setLoading(false);
+    })();
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [period, shiftId, since]);
+
+  const drivers = summarizeDrivers(orders, records, rates);
+  const delivered = drivers.reduce((sum, d) => sum + d.deliveries.filter((x) => x.state !== 'ON_ROUTE').length, 0);
+  const toPay = drivers.reduce((sum, d) => sum + d.total, 0);
+  const paidTotal = drivers.reduce((sum, d) => sum + d.paidTotal, 0);
 
   const saveRates = (event: FormEvent) => {
     event.preventDefault();
-    const parse = (text: string) => { const clean = text.trim().replace(',', '.') || '0'; return /^\d+(\.\d{1,2})?$/.test(clean) ? Number(clean) : NaN; };
-    const rate = parse(rateText);
-    const fuel = parse(fuelText);
-    if (isNaN(rate) || isNaN(fuel)) { notify('Informe valores válidos (ex.: 5 ou 5,50).', 'error'); return; }
-    updateSettings({ driver_per_delivery: rate, driver_fuel_fixed: fuel });
-    notify('Valores do entregador salvos.', 'success');
+    const perDelivery = parseMoney(rateText);
+    const fixed = parseMoney(fixedText);
+    if (isNaN(perDelivery) || isNaN(fixed)) { notify('Informe valores válidos (ex.: 5 ou 5,50).', 'error'); return; }
+    updateSettings({ driver_per_delivery: perDelivery, driver_fuel_fixed: fixed });
+    notify('Valores salvos.', 'success');
   };
 
-  const loadPayouts = async () => {
-    if (!isSupabaseConfigured || !currentShift) return;
-    setLoading(true);
+  const pay = async (driver: DriverSummary) => {
+    const answer = await requestChoice({ title: `Pagar ${driver.name}`, message: `Registrar ${formatBRL(driver.total)} por ${driver.toPayCount} ${driver.toPayCount === 1 ? 'entrega' : 'entregas'}? Esse valor sai do faturamento líquido no Financeiro.`, choices: [{ value: 'yes', label: 'Registrar pagamento' }, { value: 'no', label: 'Voltar' }] });
+    if (answer !== 'yes') return;
+    const paidAt = new Date().toISOString();
+    const rows = payoutRows(driver, records, rates, paidAt);
+    setPaying(driver.key);
     try {
-      const { data, error } = await supabase
-        .from('driver_payouts')
-        .select('*')
-        .eq('shift_id', currentShift.id)
-        .order('created_at', { ascending: false });
-      if (error) throw new Error(error.message);
-      setPayouts((data as DriverPayout[]) || []);
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Erro ao carregar pagamentos.', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCalculate = async () => {
-    if (!isSupabaseConfigured || !currentShift) return;
-    setCalculating(true);
-    try {
-      const { data, error } = await supabase.rpc('close_delivery_shift', { p_shift_id: currentShift.id });
-      if (error) throw new Error(error.message);
-      const result = data as { message?: string } | Array<{ driver: string; deliveries: number; total: number }>;
-      if (Array.isArray(result) && result.length > 0) {
-        notify(`Pagamentos calculados para ${result.length} entregador(es).`, 'success');
-        await loadPayouts();
-      } else if (result && 'message' in result) {
-        notify(result.message!, 'info');
+      if (isSupabaseConfigured) {
+        const { data, error } = await supabase.from('driver_payouts').insert(rows).select('*');
+        if (error) throw new Error(error.message);
+        setRecords((current) => [...current, ...((data ?? []) as unknown as PayoutRecord[])]);
       } else {
-        notify('Nenhuma entrega concluída neste turno.', 'info');
+        setRecords((current) => [...current, ...rows.map((row, i) => ({ ...row, id: `local-${paidAt}-${i}`, created_at: paidAt }))]);
       }
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Erro ao calcular pagamentos.', 'error');
+      notify(`Pagamento de ${driver.name} registrado.`, 'success');
+    } catch {
+      notify('Não foi possível registrar o pagamento. Nada foi alterado.', 'error');
     } finally {
-      setCalculating(false);
+      setPaying(null);
     }
   };
 
-  const handleMarkPaid = async (payoutId: string) => {
-    if (!isSupabaseConfigured) return;
-    try {
-      const { error } = await supabase
-        .from('driver_payouts')
-        .update({ paid_at: new Date().toISOString() })
-        .eq('id', payoutId);
-      if (error) throw new Error(error.message);
-      setPayouts((prev) => prev.map((p) => p.id === payoutId ? { ...p, paid_at: new Date().toISOString() } : p));
-      notify('Pagamento marcado como pago.', 'success');
-    } catch (err) {
-      notify(err instanceof Error ? err.message : 'Erro ao marcar pagamento.', 'error');
-    }
-  };
-
-  const totalDeliveries = payouts.reduce((sum, p) => sum + p.deliveries_count, 0);
-  const totalAmount = payouts.reduce((sum, p) => sum + Number(p.total), 0);
-  const pendingAmount = payouts.filter((p) => !p.paid_at).reduce((sum, p) => sum + Number(p.total), 0);
+  const stat = (label: string, value: string, hint?: string, strong = false) => (
+    <div className={`rounded-lg border p-4 ${strong && toPay > 0 ? 'border-amber-300 bg-amber-50' : 'border-line bg-surface'}`}>
+      <p className="text-sm text-ink-muted">{label}</p>
+      <p className="mt-1 font-mono text-2xl font-bold text-ink">{value}</p>
+      {hint && <p className="mt-0.5 text-[13px] text-ink-muted">{hint}</p>}
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Pagamentos dos entregadores"
-        description={`${formatBRL(perDelivery)} por entrega + ${formatBRL(fuelFixed)} fixo por turno · Turno: ${currentShift?.status === 'ABERTO' ? 'Aberto' : 'Fechado'}`}
-        icon={Bike}
-      />
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-[12rem] flex-1">
+          <h2 className="text-xl font-semibold text-ink">Pagamento dos motoboys</h2>
+          <p className="mt-0.5 text-sm text-ink-muted">{rates.perDelivery > 0 ? `${formatBRL(rates.perDelivery)} por entrega` : 'Cada entrega vale a taxa de entrega do pedido'}{rates.fixedPerShift > 0 ? ` + ${formatBRL(rates.fixedPerShift)} fixo por turno` : ''}</p>
+        </div>
+        <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-md bg-surface-muted p-1" role="group" aria-label="Período">
+          {PERIODS.map((p) => <button key={p.id} type="button" aria-pressed={period === p.id} onClick={() => setPeriod(p.id)} className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-sm px-3 text-sm font-medium ${period === p.id ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{p.label}</button>)}
+        </div>
+      </div>
 
-      {canManage && (
-        <form onSubmit={saveRates} className="surface-card flex flex-wrap items-end gap-3 p-4">
-          <div>
-            <label htmlFor="driver-rate" className="text-sm">Valor por entrega (R$)</label>
-            <input id="driver-rate" inputMode="decimal" className="mt-1 w-36 rounded-xl border px-3 py-2.5 font-mono" value={rateText} onChange={(e) => setRateText(e.target.value)} placeholder="0,00" />
-          </div>
-          <div>
-            <label htmlFor="driver-fuel" className="text-sm">Fixo por turno (R$)</label>
-            <input id="driver-fuel" inputMode="decimal" className="mt-1 w-36 rounded-xl border px-3 py-2.5 font-mono" value={fuelText} onChange={(e) => setFuelText(e.target.value)} placeholder="0,00" />
-          </div>
-          <button type="submit" className="btn-secondary">Salvar valores</button>
-          <p className="w-full text-xs text-ink-muted">Usados em "Calcular pagamentos do turno". O total pago aos entregadores sai do faturamento líquido no Financeiro.</p>
-        </form>
-      )}
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Resumo">
+        {stat('Entregas concluídas', String(delivered))}
+        {stat('A pagar', formatBRL(toPay), undefined, true)}
+        {stat('Já pago', formatBRL(paidTotal))}
+      </section>
 
-      {!currentShift ? (
-        <EmptyState
-          title="Nenhum turno aberto"
-          description="Abra um turno antes de gerenciar pagamentos de entregadores."
-          icon={Clock3}
-        />
+      {period === 'SHIFT' && !shiftId && isSupabaseConfigured ? (
+        <EmptyState title="Nenhum turno aberto" description="Escolha 7 ou 30 dias para ver as entregas já feitas." icon={Bike} />
+      ) : loading ? (
+        <p className="py-10 text-center text-sm text-ink-muted" role="status">Carregando entregas...</p>
+      ) : drivers.length === 0 ? (
+        <EmptyState title="Nenhuma entrega neste período" description="Quando um pedido sair para entrega com o nome do motoboy, ele aparece aqui e vai somando." icon={Bike} />
       ) : (
-        <>
-          {/* Cards de resumo */}
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="rounded-xl border border-line bg-surface p-4">
-              <div className="flex items-center gap-3">
-                <div className="icon-tile bg-brand-50 text-brand-700"><Bike className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-xs font-medium text-ink-muted">Entregas concluídas</p>
-                  <p className="text-2xl font-bold tabular-nums text-ink">{totalDeliveries}</p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-xl border border-line bg-surface p-4">
-              <div className="flex items-center gap-3">
-                <div className="icon-tile bg-emerald-50 text-emerald-700"><DollarSign className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-xs font-medium text-ink-muted">Total a pagar</p>
-                  <p className="text-2xl font-bold tabular-nums text-ink">{formatBRL(totalAmount)}</p>
-                </div>
-              </div>
-            </div>
-            <div className="rounded-xl border border-line bg-surface p-4">
-              <div className="flex items-center gap-3">
-                <div className="icon-tile bg-amber-50 text-amber-700"><Clock3 className="h-5 w-5" /></div>
-                <div>
-                  <p className="text-xs font-medium text-ink-muted">Pendente</p>
-                  <p className="text-2xl font-bold tabular-nums text-ink">{formatBRL(pendingAmount)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Ações */}
-          {canManage && (
-            <div className="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onClick={handleCalculate}
-                disabled={calculating}
-                className="btn-primary"
-              >
-                <Calculator className="h-4 w-4" aria-hidden="true" />
-                {calculating ? 'Calculando...' : 'Calcular pagamentos do turno'}
-              </button>
-              <button
-                type="button"
-                onClick={loadPayouts}
-                disabled={loading}
-                className="btn-secondary"
-              >
-                {loading ? 'Atualizando...' : 'Atualizar lista'}
-              </button>
-            </div>
-          )}
-
-          {/* Lista de pagamentos */}
-          {payouts.length === 0 ? (
-            <EmptyState
-              title="Nenhum pagamento calculado"
-              description="Clique em 'Calcular pagamentos do turno' para gerar os valores por entregador."
-              icon={DollarSign}
-            />
-          ) : (
-            <div className="space-y-3">
-              {payouts.map((payout) => (
-                <div
-                  key={payout.id}
-                  className={`rounded-xl border p-4 ${payout.paid_at ? 'border-emerald-200 bg-emerald-50/50' : 'border-line bg-surface'}`}
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="truncate text-base font-semibold text-ink">{payout.driver_name}</h3>
-                        {payout.paid_at ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-[13px] font-semibold text-emerald-800">
-                            <CheckCircle2 className="h-3 w-3" /> Pago
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[13px] font-semibold text-amber-800">
-                            <Clock3 className="h-3 w-3" /> Pendente
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1 text-sm sm:grid-cols-4">
-                        <div>
-                          <span className="block text-xs text-ink-muted">Entregas</span>
-                          <span className="font-semibold tabular-nums text-ink">{payout.deliveries_count}</span>
-                        </div>
-                        <div>
-                          <span className="block text-xs text-ink-muted">Taxa/entrega</span>
-                          <span className="font-semibold tabular-nums text-ink">{formatBRL(Number(payout.per_delivery_rate))}</span>
-                        </div>
-                        <div>
-                          <span className="block text-xs text-ink-muted">Combustível</span>
-                          <span className="font-semibold tabular-nums text-ink">{formatBRL(Number(payout.fuel_fixed))}</span>
-                        </div>
-                        <div>
-                          <span className="block text-xs text-ink-muted">Total</span>
-                          <span className="text-lg font-bold tabular-nums text-brand-700">{formatBRL(Number(payout.total))}</span>
-                        </div>
-                      </div>
-                    </div>
-                    {canManage && !payout.paid_at && (
-                      <button
-                        type="button"
-                        onClick={() => handleMarkPaid(payout.id)}
-                        className="btn-secondary shrink-0 text-sm"
-                      >
-                        <CheckCircle2 className="h-4 w-4" aria-hidden="true" />
-                        Marcar como pago
-                      </button>
-                    )}
+        <ul className="space-y-3" aria-label="Motoboys">
+          {drivers.map((driver) => {
+            const isOpen = Boolean(open[driver.key]);
+            return (
+              <li key={driver.key} className="overflow-hidden rounded-lg border border-line bg-surface">
+                <div className="flex flex-wrap items-center gap-3 p-4">
+                  <button type="button" onClick={() => setOpen((c) => ({ ...c, [driver.key]: !c[driver.key] }))} aria-expanded={isOpen} className="flex min-h-[44px] min-w-[12rem] flex-1 items-center gap-3 text-left">
+                    <ChevronDown className={`h-5 w-5 shrink-0 text-ink-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-lg font-semibold text-ink">{driver.name}</span>
+                      <span className="block text-sm text-ink-muted">{driver.toPayCount} a pagar · {driver.deliveries.length} no período{driver.paidTotal > 0 ? ` · já pago ${formatBRL(driver.paidTotal)}` : ''}</span>
+                    </span>
+                  </button>
+                  <div className="flex w-full items-center justify-between gap-3 sm:ml-auto sm:w-auto">
+                    <span className="text-left sm:text-right">
+                      <span className="block text-[13px] text-ink-muted">A pagar</span>
+                      <span className="block font-mono text-xl font-bold text-ink">{formatBRL(driver.total)}</span>
+                    </span>
+                    {canManage && (driver.toPayCount > 0 && driver.named
+                      ? <button type="button" onClick={() => void pay(driver)} disabled={paying === driver.key} className="btn-primary min-h-[44px] shrink-0"><CheckCircle2 className="h-4 w-4" aria-hidden="true" />{paying === driver.key ? 'Registrando...' : 'Pagar'}</button>
+                      : driver.named && <span className="shrink-0 text-sm font-semibold text-emerald-700">Em dia</span>)}
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </>
+                {isOpen && (
+                  <div className="border-t border-line">
+                    <ul className="divide-y divide-line" aria-label={`Entregas de ${driver.name}`}>
+                      {driver.deliveries.map(({ order, value, state }) => (
+                        <li key={order.id} className="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-0.5 px-4 py-2.5 sm:grid-cols-[5rem_1fr_8rem_5rem_6rem]">
+                          <span className="font-mono text-sm font-semibold text-ink">#{order.order_number}</span>
+                          <span className="order-3 col-span-2 min-w-0 truncate text-sm text-ink-secondary sm:order-none sm:col-span-1">{order.customer_name}{order.address_neighborhood ? ` · ${order.address_neighborhood}` : ''}</span>
+                          <span className="order-4 col-span-2 font-mono text-[13px] text-ink-muted sm:order-none sm:col-span-1">{moment(order.delivered_at ?? order.dispatched_at ?? order.created_at)}</span>
+                          <span className={`order-5 col-span-2 text-[13px] font-semibold sm:order-none sm:col-span-1 ${STATE[state].className}`}>{STATE[state].label}</span>
+                          <span className="text-right font-mono text-sm font-semibold text-ink">{formatBRL(value)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {driver.fixedDue > 0 && (
+                      <p className="flex justify-between gap-3 border-t border-line px-4 py-2.5 text-sm text-ink-secondary"><span>Entregas {formatBRL(driver.deliveriesValue)} + fixo por turno</span><span className="font-mono font-semibold text-ink">{formatBRL(driver.fixedDue)}</span></p>
+                    )}
+                    {!driver.named && <p className="border-t border-line px-4 py-2.5 text-sm text-amber-800">Estes pedidos saíram sem o nome do motoboy, então não entram em nenhum pagamento.</p>}
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {canManage && (
+        <details className="group rounded-lg border border-line bg-surface">
+          <summary className="flex min-h-[48px] cursor-pointer list-none items-center gap-2 px-4 text-[15px] font-semibold text-ink [&::-webkit-details-marker]:hidden">
+            <Settings2 className="h-4 w-4 text-ink-muted" aria-hidden="true" /><span className="flex-1">Valores do pagamento</span>
+            <ChevronDown className="h-4 w-4 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <form onSubmit={saveRates} className="grid gap-4 border-t border-line p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <label className="block text-sm text-ink-secondary">Valor combinado por entrega (R$)
+              <input inputMode="decimal" className="mt-1 block min-h-[44px] w-full rounded-md border px-3 font-mono" value={rateText} onChange={(e) => setRateText(e.target.value)} placeholder="0,00" />
+            </label>
+            <label className="block text-sm text-ink-secondary">Fixo por turno (R$)
+              <input inputMode="decimal" className="mt-1 block min-h-[44px] w-full rounded-md border px-3 font-mono" value={fixedText} onChange={(e) => setFixedText(e.target.value)} placeholder="0,00" />
+            </label>
+            <button type="submit" className="btn-secondary min-h-[44px]">Salvar valores</button>
+            <p className="text-[13px] text-ink-muted sm:col-span-3">Deixe o valor por entrega em 0,00 para usar a taxa de entrega de cada pedido.</p>
+          </form>
+        </details>
       )}
     </div>
   );
