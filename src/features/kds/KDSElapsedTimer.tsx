@@ -10,6 +10,13 @@ export function elapsedLevel(createdAt: string, now: number, warningMinutes: num
 }
 
 /** Borda do cartão por nível: faixa grossa à esquerda, sem mudar o fundo. */
+/** Faixa do cartão: mesma cor do Salão; amarela e vermelha conforme a espera. */
+export const LEVEL_STRIP: Record<ElapsedLevel, string> = {
+  ok: 'bg-brand-500 text-white',
+  warning: 'bg-amber-400 text-amber-950',
+  urgent: 'bg-rose-700 text-white',
+};
+
 export const LEVEL_CARD: Record<ElapsedLevel, string> = {
   ok: 'border-l-emerald-600',
   warning: 'border-l-amber-500',

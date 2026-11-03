@@ -14,7 +14,7 @@ import { useTableStore } from '../../stores/useTableStore';
 import type { MeatDoneness } from '../../types/enums';
 import { GrillExhaustModal } from './GrillExhaustModal';
 import { GrillLiveSummary } from './GrillLiveSummary';
-import { KDSElapsedTimer, elapsedLevel, useNow, type ElapsedLevel } from './KDSElapsedTimer';
+import { KDSElapsedTimer, LEVEL_STRIP, elapsedLevel, useNow } from './KDSElapsedTimer';
 
 /** Tempo para desfazer um toque errado antes de avisar cozinha/cliente. */
 const UNDO_MS = 4000;
@@ -34,12 +34,6 @@ interface GrillTicket {
   doneMessage: string;
 }
 
-/** Faixa do cartão: mesma cor do Salão; amarela e vermelha conforme a espera. */
-const STRIP: Record<ElapsedLevel, string> = {
-  ok: 'bg-brand-500 text-white',
-  warning: 'bg-amber-400 text-amber-950',
-  urgent: 'bg-rose-700 text-white',
-};
 
 const KIND_LABEL: Record<TicketKind, { label: string; classes: string }> = {
   LOCAL: { label: 'Local', classes: 'bg-surface-muted text-ink-secondary' },
@@ -208,9 +202,8 @@ export const GrillKDSView: React.FC = () => {
             const isPending = Boolean(pending[ticket.key]);
             const level = elapsedLevel(ticket.createdAt, now, 15, 25);
             const isOpen = Boolean(openCards[ticket.key]);
-            const hasNotes = Boolean(ticket.notes) || ticket.items.some((item) => item.notes);
             const units = ticket.items.reduce((sum, item) => sum + item.quantity, 0);
-            const strip = isPending ? 'bg-emerald-600 text-white' : STRIP[level];
+            const strip = isPending ? 'bg-emerald-600 text-white' : LEVEL_STRIP[level];
             return (
               <li key={ticket.key} className="flex flex-col rounded-xl border border-line bg-surface shadow-xs">
                 {/* Mesmo formato do cartão do Salão: nome em cima, itens e faixa colorida embaixo */}
@@ -221,7 +214,6 @@ export const GrillKDSView: React.FC = () => {
                       {ticket.kind !== 'LOCAL' && <span className={`shrink-0 rounded-sm px-1.5 py-0.5 font-semibold ${kind.classes}`}>{kind.label}</span>}
                       <span className="truncate">{ticket.subtitle}</span>
                     </span>
-                    {hasNotes && <span className="shrink-0 rounded-sm bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-900">Obs</span>}
                     <ChevronDown className={`h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                   </button>
                   {ticket.kind !== 'LOCAL' && (isPending ? (

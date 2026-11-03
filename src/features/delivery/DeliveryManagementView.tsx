@@ -1,4 +1,3 @@
-import { StatusTag } from '../../components/ui/StatusTag';
 import {
   BadgeCheck,
   Bike,
@@ -126,7 +125,7 @@ function WhatsAppStatus({ messages, onRetry }: { messages: WhatsAppMessage[]; on
 
 import { useCancelDeliveryOrder } from './useCancelDeliveryOrder';
 import { useShiftStore } from '../../stores/useShiftStore';
-import { KDSElapsedTimer, LEVEL_CARD, useNow } from '../kds/KDSElapsedTimer';
+import { KDSElapsedTimer, LEVEL_STRIP, useNow } from '../kds/KDSElapsedTimer';
 
 export const DeliveryManagementView: React.FC = () => {
   const { requestText, notify } = useFeedback();
@@ -135,6 +134,8 @@ export const DeliveryManagementView: React.FC = () => {
   const settings = useSettingsStore((s) => s.settings);
 
   const [activeTab, setActiveTab] = useState<'orders' | 'payouts'>('orders');
+  const [openCards, setOpenCards] = useState<Record<string, boolean>>({});
+  const toggleCard = (id: string) => setOpenCards((current) => ({ ...current, [id]: !current[id] }));
   const now = useNow();
   // Entregador abre direto nos pedidos prontos para sair
   const [filter, setFilter] = useState<DeliveryFilter>(() => (currentProfile.role === 'ENTREGADOR' ? 'READY' : 'ALL_ACTIVE'));
@@ -208,15 +209,15 @@ export const DeliveryManagementView: React.FC = () => {
   };
 
   /** Ação principal do cartão (48px), conforme a etapa. */
-  const mainAction = (order: DeliveryOrder): { label: string; icon: typeof Bike; tone: string; run: () => void } | null => {
+  const mainAction = (order: DeliveryOrder): { label: string; short: string; icon: typeof Bike; tone: string; run: () => void } | null => {
     const pickup = isPickupOrder(order);
     const advance = () => void handleAdvanceStatus(order);
     switch (order.status) {
-      case 'AWAITING_PAYMENT': return { label: 'Reenviar link do PIX', icon: Send, tone: 'btn-secondary', run: () => resendPixLink(order) };
-      case 'CONFIRMED': return { label: 'Iniciar preparo', icon: Flame, tone: 'btn-primary', run: advance };
-      case 'PREPARING': return { label: 'Pedido pronto', icon: PackageCheck, tone: 'btn-success', run: advance };
-      case 'READY': return pickup ? { label: isDineInOrder(order) ? 'Concluir pedido' : 'Cliente retirou', icon: CheckCheck, tone: 'btn-success', run: advance } : { label: 'Saiu para entrega', icon: Bike, tone: 'btn-primary', run: advance };
-      case 'OUT_FOR_DELIVERY': return { label: 'Confirmar entrega', icon: CheckCheck, tone: 'btn-success', run: advance };
+      case 'AWAITING_PAYMENT': return { label: 'Reenviar link do PIX', short: 'Link PIX', icon: Send, tone: 'btn-secondary', run: () => resendPixLink(order) };
+      case 'CONFIRMED': return { label: 'Iniciar preparo', short: 'Preparar', icon: Flame, tone: 'btn-primary', run: advance };
+      case 'PREPARING': return { label: 'Pedido pronto', short: 'Pronto', icon: PackageCheck, tone: 'btn-success', run: advance };
+      case 'READY': return pickup ? { label: isDineInOrder(order) ? 'Concluir pedido' : 'Cliente retirou', short: isDineInOrder(order) ? 'Concluir' : 'Retirou', icon: CheckCheck, tone: 'btn-success', run: advance } : { label: 'Saiu para entrega', short: 'Saiu', icon: Bike, tone: 'btn-primary', run: advance };
+      case 'OUT_FOR_DELIVERY': return { label: 'Confirmar entrega', short: 'Entregue', icon: CheckCheck, tone: 'btn-success', run: advance };
       default: return null;
     }
   };
@@ -288,7 +289,7 @@ export const DeliveryManagementView: React.FC = () => {
       {filteredOrders.length === 0 ? (
         <EmptyState title="Nenhum pedido nesta etapa" description="Os pedidos do cardápio digital aparecerão aqui para acompanhamento." icon={Bike} />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        <ul className="grid grid-cols-1 items-start gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-label="Pedidos">
           {filteredOrders.map((order) => {
             const isPickup = isPickupOrder(order);
             const status = getDeliveryStatusConfig(order.status, order.order_type);
@@ -300,28 +301,30 @@ export const DeliveryManagementView: React.FC = () => {
             const level = !isActive ? null : lateBy > 0 ? 'urgent' : elapsed >= eta * 0.75 ? 'warning' : 'ok';
             const itemCount = order.items.reduce((s, i) => s + i.quantity, 0);
             const action = mainAction(order);
+            const isOpen = Boolean(openCards[order.id]);
 
             return (
-              <div key={order.id} className={`p-5 rounded-2xl border border-line bg-surface flex flex-col gap-3 ${level ? `border-l-8 ${LEVEL_CARD[level]}` : ''}`}>
-                {/* Nº + cliente | total + hora */}
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <span className="font-mono text-sm font-semibold text-ink-muted">#{order.order_number}</span>
-                    <h4 className="break-words text-2xl font-bold leading-tight text-ink">{order.customer_name}</h4>
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <span className="block font-mono text-lg font-bold text-ink">{formatBRL(order.total)}</span>
-                    <span className="font-mono text-sm text-ink-muted">{timeOf(order.created_at)}</span>
-                  </div>
+              <li key={order.id} className="flex flex-col rounded-xl border border-line bg-surface shadow-xs">
+                {/* Mesmo formato do cartão da Produção: fechado todos têm a mesma altura */}
+                <div className="flex h-10 items-center gap-2 px-3">
+                  <button type="button" onClick={() => toggleCard(order.id)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Fechar' : 'Ver'} pedido #${order.order_number} de ${order.customer_name}`} className="flex h-full min-w-0 flex-1 items-center gap-2 text-left">
+                    <h4 className="max-w-[70%] shrink-0 truncate text-base font-bold leading-tight tracking-tight text-ink tabular-nums">#{order.order_number} {order.customer_name}</h4>
+                    <span className="min-w-0 flex-1 truncate text-xs text-ink-muted">{isPickup ? (isDineInOrder(order) ? 'Local' : 'Retirada') : order.address_neighborhood || 'Entrega'}</span>
+                    <ChevronDown className={`h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+                  </button>
+                  {action && (
+                    <button type="button" onClick={action.run} aria-label={action.label} title={action.label} className={`${action.tone} h-8 min-h-0 shrink-0 px-2 text-xs font-bold`}>
+                      <action.icon className="h-4 w-4" aria-hidden="true" />{action.short}
+                    </button>
+                  )}
                 </div>
 
-                {/* Etapa com tempo + tipo */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <StatusTag kind={status.kind} className="font-semibold">{order.status === 'PREPARING' && !hasGrillItems(order) ? 'Em preparo' : status.label}{isActive && <> · <KDSElapsedTimer compact createdAt={stageStart(order)} /></>}</StatusTag>
-                  {lateBy > 0 && <StatusTag kind="alert" className="font-semibold">Atrasado {lateBy} min</StatusTag>}
-                  <span className="text-[15px] text-ink-secondary">{isPickup ? (isDineInOrder(order) ? 'Consumir no local' : 'Retirada no balcão') : `Entrega · ${order.address_neighborhood || 'sem bairro'}`}</span>
-                </div>
-
+                {isOpen && (
+                  <div className="space-y-3 border-t border-line px-3 py-3">
+                    <p className="flex items-center justify-between gap-2 text-[15px]">
+                      <span className="min-w-0 font-semibold text-ink-secondary">{isPickup ? (isDineInOrder(order) ? 'Consumir no local' : 'Retirada no balcão') : `Entrega · ${order.address_neighborhood || 'sem bairro'}`}</span>
+                      <span className="shrink-0 font-mono font-bold text-ink">{formatBRL(order.total)} · {timeOf(order.created_at)}</span>
+                    </p>
                 {/* Endereço e telefone */}
                 <div className="space-y-1 text-[15px] text-ink">
                   {!isPickup && (
@@ -337,13 +340,7 @@ export const DeliveryManagementView: React.FC = () => {
                   <p className="flex items-center gap-2 text-ink-secondary"><Phone className="h-4 w-4 shrink-0 text-ink-muted" aria-hidden="true" />{order.phone}</p>
                 </div>
 
-                {/* Itens recolhidos (com horários e mensagens do WhatsApp) */}
-                <details className="group rounded-md border border-line">
-                  <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between gap-2 px-3 text-[15px] [&::-webkit-details-marker]:hidden">
-                    <span className="font-semibold text-ink">{itemCount} {itemCount === 1 ? 'item' : 'itens'}</span>
-                    <span className="flex items-center gap-1 font-semibold text-brand-700">Ver itens<ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" aria-hidden="true" /></span>
-                  </summary>
-                  <div className="space-y-1.5 border-t border-line px-3 py-2.5 text-[15px]">
+                  <div className="space-y-1.5 text-[15px]">
                     {order.items.map((item) => (
                       <div key={item.id} className="flex items-start justify-between gap-2">
                         <span className="text-ink">
@@ -357,8 +354,6 @@ export const DeliveryManagementView: React.FC = () => {
                     <StatusTimeline order={order} />
                     <WhatsAppStatus messages={whatsappMessages.filter((m) => m.delivery_order_id === order.id)} onRetry={(id) => void retryWhatsAppMessage(id)} />
                   </div>
-                </details>
-
                 {/* Pagamento numa linha só */}
                 <div className="flex flex-wrap items-center justify-between gap-2 text-[15px]">
                   <span className="text-ink">{paymentLine(order)}</span>
@@ -369,13 +364,6 @@ export const DeliveryManagementView: React.FC = () => {
                   )}
                 </div>
 
-                {/* Ações: principal (48px) + WhatsApp e menu "mais" */}
-                <div className="mt-auto space-y-2 border-t border-line pt-3">
-                  {action && (
-                    <button type="button" onClick={action.run} className={`flex min-h-[48px] w-full items-center justify-center gap-2 rounded-md px-3 text-[15px] font-semibold ${action.tone}`}>
-                      <action.icon className="h-5 w-5" aria-hidden="true" />{action.label}
-                    </button>
-                  )}
                   <div className="flex gap-2">
                     <button type="button" onClick={() => sendWhatsAppUpdate(order)} className="btn-secondary min-h-[44px] flex-1 px-3.5" aria-label="Enviar atualização de status no WhatsApp do cliente">
                       <MessageCircle className="h-4 w-4 text-ink-muted" aria-hidden="true" />WhatsApp
@@ -394,11 +382,17 @@ export const DeliveryManagementView: React.FC = () => {
                     )}
                   </div>
                   {order.driver_name && <p className="text-center text-sm text-ink-secondary">Entregador: <strong>{order.driver_name}</strong></p>}
+                  </div>
+                )}
+
+                <div className={`flex h-7 items-center justify-between gap-2 rounded-b-xl px-3 text-xs font-bold ${level ? LEVEL_STRIP[level] : 'bg-surface-muted text-ink-secondary'}`}>
+                  <span className="min-w-0 truncate">{itemCount} {itemCount === 1 ? 'item' : 'itens'} · {lateBy > 0 ? `Atrasado ${lateBy} min` : order.status === 'PREPARING' && !hasGrillItems(order) ? 'Em preparo' : status.label}</span>
+                  {isActive && <span className="shrink-0 font-mono text-sm font-black"><KDSElapsedTimer compact createdAt={stageStart(order)} /></span>}
                 </div>
-              </div>
+              </li>
             );
           })}
-        </div>
+        </ul>
       )}
       </>
       )}
