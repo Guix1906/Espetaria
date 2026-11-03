@@ -44,6 +44,8 @@ const COMBO_SIDES = '★ Completo inclui arroz, vinagrete, farofa e purê';
 const display = "font-['Oswald',sans-serif]";
 const MENU_MODES: { id: OrderMode; label: string }[] = [{ id: 'DELIVERY', label: 'Entrega' }, { id: 'DINE_IN', label: 'No local' }, { id: 'PICKUP', label: 'Retirada' }];
 const COMBO_SUFFIX = /\s+com acompanhamento\s*$/i;
+/** Hora em que a loja abre (aviso de loja fechada no cardápio). */
+const STORE_OPENS_AT = 18;
 const NO_RICE = 'Sem arroz';
 export const COMBO_SIDE_ITEMS = ['Vinagrete', 'Farofa', 'Purê'];
 /** Observação que vai para a cozinha: arroz escolhido, o que o cliente tirou e o texto livre. */
@@ -838,7 +840,7 @@ export function PublicMenuApp() {
             <p className="mt-2 flex items-center gap-2.5 text-[12px] uppercase tracking-[3px] text-[#e8b64a]"><span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" />Espetos na brasa<span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" /></p>
           </div>
           <div className="mt-[18px] space-y-3 px-5">
-            <p className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[14px] ${isOpen ? 'border-line bg-surface-soft' : 'border-[#4a2620] bg-[#2a1a16]'}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-[#d8382f]'}`} />{isOpen ? <span><b className="font-semibold">Aberto agora</b> · {isPickup ? pickupEta : deliveryEta}</span> : <span><b className="font-semibold">Fechado no momento</b> · pedidos só no horário de funcionamento</span>}</p>
+            <p className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[14px] ${isOpen ? 'border-line bg-surface-soft' : 'border-[#4a2620] bg-[#2a1a16]'}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-[#d8382f]'}`} />{isOpen ? <span><b className="font-semibold">Aberto agora</b> · {isPickup ? pickupEta : deliveryEta}</span> : <span><b className="font-semibold">Fechado</b> · abre {new Date().getHours() < STORE_OPENS_AT ? 'hoje' : 'amanhã'} às {STORE_OPENS_AT}h</span>}</p>
             <Segmented label="Como você quer receber" value={orderMode} onChange={setOrderMode} options={MENU_MODES} />
             {searchBox}
           </div>
