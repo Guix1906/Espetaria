@@ -172,3 +172,17 @@ describe('ETAPA 7: Integração PIX Dinâmico (BR Code / BACEN) & WhatsApp ("API
     });
   });
 });
+
+describe('chave PIX de telefone', () => {
+  it('entra no código com +55, senão o banco recusa', async () => {
+    const { generatePixPayload, normalizePixKey } = await import('../../../lib/pix');
+    expect(normalizePixKey('99985329013', 'TELEFONE')).toBe('+5599985329013');
+    expect(normalizePixKey('(99) 98532-9013', 'TELEFONE')).toBe('+5599985329013');
+    expect(normalizePixKey('+5599985329013', 'TELEFONE')).toBe('+5599985329013');
+    expect(normalizePixKey('123.456.789-09', 'CPF')).toBe('12345678909');
+    expect(normalizePixKey('loja@email.com', 'EMAIL')).toBe('loja@email.com');
+    const payload = generatePixPayload({ pixKey: '99985329013', pixKeyType: 'TELEFONE', merchantName: 'ESPETARIA', merchantCity: 'LAGO DA PEDRA', amount: 41 });
+    expect(payload).toContain('0114+5599985329013');
+    expect(payload).toContain('540541.00');
+  });
+});

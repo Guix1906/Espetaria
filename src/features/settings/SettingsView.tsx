@@ -165,6 +165,7 @@ export const SettingsView: React.FC = () => {
   const previewAmount = 45.0;
   const samplePayload = generatePixPayload({
     pixKey,
+    pixKeyType,
     merchantName: pixMerchantName || 'ESPETARIA SABOR DA CARNE',
     merchantCity: pixMerchantCity || 'SAO PAULO',
     amount: previewAmount,

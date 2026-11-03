@@ -604,7 +604,7 @@ export function PublicMenuApp() {
           <div key={m.id} className={`rounded-md bg-surface ${on ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}>
             <button type="button" role="radio" aria-checked={on} onClick={() => { setPayment(m.id); setFormError(null); }} className="flex w-full items-start gap-3 text-left">
               <Radio on={on} />
-              <span><span className="block text-[16px] font-semibold">{m.id === 'CARTAO_ENTREGA' && isPickup ? 'Cartão no local' : m.label}</span><span className="mt-0.5 block text-[14px] text-ink-muted">{m.id === 'DINHEIRO' && isPickup ? 'Pague no balcão' : m.hint}</span></span>
+              <span><span className="block text-[16px] font-semibold">{m.id === 'CARTAO_ENTREGA' && isPickup ? 'Cartão no local' : m.label}</span><span className="mt-0.5 block text-[14px] text-ink-muted">{m.id === 'DINHEIRO' && isPickup ? 'Pague no balcão' : m.id === 'PIX' && settings.pix_key?.trim() ? `Chave ${settings.pix_key.trim()}. QR Code ao enviar o pedido` : m.hint}</span></span>
             </button>
             {on && m.id === 'DINHEIRO' && !inRow && cashFields}
           </div>

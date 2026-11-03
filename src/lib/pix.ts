@@ -6,6 +6,8 @@
 
 export interface PixPayloadParams {
   pixKey: string;
+  /** TELEFONE, CPF, CNPJ, EMAIL ou ALEATORIA: define o formato exigido no código. */
+  pixKeyType?: string;
   merchantName: string;
   merchantCity: string;
   amount?: number;
@@ -55,11 +57,21 @@ function sanitizeString(str: string, maxLen: number): string {
     .trim();
 }
 
+/** Formato da chave dentro do BR Code: telefone precisa de +55; CPF e CNPJ só com números. */
+export function normalizePixKey(key: string, type?: string): string {
+  const clean = key.trim();
+  const digits = clean.replace(/\D/g, '');
+  if (type === 'TELEFONE') return `+${digits.startsWith('55') && digits.length >= 12 ? digits : `55${digits}`}`;
+  if (type === 'CPF' || type === 'CNPJ') return digits;
+  return clean;
+}
+
 /**
  * Gera a string Pix Copia e Cola (BR Code) oficial do BACEN
  */
 export function generatePixPayload({
   pixKey,
+  pixKeyType,
   merchantName,
   merchantCity,
   amount,
@@ -71,7 +83,7 @@ export function generatePixPayload({
 
   // 26: Merchant Account Information - GUI br.gov.bcb.pix
   const gui = formatEMV('00', 'br.gov.bcb.pix');
-  const key = formatEMV('01', pixKey.trim());
+  const key = formatEMV('01', normalizePixKey(pixKey, pixKeyType));
   const desc = description ? formatEMV('02', sanitizeString(description, 40)) : '';
   const merchantAccountInfo = formatEMV('26', `${gui}${key}${desc}`);
 

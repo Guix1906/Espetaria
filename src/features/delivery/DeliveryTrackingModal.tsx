@@ -35,29 +35,17 @@ async function copyText(text: string) {
 
 const PIX_HOW_TO = 'Abra o app do banco e cole em PIX Copia e Cola.';
 
-/** QR Code escondido: no celular o cliente usa o Copia e Cola; o QR é para pagar de outro aparelho. */
-function PixQrToggle({ payload }: { payload: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div>
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} className="flex min-h-[44px] w-full items-center justify-center gap-2 text-sm font-semibold text-brand-700">
-        <QrCode className="h-4 w-4" aria-hidden="true" />{open ? 'Esconder QR Code' : 'Mostrar QR Code'}
-      </button>
-      {open && <PixQrCode payload={payload} size={200} />}
-    </div>
-  );
-}
-
-/** Pagamento PIX do pedido: Copia e Cola no valor exato (QR Code sob demanda). */
+/** Pagamento PIX do pedido: QR Code, Copia e Cola no valor exato e a chave da loja. */
 export function DeliveryPixPanel({ order }: { order: DeliveryOrder }) {
   const { settings } = useSettingsStore();
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<'code' | 'key' | null>(null);
   // Sem chave cadastrada (ou ainda carregando): não mostra QR Code de chave errada
   if (!settings.pix_key?.trim()) {
     return <p className="notice border-amber-200 bg-amber-50 text-amber-900">Pagamento por PIX: peça a chave pelo botão <strong>Falar com a espetaria</strong>.</p>;
   }
   const payload = generatePixPayload({
     pixKey: settings.pix_key,
+    pixKeyType: settings.pix_key_type,
     merchantName: settings.pix_merchant_name,
     merchantCity: settings.pix_merchant_city,
     amount: order.total,
@@ -65,10 +53,10 @@ export function DeliveryPixPanel({ order }: { order: DeliveryOrder }) {
     description: `Pedido ${order.order_number}`,
   });
 
-  const copy = async () => {
-    if (!(await copyText(payload))) return;
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 2000);
+  const copy = async (what: 'code' | 'key') => {
+    if (!(await copyText(what === 'code' ? payload : settings.pix_key.trim()))) return;
+    setCopied(what);
+    window.setTimeout(() => setCopied(null), 2000);
   };
 
   return (
@@ -78,12 +66,21 @@ export function DeliveryPixPanel({ order }: { order: DeliveryOrder }) {
         <p className="mt-1 text-2xl font-bold text-brand-800 tabular-nums">{formatBRL(order.total)}</p>
         <p className="text-xs text-ink-secondary">Favorecido: {settings.pix_merchant_name}</p>
       </div>
-      <button type="button" onClick={() => void copy()} className={`${copied ? 'btn-success' : 'btn-primary'} w-full`}>
-        {copied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
-        {copied ? 'Código copiado' : 'Copiar código PIX'}
+      <PixQrCode payload={payload} size={208} />
+      <button type="button" onClick={() => void copy('code')} className={`${copied === 'code' ? 'btn-success' : 'btn-primary'} w-full`}>
+        {copied === 'code' ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
+        {copied === 'code' ? 'Código copiado' : 'Copiar código PIX'}
       </button>
       <p className="text-center text-[14px] text-ink-secondary">{PIX_HOW_TO}</p>
-      <PixQrToggle payload={payload} />
+      <div className="flex items-center justify-between gap-3 rounded-md border border-line bg-surface px-3 py-2.5">
+        <span className="min-w-0">
+          <span className="block text-[13px] text-ink-muted">Chave PIX</span>
+          <span className="block break-all font-mono text-[18px] font-bold text-ink">{settings.pix_key.trim()}</span>
+        </span>
+        <button type="button" onClick={() => void copy('key')} className="btn-secondary min-h-[44px] shrink-0 px-3 text-sm">
+          {copied === 'key' ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}{copied === 'key' ? 'Copiada' : 'Copiar'}
+        </button>
+      </div>
     </section>
   );
 }
@@ -158,7 +155,7 @@ export function AutoPixPanel({ order }: { order: DeliveryOrder }) {
         {copied ? 'Código copiado' : 'Copiar código PIX'}
       </button>
       <p className="text-center text-[14px] text-ink-secondary">{PIX_HOW_TO}</p>
-      <PixQrToggle payload={qr} />
+      <PixQrCode payload={qr} size={208} />
       <p className="flex items-center gap-2 text-xs text-ink-secondary"><Clock3 className="h-4 w-4 shrink-0" aria-hidden="true" />Não precisa mandar comprovante: assim que o pagamento cair, esta tela confirma sozinha e o pedido vai para a brasa.</p>
     </section>
   );

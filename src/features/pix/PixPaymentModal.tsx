@@ -34,6 +34,7 @@ function PixPaymentContent({ onClose, amount, tableNumber, customerName, custome
   const pixKey = settings.pix_key?.trim() ?? '';
   const pixPayload = pixKey ? generatePixPayload({
     pixKey,
+    pixKeyType: settings.pix_key_type,
     merchantName: settings.pix_merchant_name || settings.name,
     merchantCity: settings.pix_merchant_city || 'SAO PAULO',
     amount,
