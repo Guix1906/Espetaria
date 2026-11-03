@@ -21,6 +21,18 @@
       if (/^\/cardapio\/?$/.test(location.pathname)) {
         document.documentElement.style.background = '#17120f';
         document.getElementById('root').innerHTML = '<div style="min-height:100vh;background:#17120f;display:flex;justify-content:center;padding-top:60px"><img src="/brand/logo-sabor-da-carne-288.webp" alt="" width="128" height="128" style="height:128px;border-radius:50%;border:2px solid #e8b64a"></div>';
+        // Já pede os produtos ao banco, sem esperar o JavaScript (veja takeMenuPreload)
+        (function () {
+          var url = '%VITE_SUPABASE_URL%', key = '%VITE_SUPABASE_ANON_KEY%';
+          if (!/^https:\/\/[^%]+$/.test(url) || !window.fetch) return;
+          var headers = { apikey: key, Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' };
+          var json = function (response) { return response.ok ? response.json() : null; };
+          var none = function () { return null; };
+          window.__menuPreload = {
+            menu: fetch(url + '/rest/v1/rpc/get_public_menu', { method: 'POST', headers: headers, body: '{}' }).then(json).catch(none),
+            categories: fetch(url + '/rest/v1/categories?select=*&active=eq.true&order=display_order', { headers: headers }).then(json).catch(none)
+          };
+        })();
       }
     </script>
     <script>

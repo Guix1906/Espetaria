@@ -31,6 +31,17 @@ function showUpdateToast(waiting = false) {
   document.body.appendChild(toast);
 }
 
+/** Telas do cliente (cardápio, QR da mesa, acompanhamento): abrem pelo link, sem instalar o sistema no celular dele. */
+export function isPublicRoute(pathname: string, hash: string): boolean {
+  return pathname.replace(/\/+$/, '') === '/cardapio' || /^#\/(cardapio|mesa\/|pedido\/)/.test(hash);
+}
+
+/** Celular de cliente que instalou numa versão antiga: para de baixar o sistema inteiro a cada atualização. */
+export function removeServiceWorker() {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+  void navigator.serviceWorker.getRegistrations().then((list) => list.forEach((registration) => void registration.unregister())).catch(() => {});
+}
+
 export function initAutoUpdate() {
   if (typeof window === 'undefined') return;
 
@@ -98,9 +109,12 @@ export function initAutoUpdate() {
     },
   });
 
-  // Quando o novo Service Worker assume o controle dos clientes (clientsClaim)
+  // Quando o novo Service Worker assume o controle dos clientes (clientsClaim).
+  // Na primeira instalação não há versão antiga para trocar: nada de recarregar a tela.
   if ('serviceWorker' in navigator) {
+    let hadController = Boolean(navigator.serviceWorker.controller);
     navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController) { hadController = true; return; }
       triggerReload();
     });
   }

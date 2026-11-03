@@ -1,11 +1,14 @@
 import type { DailyPrepStock, Product } from '../types/domain';
+import { isComboProduct } from './comboStock';
 
 /** A partir de quantas unidades o item aparece como "acabando" (garçom, visão geral e estoque). */
 export const LOW_STOCK_THRESHOLD = 3;
 
 export function getProductAvailability(product: Product, stock?: DailyPrepStock) {
   return {
-    isAvailable: product.active && product.available && (!stock || (!stock.is_exhausted && stock.current_quantity > 0)),
+    // Combo: o banco marca indisponível quando zera e a abertura do turno só libera o espeto contado. Com saldo no turno, vale o saldo
+    // (o bloqueio da gerência marca o saldo como esgotado).
+    isAvailable: product.active && (product.available || (isComboProduct(product) && !!stock && product.tracks_stock !== false)) && (!stock || (!stock.is_exhausted && stock.current_quantity > 0)),
     remaining: stock?.current_quantity ?? null,
   };
 }

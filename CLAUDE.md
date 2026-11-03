@@ -94,6 +94,9 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
 - Pagamento dos motoboys (03/11, `DriverPayoutsView` + `driverPayouts.ts`, testado): soma cada entrega concluida por motoboy (taxa do pedido, ou valor combinado em Valores do pagamento; fixo uma vez por turno). `Pagar` grava em `driver_payouts` uma linha por turno, com as entregas quitadas em `notes` (JSON `order_ids`), sem migracao.
 - Instalador do programa: gerar sempre completo (`npx electron-builder --win nsis`, nunca `--prepackaged`, que sai sem a logo). electron-builder fica na 25.1.8 (a 26 travou baixando icones).
 
+- Primeira abertura do cardapio (03/11): telas do cliente (`isPublicRoute`) nao registram service worker nem recarregam; `index.html` ja busca produtos e categorias (`takeMenuPreload`) e o plugin `cardapio-modulepreload` baixa os arquivos do cardapio junto com o principal. No painel, a primeira instalacao do SW nao recarrega.
+- Combo que zerou fica com `available=false` no banco e a abertura do turno so libera o espeto contado: no garcom, combo com saldo vale pelo saldo (`getProductAvailability`).
+
 ## Chaves e credenciais — NÃO pedir ao usuário
 Antes de pedir qualquer chave, procurar nos lugares abaixo e verificar o login. Nunca mostrar valores no chat, em código ou em commits.
 - **Vercel (site)**: chaves de deploy e variáveis do site ficam NA VERCEL (projeto `espetaria`, conta `guigos191-1905`):

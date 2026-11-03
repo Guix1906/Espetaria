@@ -1,3 +1,4 @@
+import { takeMenuPreload } from '../lib/menuPreload';
 import { create } from 'zustand';
 import { Category, DailyPrepStock, DeliveryOrder, DeliveryOrderItem, DeliveryOrderType, DeliveryStatus, DeliveryPaymentMethod, Product, WhatsAppMessage } from '../types/domain';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -155,7 +156,18 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
 
   loadPublicMenu: async () => {
     if (!isSupabaseConfigured) return;
-    const { data, error } = await supabase.rpc('get_public_menu');
+    const preload = takeMenuPreload();
+    const loadMenu = async () => {
+      const early = await preload?.menu;
+      return early ? { data: early, error: null } : supabase.rpc('get_public_menu');
+    };
+    // Categorias (leitura pública) para montar abas como "Entradas"
+    const loadCategories = async () => {
+      const early = await preload?.categories;
+      if (Array.isArray(early)) return early;
+      return (await supabase.from('categories').select('*').eq('active', true).order('display_order')).data;
+    };
+    const [{ data, error }, categories] = await Promise.all([loadMenu(), loadCategories()]);
     if (error || !data) {
       logger.error({ context: 'DeliveryStore', message: 'Erro ao carregar cardápio público', error });
       throw new Error('Não foi possível carregar o cardápio. Verifique sua conexão.');
@@ -163,8 +175,6 @@ export const useDeliveryStore = create<DeliveryState>((set, get) => ({
     const menu = data as PublicMenu;
     const now = new Date().toISOString();
 
-    // Categorias (leitura pública) para montar abas como "Entradas"
-    const { data: categories } = await supabase.from('categories').select('*').eq('active', true).order('display_order');
     if (categories?.length) useStockStore.setState({ categories: categories as Category[] });
 
     useStockStore.setState({

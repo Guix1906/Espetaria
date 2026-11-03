@@ -28,6 +28,29 @@ export default defineConfig(({ command, mode }) => ({
         });
       },
     },
+    {
+      name: 'cardapio-modulepreload',
+      apply: 'build',
+      transformIndexHtml: {
+        order: 'post',
+        handler(_html, ctx) {
+          const bundle = ctx.bundle;
+          if (!bundle) return;
+          const page = Object.values(bundle).find((item) => item.type === 'chunk' && item.facadeModuleId?.endsWith('PublicMenuPage.tsx'));
+          if (!page) return;
+          const files = new Set<string>();
+          const walk = (name: string) => {
+            const item = bundle[name];
+            if (files.has(name) || !item || item.type !== 'chunk' || item.isEntry) return;
+            files.add(name);
+            item.imports.forEach(walk);
+          };
+          walk(page.fileName);
+          const urls = JSON.stringify([...files].map((file) => `/${file}`));
+          return [{ tag: 'script', injectTo: 'head' as const, children: `if(/^\\/cardapio\\/?$/.test(location.pathname)){${urls}.forEach(function(u){var l=document.createElement('link');l.rel='modulepreload';l.href=u;document.head.appendChild(l)})}` }];
+        },
+      },
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
