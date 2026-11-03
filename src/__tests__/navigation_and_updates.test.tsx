@@ -7,7 +7,7 @@ import { WaiterModule } from '../features/waiter/WaiterModule';
 import { KDSModule } from '../features/kds/KDSModule';
 import { FeedbackProvider } from '../components/ui/FeedbackProvider';
 import { ConfirmDialogProvider } from '../components/ui/ConfirmDialog';
-import { App } from '../App';
+import { AdminWorkspace } from '../AdminWorkspace';
 import type { Profile } from '../types/domain';
 
 const MOCK_MASTER_PROFILE: Profile = {
@@ -93,7 +93,7 @@ describe('Testes de Navegação Resiliente e Atualizações PWA', () => {
     mockLocalStorage.setItem('ponto_active_admin_tab', 'cashier');
     mockWindow.location.hash = '#/painel/caixa';
 
-    const html = renderWithProviders(<App />);
+    const html = renderWithProviders(<AdminWorkspace />);
 
     // Deve abrir diretamente na tela de Caixa
     expect(html).toContain('Caixa');

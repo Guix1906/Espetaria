@@ -26,3 +26,19 @@ export function optimizeThumbnailUrl(url: string | null | undefined, size = 112)
 
   return trimmed;
 }
+
+/**
+ * Foto no tamanho certo para o cardápio: fotos da loja usam a versão leve (scripts/optimize-photos.mjs);
+ * Pexels redimensiona pelo endereço. Qualquer outro link segue como está.
+ */
+export function menuPhotoUrl(url: string | null | undefined, variant: 'm' | 's'): string {
+  const trimmed = url?.trim() ?? '';
+  const own = trimmed.match(/^(.*\/produtos)\/([^/?#]+)\.(?:jpe?g|png|webp)$/i);
+  if (own) return `${own[1]}/${variant}/${own[2]}.webp`;
+  if (trimmed.includes('images.pexels.com')) {
+    const [width, height] = variant === 'm' ? [720, 405] : [240, 240];
+    const base = trimmed.replace(/[?&](w|h|fit|auto|cs|dpr)=[^&]*/g, '').replace(/[?&]$/, '');
+    return `${base}${base.includes('?') ? '&' : '?'}auto=compress&cs=tinysrgb&fit=crop&w=${width}&h=${height}`;
+  }
+  return trimmed;
+}

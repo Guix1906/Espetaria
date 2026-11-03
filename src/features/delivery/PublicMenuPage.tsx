@@ -4,6 +4,7 @@ import { useLivePolling } from '../../lib/useLivePolling';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useStockStore } from '../../stores/useStockStore';
+import { MenuSplash } from './MenuSplash';
 import { PublicMenuApp } from './PublicMenuApp';
 
 /**
@@ -40,7 +41,7 @@ export function PublicMenuPage() {
   // Status do pedido: atualiza sozinho (cliente não precisa recarregar a página)
   useLivePolling(refreshTrackingStatus, 5_000);
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center bg-surface text-[16px] text-ink-muted" role="status">Carregando cardápio...</div>;
+  if (loading) return <MenuSplash />;
   return (
     <>
       {error && <p role="alert" className="bg-[#FBEDED] px-5 py-3 text-[14px] text-[#9B2C2C]">{error}</p>}

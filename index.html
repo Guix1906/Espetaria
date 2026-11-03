@@ -11,9 +11,18 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Oswald:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
     <title>Ponto</title>
+    <link rel="preconnect" href="https://byamgmjeqawznkagouwd.supabase.co" crossorigin />
+    <link rel="preconnect" href="https://images.pexels.com" />
   </head>
   <body class="antialiased min-h-screen">
     <div id="root"><div data-splash style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#F8F5EE;color:#B5502E;font-family:sans-serif;font-size:28px;font-weight:600">Ponto</div></div>
+    <script>
+      // Cardápio: mostra a logo antes de qualquer script carregar
+      if (/^\/cardapio\/?$/.test(location.pathname)) {
+        document.documentElement.style.background = '#17120f';
+        document.getElementById('root').innerHTML = '<div style="min-height:100vh;background:#17120f;display:flex;justify-content:center;padding-top:60px"><img src="/brand/logo-sabor-da-carne-288.webp" alt="" width="128" height="128" style="height:128px;border-radius:50%;border:2px solid #e8b64a"></div>';
+      }
+    </script>
     <script>
       (function() {
         var isRecovering = false;

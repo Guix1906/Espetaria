@@ -8,6 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { comboBlockedByBase } from '../../lib/comboStock';
 import { DINE_IN_NOTE } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
+import { menuPhotoUrl } from '../../lib/imageOptimization';
 import { getProductAvailability } from '../../lib/productAvailability';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
@@ -123,8 +124,19 @@ const ClosedNotice = () => <p className="rounded-md border border-amber-200 bg-a
 const inputCls = 'h-12 w-full rounded-md border border-line bg-surface px-3.5 text-[16px] text-ink placeholder:text-ink-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-50';
 const labelCls = 'mb-1.5 block text-[14px] font-medium text-ink-secondary';
 
-function Photo({ product, className }: { product: Product; className: string }) {
-  if (product.image_url) return <img src={product.image_url} alt="" loading="lazy" decoding="async" className={`${className} object-cover`} />;
+function Photo({ product, className, variant = 'm', priority = false }: { product: Product; className: string; variant?: 'm' | 's'; priority?: boolean }) {
+  const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  // Se a versão leve faltar, cai na foto original
+  const src = failed ? product.image_url : menuPhotoUrl(product.image_url, variant);
+  if (product.image_url) return (
+    <span className={`${className} block overflow-hidden bg-surface-muted`}>
+      <img src={src ?? ''} alt="" loading={priority ? 'eager' : 'lazy'} decoding="async" {...(priority ? { fetchpriority: 'high' } : {})}
+        ref={(el) => { if (el?.complete && el.naturalWidth && !loaded) setLoaded(true); }}
+        onLoad={() => setLoaded(true)} onError={() => { if (!failed) setFailed(true); }}
+        className={`block h-full w-full object-cover transition-opacity duration-200 ${loaded ? 'opacity-100' : 'opacity-0'}`} />
+    </span>
+  );
   return <div aria-hidden="true" className={`${className} flex items-center justify-center bg-[repeating-linear-gradient(135deg,rgb(var(--color-surface-muted))_0_8px,rgb(var(--color-canvas))_8px_16px)] text-[24px] font-semibold text-ink-muted`}>{product.name.replace(/^espeto (de )?/i, '').charAt(0).toUpperCase()}</div>;
 }
 
@@ -453,7 +465,7 @@ export function PublicMenuApp() {
       {isOpen ? `Aberto agora · ${isPickup ? pickupEta : deliveryEta}` : 'Fechado no momento'}
     </p>
   );
-  const logo = <img src="/brand/logo-sabor-da-carne.webp" alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-full border border-[#e8b64a] object-cover" />;
+  const logo = <img src="/brand/logo-sabor-da-carne-288.webp" alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-full border border-[#e8b64a] object-cover" />;
   const searchBox = (
     <label className="relative block">
       <span className="sr-only">Buscar no cardápio</span>
@@ -486,7 +498,7 @@ export function PublicMenuApp() {
     );
   };
 
-  const productBody = (p: Product) => {
+  const productBody = (p: Product, priority = false) => {
     const combo = comboOf.get(p.id);
     const isCombo = COMBO_SUFFIX.test(p.name);
     const featuredCard = !!combo || isCombo;
@@ -496,7 +508,7 @@ export function PublicMenuApp() {
     // Espeto: foto grande e as duas opções, como no layout. Demais itens: linha compacta para a página não ficar enorme
     if (featuredCard) return (
       <article className="overflow-hidden rounded-2xl border border-line bg-surface-soft">
-        <Photo product={p} className={`aspect-video w-full ${soldOut ? 'opacity-50 grayscale' : ''}`} />
+        <Photo product={p} priority={priority} className={`aspect-video w-full ${soldOut ? 'opacity-50 grayscale' : ''}`} />
         <div className="p-4">
           {title}
           {description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{description}</p>}
@@ -508,7 +520,7 @@ export function PublicMenuApp() {
     );
     return (
       <article className="flex gap-3 rounded-2xl border border-line bg-surface-soft p-3">
-        <Photo product={p} className={`h-[92px] w-[92px] shrink-0 rounded-[10px] ${soldOut ? 'opacity-50 grayscale' : ''}`} />
+        <Photo product={p} variant="s" className={`h-[92px] w-[92px] shrink-0 rounded-[10px] ${soldOut ? 'opacity-50 grayscale' : ''}`} />
         <div className="min-w-0 flex-1">
           <h3 className="text-[16px] font-semibold leading-snug">{p.name}</h3>
           {description && <p className="mt-0.5 line-clamp-2 text-[13px] leading-[1.35] text-ink-muted">{description}</p>}
@@ -518,9 +530,9 @@ export function PublicMenuApp() {
     );
   };
 
-  const productRow = (p: Product) => <li key={p.id}>{productBody(p)}</li>;
+  const productRow = (p: Product, index = 9) => <li key={p.id}>{productBody(p, index < 2)}</li>;
 
-  const productCard = (p: Product) => <div key={p.id}>{productBody(p)}</div>;
+  const productCard = (p: Product, index = 9) => <div key={p.id}>{productBody(p, index < 4)}</div>;
 
   const cartLines = (compact = false) => (
     <ul className="divide-y divide-surface-muted">
@@ -677,7 +689,7 @@ export function PublicMenuApp() {
                   return (
                     <li key={d.id} className="w-[132px] shrink-0 snap-start">
                       <button type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="relative block w-full overflow-hidden rounded-md border border-line bg-surface text-left">
-                        <Photo product={d} className="h-[90px] w-full" />
+                        <Photo product={d} variant="s" className="h-[90px] w-full" />
                         <span className="block p-2.5 pr-11"><span className="line-clamp-2 block min-h-[2.5em] text-[14px] font-semibold leading-snug">{d.name}</span><span className="mt-1 block whitespace-nowrap text-[14px] font-semibold tabular-nums">{formatBRL(d.price)}</span></span>
                         <span aria-hidden="true" className={`absolute bottom-2.5 right-2.5 flex h-[34px] min-w-[34px] items-center justify-center rounded-full px-1.5 text-[14px] font-semibold text-white ${q > 0 ? 'bg-ink' : 'bg-brand-500'}`}>{q > 0 ? q : <Plus className="h-[18px] w-[18px]" />}</span>
                       </button>
@@ -809,7 +821,7 @@ export function PublicMenuApp() {
               <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
                 <h2 className={`${display} text-[26px] font-semibold uppercase tracking-[.5px] ${g.name === ESPETOS ? '' : 'mb-4'}`}>{g.name}</h2>
                 {g.name === ESPETOS && <p className="mb-4 mt-2.5 rounded-[10px] border border-[#4d3c22] bg-[#2a2116] px-3 py-2.5 text-[13.5px] text-[#f0d9a8]">{COMBO_SIDES}</p>}
-                <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">{g.items.map(productCard)}</div>
+                <div className="grid grid-cols-1 gap-3.5 xl:grid-cols-2">{g.items.map((p, i) => productCard(p, g === groups[0] ? i : 9))}</div>
               </section>
             ))}
           </main>
@@ -835,7 +847,7 @@ export function PublicMenuApp() {
           {/* Brasa acesa atrás da logo */}
           <div aria-hidden="true" className="h-[170px]" style={{ background: 'radial-gradient(circle at 50% 100%,rgba(255,170,70,.55) 0%,rgba(232,96,40,.45) 18%,rgba(196,38,31,.28) 38%,rgba(120,30,20,.12) 58%,rgba(23,18,15,0) 78%)', WebkitMaskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)', maskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)' }} />
           <div className="relative -mt-[110px] flex flex-col items-center px-5">
-            <div className="rounded-full bg-surface p-[5px] shadow-[0_0_0_1px_rgba(232,182,74,.4),0_0_40px_rgba(232,120,40,.35)]"><img src="/brand/logo-sabor-da-carne.webp" alt="" width={128} height={128} className="h-32 w-32 rounded-full border-2 border-[#e8b64a] object-cover" /></div>
+            <div className="rounded-full bg-surface p-[5px] shadow-[0_0_0_1px_rgba(232,182,74,.4),0_0_40px_rgba(232,120,40,.35)]"><img src="/brand/logo-sabor-da-carne-288.webp" alt="" width={128} height={128} className="h-32 w-32 rounded-full border-2 border-[#e8b64a] object-cover" /></div>
             <h1 className={`${display} mt-4 text-center text-[21px] font-semibold uppercase leading-tight tracking-[1px]`}>{settings.name}</h1>
             <p className="mt-2 flex items-center gap-2.5 text-[12px] uppercase tracking-[3px] text-[#e8b64a]"><span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" />Espetos na brasa<span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" /></p>
           </div>
@@ -855,7 +867,7 @@ export function PublicMenuApp() {
             <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
               <h2 className={`${display} text-[26px] font-semibold uppercase tracking-[.5px]`}>{g.name}</h2>
               {g.name === ESPETOS && <p className="mt-2.5 rounded-[10px] border border-[#4d3c22] bg-[#2a2116] px-3 py-2.5 text-[13.5px] text-[#f0d9a8]">{COMBO_SIDES}</p>}
-              <ul className={`mt-4 grid grid-cols-1 md:grid-cols-2 ${g.name === ESPETOS ? 'gap-5' : 'gap-3'}`}>{g.items.map(productRow)}</ul>
+              <ul className={`mt-4 grid grid-cols-1 md:grid-cols-2 ${g.name === ESPETOS ? 'gap-5' : 'gap-3'}`}>{g.items.map((p, i) => productRow(p, g === groups[0] ? i : 9))}</ul>
             </section>
           ))}
         </main>
