@@ -3,7 +3,7 @@ import { StatusTag } from '../../components/ui/StatusTag';
 import { Stepper } from '../../components/ui/Stepper';
 import { Button } from '../../components/ui/Button';
 import { DEFAULT_DELIVERY_ETA, DEFAULT_PICKUP_ETA } from '../../lib/eta';
-import { ChevronDown, ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { comboBlockedByBase } from '../../lib/comboStock';
 import { DINE_IN_NOTE } from '../../lib/deliveryStatus';
@@ -44,6 +44,12 @@ const COMBO_SIDES = '★ Completo inclui arroz, vinagrete, farofa e purê';
 const display = "font-['Oswald',sans-serif]";
 const MENU_MODES: { id: OrderMode; label: string }[] = [{ id: 'DELIVERY', label: 'Entrega' }, { id: 'DINE_IN', label: 'No local' }, { id: 'PICKUP', label: 'Retirada' }];
 const COMBO_SUFFIX = /\s+com acompanhamento\s*$/i;
+const NO_RICE = 'Sem arroz';
+export const COMBO_SIDE_ITEMS = ['Vinagrete', 'Farofa', 'Purê'];
+/** Observação que vai para a cozinha: arroz escolhido, o que o cliente tirou e o texto livre. */
+export function comboNotes(rice: string | null, removed: string[], notes: string) {
+  return [rice, ...removed.map((side) => `Sem ${side.toLocaleLowerCase('pt-BR')}`), notes.trim()].filter(Boolean).join(', ');
+}
 export const CATEGORY_ORDER = [ESPETOS, 'Entradas', 'Acompanhamentos', 'Sem álcool', 'Cervejas', 'Drinks e doses', 'Sobremesas', 'Outros'];
 const SAVED_KEY = 'ponto.cardapio.cliente';
 
@@ -172,7 +178,9 @@ function ProductSheet({ product, riceOptions, onClose, onAdd }: { product: Produ
   const needsDoneness = product.allows_doneness;
   const missingDoneness = needsDoneness && !doneness;
   // Combo: o cliente escolhe um dos arrozes do dia (Configurações)
-  const needsRice = COMBO_SUFFIX.test(product.name) && riceOptions.length > 0;
+  const isCombo = COMBO_SUFFIX.test(product.name);
+  const needsRice = isCombo && riceOptions.length > 0;
+  const [removedSides, setRemovedSides] = useState<string[]>([]);
   const [rice, setRice] = useState<string | null>(null);
   const [flagRice, setFlagRice] = useState(false);
   const riceRef = useRef<HTMLDivElement>(null);
@@ -195,13 +203,13 @@ function ProductSheet({ product, riceOptions, onClose, onAdd }: { product: Produ
       scrollToCenter(riceRef.current);
       return;
     }
-    const e = onAdd(qty, doneness, [rice, notes.trim()].filter(Boolean).join(', ')); if (e) setErr(e); };
+    const e = onAdd(qty, doneness, comboNotes(rice, removedSides, notes)); if (e) setErr(e); };
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(43,33,28,.5)] lg:items-center lg:p-6" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={product.name} onClick={(e) => e.stopPropagation()}
         className="pm-sheet flex max-h-[92vh] w-full flex-col overflow-hidden rounded-t-[12px] bg-surface lg:grid lg:h-[560px] lg:max-h-[90vh] lg:max-w-[860px] lg:grid-cols-[400px_1fr] lg:rounded-2xl">
         <div className="relative shrink-0">
-          <Photo product={product} className="h-[200px] w-full lg:h-full" />
+          <Photo product={product} className="h-[120px] w-full min-[375px]:h-[200px] lg:h-full" />
           <button type="button" onClick={onClose} aria-label="Fechar" className="absolute right-3 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-surface text-ink shadow lg:hidden"><X className="h-5 w-5" /></button>
         </div>
         <div className="flex min-h-0 flex-1 flex-col">
@@ -219,7 +227,7 @@ function ProductSheet({ product, riceOptions, onClose, onAdd }: { product: Produ
                 <div className="mt-1 divide-y divide-brand-500/15 lg:mt-3 lg:grid lg:grid-cols-3 lg:gap-2 lg:divide-y-0">
                   {DONENESS.map((d) => (
                     <button key={d.id} type="button" role="radio" aria-checked={doneness === d.id} onClick={() => { setDoneness(d.id); setErr(null); setFlagDoneness(false); }}
-                      className={`flex h-12 w-full items-center gap-3 text-left text-[16px] lg:justify-center lg:rounded-md lg:border lg:text-[15px] ${doneness === d.id ? 'lg:border-2 lg:border-brand-500 lg:bg-brand-50 lg:font-semibold' : 'lg:border-line-strong lg:bg-surface'}`}>
+                      className={`flex h-12 w-full items-center gap-3 text-left text-[16px] lg:justify-center lg:rounded-md lg:border lg:text-[15px] ${doneness === d.id ? 'lg:border-2 lg:border-brand-500 lg:bg-brand-500 lg:font-semibold lg:text-white' : 'lg:border-line-strong lg:bg-surface'}`}>
                       <span className="shrink-0 lg:hidden"><Radio on={doneness === d.id} /></span>{d.label}
                     </button>
                   ))}
@@ -227,8 +235,20 @@ function ProductSheet({ product, riceOptions, onClose, onAdd }: { product: Produ
               </fieldset>
             )}
             {needsRice && <div ref={riceRef}>
-              <OptionGroup title="Arroz do dia" hint="escolha 1" options={riceOptions} value={rice} onChange={(value) => { setRice(value); setFlagRice(false); }} />
+              <OptionGroup title="Arroz do dia" hint="escolha 1" options={[...riceOptions, NO_RICE]} value={rice} onChange={(value) => { setRice(value); setFlagRice(false); }} />
               {flagRice && missingRice && <p role="alert" className="mt-2 text-[14px] font-semibold text-rose-700">Escolha o arroz para continuar.</p>}
+            </div>}
+            {isCombo && <div>
+              <p className="mb-2 text-base font-semibold text-ink">Acompanhamentos <span className="font-normal text-ink-muted">· toque para tirar</span></p>
+              <div className="grid grid-cols-3 gap-2">
+                {COMBO_SIDE_ITEMS.map((side) => {
+                  const included = !removedSides.includes(side);
+                  return <button key={side} type="button" aria-pressed={included} onClick={() => setRemovedSides((list) => (included ? [...list, side] : list.filter((item) => item !== side)))}
+                    className={`flex min-h-[48px] min-w-0 items-center justify-center gap-1 rounded-md border px-1 text-[14px] font-semibold ${included ? 'border-brand-500 bg-brand-50 text-ink' : 'border-line-strong text-ink-muted line-through'}`}>
+                    {included ? <Check className="h-4 w-4 shrink-0" aria-hidden="true" /> : <X className="h-4 w-4 shrink-0" aria-hidden="true" />}{side}
+                  </button>;
+                })}
+              </div>
             </div>}
             <div><label htmlFor="pm-notes" className="mb-2 block text-[17px] font-semibold">Observação</label><input id="pm-notes" value={notes} onChange={(e) => setNotes(e.target.value)}
               onFocus={(e) => { const el = e.currentTarget; window.setTimeout(() => scrollToCenter(el), 300); }} placeholder="Ex.: pouco sal" className={inputCls} /></div>
@@ -240,7 +260,7 @@ function ProductSheet({ product, riceOptions, onClose, onAdd }: { product: Produ
               <span className="w-9 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
               <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-[52px] w-11 items-center justify-center text-brand-500"><Plus className="h-5 w-5" /></button>
             </div>
-            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness || missingRice} className={`px-3 text-[15px] font-semibold leading-tight ${missingDoneness || missingRice ? '' : 'whitespace-nowrap'}`}>{missingDoneness ? 'Escolha o ponto da carne' : missingRice ? 'Escolha o arroz' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
+            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness || missingRice} className={`min-w-0 px-2 text-[15px] font-semibold leading-tight min-[360px]:whitespace-nowrap`}>{missingDoneness ? 'Escolha o ponto da carne' : missingRice ? 'Escolha o arroz' : `Adicionar · ${formatBRL(product.price * qty)}`}</Button>
           </div>
         </div>
       </div>
@@ -440,7 +460,7 @@ export function PublicMenuApp() {
     </label>
   );
 
-  const pickProduct = (p: Product) => (p.allows_doneness || (COMBO_SUFFIX.test(p.name) && (settings.daily_rice_flavors?.length ?? 0) > 0) ? setSheetProduct(p) : onPlus(p));
+  const pickProduct = (p: Product) => (p.allows_doneness || COMBO_SUFFIX.test(p.name) ? setSheetProduct(p) : onPlus(p));
   /** Tira a última linha do item na sacola. */
   const removeOne = (p: Product) => {
     const line = [...cart].reverse().find((c) => c.productId === p.id);
@@ -645,7 +665,7 @@ export function PublicMenuApp() {
           {closedNotice}
           {cart.length ? cartLines() : <p className="py-10 text-center text-[15px] text-ink-muted">Sua sacola está vazia.</p>}
           <button type="button" onClick={back} className="flex min-h-[44px] items-center gap-1.5 text-[15px] font-semibold text-brand-700"><Plus className="h-4 w-4" />Adicionar mais itens</button>
-          <p className="rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Espeto com acompanhamento vai com o arroz escolhido, vinagrete, farofa e purê.</p>
+          <p className="rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">O que você tirou do acompanhamento aparece no item, acima.</p>
           {drinks.length > 0 && (
             <div>
               <h2 className="mb-3 text-[17px] font-semibold">Que tal uma bebida?</h2>
@@ -754,7 +774,7 @@ export function PublicMenuApp() {
             <h2 className="text-[20px] font-semibold">Resumo do pedido</h2>
             {cartError && <Alert>{cartError}</Alert>}
             {cartLines(true)}
-            <p className="rounded-md border border-line bg-canvas px-3 py-2 text-[13px] text-ink-secondary">Espeto com acompanhamento vai com o arroz escolhido, vinagrete, farofa e purê.</p>
+            <p className="rounded-md border border-line bg-canvas px-3 py-2 text-[13px] text-ink-secondary">O que você tirou do acompanhamento aparece no item, acima.</p>
             {totals(22)}
             {closedNotice}
             {formError && <Alert>{formError}</Alert>}

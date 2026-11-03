@@ -24,12 +24,17 @@ export function PublicMenuPage() {
   }, [restaurant]);
 
   useEffect(() => {
-    void useSettingsStore.getState().loadRemoteSettings();
+    const refreshSettings = () => void useSettingsStore.getState().loadRemoteSettings();
+    refreshSettings();
     const load = () => loadPublicMenu().then(() => setError(null)).catch((e: Error) => setError(e.message)).finally(() => setLoading(false));
     void load();
     // Mantém disponibilidade de produtos atualizada
-    const menuTimer = window.setInterval(load, 60_000);
-    return () => window.clearInterval(menuTimer);
+    // Arroz do dia e estoque lançados no painel chegam sozinhos; ao voltar para a tela, na hora
+    const refresh = () => { refreshSettings(); void load(); };
+    const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
+    const menuTimer = window.setInterval(refresh, 30_000);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { window.clearInterval(menuTimer); document.removeEventListener('visibilitychange', onVisible); };
   }, [loadPublicMenu]);
 
   // Status do pedido: atualiza sozinho (cliente não precisa recarregar a página)
