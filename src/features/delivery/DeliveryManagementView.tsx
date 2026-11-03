@@ -22,7 +22,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { deliveryPaymentLabel, getDeliveryStatusConfig, isDineInOrder, isPickupOrder, orderKind, type OrderKind } from '../../lib/deliveryStatus';
+import { deliveryPaymentLabel, getDeliveryStatusConfig, hasGrillItems, isDineInOrder, isPickupOrder, orderKind, type OrderKind } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { buildWhatsAppLink } from '../../lib/whatsapp';
 import { renderWhatsAppTemplate, resolveWhatsAppTemplates, whatsAppVariables } from '../../lib/whatsappTemplates';
@@ -94,7 +94,7 @@ function paymentLine(order: DeliveryOrder): string {
 function StatusTimeline({ order }: { order: DeliveryOrder }) {
   const pickup = isPickupOrder(order);
   const steps = [
-    { label: 'Na brasa', at: order.status === 'AWAITING_PAYMENT' ? null : order.preparing_at ?? order.confirmed_at ?? order.created_at },
+    { label: hasGrillItems(order) ? 'Na brasa' : 'Em preparo', at: order.status === 'AWAITING_PAYMENT' ? null : order.preparing_at ?? order.confirmed_at ?? order.created_at },
     { label: 'Pronto', at: order.ready_at },
     ...(pickup ? [] : [{ label: 'Saiu', at: order.dispatched_at }]),
     { label: pickup ? 'Retirado' : 'Entregue', at: order.delivered_at },
@@ -125,6 +125,7 @@ function WhatsAppStatus({ messages, onRetry }: { messages: WhatsAppMessage[]; on
 }
 
 import { useCancelDeliveryOrder } from './useCancelDeliveryOrder';
+import { useShiftStore } from '../../stores/useShiftStore';
 import { KDSElapsedTimer, LEVEL_CARD, useNow } from '../kds/KDSElapsedTimer';
 
 export const DeliveryManagementView: React.FC = () => {
@@ -152,12 +153,14 @@ export const DeliveryManagementView: React.FC = () => {
   // Tipo do pedido: entregador vê só as entregas
   const [kindFilter, setKindFilter] = useState<OrderKind | 'ALL'>(() => (currentProfile.role === 'ENTREGADOR' ? 'DELIVERY' : 'ALL'));
   const typedOrders = deliveryOrders.filter((order) => kindFilter === 'ALL' || orderKind(order) === kindFilter);
+  const openShiftId = useShiftStore((s) => (s.currentShift?.status === 'ABERTO' ? s.currentShift.id : null));
+  const isDeliveredHere = (o: DeliveryOrder) => o.status === 'DELIVERED' && (!openShiftId || o.shift_id === openShiftId);
   const filteredOrders = typedOrders.filter((order) => {
     if (filter === 'ALL_ACTIVE') return isInProduction(order.status);
     if (filter === 'AWAITING_PAYMENT') return order.status === 'AWAITING_PAYMENT';
     if (filter === 'READY') return order.status === 'READY';
     if (filter === 'OUT_FOR_DELIVERY') return order.status === 'OUT_FOR_DELIVERY';
-    if (filter === 'DELIVERED') return order.status === 'DELIVERED';
+    if (filter === 'DELIVERED') return isDeliveredHere(order);
     return true;
   });
 
@@ -221,7 +224,7 @@ export const DeliveryManagementView: React.FC = () => {
   const countAwaiting = typedOrders.filter((o) => o.status === 'AWAITING_PAYMENT').length;
   const countReady = typedOrders.filter((o) => o.status === 'READY').length;
   const countDispatched = typedOrders.filter((o) => o.status === 'OUT_FOR_DELIVERY').length;
-  const countDelivered = typedOrders.filter((o) => o.status === 'DELIVERED').length;
+  const countDelivered = typedOrders.filter(isDeliveredHere).length;
 
   return (
     <div className="page-layout">
@@ -313,7 +316,7 @@ export const DeliveryManagementView: React.FC = () => {
 
                 {/* Etapa com tempo + tipo */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <StatusTag kind={status.kind} className="font-semibold">{status.label}{isActive && <> · <KDSElapsedTimer compact createdAt={stageStart(order)} /></>}</StatusTag>
+                  <StatusTag kind={status.kind} className="font-semibold">{order.status === 'PREPARING' && !hasGrillItems(order) ? 'Em preparo' : status.label}{isActive && <> · <KDSElapsedTimer compact createdAt={stageStart(order)} /></>}</StatusTag>
                   {lateBy > 0 && <StatusTag kind="alert" className="font-semibold">Atrasado {lateBy} min</StatusTag>}
                   <span className="text-[15px] text-ink-secondary">{isPickup ? (isDineInOrder(order) ? 'Consumir no local' : 'Retirada no balcão') : `Entrega · ${order.address_neighborhood || 'sem bairro'}`}</span>
                 </div>

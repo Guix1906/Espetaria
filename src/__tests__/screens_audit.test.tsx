@@ -3,11 +3,9 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MasterDashboardView } from '../features/admin/MasterDashboardView';
 import { WaiterModule } from '../features/waiter/WaiterModule';
-import { TableGridView } from '../features/tables/TableGridView';
 import { KDSModule } from '../features/kds/KDSModule';
 import { GrillKDSView } from '../features/kds/GrillKDSView';
 import { KitchenKDSView } from '../features/kds/KitchenKDSView';
-import { BarKDSView } from '../features/kds/BarKDSView';
 import { CashierModule } from '../features/cashier/CashierModule';
 import { DeliveryManagementView } from '../features/delivery/DeliveryManagementView';
 import { ProductCatalogManageView } from '../features/products/ProductCatalogManageView';
@@ -20,7 +18,6 @@ import { TableSettlementModal } from '../features/cashier/TableSettlementModal';
 import { WaiterViewTab } from '../features/waiter/WaiterViewTab';
 import { WaiterOrderPad } from '../features/waiter/WaiterOrderPad';
 import { PixPaymentModal } from '../features/pix/PixPaymentModal';
-import { DeliveryCartDrawer } from '../features/delivery/DeliveryCartDrawer';
 import { ProductFormModal } from '../features/products/ProductFormModal';
 import { ReceiptModal } from '../features/cashier/ReceiptModal';
 import { FeedbackProvider } from '../components/ui/FeedbackProvider';
@@ -123,13 +120,6 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       expect(html).toContain('Mesa 01');
     });
 
-    it('1.3 TableGridView (Salão e Mesas) deve abrir e renderizar sem erros', () => {
-      const html = renderWithFeedback(<TableGridView />);
-      expect(html).toContain('Salão');
-      expect(html).toContain('Abrir mesa');
-      expect(html).toContain('Mesas ativas');
-    });
-
     it('1.4 KDSModule (Produção Geral) deve abrir e renderizar sem erros', () => {
       const html = renderWithFeedback(<KDSModule />);
       expect(html).toContain('Painel de produção');
@@ -150,11 +140,6 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       expect(html).toContain('Cozinha');
       expect(html).toContain('impressora da cozinha');
       expect(html).toContain('Estoque das cubas');
-    });
-
-    it('1.7 BarKDSView (Produção Bar) deve abrir e renderizar sem erros', () => {
-      const html = renderWithFeedback(<BarKDSView />);
-      expect(html).toContain('Bar e bebidas');
     });
 
     it('1.8 CashierModule (Caixa) deve abrir e renderizar sem erros', () => {
@@ -354,17 +339,6 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       );
       expect(html).toContain('Pagamento por PIX');
       expect(html).toContain('45,00');
-    });
-
-    it('3.5 DeliveryCartDrawer abre e exibe opções de entrega e pagamento', () => {
-      const html = renderWithFeedback(
-        <DeliveryCartDrawer
-          isOpen={true}
-          onClose={vi.fn()}
-          onOrderPlaced={vi.fn()}
-        />
-      );
-      expect(html).toContain('Seu pedido');
     });
 
     it('3.6 ProductFormModal abre em modo de criação de produto', () => {

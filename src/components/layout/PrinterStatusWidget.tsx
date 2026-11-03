@@ -59,9 +59,7 @@ export const PrinterAlertBanner: React.FC = () => {
           <span>
             {!isBridgeAlive
               ? 'Computador de impressão local da loja está desconectado. Verifique se o PC da loja está ligado.'
-              : `Atenção: ${!isKitchenOk ? 'Impressora da Cozinha (192.168.3.12)' : ''}${
-                  !isKitchenOk && !isGrillOk ? ' e ' : ''
-                }${!isGrillOk ? 'Impressora da Churrasqueira (192.168.3.17)' : ''} com cupom que falhou nos últimos 30 minutos.`}
+              : `Atenção: ${!isKitchenOk ? 'impressora da Cozinha' : ''}${!isKitchenOk && !isGrillOk ? ' e ' : ''}${!isGrillOk ? 'impressora da Churrasqueira' : ''} sem responder. Confira se está ligada e na rede.`}
           </span>
         </div>
         <button

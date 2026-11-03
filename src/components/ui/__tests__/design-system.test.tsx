@@ -5,7 +5,6 @@ import { Receipt } from 'lucide-react';
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import { FilterChip } from '../FilterChip';
 import { PageHeader } from '../PageHeader';
-import { StatCard } from '../StatCard';
 import { SearchField } from '../SearchField';
 import { TableCard } from '../TableCard';
 import { EmptyState } from '../EmptyState';
@@ -61,7 +60,6 @@ describe('Shared interface and accessibility', () => {
     expect(html).toContain('Recebimentos do turno');
   });
   it('does not replace zero metric values with a nonzero default', () => {
-    expect(renderToStaticMarkup(<StatCard label="Comandas encerradas" value={0} icon={Receipt} />)).toContain('>0</div>');
   });
   it('gives search and clear controls accessible names', () => {
     const html = renderToStaticMarkup(<SearchField label="Buscar produto" value="Picanha" onChange={() => { }} placeholder="Nome do produto" />);

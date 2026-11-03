@@ -50,6 +50,7 @@ export const ProductCatalogManageView: React.FC = () => {
   const confirm = useConfirm();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [visible, setVisible] = useState(30);
   const [selectedSector, setSelectedSector] = useState<'ALL' | ProductionSector | 'PAUSED'>('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
@@ -115,7 +116,7 @@ export const ProductCatalogManageView: React.FC = () => {
             <span aria-hidden="true" /><span>Produto</span><span>Setor</span><span className="text-right">Preço</span><span>Status</span><span className="text-right">Ações</span>
           </div>
           <ul className="divide-y divide-line">
-            {filteredProducts.map((product) => {
+            {filteredProducts.slice(0, visible).map((product) => {
               const Icon = SECTOR_ICON[product.sector] ?? Flame;
               return (
                 <li key={product.id} className="grid grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-x-3 p-3 md:gap-x-4 md:p-4 md:grid-cols-[56px_minmax(0,1fr)_130px_110px_90px_auto]">
@@ -148,6 +149,7 @@ export const ProductCatalogManageView: React.FC = () => {
               );
             })}
           </ul>
+          {filteredProducts.length > visible && <button type="button" className="btn-secondary m-3 min-h-[44px]" onClick={() => setVisible((n) => n + 30)}>Ver mais ({filteredProducts.length - visible} restantes)</button>}
         </div>
       )}
 

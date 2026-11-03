@@ -45,17 +45,18 @@ export function remainingFor(product: Product, products: Product[], stocks: Dail
     const base = products.find((p) => p.active !== false && p.id !== product.id && norm(p.name) === baseName);
     const rice = products.find((p) => p.active !== false && /^arroz(\b|$)/i.test(norm(p.name)));
 
-    if (!base || base.available === false) return 0;
+    if (base && base.available === false) return 0;
     if (!rice || rice.available === false) return 0;
 
-    const baseStock = stocks.find((s) => s.product_id === base.id);
+    const baseStock = base ? stocks.find((s) => s.product_id === base.id) : undefined;
     const riceStock = stocks.find((s) => s.product_id === rice.id);
 
-    if (!baseStock || baseStock.is_exhausted || baseStock.current_quantity <= 0) return 0;
+    if (base && (!baseStock || baseStock.is_exhausted || baseStock.current_quantity <= 0)) return 0;
     if (!riceStock || riceStock.is_exhausted || riceStock.current_quantity <= 0) return 0;
 
-    const baseUsed = cart.filter((line) => stockUnitIds(line.product, products).includes(base.id)).reduce((sum, line) => sum + line.quantity, 0);
     const riceUsed = cart.filter((line) => stockUnitIds(line.product, products).includes(rice.id)).reduce((sum, line) => sum + line.quantity, 0);
+    if (!base || !baseStock) return Math.max(0, riceStock.current_quantity - riceUsed);
+    const baseUsed = cart.filter((line) => stockUnitIds(line.product, products).includes(base.id)).reduce((sum, line) => sum + line.quantity, 0);
 
     const baseFree = Math.max(0, baseStock.current_quantity - baseUsed);
     const riceFree = Math.max(0, riceStock.current_quantity - riceUsed);

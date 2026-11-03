@@ -168,7 +168,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
         <button type="button" onClick={() => go('kds')} disabled={!onNavigateTab} className={`${card} text-left`}>
           <p className="text-sm text-ink-muted">Na brasa</p>
           <p className="mt-1 font-mono text-2xl font-bold text-ink sm:text-3xl">{d.production.GRILL.salon + d.production.GRILL.delivery}</p>
-          <p className="mt-1 text-[13px] text-ink-muted">espetos · {d.productionTotal} un em produção</p>
+          <p className="mt-1 text-[13px] text-ink-muted">espetos · {d.productionTotal} itens em produção no total</p>
         </button>
         <button type="button" onClick={() => goAlert('ready')} disabled={!onNavigateTab} className={`${card} text-left ${d.salon.readyOldest >= ALERT_LIMITS.readyNotServed ? 'border-amber-300 bg-amber-50' : ''}`}>
           <p className="text-sm text-ink-muted">Prontos para levar</p>

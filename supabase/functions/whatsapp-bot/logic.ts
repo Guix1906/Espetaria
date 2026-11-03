@@ -228,6 +228,7 @@ export interface CustomerOrder {
   id: string;
   order_number: number;
   order_type?: string | null;
+  notes?: string | null;
   status: string;
   total: number;
   created_at: string;
@@ -249,6 +250,9 @@ const STATUS_TEXT: Record<string, string> = {
 
 function orderStatusText(order: CustomerOrder): string {
   const pickup = order.order_type === 'PICKUP';
+  const dineIn = pickup && /^CONSUMIR NO LOCAL/i.test(order.notes?.trim() ?? '');
+  if (dineIn && order.status === 'READY') return 'pronto no balcão';
+  if (dineIn && order.status === 'DELIVERED') return 'concluído';
   if (pickup && order.status === 'READY') return 'pronto para retirada (o cliente já pode buscar)';
   if (pickup && order.status === 'DELIVERED') return 'retirado';
   // Delivery pronto: o cliente ainda não foi avisado, o pedido aguarda o entregador
@@ -271,7 +275,7 @@ export function buildContextBlock(store: StoreData, orders: CustomerOrder[], app
   if (store.menuUrl) lines.push(`Link do cardápio digital: ${store.menuUrl}`);
   if (store.pixKey) lines.push(`Chave PIX: ${store.pixKey}`);
   if (store.zones.length) lines.push(`Entrega (bairro e taxa): ${store.zones.map((z) => `${z.name} ${brl(z.fee)}`).join('; ')}`);
-  lines.push('Retirada no local: sem taxa.');
+  lines.push('Consumir no local e retirada no local: sem taxa.');
   if (store.storeInfo.trim()) lines.push('Informações extras da loja:', store.storeInfo.trim());
 
   lines.push('', store.isOpen ? 'CARDÁPIO DE HOJE (preço e situação)' : 'CARDÁPIO (preços; disponibilidade só quando a loja abrir)');
@@ -288,7 +292,7 @@ export function buildContextBlock(store: StoreData, orders: CustomerOrder[], app
   lines.push('', 'PEDIDOS DESTE CLIENTE (últimas 24 horas)');
   if (orders.length === 0) lines.push('Nenhum pedido feito pelo cardápio digital com este telefone.');
   for (const o of orders) {
-    const type = o.order_type === 'PICKUP' ? 'Retirada no local' : 'Entrega';
+    const type = o.order_type !== 'PICKUP' ? 'Entrega' : /^CONSUMIR NO LOCAL/i.test(o.notes?.trim() ?? '') ? 'Consumir no local' : 'Retirada no local';
     const items = o.items.map((i) => `${i.quantity}x ${i.product_name}`).join(', ');
     const link = appUrl ? ` · acompanhar: ${appUrl.replace(/\/$/, '')}/#/pedido/${o.id}` : '';
     lines.push(`- Pedido #${o.order_number} · ${type} · ${orderStatusText(o)} · feito às ${timeBR(o.created_at)} · total ${brl(o.total)} · itens: ${items}${link}`);

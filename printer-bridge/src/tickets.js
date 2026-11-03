@@ -25,7 +25,7 @@ const isDineIn = (job) => /^CONSUMIR NO LOCAL/i.test(String(job.delivery?.notes 
 const localLine = (job) => (isDineIn(job) ? 'CONSUMIR NO LOCAL' : 'RETIRADA NO LOCAL');
 const remoteTitle = (job) => `${isPickup(job) ? (isDineIn(job) ? 'CONSUMIR NO LOCAL' : 'RETIRADA') : 'DELIVERY'} #${job.order_number}`;
 
-const payLabel = (job, method) => (isPickup(job) && method === 'CARTAO_ENTREGA' ? 'CARTÃO NA RETIRADA' : PAYMENT[method] || method || '');
+const payLabel = (job, method) => (isPickup(job) && method === 'CARTAO_ENTREGA' ? (isDineIn(job) ? 'CARTÃO NO LOCAL' : 'CARTÃO NA RETIRADA') : PAYMENT[method] || method || '');
 
 const brl = (value) => `R$ ${Number(value || 0).toFixed(2).replace('.', ',')}`;
 
@@ -138,7 +138,7 @@ export function buildTicket(job, config) {
     if (o.payment_method === 'DINHEIRO' && o.cash_change_for) {
       r.line(`Troco para ${brl(o.cash_change_for)} (levar ${brl(o.cash_change_for - o.total)})`);
     }
-    if (o.notes) r.divider('=').bold().size(2).line(`OBS: ${String(o.notes).toUpperCase()}`).bold(false).size(1).divider('=');
+    if (o.notes && !isDineIn({ delivery: o })) r.divider('=').bold().size(2).line(`OBS: ${String(o.notes).toUpperCase()}`).bold(false).size(1).divider('=');
     return r.feed(3).cut();
   }
 
@@ -170,7 +170,7 @@ export function compactDeliveryTicket(r, job, config, tpl) {
     if (tpl.show_notes !== false && item.notes) r.bold().line(`  *** OBS: ${String(item.notes).toUpperCase()} ***`).bold(false);
   }
   const orderNotes = payload.order_notes || d.notes;
-  if (orderNotes) r.divider('=').bold().line(`*** OBS DO PEDIDO: ${String(orderNotes).toUpperCase()} ***`).bold(false).divider('=');
+  if (orderNotes && !isDineIn(job)) r.divider('=').bold().line(`*** OBS DO PEDIDO: ${String(orderNotes).toUpperCase()} ***`).bold(false).divider('=');
   r.divider();
   const name = d.customer_name || job.customer_name || '';
   r.bold().line([name, d.phone].filter(Boolean).join(' - ')).bold(false);

@@ -259,7 +259,7 @@ export class PrintWorker {
 
   /** Dados do cliente para a etiqueta de delivery (nome, telefone, endereço, pagamento). */
   async enrich(job) {
-    if (job.kind !== 'ORDER' || job.origin !== 'DELIVERY') return job;
+    if (!['ORDER', 'CANCEL'].includes(job.kind) || job.origin !== 'DELIVERY') return job;
     const { data, error } = await this.supabase
       .from('delivery_orders')
       .select('customer_name, phone, address_street, address_number, address_neighborhood, address_complement, address_reference, payment_method, cash_change_for, paid_at, subtotal, delivery_fee, total, notes, created_at')

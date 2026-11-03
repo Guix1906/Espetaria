@@ -31,6 +31,7 @@ function TeamActions() {
   const [kind, setKind] = useState<'ALL' | AuditKind>('ALL');
   const [person, setPerson] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [visible, setVisible] = useState(50);
 
   useEffect(() => {
     let alive = true;
@@ -73,14 +74,14 @@ function TeamActions() {
       ) : (
         <div className="surface-card overflow-hidden">
           <ul className="divide-y divide-line">
-            {filtered.map((e) => (
+            {filtered.slice(0, visible).map((e) => (
               <li key={e.id} className="flex flex-col gap-2 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     {AUDIT_KIND_ALERT[e.kind] ? <StatusTag kind="alert" className="font-semibold">{e.title}</StatusTag> : <StatusTag kind="occupied" className="font-semibold">{e.title}</StatusTag>}
                     {e.detail && <span className="text-[15px] font-semibold text-ink">{e.detail}</span>}
                   </div>
-                  <p className="mt-1.5 text-[15px] text-ink-secondary">{e.reason ? <>Motivo: {e.reason}</> : <span className="text-ink-muted">Sem motivo informado</span>}</p>
+                  <p className="mt-1.5 text-[15px] text-ink-secondary">{e.reason ? <>Motivo: {e.reason}</> : AUDIT_KIND_ALERT[e.kind] && <span className="text-ink-muted">Sem motivo informado</span>}</p>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-muted sm:flex-col sm:items-end">
                   <span className="flex items-center gap-1.5 font-semibold text-ink"><User className="h-4 w-4" aria-hidden="true" />{e.userName}</span>
@@ -89,8 +90,10 @@ function TeamActions() {
               </li>
             ))}
           </ul>
+          {filtered.length > visible && <button type="button" className="btn-secondary m-3 min-h-[44px]" onClick={() => setVisible((n) => n + 50)}>Ver mais ({filtered.length - visible} restantes)</button>}
         </div>
       )}
+      {events.length >= 2000 && <p role="status" className="text-sm text-ink-muted">Mostrando os 2.000 registros mais recentes. Escolha um período menor para ver os demais.</p>}
     </div>
   );
 }

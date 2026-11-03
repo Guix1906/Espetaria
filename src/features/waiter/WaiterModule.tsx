@@ -321,7 +321,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
                 type="button"
                 disabled={!isShiftOpen}
                 onClick={() => setIsPickerOpen(true)}
-                className="btn-primary min-h-[40px] px-4 text-xs font-bold inline-flex items-center gap-1.5"
+                className="btn-primary min-h-[44px] px-4 text-sm font-bold inline-flex items-center gap-1.5"
               >
                 <Plus className="h-4 w-4" />
                 <span>Abrir mesa</span>
@@ -330,7 +330,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
                 <button
                   type="button"
                   onClick={() => setFilter('ALL')}
-                  className="btn-secondary min-h-[40px] px-3 text-xs font-semibold"
+                  className="btn-secondary min-h-[44px] px-3 text-sm font-semibold"
                 >
                   Ver todas as 60 mesas
                 </button>

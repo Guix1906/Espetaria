@@ -1,5 +1,6 @@
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { askReturnToStock } from '../../lib/askReturnToStock';
+import { hasGrillItems } from '../../lib/deliveryStatus';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import type { DeliveryOrder } from '../../types/domain';
@@ -20,7 +21,7 @@ export function useCancelDeliveryOrder() {
       const reason = await requestText({ title: `Cancelar pedido #${order.order_number}`, label: 'Motivo do cancelamento', confirmText: 'Cancelar pedido', danger: true, message: 'O pedido sai da fila e da produção e fica registrado como cancelado.', initialValue: 'Desistência do cliente' });
       if (!reason) return false;
       let returnStock: boolean | undefined;
-      if (order.status === 'PREPARING') {
+      if (order.status === 'PREPARING' && hasGrillItems(order)) {
         const answer = await askReturnToStock(requestChoice, `pedido #${order.order_number}`);
         if (answer === null) return false;
         returnStock = answer;

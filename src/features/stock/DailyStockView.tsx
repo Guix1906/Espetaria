@@ -19,7 +19,7 @@ interface DailyStockViewProps {
   onOpenShiftClick: () => void;
 }
 
-const DEFAULT_LOW_STOCK = 5;
+const DEFAULT_LOW_STOCK = 3;
 /** Limite de estoque baixo do produto (cadastro) ou o padrão de 5. */
 export const lowStockLimit = (product?: Pick<Product, 'low_stock_threshold'> | null) => product?.low_stock_threshold ?? DEFAULT_LOW_STOCK;
 const SECTOR_LABEL: Record<string, string> = { GRILL: 'Churrasqueira', KITCHEN: 'Cozinha', BAR: 'Bar' };

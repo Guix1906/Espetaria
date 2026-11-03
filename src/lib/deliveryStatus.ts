@@ -44,6 +44,11 @@ export function orderKind(order: Pick<DeliveryOrder, 'order_type' | 'notes'>): O
   return isDineInOrder(order) ? 'DINE_IN' : 'PICKUP';
 }
 
+/** Só pedido com espeto fica "Na brasa"; bebida e porção ficam "Em preparo". */
+export function hasGrillItems(order: { items?: { sector?: string | null }[] }): boolean {
+  return (order.items ?? []).some((item) => item.sector === 'GRILL');
+}
+
 export function isPickupOrder(order: Pick<DeliveryOrder, 'order_type'>): boolean {
   return order.order_type === 'PICKUP';
 }

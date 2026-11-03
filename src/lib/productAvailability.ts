@@ -1,7 +1,7 @@
 import type { DailyPrepStock, Product } from '../types/domain';
 
 /** A partir de quantas unidades o item aparece como "acabando" (garçom, visão geral e estoque). */
-export const LOW_STOCK_THRESHOLD = 5;
+export const LOW_STOCK_THRESHOLD = 3;
 
 export function getProductAvailability(product: Product, stock?: DailyPrepStock) {
   return {

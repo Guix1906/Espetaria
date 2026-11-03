@@ -89,7 +89,7 @@ async function loadContext(db: SupabaseClient, phone: string, settings: Record<s
     db.from('delivery_zones').select('name, fee, display_order').eq('active', true).order('display_order'),
     shift ? db.from('daily_prep_stock').select('product_id, current_quantity, is_exhausted').eq('shift_id', shift.id) : Promise.resolve({ data: [] }),
     db.from('delivery_orders')
-      .select('id, order_number, order_type, status, total, created_at, driver_name, items:delivery_order_items(quantity, product_name)')
+      .select('id, order_number, order_type, notes, status, total, created_at, driver_name, items:delivery_order_items(quantity, product_name)')
       .in('phone', phoneLookupValues(phone))
       .gte('created_at', new Date(Date.now() - 24 * 3_600_000).toISOString())
       .order('created_at', { ascending: false })

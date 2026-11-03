@@ -40,7 +40,7 @@ const ACTION_KIND: Record<string, AuditKind> = {
 const ROUTINE = new Set(['ABRIR_COMANDA', 'CRIAR_PEDIDO', 'REGISTRAR_PAGAMENTO', 'FECHAR_COMANDA', 'DELIVERY_PAGO', 'DELIVERY_PIX_AUTOMATICO']);
 
 const ACTION_TEXT: Record<string, string> = {
-  FECHAMENTO_TURNO: 'Turno fechado', CUPONS_EXCLUIDOS: 'Cupons excluídos', PRODUTO_CRIADO: 'Produto criado',
+  FECHAMENTO_TURNO: 'Turno fechado', ABERTURA_TURNO: 'Turno aberto', CRIAR_COLABORADOR: 'Colaborador criado', CUPONS_EXCLUIDOS: 'Cupons excluídos', PRODUTO_CRIADO: 'Produto criado',
   PRODUTO_EDITADO: 'Produto editado', PRODUTO_DESATIVADO: 'Produto desativado', CRIAR_MESA: 'Mesa criada',
   EDITAR_MESA: 'Mesa editada', DESATIVAR_MESA: 'Mesa desativada', FINANCE_PAGO: 'Conta marcada como paga',
   FINANCE_REMOVIDO: 'Lançamento removido', UPSERT_DELIVERY_ZONE: 'Bairro salvo', DEACTIVATE_DELIVERY_ZONE: 'Bairro desativado',
@@ -75,7 +75,7 @@ export function auditEventFromLog(row: { id: string; created_at: string; user_id
     userId: row.user_id,
     userName: (row.user_id && names.get(row.user_id)) || 'Sistema',
     kind,
-    title: kind === 'OUTRO' ? ACTION_TEXT[row.action] ?? row.action.toLowerCase().replace(/_/g, ' ') : AUDIT_KIND_LABEL[kind],
+    title: kind === 'OUTRO' ? ACTION_TEXT[row.action.toUpperCase()] ?? (row.action.charAt(0).toUpperCase() + row.action.slice(1).toLowerCase().replace(/_/g, ' ')) : AUDIT_KIND_LABEL[kind],
     reason: pick(data, 'reason', 'p_reason', 'cancel_reason', 'motivo', 'notes'),
     detail,
   };

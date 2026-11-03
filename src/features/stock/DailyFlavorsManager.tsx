@@ -106,7 +106,7 @@ export const DailyFlavorsManager: React.FC = () => {
             <ChefHat className="h-5 w-5" />
           </span>
           <div>
-            <h3 className="text-base font-bold text-ink">Sabores do Dia (Mise en Place da Cozinha)</h3>
+            <h3 className="text-base font-bold text-ink">Sabores do dia</h3>
             <p className="text-xs text-ink-secondary">
               Os sabores ativos aqui aparecem instantaneamente nos celulares dos garçons na hora de anotar pedidos.
             </p>
@@ -183,7 +183,7 @@ export const DailyFlavorsManager: React.FC = () => {
 
           {/* Sugestões rápidas de 1 toque */}
           <div className="space-y-1 pt-1">
-            <span className="text-[13px] font-semibold uppercase tracking-wider text-ink-muted">
+            <span className="text-[13px] font-semibold text-ink-muted">
               Sugestões rápidas:
             </span>
             <div className="flex flex-wrap gap-1">
@@ -264,7 +264,7 @@ export const DailyFlavorsManager: React.FC = () => {
 
           {/* Sugestões rápidas de 1 toque */}
           <div className="space-y-1 pt-1">
-            <span className="text-[13px] font-semibold uppercase tracking-wider text-ink-muted">
+            <span className="text-[13px] font-semibold text-ink-muted">
               Sugestões rápidas:
             </span>
             <div className="flex flex-wrap gap-1">

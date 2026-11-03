@@ -87,6 +87,7 @@ export function computeDashboard(input: DashboardInput) {
         avgTicket: 0,
         count: 0,
       },
+      dineIn: { realized: 0, pending: 0, gross: 0 },
       pickup: {
         realized: 0,
         pending: 0,
@@ -207,6 +208,9 @@ export function computeDashboard(input: DashboardInput) {
   };
   const delivery = channel(false);
   const pickup = channel(true);
+  // Dentro da soma acima (pickup): só o que é para consumir no local
+  const dineInSales = sales.filter(isDineInOrder);
+  const dineIn = { realized: dineInSales.filter(isRealized).reduce((s, d) => s + d.subtotal, 0), pending: dineInSales.filter((d) => !isRealized(d)).reduce((s, d) => s + d.subtotal, 0), gross: dineInSales.reduce((s, d) => s + d.subtotal, 0) };
 
   // ---------------- Faturamento (produtos, sem taxas) ----------------
   const realized = salonClosed + delivery.realized + pickup.realized;
@@ -294,7 +298,7 @@ export function computeDashboard(input: DashboardInput) {
   return {
     salon: { openTabs, closedTabs, people, waitingBill, readyCount: readyItems.reduce((s, i) => s + i.quantity, 0), readyOldest, grillCount: grillItems.reduce((s, i) => s + i.quantity, 0), grillOldest, closed: salonClosed, open: salonOpen, avgTicket: salonTabsCount ? (salonClosed + salonOpen) / salonTabsCount : 0, avgPerPerson: salonPeople ? (salonClosed + salonOpen) / salonPeople : 0, serviceFee, discounts },
     tabInfo,
-    delivery, pickup, stages, lateDeliveries, pickupsWaiting,
+    delivery, pickup, dineIn, stages, lateDeliveries, pickupsWaiting,
     revenue: { realized, inProgress, projected, fees: delivery.fees },
     received, receivedTotal,
     production, productionTotal, stuckJobs, failedJobs,

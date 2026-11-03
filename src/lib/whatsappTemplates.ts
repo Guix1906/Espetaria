@@ -50,7 +50,7 @@ export const DEFAULT_WHATSAPP_TEMPLATES: WhatsAppTemplates = {
   },
   PREPARING: {
     enabled: true,
-    text: '{nome}, seu pedido *#{pedido}* já está em preparo na brasa. Avisamos quando ficar pronto!\n{loja}',
+    text: '{nome}, seu pedido *#{pedido}* já está em preparo. Avisamos quando ficar pronto!\n{loja}',
   },
   READY: {
     enabled: true,

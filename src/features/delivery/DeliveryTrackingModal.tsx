@@ -173,7 +173,7 @@ export function openRestaurantWhatsApp(order: Pick<DeliveryOrder, 'order_number'
 
 const DELIVERY_STEPS = [
   { key: 'CONFIRMED', label: 'Recebido', icon: CheckCircle2 },
-  { key: 'PREPARING', label: 'Na brasa', icon: Flame },
+  { key: 'PREPARING', label: 'Em preparo', icon: Flame },
   { key: 'READY', label: 'Pronto', icon: PackageCheck },
   { key: 'OUT_FOR_DELIVERY', label: 'Saiu para entrega', icon: Bike },
   { key: 'DELIVERED', label: 'Entregue', icon: CheckCircle2 },
@@ -181,7 +181,7 @@ const DELIVERY_STEPS = [
 
 const PICKUP_STEPS = [
   { key: 'CONFIRMED', label: 'Recebido', icon: CheckCircle2 },
-  { key: 'PREPARING', label: 'Na brasa', icon: Flame },
+  { key: 'PREPARING', label: 'Em preparo', icon: Flame },
   { key: 'READY', label: 'Pode buscar', icon: Store },
   { key: 'DELIVERED', label: 'Retirado', icon: CheckCircle2 },
 ];
