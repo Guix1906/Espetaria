@@ -1,4 +1,5 @@
 import { StatusTag } from '../../components/ui/StatusTag';
+import { groupItemsByTab } from './tableItems';
 import type { StatusKind } from '../../lib/statusStyles';
 import { ArrowRight, Info, LayoutGrid, Plus, Search, Settings2, Smartphone, BellRing, X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
@@ -149,15 +150,11 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
     return tab !== undefined && tab.status === 'OPEN';
   };
 
-  const itemsByTable = useMemo(() => {
-    const tableOfOrder = new Map<string, string>();
-    const tableOfTab = new Map([...openTabByTable].map(([tableId, tab]) => [tab.id, tableId]));
-    orders.forEach((order) => { const tableId = tableOfTab.get(order.tab_id); if (tableId) tableOfOrder.set(order.id, tableId); });
-    const map = new Map<string, OrderItem[]>();
-    orderItems.forEach((item) => { const tableId = tableOfOrder.get(item.order_id); if (tableId) map.set(tableId, [...(map.get(tableId) ?? []), item]); });
-    return map;
-  }, [openTabByTable, orders, orderItems]);
-  const itemsOfTable = (tableId: string): OrderItem[] => itemsByTable.get(tableId) ?? [];
+  const itemsByTab = useMemo(() => groupItemsByTab(orders, orderItems), [orders, orderItems]);
+  const itemsOfTable = (tableId: string): OrderItem[] => {
+    const tab = getTableTab(tableId);
+    return (tab && itemsByTab.get(tab.id)) ?? [];
+  };
   const readyItemsOf = (tableId: string) => itemsOfTable(tableId).filter((item) => isFreshReady(item, now));
   const readyTables = activeTables.filter((table) => readyItemsOf(table.id).length > 0);
   const readyTableIds = new Set(readyTables.map((table) => table.id));
