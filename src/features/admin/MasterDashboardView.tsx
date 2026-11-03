@@ -1,4 +1,4 @@
-import { localOrderLabel } from '../../lib/deliveryStatus';
+import { isDineInOrder, localOrderLabel } from '../../lib/deliveryStatus';
 import { StatusTag } from '../../components/ui/StatusTag';
 import { VoidTabButton } from '../tables/VoidTabButton';
 import { StockSnapshot } from './StockSnapshot';
@@ -118,6 +118,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   };
   const goTable = (tableId: string, tab: ActiveTab) => { useNavFocusStore.getState().focusTable(tableId); go(tab); };
   const activeDeliveries = (Object.values(d.stages).flat() as DeliveryOrder[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const deliveryCount = activeDeliveries.filter((o) => !isDineInOrder(o)).length;
   const lateIds = new Set(d.lateDeliveries.map((o) => o.id));
   const feed = d.feed.filter((e) => feedFilter === 'Tudo' || (feedFilter === 'Casa' ? e.channel === 'Casa' : e.channel === 'Delivery' || e.channel === 'Consumir no local' || e.channel === 'Retirada'));
   const printerProblem = isSupabaseConfigured && (!isBridgeAlive || d.stuckJobs.length > 0 || d.failedJobs.length > 0);
@@ -177,7 +178,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
         </button>
         <button type="button" onClick={() => go('delivery')} disabled={!onNavigateTab} className={`${card} text-left ${lateIds.size ? 'border-rose-300 bg-rose-50' : ''}`}>
           <p className={`text-sm ${lateIds.size ? 'text-rose-800' : 'text-ink-muted'}`}>Delivery e retirada</p>
-          <p className={`mt-1 font-mono text-2xl font-bold sm:text-3xl ${lateIds.size ? 'text-rose-700' : 'text-ink'}`}>{activeDeliveries.length}</p>
+          <p className={`mt-1 font-mono text-2xl font-bold sm:text-3xl ${lateIds.size ? 'text-rose-700' : 'text-ink'}`}>{deliveryCount}</p>
           <p className="mt-1 text-[13px] text-ink-muted">{lateIds.size ? `${lateIds.size} ${lateIds.size === 1 ? 'atrasado' : 'atrasados'}` : 'nenhum atrasado'}</p>
         </button>
       </section>

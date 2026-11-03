@@ -1,4 +1,4 @@
-import { isDineInOrder } from '../../lib/deliveryStatus';
+import { focusOrderKind, hasGrillItems, isDineInOrder } from '../../lib/deliveryStatus';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
@@ -24,12 +24,18 @@ const FILTERS = ['Todos', 'Salão', 'Delivery', 'Consumir no local', 'Retirada']
 const COLUMNS: { id: BoardColumn; title: string; dot: string; empty: string }[] = [
   { id: 'preparing', title: 'Em preparo', dot: 'bg-amber-500', empty: 'Nada em preparo' },
   { id: 'grill', title: 'Na brasa', dot: 'bg-brand-700', empty: 'Nada na brasa' },
-  { id: 'delivery', title: 'Cardápio digital', dot: 'bg-emerald-600', empty: 'Nenhum pedido em andamento' },
+  { id: 'delivery', title: 'Delivery', dot: 'bg-emerald-600', empty: 'Nenhum pedido em andamento' },
 ];
 
 /** Espeto pendente vai para Na brasa; a mesa sem espeto fica em Em preparo, para nenhuma mesa aberta sumir do quadro. */
 export function tabColumn(items: Pick<OrderItem, 'sector' | 'status'>[]): BoardColumn {
   return items.some((i) => i.sector === 'GRILL' && isPendingProduction(i)) ? 'grill' : 'preparing';
+}
+
+/** Consumir no local segue as colunas do salão; entrega e retirada ficam em Delivery. */
+export function deliveryColumn(o: Pick<DeliveryOrder, 'order_type' | 'notes' | 'status' | 'items'>): BoardColumn {
+  if (o.order_type !== 'PICKUP' || !isDineInOrder(o)) return 'delivery';
+  return o.status !== 'READY' && hasGrillItems(o) ? 'grill' : 'preparing';
 }
 
 interface Card { key: string; column: BoardColumn; channel: BoardChannel; level: ElapsedLevel; title: string; time: string; items: string; status: string; onClick?: () => void }
@@ -75,15 +81,14 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
     const dineIn = isDineInOrder(o);
     return {
       key: o.id,
-      // Delivery e retirada ficam sempre nesta coluna, do pedido recebido até a entrega; a etapa aparece no cartão
-      column: 'delivery',
+      column: deliveryColumn(o),
       channel: pickup ? (dineIn ? 'Consumir no local' : 'Retirada') : 'Delivery',
       level: lateIds.has(o.id) ? 'urgent' : elapsedLevel(o.created_at, now, 30, 45),
       title: `${o.customer_name.trim().split(' ')[0] || o.customer_name} · #${o.order_number}`,
       time: formatElapsedMinutes(o.created_at, now),
       items: o.items.map((i) => `${i.quantity}× ${i.product_name}`).join(', '),
       status: stage ? (stage === 'READY' && pickup ? (dineIn ? 'Pronto no balcão' : 'Pronto, cliente vem buscar') : DELIVERY_STAGE[stage].charAt(0).toUpperCase() + DELIVERY_STAGE[stage].slice(1)) : '',
-      onClick: go ? () => go('delivery') : undefined,
+      onClick: go ? () => { if (pickup && dineIn) focusOrderKind('DINE_IN'); go('delivery'); } : undefined,
     };
   };
 

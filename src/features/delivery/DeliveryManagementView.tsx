@@ -22,7 +22,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { deliveryPaymentLabel, getDeliveryStatusConfig, hasGrillItems, isDineInOrder, isPickupOrder, orderKind, type OrderKind } from '../../lib/deliveryStatus';
+import { deliveryPaymentLabel, getDeliveryStatusConfig, hasGrillItems, isDineInOrder, isPickupOrder, orderKind, takeOrderKindFocus, type OrderKind } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { buildWhatsAppLink } from '../../lib/whatsapp';
 import { renderWhatsAppTemplate, resolveWhatsAppTemplates, whatsAppVariables } from '../../lib/whatsappTemplates';
@@ -151,8 +151,8 @@ export const DeliveryManagementView: React.FC = () => {
   const canManage = ['MASTER', 'GERENTE'].includes(currentProfile.role);
 
   // Tipo do pedido: entregador vê só as entregas
-  const [kindFilter, setKindFilter] = useState<OrderKind | 'ALL'>(() => (currentProfile.role === 'ENTREGADOR' ? 'DELIVERY' : 'ALL'));
-  const typedOrders = deliveryOrders.filter((order) => kindFilter === 'ALL' || orderKind(order) === kindFilter);
+  const [kindFilter, setKindFilter] = useState<OrderKind | 'ALL'>(() => takeOrderKindFocus() ?? (currentProfile.role === 'ENTREGADOR' ? 'DELIVERY' : 'ALL'));
+  const typedOrders = deliveryOrders.filter((order) => (kindFilter === 'ALL' ? orderKind(order) !== 'DINE_IN' : orderKind(order) === kindFilter));
   const openShiftId = useShiftStore((s) => (s.currentShift?.status === 'ABERTO' ? s.currentShift.id : null));
   const isDeliveredHere = (o: DeliveryOrder) => o.status === 'DELIVERED' && (!openShiftId || o.shift_id === openShiftId);
   const filteredOrders = typedOrders.filter((order) => {
@@ -262,9 +262,9 @@ export const DeliveryManagementView: React.FC = () => {
       <>
       {/* Tipo do pedido: cada um na sua aba */}
       <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-md bg-surface-muted p-1" role="group" aria-label="Tipo de pedido">
-        {([['ALL', 'Todos'], ['DELIVERY', 'Entrega'], ['DINE_IN', 'Consumir no local'], ['PICKUP', 'Retirada']] as const).map(([key, label]) => {
+        {([['ALL', 'Todos'], ['DELIVERY', 'Entrega'], ['PICKUP', 'Retirada'], ['DINE_IN', 'Consumir no local']] as const).map(([key, label]) => {
           const active = deliveryOrders.filter((o) => isInProduction(o.status) || o.status === 'OUT_FOR_DELIVERY' || o.status === 'AWAITING_PAYMENT');
-          const count = key === 'ALL' ? active.length : active.filter((o) => orderKind(o) === key).length;
+          const count = key === 'ALL' ? active.filter((o) => orderKind(o) !== 'DINE_IN').length : active.filter((o) => orderKind(o) === key).length;
           return <button key={key} type="button" aria-pressed={kindFilter === key} onClick={() => setKindFilter(key)} className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-sm px-3 text-sm font-medium ${kindFilter === key ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{label} <span className="font-mono">{count}</span></button>;
         })}
       </div>

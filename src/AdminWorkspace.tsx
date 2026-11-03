@@ -10,6 +10,7 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { lazyNamed } from './lib/lazyWithReload';
 import { useAuthStore } from './stores/useAuthStore';
 import { useDeliveryStore } from './stores/useDeliveryStore';
+import { isDineInOrder } from './lib/deliveryStatus';
 import { useStockStore } from './stores/useStockStore';
 import { useTableStore } from './stores/useTableStore';
 
@@ -138,7 +139,7 @@ export function AdminWorkspace() {
   const waitingBillCount = useTableStore((s) => s.tables.filter((table) => table.status === 'AGUARDANDO_CONTA').length);
   const pendingProductionCount = useTableStore((s) => s.orderItems.filter(isPendingProduction).length);
   const exhaustedCount = useStockStore((s) => s.dailyPrepStock.filter((stock) => stock.is_exhausted || stock.current_quantity <= 0).length);
-  const activeDeliveriesCount = useDeliveryStore((s) => s.deliveryOrders.filter((order) => ['CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'].includes(order.status)).length);
+  const activeDeliveriesCount = useDeliveryStore((s) => s.deliveryOrders.filter((order) => ['CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY'].includes(order.status) && !isDineInOrder(order)).length);
 
   return (
     <div className="app-shell">
