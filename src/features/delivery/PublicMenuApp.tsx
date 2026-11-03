@@ -9,7 +9,7 @@ import { comboBlockedByBase } from '../../lib/comboStock';
 import { DINE_IN_NOTE } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { menuPhotoUrl } from '../../lib/imageOptimization';
-import { getProductAvailability } from '../../lib/productAvailability';
+import { getProductAvailability, productFlavors } from '../../lib/productAvailability';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useShiftStore } from '../../stores/useShiftStore';
@@ -191,7 +191,8 @@ function Alert({ children }: { children: ReactNode }) {
 
 /* ---------- produto (folha no celular, modal no notebook) ---------- */
 function ProductSheet({ product, riceOptions, initial, onClose, onAdd }: { product: Product; riceOptions: string[]; initial?: { qty: number; doneness: MeatDoneness | null; notes: string }; onClose: () => void; onAdd: (qty: number, doneness: MeatDoneness | null, notes: string) => string | null }) {
-  const parsed = parseComboNotes(initial?.notes ?? '', riceOptions);
+  const flavors = productFlavors(product.description);
+  const parsed = parseComboNotes(initial?.notes ?? '', flavors.length ? flavors : riceOptions);
   const [qty, setQty] = useState(initial?.qty ?? 1);
   const [doneness, setDoneness] = useState<MeatDoneness | null>(initial?.doneness ?? null);
   const [notes, setNotes] = useState(parsed.notes);
@@ -202,7 +203,7 @@ function ProductSheet({ product, riceOptions, initial, onClose, onAdd }: { produ
   const missingDoneness = needsDoneness && !doneness;
   // Combo: o cliente escolhe um dos arrozes do dia (Configurações)
   const isCombo = COMBO_SUFFIX.test(product.name);
-  const needsRice = isCombo && riceOptions.length > 0;
+  const needsRice = flavors.length > 0 || (isCombo && riceOptions.length > 0);
   const [removedSides, setRemovedSides] = useState<string[]>(parsed.removed);
   const [rice, setRice] = useState<string | null>(parsed.rice);
   const [flagRice, setFlagRice] = useState(false);
@@ -258,8 +259,8 @@ function ProductSheet({ product, riceOptions, initial, onClose, onAdd }: { produ
               </fieldset>
             )}
             {needsRice && <div ref={riceRef}>
-              <OptionGroup title="Arroz do dia" hint="escolha 1" options={[...riceOptions, NO_RICE]} value={rice} onChange={(value) => { setRice(value); setFlagRice(false); }} />
-              {flagRice && missingRice && <p role="alert" className="mt-2 text-[14px] font-semibold text-rose-700">Escolha o arroz para continuar.</p>}
+              <OptionGroup title={flavors.length ? 'Sabor' : 'Arroz do dia'} hint="escolha 1" options={flavors.length ? flavors : [...riceOptions, NO_RICE]} value={rice} onChange={(value) => { setRice(value); setFlagRice(false); }} />
+              {flagRice && missingRice && <p role="alert" className="mt-2 text-[14px] font-semibold text-rose-700">{flavors.length ? 'Escolha o sabor para continuar.' : 'Escolha o arroz para continuar.'}</p>}
             </div>}
             {isCombo && <div>
               <p className="mb-2 text-base font-semibold text-ink">Acompanhamentos <span className="font-normal text-ink-muted">· toque para tirar</span></p>
@@ -283,7 +284,7 @@ function ProductSheet({ product, riceOptions, initial, onClose, onAdd }: { produ
               <span className="w-9 text-center text-[17px] font-semibold tabular-nums">{qty}</span>
               <button type="button" aria-label="Aumentar" onClick={() => setQty((q) => q + 1)} className="flex h-[52px] w-11 items-center justify-center text-brand-500"><Plus className="h-5 w-5" /></button>
             </div>
-            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness || missingRice} className={`min-w-0 px-2 text-[15px] font-semibold leading-tight min-[360px]:whitespace-nowrap`}>{missingDoneness ? 'Escolha o ponto da carne' : missingRice ? 'Escolha o arroz' : `${initial ? 'Salvar' : 'Adicionar'} · ${formatBRL(product.price * qty)}`}</Button>
+            <Button size="lg" block onClick={submit} aria-disabled={missingDoneness || missingRice} className={`min-w-0 px-2 text-[15px] font-semibold leading-tight min-[360px]:whitespace-nowrap`}>{missingDoneness ? 'Escolha o ponto da carne' : missingRice ? (flavors.length ? 'Escolha o sabor' : 'Escolha o arroz') : `${initial ? 'Salvar' : 'Adicionar'} · ${formatBRL(product.price * qty)}`}</Button>
           </div>
         </div>
       </div>
@@ -484,7 +485,7 @@ export function PublicMenuApp() {
     </label>
   );
 
-  const pickProduct = (p: Product) => (p.allows_doneness || COMBO_SUFFIX.test(p.name) ? setSheetProduct(p) : onPlus(p));
+  const pickProduct = (p: Product) => (p.allows_doneness || COMBO_SUFFIX.test(p.name) || productFlavors(p.description).length ? setSheetProduct(p) : onPlus(p));
   /** Tira a última linha do item na sacola. */
   const removeOne = (p: Product) => {
     const line = [...cart].reverse().find((c) => c.productId === p.id);
@@ -716,7 +717,7 @@ export function PublicMenuApp() {
                     <li key={d.id} className="grid grid-cols-[56px_1fr_auto] items-center gap-3 rounded-xl border border-line bg-surface-soft p-2.5">
                       <Photo product={d} variant="s" className="h-14 w-14 rounded-lg" />
                       <div className="min-w-0"><p className="text-[15px] font-medium leading-snug">{d.name}</p><p className="mt-0.5 text-[14px] tabular-nums text-ink-muted">{formatBRL(d.price)}</p></div>
-                      <button type="button" onClick={() => { const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="flex h-11 min-w-[44px] items-center justify-center rounded-full bg-brand-500 px-2 text-[15px] font-semibold text-white">{q > 0 ? q : <Plus className="h-5 w-5" />}</button>
+                      <button type="button" onClick={() => { if (productFlavors(d.description).length) { setSheetProduct(d); return; } const e = tryAdd(d, 1); setCartError(e); }} aria-label={`Adicionar ${d.name}, ${formatBRL(d.price)}`} className="flex h-11 min-w-[44px] items-center justify-center rounded-full bg-brand-500 px-2 text-[15px] font-semibold text-white">{q > 0 ? q : <Plus className="h-5 w-5" />}</button>
                     </li>
                   );
                 })}

@@ -1,3 +1,4 @@
+import { productFlavors } from '../../../lib/productAvailability';
 import { describe, expect, it } from 'vitest';
 import type { Product } from '../../../types/domain';
 import { categoryOf, comboNotes, parseComboNotes } from '../PublicMenuApp';
@@ -27,5 +28,13 @@ describe('editar item da sacola', () => {
   it('recupera arroz, o que saiu e a observação', () => {
     expect(parseComboNotes('Baião de Dois, Sem farofa, pouco sal', ['Baião de Dois'])).toEqual({ rice: 'Baião de Dois', removed: ['Farofa'], notes: 'pouco sal' });
     expect(parseComboNotes('', [])).toEqual({ rice: null, removed: [], notes: '' });
+  });
+});
+
+describe('sabores do produto', () => {
+  it('lê os sabores da descrição', () => {
+    expect(productFlavors('Sabores: Coca-Cola, Guaraná e Fanta')).toEqual(['Coca-Cola', 'Guaraná', 'Fanta']);
+    expect(productFlavors('Lata 350ml gelada')).toEqual([]);
+    expect(productFlavors(null)).toEqual([]);
   });
 });

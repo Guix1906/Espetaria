@@ -18,3 +18,9 @@ export function getStockLevel(isAvailable: boolean, left: number | null): StockL
   if (left === null) return 'untracked';
   return left <= LOW_STOCK_THRESHOLD ? 'low' : 'ok';
 }
+
+/** Sabores do produto, escritos na descrição do cadastro: "Sabores: Coca-Cola, Guaraná, Fanta". */
+export function productFlavors(description?: string | null): string[] {
+  const match = description?.match(/sabor(?:es)?\s*:\s*([^\n.]+)/i);
+  return match ? match[1]!.split(/,|\se\s/).map((flavor) => flavor.trim()).filter(Boolean) : [];
+}

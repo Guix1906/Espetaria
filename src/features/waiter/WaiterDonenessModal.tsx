@@ -9,6 +9,7 @@ import type { MeatDoneness } from '../../types/enums';
 import { WaiterSheet } from './WaiterSheet';
 import { triggerHaptic } from '../../lib/haptics';
 import { useSettingsStore } from '../../stores/useSettingsStore';
+import { productFlavors } from '../../lib/productAvailability';
 
 export interface MultiDonenessItem {
   doneness: MeatDoneness;
@@ -58,8 +59,9 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const isJuice = isJuiceProduct(product) || (product.sector === 'KITCHEN' && product.type === 'BEBIDA');
   const riceOptions = settings.daily_rice_flavors ?? [];
   // Sabores vêm só das Configurações do dia: sem cadastro, o grupo não aparece
-  const choices = isRiceOrCombo && riceOptions.length ? (isCombo ? [...riceOptions, NO_RICE] : riceOptions) : isJuice ? settings.daily_juice_flavors ?? [] : [];
-  const choiceRequired = isCombo && riceOptions.length > 0;
+  const flavors = productFlavors(product.description);
+  const choices = flavors.length ? flavors : isRiceOrCombo && riceOptions.length ? (isCombo ? [...riceOptions, NO_RICE] : riceOptions) : isJuice ? settings.daily_juice_flavors ?? [] : [];
+  const choiceRequired = flavors.length > 0 || (isCombo && riceOptions.length > 0);
 
   // Arroz/sabor fica separado da observação livre; os dois só se juntam ao salvar
   const initialTags = (initial?.notes ?? '').split(',').map((note) => note.trim()).filter(Boolean);
@@ -87,7 +89,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
 
   const needsDoneness = product.allows_doneness && (isEditing ? !selectedDoneness : totalDonenessQuantity === 0);
   const needsChoice = choiceRequired && !choice && !isEditing;
-  const missingLabel = needsDoneness ? 'Escolha o ponto da carne' : needsChoice ? 'Escolha o arroz' : null;
+  const missingLabel = needsDoneness ? 'Escolha o ponto da carne' : needsChoice ? (flavors.length ? 'Escolha o sabor' : 'Escolha o arroz') : null;
   const canRepeat = !isEditing && (product.allows_doneness || choiceRequired);
 
   const updateDonenessCount = (d: MeatDoneness, delta: number) => {
@@ -194,7 +196,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
             );
           })}
         </fieldset>}
-        {choices.length > 0 && <OptionGroup title={isRiceOrCombo ? 'Arroz do dia' : 'Sabor do dia'} hint={choiceRequired ? 'obrigatório' : 'opcional'} options={choices} value={choice} onChange={(value) => { setChoice(value); setErrorMessage(null); }} />}
+        {choices.length > 0 && <OptionGroup title={flavors.length ? 'Sabor' : isRiceOrCombo ? 'Arroz do dia' : 'Sabor do dia'} hint={choiceRequired ? 'obrigatório' : 'opcional'} options={choices} value={choice} onChange={(value) => { setChoice(value); setErrorMessage(null); }} />}
         {product.allows_notes && <div>
           {suggestedNotes.length > 0 && <>
             <p className="mb-2 text-base font-semibold text-ink">Pedidos comuns <span className="font-normal text-ink-muted">· opcional</span></p>

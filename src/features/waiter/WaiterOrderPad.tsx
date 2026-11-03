@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Beer, CheckCircle2, Flame, Minus, Plus, Search, 
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { formatBRL } from '../../lib/formatters';
-import { getProductAvailability, getStockLevel, type StockLevel } from '../../lib/productAvailability';
+import { getProductAvailability, getStockLevel, productFlavors, type StockLevel } from '../../lib/productAvailability';
 import { remainingFor } from '../../lib/comboStock';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useCartStore } from '../../stores/useCartStore';
@@ -195,7 +195,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   const handleAdd = (product: Product) => {
     setOrderSent(false);
     setSwapping(null);
-    if (product.allows_doneness || /acompanhamento|arroz|suco|refresco|jarra/i.test(product.name)) {
+    if (product.allows_doneness || /acompanhamento|arroz|suco|refresco|jarra/i.test(product.name) || productFlavors(product.description).length) {
       triggerHaptic(25);
       setModalProduct(product);
     } else {
