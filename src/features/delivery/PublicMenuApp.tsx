@@ -413,7 +413,6 @@ export function PublicMenuApp() {
   };
 
   const tracking = activeTrackingOrder && !['CANCELLED', 'DELIVERED'].includes(activeTrackingOrder.status) ? activeTrackingOrder : null;
-  const initials = settings.name.replace(/^espetaria\s+/i, '').split(/\s+/).filter((w) => w.length > 2).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'SC';
 
   /* ---------- telas ---------- */
 
@@ -423,7 +422,7 @@ export function PublicMenuApp() {
       {isOpen ? `Aberto agora · ${isPickup ? pickupEta : deliveryEta}` : 'Fechado no momento'}
     </p>
   );
-  const logo = <div aria-hidden="true" className="flex h-12 w-12 shrink-0 items-center justify-center rounded-md bg-ink text-[17px] font-bold text-canvas lg:h-11 lg:w-11">{initials}</div>;
+  const logo = <img src="/brand/logo-sabor-da-carne.webp" alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover" />;
   const searchBox = (
     <label className="relative block">
       <span className="sr-only">Buscar no cardápio</span>
