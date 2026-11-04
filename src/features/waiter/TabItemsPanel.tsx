@@ -16,12 +16,11 @@ import { ItemSwapModal } from './ItemSwapModal';
 interface TabItemsPanelProps {
   table: RestaurantTable;
   /** Chamado depois de trocar um item */
-  onSwap?: (item: OrderItem) => void;
   compact?: boolean;
 }
 
 /** Itens já lançados na comanda da mesa, com servir, cancelar, trocar e reimprimir. */
-export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelProps) {
+export function TabItemsPanel({ table, compact = false }: TabItemsPanelProps) {
   const { tabs, getTabOrderItems, cancelOrderItemAtomic, reprintOrderItemProduction, reprintTableProduction } = useTableStore();
   const { currentProfile } = useAuthStore();
   const { currentShift } = useShiftStore();
@@ -200,10 +199,7 @@ export function TabItemsPanel({ table, onSwap, compact = false }: TabItemsPanelP
                     <button
                       type="button"
                       className="btn-secondary px-3 py-2 text-xs font-semibold"
-                      onClick={() => {
-                        setSwappingItem(item);
-                        onSwap?.(item);
-                      }}
+                      onClick={() => setSwappingItem(item)}
                       title={`Substituir ${item.product_name} por outro item`}
                       aria-label={`Trocar ${item.product_name}`}
                     >

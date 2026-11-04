@@ -45,6 +45,26 @@ const loadPersistedCarts = (): Record<string, CartItem[]> => {
   return {};
 };
 
+// De qual comanda é o rascunho de cada mesa
+const CART_TABS_STORAGE_KEY = 'espetaria_table_cart_tabs';
+
+const loadCartTabs = (): Record<string, string> => {
+  if (typeof window === 'undefined' || !window.localStorage) return {};
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(CART_TABS_STORAGE_KEY) || '{}');
+    if (parsed && typeof parsed === 'object') return parsed;
+  } catch {}
+  return {};
+};
+
+const saveCartTabs = (tabs: Record<string, string>) => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      window.localStorage.setItem(CART_TABS_STORAGE_KEY, JSON.stringify(tabs));
+    } catch {}
+  }
+};
+
 const savePersistedCarts = (carts: Record<string, CartItem[]>) => {
   if (typeof window !== 'undefined' && window.localStorage) {
     try {
@@ -57,7 +77,10 @@ interface CartState {
   // Carrinho indexado por tableId: { [tableId]: CartItem[] }
   // Permite ao garçom trocar de mesa sem perder os espetos que já anotou!
   tableCarts: Record<string, CartItem[]>;
+  cartTabs: Record<string, string>;
 
+  /** Liga o rascunho à comanda aberta. Rascunho de outra comanda (cliente anterior) é descartado: nunca vai junto no pedido. */
+  bindCartToTab: (tableId: string, tabId: string) => void;
   addItem: (
     tableId: string,
     product: Product,
@@ -79,6 +102,18 @@ interface CartState {
 
 export const useCartStore = create<CartState>((set, get) => ({
   tableCarts: loadPersistedCarts(),
+  cartTabs: loadCartTabs(),
+
+  bindCartToTab: (tableId, tabId) => {
+    const { cartTabs, tableCarts } = get();
+    if (cartTabs[tableId] === tabId) return;
+    const tabs = { ...cartTabs, [tableId]: tabId };
+    const carts = { ...tableCarts };
+    delete carts[tableId];
+    saveCartTabs(tabs);
+    savePersistedCarts(carts);
+    set({ cartTabs: tabs, tableCarts: carts });
+  },
 
   addItem: (tableId, product, quantity = 1, doneness = null, notes = null) => {
     set((state) => {

@@ -105,7 +105,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
     });
   };
   const missingChoices = choiceRequired && !isEditing ? units.filter((unit, index) => !choiceOf(unit, index)).length : 0;
-  const needsChoice = choiceRequired && !isEditing && (units.length === 0 ? !choice : missingChoices > 0);
+  const needsChoice = choiceRequired && (isEditing || units.length === 0 ? !choice : missingChoices > 0);
   const missingLabel = needsDoneness ? 'Escolha o ponto da carne' : needsChoice ? (flavors.length ? 'Escolha o sabor' : 'Escolha o arroz') + (units.length > 1 ? ` (falta ${missingChoices})` : '') : null;
   const canRepeat = !isEditing && (product.allows_doneness || choiceRequired);
 

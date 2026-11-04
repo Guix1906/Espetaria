@@ -95,6 +95,7 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
 - Instalador do programa: gerar sempre completo (`npx electron-builder --win nsis`, nunca `--prepackaged`, que sai sem a logo). electron-builder fica na 25.1.8 (a 26 travou baixando icones).
 
 - Primeira abertura do cardapio (03/11): telas do cliente (`isPublicRoute`) nao registram service worker nem recarregam; `index.html` ja busca produtos e categorias (`takeMenuPreload`) e o plugin `cardapio-modulepreload` baixa os arquivos do cardapio junto com o principal. No painel, a primeira instalacao do SW nao recarrega.
+- Rascunho do garçom (03/11): fica no aparelho, ligado à comanda (`bindCartToTab` em `useCartStore`); rascunho de comanda anterior da mesa é descartado ao abrir a mesa. Botão Trocar só usa `ItemSwapModal`, sem aviso para escolher no cardápio (o item antigo não era cancelado).
 - Combo que zerou fica com `available=false` no banco e a abertura do turno so libera o espeto contado: no garcom, combo com saldo vale pelo saldo (`getProductAvailability`).
 
 ## Chaves e credenciais — NÃO pedir ao usuário

@@ -13,6 +13,15 @@ describe('Revisar pedido: alterar item do rascunho', () => {
     useStockStore.setState({ dailyPrepStock: stock(5) });
   });
 
+  it('rascunho de outra comanda da mesa é descartado; o da comanda atual fica', () => {
+    useCartStore.getState().bindCartToTab(TABLE, 'comanda-1');
+    useCartStore.getState().addItem(TABLE, PICANHA, 1, 'AO_PONTO', null);
+    useCartStore.getState().bindCartToTab(TABLE, 'comanda-1');
+    expect(useCartStore.getState().getCart(TABLE)).toHaveLength(1);
+    useCartStore.getState().bindCartToTab(TABLE, 'comanda-2');
+    expect(useCartStore.getState().getCart(TABLE)).toHaveLength(0);
+  });
+
   it('troca ponto, observação e quantidade', () => {
     const cart = useCartStore.getState();
     cart.addItem(TABLE, PICANHA, 2, 'AO_PONTO', null);

@@ -70,7 +70,6 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   const [isSettlementOpen, setIsSettlementOpen] = useState(false);
   const [orderSent, setOrderSent] = useState(false);
   const [billRequested, setBillRequested] = useState(false);
-  const [swapping, setSwapping] = useState<string | null>(null);
   const [showPhotos, setShowPhotos] = useState(() => {
     try { return localStorage.getItem('ponto_waiter_show_photos') !== 'false'; } catch { return true; }
   });
@@ -128,6 +127,10 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   };
 
   const activeTab = tabs.find((tab) => (tab.table_id === table.id || tab.table_id === `table-${table.number}`) && tab.status === 'OPEN');
+  // Rascunho esquecido de outra comanda desta mesa não pode sair no pedido do cliente atual
+  useEffect(() => {
+    if (activeTab) useCartStore.getState().bindCartToTab(table.id, activeTab.id);
+  }, [table.id, activeTab?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Abrir a mesa conta como "levou à mesa": o aviso de pronto some sem o botão "Servir"
   useEffect(() => {
     if (!activeTab) return;
@@ -199,7 +202,6 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   };
   const handleAdd = (product: Product) => {
     setOrderSent(false);
-    setSwapping(null);
     if (product.allows_doneness || /acompanhamento|arroz|suco|refresco|jarra/i.test(product.name) || productFlavors(product.description).length) {
       triggerHaptic(25);
       setModalProduct(product);
@@ -314,9 +316,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
         </div>
       </div>
       <div className="mx-auto max-w-5xl space-y-3 px-3 pt-3 sm:px-6">
-        {/* Um aviso só, o mais importante: encerrada > trocando > enviado > conta pedida */}
+        {/* Um aviso só, o mais importante: encerrada > enviado > conta pedida */}
         {!activeTab ? <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">Esta comanda foi encerrada. Volte às mesas para iniciar outro atendimento.</p>
-          : swapping ? <p role="status" className="notice border-brand-200 bg-brand-50 text-brand-900">Trocando <strong>{swapping}</strong>: escolha o item substituto e envie o pedido.</p>
           : orderSent && cartCount === 0 ? <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção.</span></div><button type="button" className="icon-button bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>
           : (billRequested || table.status === 'AGUARDANDO_CONTA') ? <p role="status" className="notice border-brand-200 bg-brand-50 text-brand-900">Conta pedida. Aguarde o atendimento do caixa.</p>
           : null}
@@ -332,7 +333,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
             }} className="min-h-[44px] rounded-md px-3.5 text-[17px] font-semibold text-rose-700 hover:bg-rose-50 active:bg-rose-50">Liberar mesa</button>
           </div>
         )}
-        {activeTab && <TabItemsPanel table={table} onSwap={(item) => { setSwapping(item.product_name); setSearchQuery(''); setSelectedCategory(TOP); scrollToCatalog(); }} />}
+        {activeTab && <TabItemsPanel table={table} />}
         <div id="waiter-catalog" className="flex scroll-mt-32 items-center gap-2">
           <label className="relative block flex-1">
             <span className="sr-only">Buscar produto no cardápio</span>
