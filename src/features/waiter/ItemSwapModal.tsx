@@ -42,7 +42,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState<number>(item?.quantity || 1);
-  const [doneness, setDoneness] = useState<MeatDoneness | null>(item?.doneness || 'AO_PONTO');
+  const [doneness, setDoneness] = useState<MeatDoneness | null>(null);
   const [notes, setNotes] = useState<string>('');
   const [rice, setRice] = useState<string | null>(null);
   const [returnStock, setReturnStock] = useState<boolean>(true);
@@ -52,7 +52,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
   React.useEffect(() => {
     if (item) {
       setQuantity(item.quantity);
-      setDoneness(item.doneness || 'AO_PONTO');
+      setDoneness(null);
       setNotes('');
       setRice(null);
       setSelectedProduct(null);
@@ -84,17 +84,19 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
   const oldTotal = item.unit_price * item.quantity;
   const newTotal = selectedProduct ? selectedProduct.price * quantity : 0;
   const diff = newTotal - oldTotal;
-  // Mesma regra de lançar pedido: Completo sempre sai com o arroz escolhido
+  // Mesma regra de lançar pedido: nenhum ponto vem marcado e Completo sempre sai com o arroz escolhido
+  const needsDoneness = !!selectedProduct?.allows_doneness && !doneness;
   const riceOptions = settings.daily_rice_flavors ?? [];
   const needsRice = !!selectedProduct && /acompanhamento/i.test(selectedProduct.name) && riceOptions.length > 0;
+  const missingLabel = needsDoneness ? 'Escolha o ponto da carne' : needsRice && !rice ? 'Escolha o arroz' : null;
 
   const handleConfirmSwap = async () => {
     if (!selectedProduct) {
       notify('Selecione o produto substituto.', 'error');
       return;
     }
-    if (needsRice && !rice) {
-      notify('Escolha o arroz para continuar.', 'error');
+    if (missingLabel) {
+      notify(`${missingLabel} para continuar.`, 'error');
       return;
     }
     if (!currentShift) {
@@ -231,10 +233,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
                         key={p.id}
                         type="button"
                         disabled={isOut}
-                        onClick={() => {
-                          setSelectedProduct(p);
-                          if (p.allows_doneness) setDoneness('AO_PONTO');
-                        }}
+                        onClick={() => setSelectedProduct(p)}
                         className={`w-full p-3 rounded-xl border text-left flex items-center justify-between transition ${isOut ? 'opacity-40 bg-surface border-line cursor-not-allowed' : 'bg-surface border-line hover:border-brand-500 active:scale-[0.99]'}`}
                       >
                         <div>
@@ -263,7 +262,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => { setSelectedProduct(null); setRice(null); }}
+                  onClick={() => { setSelectedProduct(null); setDoneness(null); setRice(null); }}
                   className="text-xs font-bold text-brand-700 hover:underline px-2 py-1"
                 >
                   Alterar produto
@@ -358,12 +357,12 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
 
             <button
               type="button"
-              disabled={submitting || (needsRice && !rice)}
+              disabled={submitting || !!missingLabel}
               onClick={() => void handleConfirmSwap()}
               className="w-full py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 active:scale-[0.98] text-white font-bold transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50 text-base"
             >
               <Check className="w-5 h-5" />
-              <span>{submitting ? 'Emitindo cupons...' : needsRice && !rice ? 'Escolha o arroz' : 'Confirmar Troca e Mandar para Produção'}</span>
+              <span>{submitting ? 'Emitindo cupons...' : missingLabel ?? 'Confirmar Troca e Mandar para Produção'}</span>
             </button>
           </div>
         )}
