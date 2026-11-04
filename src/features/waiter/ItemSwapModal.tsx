@@ -2,12 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { ArrowLeftRight, Check, Search, X, Minus, Plus } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
+import { OptionGroup } from '../../components/ui/OptionGroup';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
 import type { OrderItem, Product, RestaurantTable, MeatDoneness } from '../../types/domain';
+import { NO_RICE } from './WaiterDonenessModal';
 
 interface ItemSwapModalProps {
   isOpen: boolean;
@@ -33,6 +36,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
   const { currentShift } = useShiftStore();
   const { products, dailyPrepStock, categories } = useStockStore();
   const { swapOrderItemAtomic } = useTableStore();
+  const { settings } = useSettingsStore();
 
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
@@ -40,6 +44,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
   const [quantity, setQuantity] = useState<number>(item?.quantity || 1);
   const [doneness, setDoneness] = useState<MeatDoneness | null>(item?.doneness || 'AO_PONTO');
   const [notes, setNotes] = useState<string>('');
+  const [rice, setRice] = useState<string | null>(null);
   const [returnStock, setReturnStock] = useState<boolean>(true);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
@@ -49,6 +54,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
       setQuantity(item.quantity);
       setDoneness(item.doneness || 'AO_PONTO');
       setNotes('');
+      setRice(null);
       setSelectedProduct(null);
       setSearch('');
       setSelectedCategory('ALL');
@@ -78,10 +84,17 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
   const oldTotal = item.unit_price * item.quantity;
   const newTotal = selectedProduct ? selectedProduct.price * quantity : 0;
   const diff = newTotal - oldTotal;
+  // Mesma regra de lançar pedido: Completo sempre sai com o arroz escolhido
+  const riceOptions = settings.daily_rice_flavors ?? [];
+  const needsRice = !!selectedProduct && /acompanhamento/i.test(selectedProduct.name) && riceOptions.length > 0;
 
   const handleConfirmSwap = async () => {
     if (!selectedProduct) {
       notify('Selecione o produto substituto.', 'error');
+      return;
+    }
+    if (needsRice && !rice) {
+      notify('Escolha o arroz para continuar.', 'error');
       return;
     }
     if (!currentShift) {
@@ -100,7 +113,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
         selectedProduct.id,
         quantity,
         selectedProduct.allows_doneness ? doneness : null,
-        notes.trim() || null,
+        [needsRice ? rice : null, notes.trim()].filter(Boolean).join(', ') || null,
         currentProfile.id,
         currentShift.id,
         returnStock
@@ -250,7 +263,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setSelectedProduct(null)}
+                  onClick={() => { setSelectedProduct(null); setRice(null); }}
                   className="text-xs font-bold text-brand-700 hover:underline px-2 py-1"
                 >
                   Alterar produto
@@ -276,16 +289,18 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
                 </div>
               )}
 
-              {/* Observações / Sabores */}
+              {needsRice && <OptionGroup title={quantity > 1 ? 'Arroz do dia (vale para todos)' : 'Arroz do dia'} hint="obrigatório" options={[...riceOptions, NO_RICE]} value={rice} onChange={setRice} />}
+
+              {/* Observações */}
               {selectedProduct.allows_notes && (
                 <div className="space-y-1 pt-1">
-                  <label htmlFor="swap-notes" className="text-xs font-bold uppercase text-ink-muted">Observação / Sabor do Acompanhamento</label>
+                  <label htmlFor="swap-notes" className="text-xs font-bold uppercase text-ink-muted">Observação</label>
                   <input
                     id="swap-notes"
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Ex.: Arroz de Cuxá, sem farofa, etc."
+                    placeholder="Ex.: Sem farofa, pouco sal..."
                     className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm focus:border-brand-500 focus:outline-none"
                   />
                 </div>
@@ -343,12 +358,12 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
 
             <button
               type="button"
-              disabled={submitting}
+              disabled={submitting || (needsRice && !rice)}
               onClick={() => void handleConfirmSwap()}
               className="w-full py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 active:scale-[0.98] text-white font-bold transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50 text-base"
             >
               <Check className="w-5 h-5" />
-              <span>{submitting ? 'Emitindo cupons...' : 'Confirmar Troca e Mandar para Produção'}</span>
+              <span>{submitting ? 'Emitindo cupons...' : needsRice && !rice ? 'Escolha o arroz' : 'Confirmar Troca e Mandar para Produção'}</span>
             </button>
           </div>
         )}

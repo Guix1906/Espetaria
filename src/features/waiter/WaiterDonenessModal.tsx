@@ -44,7 +44,7 @@ export const DONENESS_OPTIONS: { value: MeatDoneness; label: string; description
 const COMMON_NOTES = ['Sem sal grosso', 'Pouco sal', 'Mais torradinho', 'Cortar em aperitivo', 'Farofa à parte'];
 // O arroz sai daqui: é escolhido só entre os sabores do dia (Configurações)
 const ACOMPANHAMENTO_NOTES = ['Sem cebola', 'Farofa à parte'];
-const NO_RICE = 'Sem arroz';
+export const NO_RICE = 'Sem arroz';
 const NO_COUNTS: Record<string, number> = { MAL_PASSADA: 0, AO_PONTO: 0, BEM_PASSADA: 0 };
 
 /** Detecta se o produto é um suco/bebida que precisa de escolha de sabor. */
