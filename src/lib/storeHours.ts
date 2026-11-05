@@ -4,6 +4,15 @@ const CLOSES_AT = 23;
 const CLOSED_WEEKDAY = 3;
 const WEEKDAY_NAMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
+/**
+ * Dentro do horário do delivery? Vale mesmo que alguém esqueça o turno aberto:
+ * na quarta e fora das 18h–23h o cardápio fica fechado.
+ */
+export function isWithinStoreHours(now: Date): boolean {
+  const hour = now.getHours();
+  return now.getDay() !== CLOSED_WEEKDAY && hour >= OPENS_AT && hour < CLOSES_AT;
+}
+
 /** Frase depois de "Fechado ·", com a loja fechada no sistema. */
 export function storeClosedText(now: Date): string {
   const day = now.getDay();

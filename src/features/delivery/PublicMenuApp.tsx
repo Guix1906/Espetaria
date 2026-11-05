@@ -10,7 +10,7 @@ import { DINE_IN_NOTE } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { menuPhotoUrl } from '../../lib/imageOptimization';
 import { getProductAvailability, menuFlavors } from '../../lib/productAvailability';
-import { storeClosedText } from '../../lib/storeHours';
+import { isWithinStoreHours, storeClosedText } from '../../lib/storeHours';
 import { loadMenuForm, saveMenuForm } from '../../lib/menuDraft';
 import { expandUnits, groupUnits } from '../waiter/orderUnits';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
@@ -314,7 +314,10 @@ export function PublicMenuApp() {
   const deliveryEta = settings.delivery_eta?.trim() || DEFAULT_DELIVERY_ETA;
   const pickupEta = settings.pickup_eta?.trim() || DEFAULT_PICKUP_ETA;
   const isDesktop = useIsDesktop();
-  const isOpen = currentShift?.status === 'ABERTO';
+  // Relógio de minuto em minuto: às 23h (ou à 0h de quarta) o cardápio fecha sozinho
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => { const id = window.setInterval(() => setNow(new Date()), 30_000); return () => window.clearInterval(id); }, []);
+  const isOpen = currentShift?.status === 'ABERTO' && isWithinStoreHours(now);
 
   // Atualizar a página: continua na mesma etapa, com a sacola e as escolhas guardadas
   const [step, setStep] = useState<Step>(() => {
