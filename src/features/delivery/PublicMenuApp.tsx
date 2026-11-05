@@ -349,6 +349,8 @@ export function PublicMenuApp() {
   const [dineInDone, setDineInDone] = useState<{ table: number; order: number; total: number; pix: boolean } | null>(null);
   // Pode pagar já pelo cardápio (PIX) ou deixar para o caixa; o caixa fecha a mesa no painel
   const [dinePay, setDinePay] = useState<'CAIXA' | 'PIX'>('CAIXA');
+  const [occupiedAsk, setOccupiedAsk] = useState<string | null>(null);
+  useEffect(() => setOccupiedAsk(null), [tableNumber, orderMode]);
 
   /* navegação por etapa com o botão voltar do navegador */
   useEffect(() => {
@@ -501,9 +503,10 @@ export function PublicMenuApp() {
     return null;
   };
 
-  const send = async () => {
+  const send = async (confirmOccupied = false) => {
     if (sending) return;
     setFormError(null);
+    setOccupiedAsk(null);
     const err = validateDelivery() || validatePayment();
     if (err) { setFormError(err); return; }
     if (!currentShift || !isOpen) { setFormError('A loja está fechada no momento. Aguarde a abertura para enviar o pedido.'); return; }
@@ -517,6 +520,7 @@ export function PublicMenuApp() {
           p_idempotency_key: checkoutKey,
           p_customer_name: customer.name.trim(),
           p_pay_pix: payDinePix,
+          p_confirm_occupied: confirmOccupied,
         });
         if (error) throw new Error(error.message || 'Não foi possível enviar o pedido.');
         const result = data as { order_number: number; table_number: number; total: number };
@@ -535,7 +539,9 @@ export function PublicMenuApp() {
       go('sent', true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Não foi possível enviar o pedido. Tente novamente.';
-      if (/estoque|esgot|dispon/i.test(msg)) { setCartError(`Um item acabou enquanto você pedia: ${msg} Ajuste o pedido e envie de novo.`); go(isDesktop ? 'checkout' : 'cart'); }
+      // Mesa digitada já está aberta: pergunta antes de juntar na comanda de alguém
+      if (msg.includes('MESA_OCUPADA')) setOccupiedAsk(msg.replace(/^.*MESA_OCUPADA:\s*/, ''));
+      else if (/estoque|esgot|dispon/i.test(msg)) { setCartError(`Um item acabou enquanto você pedia: ${msg} Ajuste o pedido e envie de novo.`); go(isDesktop ? 'checkout' : 'cart'); }
       else setFormError(msg);
     } finally { setSending(false); }
   };
@@ -731,6 +737,19 @@ export function PublicMenuApp() {
 
   const closedNotice = !isOpen && <ClosedNotice />;
 
+  // "A Mesa X já está aberta. Você está sentado nela?" (sem mostrar nome nem pedidos de quem está lá)
+  const occupiedBox = occupiedAsk && (
+    <div role="alertdialog" aria-live="assertive" className="space-y-3 rounded-md border-2 border-brand-500 bg-surface p-4">
+      <p className="text-[17px] font-semibold">{occupiedAsk}</p>
+      <p className="text-[14px] text-ink-muted">Se sim, o seu pedido entra na conta dessa mesa.</p>
+      <div className="grid gap-2">
+        <Button size="lg" block disabled={sending} onClick={() => void send(true)} className="font-semibold">Sim, é a minha mesa</Button>
+        <button type="button" onClick={() => { setOccupiedAsk(null); if (isDesktop) document.getElementById('pm-table')?.focus(); else back(); }}
+          className="min-h-[48px] w-full rounded-md border border-line-strong text-[16px] font-semibold text-ink">Corrigir o número</button>
+      </div>
+    </div>
+  );
+
   const trackingBanner = tracking && (
     <button type="button" onClick={() => go('sent')} className="flex w-full items-center justify-between gap-3 rounded-md border border-line bg-surface px-4 py-3 text-left">
       <span><span className="block font-mono text-[13px] text-ink-muted">Pedido #{tracking.order_number}</span><span className="block text-[15px] font-semibold">Acompanhar o seu pedido</span></span>
@@ -892,9 +911,10 @@ export function PublicMenuApp() {
           <div className="pt-4">{totals()}</div>
           {closedNotice && <div className="pt-4">{closedNotice}</div>}
           {formError && <div className="pt-4"><Alert>{formError}</Alert></div>}
+          {occupiedBox && <div className="pt-4">{occupiedBox}</div>}
         </div>
         <Footer>
-          <Button size="lg" block disabled={sending || !cart.length || !isOpen} onClick={() => void send()} className="font-semibold">{!isOpen ? 'Loja fechada no momento' : sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
+          <Button size="lg" block disabled={sending || !cart.length || !isOpen || !!occupiedAsk} onClick={() => void send()} className="font-semibold">{!isOpen ? 'Loja fechada no momento' : sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
           <p className="mt-2 text-center text-[13px] text-ink-muted">{tableMode ? `O pedido vai para a conta da Mesa ${tableNumber}.` : 'A confirmação chega no seu WhatsApp.'}</p>
         </Footer>
       </div>
@@ -923,7 +943,8 @@ export function PublicMenuApp() {
             {totals(22)}
             {closedNotice}
             {formError && <Alert>{formError}</Alert>}
-            <Button size="lg" block disabled={sending || !cart.length} onClick={() => void send()} className="font-semibold">{sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
+            {occupiedBox}
+            <Button size="lg" block disabled={sending || !cart.length || !!occupiedAsk} onClick={() => void send()} className="font-semibold">{sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
             <p className="text-center text-[13px] text-ink-muted">A confirmação chega no seu WhatsApp.</p>
           </aside>
         </div>
