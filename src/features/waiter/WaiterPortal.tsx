@@ -5,6 +5,7 @@ import { LogOut, Volume2, VolumeX } from 'lucide-react';
 import { audioService } from '../../lib/audio';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 import { staffApi } from '../../lib/staffApi';
 import type { Profile } from '../../types/domain';
 import { WaiterModule } from './WaiterModule';
@@ -130,6 +131,21 @@ export function WaiterPortal() {
       root.style.removeProperty('--vv-bottom-offset');
     };
   }, []);
+
+  // Arroz/sucos do dia e demais configurações: além do aviso em tempo real, confere a cada
+  // 2 minutos e ao voltar para a tela (celular bloqueado ou sem sinal perde o aviso)
+  useEffect(() => {
+    if (!isSupabaseConfigured || !identified) return;
+    const refresh = () => { if (document.visibilityState === 'visible') void useSettingsStore.getState().loadRemoteSettings(); };
+    const id = window.setInterval(refresh, 120_000);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('online', refresh);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('online', refresh);
+    };
+  }, [identified]);
 
   useEffect(() => {
     if (!isSupabaseConfigured) return;
