@@ -31,6 +31,11 @@ describe('cardápio fecha sozinho fora do horário (turno esquecido aberto)', ()
     expect(isWithinStoreHours(at(3, 23))).toBe(false);
     expect(isWithinStoreHours(at(3, 2))).toBe(false);
   });
+  it('exceção do gerente abre o dia inteiro, só naquele dia', () => {
+    expect(isWithinStoreHours(at(4, 19), '2026-11-04')).toBe(true);
+    expect(isWithinStoreHours(at(4, 12), '2026-11-04')).toBe(true);
+    expect(isWithinStoreHours(at(11, 19), '2026-11-04')).toBe(false);
+  });
   it('quarta fica fechado o dia todo', () => {
     expect(isWithinStoreHours(at(4, 19))).toBe(false);
     expect(isWithinStoreHours(at(4, 21))).toBe(false);

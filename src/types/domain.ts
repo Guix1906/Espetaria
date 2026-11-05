@@ -322,6 +322,8 @@ export interface RestaurantSettings {
   /** Texto do tempo de entrega e de retirada no cardápio digital (migração 00033). */
   delivery_eta?: string;
   pickup_eta?: string;
+  /** "Abrir delivery hoje mesmo assim" (00058): AAAA-MM-DD do dia liberado fora do horário. */
+  delivery_open_override_date?: string | null;
   /** Pagamento do entregador: valor por entrega e valor fixo por turno (migração 00036; padrão 0). */
   driver_per_delivery?: number;
   driver_fuel_fixed?: number;

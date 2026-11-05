@@ -317,7 +317,7 @@ export function PublicMenuApp() {
   // Relógio de minuto em minuto: às 23h (ou à 0h de quarta) o cardápio fecha sozinho
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const id = window.setInterval(() => setNow(new Date()), 30_000); return () => window.clearInterval(id); }, []);
-  const isOpen = currentShift?.status === 'ABERTO' && isWithinStoreHours(now);
+  const isOpen = currentShift?.status === 'ABERTO' && isWithinStoreHours(now, settings.delivery_open_override_date);
 
   // Atualizar a página: continua na mesma etapa, com a sacola e as escolhas guardadas
   const [step, setStep] = useState<Step>(() => {

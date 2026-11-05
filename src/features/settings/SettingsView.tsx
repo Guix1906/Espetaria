@@ -25,6 +25,7 @@ import type { PixKeyType, ProductionSector } from '../../types/enums';
 import { generatePixPayload } from '../../lib/pix';
 import { PixQrCode } from '../pix/PixQrCode';
 import { PixAutoCard } from './PixAutoCard';
+import { DeliveryHoursCard } from './DeliveryHoursCard';
 import { WhatsAppAutoCard } from './WhatsAppAutoCard';
 import { WhatsAppBotCard } from './WhatsAppBotCard';
 import { formatBRL } from '../../lib/formatters';
@@ -585,6 +586,8 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
       )}
+
+      {activeTab === 'store' && <DeliveryHoursCard />}
 
       {/* ABA 4: DADOS DA ESPETARIA */}
       {activeTab === 'store' && (

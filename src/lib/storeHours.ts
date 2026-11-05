@@ -4,11 +4,23 @@ const CLOSES_AT = 23;
 const CLOSED_WEEKDAY = 3;
 const WEEKDAY_NAMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
 
+/** Data do aparelho no formato do banco (AAAA-MM-DD). */
+export function localDateKey(now: Date): string {
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+}
+
+/** Exceção "abrir delivery hoje mesmo assim" vale só no dia em que foi ligada. */
+export function isOverrideActive(now: Date, overrideDate?: string | null): boolean {
+  return !!overrideDate && overrideDate === localDateKey(now);
+}
+
 /**
  * Dentro do horário do delivery? Vale mesmo que alguém esqueça o turno aberto:
  * na quarta e fora das 18h–23h o cardápio fica fechado.
  */
-export function isWithinStoreHours(now: Date): boolean {
+export function isWithinStoreHours(now: Date, overrideDate?: string | null): boolean {
+  if (overrideDate && overrideDate === localDateKey(now)) return true;
   const hour = now.getHours();
   return now.getDay() !== CLOSED_WEEKDAY && hour >= OPENS_AT && hour < CLOSES_AT;
 }
