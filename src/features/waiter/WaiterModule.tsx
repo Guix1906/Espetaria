@@ -573,7 +573,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
       {section === 'tables' && tablesSection}
       {section === 'ready' && readySection}
       {section === 'settings' && <div className="space-y-3"><h1 className="text-xl font-semibold text-ink">Ajustes</h1>{settings}</div>}
-      <nav aria-label="Área do garçom" className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
+      <nav aria-label="Área do garçom" className="vv-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
         <div className="mx-auto grid max-w-5xl grid-cols-3">
           {navItems.map(({ key, label, icon: Icon, badge }) => (
             <button key={key} type="button" onClick={() => { setSection(key); window.scrollTo({ top: 0 }); }} aria-current={section === key ? 'page' : undefined}

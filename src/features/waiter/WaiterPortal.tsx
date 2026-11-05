@@ -103,6 +103,34 @@ export function WaiterPortal() {
     return () => observer.disconnect();
   }, [identified]);
 
+  // iPhone: depois de rolar, fechar o teclado ou ampliar a tela, o Safari às vezes deixa
+  // as barras "fixas" de baixo no meio da tela. Aqui elas seguem a parte visível de verdade.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    let frame = 0;
+    const sync = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        // Só desce a barra (nunca sobe por cima do teclado aberto)
+        const offset = Math.max(0, Math.round(vv.offsetTop + vv.height - window.innerHeight));
+        root.style.setProperty('--vv-bottom-offset', `${offset}px`);
+      });
+    };
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    window.addEventListener('scroll', sync, { passive: true });
+    sync();
+    return () => {
+      cancelAnimationFrame(frame);
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+      window.removeEventListener('scroll', sync);
+      root.style.removeProperty('--vv-bottom-offset');
+    };
+  }, []);
+
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     const { data } = supabase.auth.onAuthStateChange((event) => {

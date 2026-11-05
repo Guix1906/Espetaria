@@ -429,7 +429,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
         ))}
       </div>
       {cartCount > 0 && (
-        <div className="fixed inset-x-3 z-30 mx-auto max-w-2xl" style={{ bottom: 'max(26px, calc(env(safe-area-inset-bottom) + 12px))' }}>
+        <div className="vv-bottom fixed inset-x-3 z-30 mx-auto max-w-2xl" style={{ bottom: 'max(26px, calc(env(safe-area-inset-bottom) + 12px))' }}>
           <div className="flex h-[62px] w-full items-center justify-between gap-2 rounded-2xl bg-brand-500 p-2 text-white shadow-[0_8px_24px_rgba(80,30,10,0.3)]">
             <button
               type="button"
