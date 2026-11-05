@@ -200,9 +200,11 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
       notify(error instanceof Error ? error.message : 'Estoque insuficiente.', 'error');
     }
   };
+  // Espeto com ponto, Completo (arroz do dia), suco: cada unidade passa pela folha de escolhas
+  const needsChoices = (product: Product) => product.allows_doneness || /acompanhamento|arroz|suco|refresco|jarra/i.test(product.name) || productFlavors(product.description).length > 0;
   const handleAdd = (product: Product) => {
     setOrderSent(false);
-    if (product.allows_doneness || /acompanhamento|arroz|suco|refresco|jarra/i.test(product.name) || productFlavors(product.description).length) {
+    if (needsChoices(product)) {
       triggerHaptic(25);
       setModalProduct(product);
     } else {
@@ -211,7 +213,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   };
   const lastLine = (product: Product) => [...cart].reverse().find((item) => item.product.id === product.id);
   const increment = (product: Product) => {
-    const line = lastLine(product);
+    // O "+" não copia arroz/ponto do anterior: o segundo Completo escolhe o próprio arroz
+    const line = needsChoices(product) ? undefined : lastLine(product);
     if (line) tryAdd(() => updateQuantity(table.id, line.id, 1));
     else handleAdd(product);
   };

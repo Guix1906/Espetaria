@@ -2,7 +2,7 @@ import { Button } from '../../components/ui/Button';
 import { OptionGroup } from '../../components/ui/OptionGroup';
 import { Stepper } from '../../components/ui/Stepper';
 import { Check, Minus, Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import type { Product } from '../../types/domain';
 import type { MeatDoneness } from '../../types/enums';
@@ -61,10 +61,14 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
   const isRiceOrCombo = isCombo || isRiceOnly;
   const isJuice = isJuiceProduct(product) || (product.sector === 'KITCHEN' && product.type === 'BEBIDA');
   const riceOptions = settings.daily_rice_flavors ?? [];
+  // Lista do arroz não chegou neste aparelho: busca de novo em vez de sumir com a pergunta
+  const riceMissing = isRiceOrCombo && riceOptions.length === 0;
+  useEffect(() => { if (riceMissing) void useSettingsStore.getState().loadRemoteSettings(); }, [riceMissing]);
   // Sabores vêm só das Configurações do dia: sem cadastro, o grupo não aparece
   const flavors = productFlavors(product.description);
   const choices = flavors.length ? flavors : isRiceOrCombo && riceOptions.length ? (isCombo ? [...riceOptions, NO_RICE] : riceOptions) : isJuice ? settings.daily_juice_flavors ?? [] : [];
-  const choiceRequired = flavors.length > 0 || (isCombo && riceOptions.length > 0);
+  // Completo nunca sai sem o arroz escolhido (nem quando a lista ainda não chegou)
+  const choiceRequired = flavors.length > 0 || isCombo;
 
   // Arroz/sabor fica separado da observação livre; os dois só se juntam ao salvar
   const initialTags = (initial?.notes ?? '').split(',').map((note) => note.trim()).filter(Boolean);
@@ -218,6 +222,11 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
             );
           })}
         </fieldset>}
+        {riceMissing && !flavors.length && (
+          <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2.5 text-base text-amber-900" role="status">
+            Arroz do dia não carregou neste celular. Aguarde um instante; se não aparecer, peça ao gerente para cadastrar o arroz do dia.
+          </p>
+        )}
         {choices.length > 0 && (choiceRequired && units.length > 1
           ? units.map((unit, index) => (
               <OptionGroup key={unit.key} title={`${flavors.length ? 'Sabor' : 'Arroz'} do ${index + 1}º${unit.doneness ? ` · ${formatDoneness(unit.doneness)}` : ''}`} hint="obrigatório" options={choices} value={choiceOf(unit, index)} onChange={(value) => pickChoice(unit, index, value)} />
