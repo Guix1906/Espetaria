@@ -8,7 +8,8 @@
 -- Idempotente.
 
 ALTER TABLE restaurant_settings ADD COLUMN IF NOT EXISTS health_alert_phone TEXT;
-UPDATE restaurant_settings SET health_alert_phone = '99984898934' WHERE COALESCE(health_alert_phone, '') = '';
+-- Aviso pelo WhatsApp da loja desligado a pedido do dono (05/11): não usar o número do delivery.
+-- health_alert_phone fica vazio até existir outro remetente.
 
 CREATE TABLE IF NOT EXISTS system_health_checks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
