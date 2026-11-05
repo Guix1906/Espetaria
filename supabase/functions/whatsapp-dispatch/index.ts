@@ -61,6 +61,18 @@ async function send(phone: string, text: string): Promise<string | null> {
   throw new Error('WHATSAPP_PROVIDER não configurado (use zapi, evolution ou meta).');
 }
 
+type HealthItem = { item: string; ok: boolean; nivel: 'erro' | 'aviso'; detalhe: string };
+type HealthCheck = { id: string; status: string; alert_phone: string; results: HealthItem[] };
+
+function healthMessage(check: HealthCheck, restaurant: string): string {
+  const failed = check.results.filter((r) => !r.ok);
+  const head = check.status === 'OK'
+    ? `${restaurant} - verificação das 17h: tudo certo (${check.results.length} itens conferidos).`
+    : `${check.status === 'FALHA' ? 'URGENTE' : 'Atenção'} - ${restaurant}, verificação das 17h: ${failed.length} ponto(s) para olhar:`;
+  const lines = failed.map((r) => `• ${r.item}: ${r.detalhe}`);
+  return [head, ...lines, check.status === 'OK' ? '' : '\nDetalhes na Visão geral do sistema.'].filter(Boolean).join('\n');
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok');
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -113,6 +125,21 @@ Deno.serve(async (req) => {
       const finalStatus = job.attempts >= MAX_ATTEMPTS ? 'FAILED' : 'PENDING';
       await admin.from('whatsapp_outbox').update({ status: finalStatus, last_error: message.slice(0, 500) }).eq('id', job.id);
       results.push({ id: job.id, status: finalStatus, error: message });
+    }
+  }
+
+  // Verificação diária das 17h (00060): manda o resultado para o WhatsApp do dono
+  const { data: checks } = await admin.rpc('claim_health_alerts');
+  for (const check of (checks ?? []) as HealthCheck[]) {
+    try {
+      await send(check.alert_phone, healthMessage(check, restaurant));
+      await admin.from('system_health_checks').update({ alert_status: 'SENT', alert_error: null }).eq('id', check.id);
+      results.push({ id: check.id, status: 'SENT' });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error(`[whatsapp-dispatch] verificação diária: ${message}`);
+      await admin.from('system_health_checks').update({ alert_status: 'FAILED', alert_error: message.slice(0, 500) }).eq('id', check.id);
+      results.push({ id: check.id, status: 'FAILED', error: message });
     }
   }
 

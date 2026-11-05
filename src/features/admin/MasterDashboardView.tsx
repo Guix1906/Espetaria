@@ -3,6 +3,7 @@ import { StatusTag } from '../../components/ui/StatusTag';
 import { VoidTabButton } from '../tables/VoidTabButton';
 import { StockSnapshot } from './StockSnapshot';
 import { LiveBoard } from './LiveBoard';
+import { SystemHealthCard } from './SystemHealthCard';
 import { AlertCircle, AlertTriangle, ArrowRight, Bike, ChevronDown, Clock, Flame, Lock, PackageCheck, PieChart, Plus, UtensilsCrossed } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
@@ -258,6 +259,8 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
       </Block>
 
       <StockSnapshot onOpenStock={onNavigateTab ? () => onNavigateTab('stock') : undefined} />
+
+      <SystemHealthCard />
 
       <Block id="top-title" title="Mais pedidos no turno" icon={PieChart} summary={<span className="font-mono">{topByQty.length}</span>}>
         {topByQty.length === 0 ? <p className="py-3 text-center text-sm text-ink-muted">Nenhum item pedido até agora.</p> : (
