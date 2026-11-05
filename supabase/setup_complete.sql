@@ -8668,7 +8668,7 @@ DO $$
 BEGIN
     PERFORM cron.unschedule('ponto-liberar-mesas-vazias')
       WHERE EXISTS (SELECT 1 FROM cron.job WHERE jobname = 'ponto-liberar-mesas-vazias');
-    PERFORM cron.schedule('ponto-liberar-mesas-vazias', '* * * * *', 'SELECT public.release_idle_empty_tabs(15)');
+    PERFORM cron.schedule('ponto-liberar-mesas-vazias', '* * * * *', 'SELECT public.release_idle_empty_tabs(5)');
 END $$;
 
 -- 00060 (05/11/2026): robô de verificação diária (17h, horário de Brasília).
