@@ -164,7 +164,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
 
         {/* Item Atual a ser cancelado */}
         <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3.5 space-y-1">
-          <div className="flex items-center justify-between text-xs font-bold text-rose-800 uppercase tracking-wide">
+          <div className="flex items-center justify-between text-sm font-bold text-rose-800 uppercase tracking-wide">
             <span>Item a cancelar na produção</span>
             <span>{formatBRL(oldTotal)}</span>
           </div>
@@ -173,12 +173,12 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
               {item.quantity}x {item.product_name}
             </p>
             {item.doneness && (
-              <span className="text-sm font-medium text-ink-muted">
+              <span className="text-base font-medium text-ink-muted">
                 Ponto: {formatDoneness(item.doneness)}
               </span>
             )}
           </div>
-          {item.notes && <p className="text-sm text-ink-muted">Obs: {item.notes}</p>}
+          {item.notes && <p className="text-base text-ink-muted">Obs: {item.notes}</p>}
         </div>
 
         {/* Seleção do Substituto */}
@@ -203,7 +203,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedCategory('ALL')}
-                    className={`h-8 px-3 rounded-lg text-xs font-bold border whitespace-nowrap transition ${selectedCategory === 'ALL' ? 'bg-ink text-white border-ink' : 'bg-surface text-ink border-line'}`}
+                    className={`h-8 px-3 rounded-lg text-sm font-bold border whitespace-nowrap transition ${selectedCategory === 'ALL' ? 'bg-ink text-white border-ink' : 'bg-surface text-ink border-line'}`}
                   >
                     Todos
                   </button>
@@ -212,7 +212,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
                       key={c.id}
                       type="button"
                       onClick={() => setSelectedCategory(c.id)}
-                      className={`h-8 px-3 rounded-lg text-xs font-bold border whitespace-nowrap transition ${selectedCategory === c.id ? 'bg-ink text-white border-ink' : 'bg-surface text-ink border-line'}`}
+                      className={`h-8 px-3 rounded-lg text-sm font-bold border whitespace-nowrap transition ${selectedCategory === c.id ? 'bg-ink text-white border-ink' : 'bg-surface text-ink border-line'}`}
                     >
                       {c.name}
                     </button>
@@ -223,7 +223,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
               {/* Lista de Produtos */}
               <div className="space-y-1.5 max-h-[300px] overflow-y-auto">
                 {filteredProducts.length === 0 ? (
-                  <p className="py-6 text-center text-sm text-ink-muted">Nenhum produto encontrado.</p>
+                  <p className="py-6 text-center text-base text-ink-muted">Nenhum produto encontrado.</p>
                 ) : (
                   filteredProducts.map((p) => {
                     const prep = p.tracks_stock ? dailyPrepStock.find((d) => d.product_id === p.id) : null;
@@ -238,7 +238,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
                       >
                         <div>
                           <p className="font-bold text-base text-ink">{p.name}</p>
-                          <p className="text-xs text-ink-muted">
+                          <p className="text-sm text-ink-muted">
                             {p.tracks_stock && prep ? `${prep.current_quantity} disponíveis no turno` : 'Pronto para preparo'}
                           </p>
                         </div>
@@ -256,14 +256,14 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
             <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50/50 p-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-xs font-bold uppercase tracking-wider text-brand-800">Novo produto escolhido</span>
+                  <span className="text-sm font-bold uppercase tracking-wider text-brand-800">Novo produto escolhido</span>
                   <h4 className="text-lg font-bold text-ink leading-tight">{selectedProduct.name}</h4>
-                  <p className="font-mono text-sm font-semibold text-brand-700">{formatBRL(selectedProduct.price)} cada</p>
+                  <p className="font-mono text-base font-semibold text-brand-700">{formatBRL(selectedProduct.price)} cada</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => { setSelectedProduct(null); setDoneness(null); setRice(null); }}
-                  className="text-xs font-bold text-brand-700 hover:underline px-2 py-1"
+                  className="text-sm font-bold text-brand-700 hover:underline px-2 py-1"
                 >
                   Alterar produto
                 </button>
@@ -272,14 +272,14 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
               {/* Ponto da Carne */}
               {selectedProduct.allows_doneness && (
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-xs font-bold uppercase text-ink-muted">Ponto da carne</label>
+                  <label className="text-sm font-bold uppercase text-ink-muted">Ponto da carne</label>
                   <div className="grid grid-cols-3 gap-1.5">
                     {DONENESS_OPTIONS.map((opt) => (
                       <button
                         key={opt.value}
                         type="button"
                         onClick={() => setDoneness(opt.value)}
-                        className={`py-2 rounded-lg text-xs font-bold border transition ${doneness === opt.value ? 'bg-ink text-white border-ink shadow-sm' : 'bg-surface text-ink border-line'}`}
+                        className={`py-2 rounded-lg text-sm font-bold border transition ${doneness === opt.value ? 'bg-ink text-white border-ink shadow-sm' : 'bg-surface text-ink border-line'}`}
                       >
                         {opt.label}
                       </button>
@@ -293,21 +293,21 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
               {/* Observações */}
               {selectedProduct.allows_notes && (
                 <div className="space-y-1 pt-1">
-                  <label htmlFor="swap-notes" className="text-xs font-bold uppercase text-ink-muted">Observação</label>
+                  <label htmlFor="swap-notes" className="text-sm font-bold uppercase text-ink-muted">Observação</label>
                   <input
                     id="swap-notes"
                     type="text"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     placeholder="Ex.: Sem farofa, pouco sal..."
-                    className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-sm focus:border-brand-500 focus:outline-none"
+                    className="h-10 w-full rounded-lg border border-line bg-surface px-3 text-base focus:border-brand-500 focus:outline-none"
                   />
                 </div>
               )}
 
               {/* Quantidade */}
               <div className="flex items-center justify-between pt-2 border-t border-brand-100">
-                <span className="text-sm font-semibold text-ink">Quantidade</span>
+                <span className="text-base font-semibold text-ink">Quantidade</span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -331,7 +331,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
 
               {/* Opção de devolução ao estoque se já estava na brasa */}
               {item.status === 'IN_PREPARATION' && (
-                <div className="flex items-center justify-between text-xs pt-1 text-ink-secondary">
+                <div className="flex items-center justify-between text-sm pt-1 text-ink-secondary">
                   <span>Devolver item cancelado ao estoque do turno?</span>
                   <input
                     type="checkbox"
@@ -348,7 +348,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
         {/* Resumo Financeiro da Troca e Botão de Ação */}
         {selectedProduct && (
           <div className="border-t border-line pt-3 space-y-3">
-            <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center justify-between text-base">
               <span className="text-ink-muted">Ajuste no valor da comanda:</span>
               <span className={`font-mono font-bold ${diff > 0 ? 'text-amber-700' : diff < 0 ? 'text-emerald-700' : 'text-ink'}`}>
                 {diff === 0 ? 'Sem diferença' : diff > 0 ? `+ ${formatBRL(diff)}` : `- ${formatBRL(Math.abs(diff))}`}

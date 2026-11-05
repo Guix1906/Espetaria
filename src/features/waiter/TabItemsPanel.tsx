@@ -122,13 +122,13 @@ export function TabItemsPanel({ table, compact = false }: TabItemsPanelProps) {
             <h2 id={`tab-items-${table.id}`} className="text-base font-semibold">Já lançado nesta mesa</h2>
             <ChevronDown className="h-4 w-4 rotate-180 text-ink-muted" aria-hidden="true" />
           </button>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="flex items-center gap-2 text-base">
             {active.length > 0 && (
               <button
                 type="button"
                 onClick={() => void handleReprintAllProduction()}
                 disabled={reprintingAll}
-                className="btn-secondary px-2.5 py-1 text-xs font-semibold flex items-center gap-1.5 text-brand-700 border-brand-200 bg-brand-50 hover:bg-brand-100 disabled:opacity-50"
+                className="btn-secondary px-2.5 py-1 text-sm font-semibold flex items-center gap-1.5 text-brand-700 border-brand-200 bg-brand-50 hover:bg-brand-100 disabled:opacity-50"
                 title="Reenviar todos os pedidos da mesa para a churrasqueira e cozinha"
               >
                 <Printer className="h-3.5 w-3.5" aria-hidden="true" />
@@ -163,13 +163,13 @@ export function TabItemsPanel({ table, compact = false }: TabItemsPanelProps) {
                   <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-base text-ink-muted">
                     <span className={`rounded-sm px-1.5 py-0.5 font-medium ${status.bg} ${status.color}`}>{status.label}</span>
                     {isPrinted && (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-700">
+                      <span className="inline-flex items-center gap-1 rounded-sm bg-emerald-50 px-1.5 py-0.5 text-sm font-semibold text-emerald-700">
                         <Printer className="h-3 w-3" />
                         Impresso
                       </span>
                     )}
                     {isPending && (
-                      <span className="inline-flex items-center gap-1 rounded-sm bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-800">
+                      <span className="inline-flex items-center gap-1 rounded-sm bg-amber-50 px-1.5 py-0.5 text-sm font-semibold text-amber-800">
                         <Printer className="h-3 w-3" />
                         Na fila
                       </span>
@@ -184,7 +184,7 @@ export function TabItemsPanel({ table, compact = false }: TabItemsPanelProps) {
                   {canReprint && (
                     <button
                       type="button"
-                      className="btn-secondary px-2.5 py-2 text-xs font-semibold text-brand-700 hover:bg-brand-50 border-brand-200"
+                      className="btn-secondary px-2.5 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 border-brand-200"
                       onClick={() => void handleReprintItem(item)}
                       title={`Reenviar cupom de ${item.product_name} à produção`}
                       aria-label={`Reenviar ${item.product_name} à produção`}
@@ -198,7 +198,7 @@ export function TabItemsPanel({ table, compact = false }: TabItemsPanelProps) {
                   {canSwap && (
                     <button
                       type="button"
-                      className="btn-secondary px-3 py-2 text-xs font-semibold"
+                      className="btn-secondary px-3 py-2 text-sm font-semibold"
                       onClick={() => setSwappingItem(item)}
                       title={`Substituir ${item.product_name} por outro item`}
                       aria-label={`Trocar ${item.product_name}`}

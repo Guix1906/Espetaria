@@ -84,7 +84,7 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
             </span>
             <div>
               <h3 className="text-xl font-bold text-ink">Trocar de Mesa</h3>
-              <p className="text-xs text-ink-muted">
+              <p className="text-sm text-ink-muted">
                 Transferir comanda da <strong className="text-ink">Mesa {pad2(sourceTable.number)}</strong>
               </p>
             </div>
@@ -100,13 +100,13 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
         </div>
 
         {/* Resumo da comanda atual */}
-        <div className="rounded-xl border border-line bg-surface-soft p-3 text-sm flex items-center justify-between">
+        <div className="rounded-xl border border-line bg-surface-soft p-3 text-base flex items-center justify-between">
           <div>
             <span className="font-semibold text-ink block">{currentTab.customer_name || 'Comanda aberta'}</span>
-            <span className="text-xs text-ink-muted">{currentTab.people_count} {currentTab.people_count === 1 ? 'pessoa' : 'pessoas'}</span>
+            <span className="text-sm text-ink-muted">{currentTab.people_count} {currentTab.people_count === 1 ? 'pessoa' : 'pessoas'}</span>
           </div>
           <div className="text-right">
-            <span className="text-xs text-ink-muted block">Consumo atual</span>
+            <span className="text-sm text-ink-muted block">Consumo atual</span>
             <span className="font-mono text-base font-bold text-brand-700">{formatBRL(currentTab.total)}</span>
           </div>
         </div>
@@ -126,11 +126,11 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
 
         {/* Grade de mesas livres */}
         <div className="flex-1 overflow-y-auto space-y-2">
-          <p className="text-xs font-semibold text-ink-muted uppercase tracking-wide">
+          <p className="text-sm font-semibold text-ink-muted uppercase tracking-wide">
             Mesas livres ({freeTables.length}):
           </p>
           {filtered.length === 0 ? (
-            <div className="py-8 text-center text-sm text-ink-muted">
+            <div className="py-8 text-center text-base text-ink-muted">
               {search.trim() ? `Nenhuma mesa livre encontrada com o número "${search}".` : 'Não há outras mesas livres no momento.'}
             </div>
           ) : (
@@ -152,7 +152,7 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
                     }`}
                   >
                     <span className="text-lg font-bold">{pad2(t.number)}</span>
-                    <span className="text-[13px] font-sans text-ink-muted">
+                    <span className="text-sm font-sans text-ink-muted">
                       {isSelected ? '✓ Selecionada' : 'Livre'}
                     </span>
                   </button>
@@ -165,7 +165,7 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
         {/* Ação de confirmação */}
         <div className="border-t border-line pt-3 space-y-2">
           {targetTable && (
-            <div className="flex items-center justify-center gap-2 text-sm font-semibold text-ink py-1">
+            <div className="flex items-center justify-center gap-2 text-base font-semibold text-ink py-1">
               <span>Mesa {pad2(sourceTable.number)}</span>
               <ArrowLeftRight className="h-4 w-4 text-brand-600" />
               <span className="text-brand-700 font-bold">Mesa {pad2(targetTable.number)}</span>

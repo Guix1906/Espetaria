@@ -154,7 +154,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
                   onClose();
                   onTransferTable();
                 }}
-                className="w-full py-3 rounded-xl border border-line bg-surface hover:bg-surface-soft active:scale-[0.98] font-semibold text-ink flex items-center justify-center gap-2 transition text-sm shadow-sm"
+                className="w-full py-3 rounded-xl border border-line bg-surface hover:bg-surface-soft active:scale-[0.98] font-semibold text-ink flex items-center justify-center gap-2 transition text-base shadow-sm"
               >
                 <ArrowLeftRight className="w-4 h-4 text-brand-700" />
                 <span>Trocar comanda de mesa</span>
@@ -167,7 +167,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
                 type="button"
                 disabled={reprintingProduction}
                 onClick={() => void reprintProduction()}
-                className="w-full py-2.5 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 active:scale-[0.98] font-bold text-brand-800 flex items-center justify-center gap-2 transition text-sm shadow-sm disabled:opacity-60"
+                className="w-full py-2.5 rounded-xl border border-brand-200 bg-brand-50 hover:bg-brand-100 active:scale-[0.98] font-bold text-brand-800 flex items-center justify-center gap-2 transition text-base shadow-sm disabled:opacity-60"
               >
                 <Printer className="w-4 h-4 text-brand-700" />
                 <span>{reprintingProduction ? 'Enviando...' : 'Reenviar pedidos à produção (2ª Via)'}</span>
@@ -205,7 +205,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
                   className="w-full py-3.5 rounded-md bg-surface border border-line-strong text-ink font-bold transition flex flex-col items-center justify-center gap-0.5 shadow-sm"
                   type="button">
                   <span className="flex items-center gap-2"><Receipt className="w-4 h-4 text-brand-700" />Pedir a conta</span>
-                  <span className="text-sm font-medium text-ink-muted">A conta sai na impressora da churrasqueira</span>
+                  <span className="text-base font-medium text-ink-muted">A conta sai na impressora da churrasqueira</span>
                 </button>
               )}
             </div>

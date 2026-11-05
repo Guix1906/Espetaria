@@ -11,6 +11,9 @@
 }
 /* 16px nos campos: o iPhone não dá zoom ao tocar */
 .waiter-portal input, .waiter-portal select { font-size: 16px; }
+/* Garçom com dificuldade de visão: etiquetas e textos miúdos ficam maiores só na área do garçom */
+.waiter-portal .status-badge, .waiter-portal .text-xs { font-size: 0.875rem; }
+.waiter-portal .notice { font-size: 1rem; }
 
 :root {
   color-scheme: light;

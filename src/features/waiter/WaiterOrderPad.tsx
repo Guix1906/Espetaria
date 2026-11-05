@@ -281,11 +281,11 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
               <button
                 type="button"
                 onClick={() => setIsTransferModalOpen(true)}
-                className="flex h-11 w-11 items-center justify-center gap-1.5 rounded-md border border-line-strong bg-surface text-ink active:bg-surface-muted font-semibold text-sm sm:w-auto sm:px-3"
+                className="flex min-h-[44px] flex-col items-center justify-center rounded-md border border-line-strong bg-surface px-1.5 text-ink active:bg-surface-muted font-semibold text-sm leading-none sm:flex-row sm:gap-1.5 sm:px-3 sm:text-base"
                 aria-label="Trocar de mesa"
               >
-                <ArrowLeftRight className="h-4 w-4 shrink-0" />
-                <span className="hidden whitespace-nowrap sm:inline">Trocar mesa</span>
+                <ArrowLeftRight className="h-5 w-5 shrink-0" />
+                <span className="mt-0.5 whitespace-nowrap sm:mt-0"><span className="sm:hidden">Trocar</span><span className="hidden sm:inline">Trocar mesa</span></span>
               </button>
             )}
             <button type="button" onClick={() => setIsViewTabOpen(true)} className="flex min-h-[44px] shrink-0 flex-col items-end justify-center rounded-md border border-line-strong bg-surface px-2.5 py-1 text-right active:bg-surface-muted" aria-label={`Ver consumo e conta: ${formatBRL(activeTab?.total)}`}>
@@ -343,7 +343,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
           <button
             type="button"
             onClick={togglePhotos}
-            className={`h-11 shrink-0 px-3 rounded-lg border text-sm font-semibold flex items-center gap-1.5 transition ${showPhotos ? 'border-line bg-surface text-ink-muted active:bg-surface-muted' : 'border-brand-500 bg-brand-50 text-brand-700 font-bold'}`}
+            className={`h-11 shrink-0 px-3 rounded-lg border text-base font-semibold flex items-center gap-1.5 transition ${showPhotos ? 'border-line bg-surface text-ink-muted active:bg-surface-muted' : 'border-brand-500 bg-brand-50 text-brand-700 font-bold'}`}
             title={showPhotos ? 'Ocultar fotos para carregamento instantâneo' : 'Exibir fotos dos produtos'}>
             {showPhotos ? 'Ocultar fotos' : 'Mostrar fotos'}
           </button>
@@ -444,7 +444,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                 <span className="block truncate font-mono text-base font-bold leading-tight">
                   {formatBRL(cartTotal)}
                 </span>
-                <span className="block truncate text-xs text-brand-100 font-medium">
+                <span className="block truncate text-sm text-brand-100 font-medium">
                   Ver itens ›
                 </span>
               </div>

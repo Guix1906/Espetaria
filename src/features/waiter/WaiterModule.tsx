@@ -454,7 +454,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
       {/* "Todas": uma grade só, em ordem; ocupada = cor cheia, livre = contorno verde */}
       {tableFilter === 'all' && (showOccupied.length + showFree.length) > 0 && (
         <section aria-label="Todas as mesas" className="space-y-2.5">
-          <p className="flex flex-wrap gap-x-4 gap-y-1 text-[14px] text-ink-secondary">
+          <p className="flex flex-wrap gap-x-4 gap-y-1 text-base text-ink-secondary">
             <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm border border-line-strong bg-surface-muted" />Ocupada</span>
             <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-brand-500" />Conta pedida</span>
             <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-emerald-600" />Item pronto</span>
