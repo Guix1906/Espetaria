@@ -13,7 +13,9 @@ export type PrinterHealth = 'ON' | 'NO_SIGNAL' | 'NOT_SET';
 /** Status deduzido da fila: se há cupom travado ou com falha = sem sinal; caso contrário = conectada. */
 export function sectorPrinterHealth(jobs: PrintJob[], sector: PrinterSector, now: number): PrinterHealth {
   const mine = jobs.filter((j) => j.sector === sector);
-  const stuck = mine.some((j) => j.status === 'FAILED' || ((j.status === 'PENDING' || j.status === 'PRINTING') && now - new Date(j.created_at).getTime() > STALE_AFTER_MS));
+  // Falha antiga não conta se a impressora já imprimiu algo depois dela.
+  const lastPrinted = Math.max(0, ...mine.filter((j) => j.status === 'PRINTED').map((j) => new Date(j.updated_at ?? j.created_at).getTime()));
+  const stuck = mine.some((j) => (j.status === 'FAILED' && new Date(j.updated_at ?? j.created_at).getTime() > lastPrinted) ||((j.status === 'PENDING' || j.status === 'PRINTING') && now - new Date(j.created_at).getTime() > STALE_AFTER_MS));
   if (stuck) return 'NO_SIGNAL';
   return 'ON';
 }
