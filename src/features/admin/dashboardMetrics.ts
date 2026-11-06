@@ -27,6 +27,38 @@ export interface DashboardInput {
   now: number;
   /** Última falha do robô do WhatsApp (IA ou envio), de audit_logs WHATSAPP_BOT_ERRO. */
   botErrorAt?: string | null;
+  /** Ligação do robô com o WhatsApp (06/11: caiu e ficou um dia sem receber sem ninguém saber). */
+  botLink?: BotLinkInput | null;
+}
+
+export interface BotLinkInput {
+  /** Resposta do whatsapp-status: true/false; null quando não deu para perguntar (sem permissão, rede). */
+  connected: boolean | null;
+  /** Última mensagem recebida de cliente (whatsapp_bot_messages direction IN). */
+  lastIncomingAt: string | null;
+  /** Robô ligado (modo diferente de OFF). */
+  botOn: boolean;
+  /** Abertura do turno atual: só cobra mensagens com a loja funcionando. */
+  shiftOpenedAt: string | null;
+}
+
+/** Turno aberto há mais disso sem nenhuma mensagem de cliente = provável recebimento parado. */
+export const BOT_SILENCE_MIN = 90;
+
+/** Alerta do robô desconectado ou sem receber mensagens (puro, testado). */
+export function botLinkAlert(link: BotLinkInput | null | undefined, now: number): DashboardAlert | null {
+  if (!link || !link.botOn) return null;
+  if (link.connected === false) {
+    return { id: 'bot-link', tone: 'danger', target: 'settings', text: 'Robô do WhatsApp desconectado: clientes não recebem resposta. Reconecte pelo QR Code em Configurações → WhatsApp.' };
+  }
+  if (!link.shiftOpenedAt || minutesSince(link.shiftOpenedAt, now) < BOT_SILENCE_MIN) return null;
+  const silentSince = link.lastIncomingAt && new Date(link.lastIncomingAt).getTime() > new Date(link.shiftOpenedAt).getTime()
+    ? link.lastIncomingAt
+    : link.shiftOpenedAt;
+  const mins = minutesSince(silentSince, now);
+  if (mins < BOT_SILENCE_MIN) return null;
+  const h = Math.floor(mins / 60);
+  return { id: 'bot-link', tone: 'warning', target: 'settings', text: `Robô do WhatsApp sem receber mensagens há ${h >= 1 ? `${h} h` : `${mins} min`}. Mande um "oi" de outro celular; se não chegar, desconecte e leia o QR Code de novo em Configurações → WhatsApp.` };
 }
 
 /** Falha do robô nas últimas 2 horas vira alerta. */
@@ -272,6 +304,8 @@ export function computeDashboard(input: DashboardInput) {
     const at = new Date(input.botErrorAt);
     alerts.push({ id: 'bot', tone: 'danger', target: 'settings', text: `Robô do WhatsApp com falha (última às ${pad2(at.getHours())}:${pad2(at.getMinutes())}): clientes estão sendo passados para atendente. Confira a chave do Gemini.` });
   }
+  const linkAlert = botLinkAlert(input.botLink, now);
+  if (linkAlert) alerts.push(linkAlert);
   if (waitingBill.length) alerts.push({ id: 'bill', tone: 'warning', target: 'cashier', text: `${waitingBill.map((t) => `Mesa ${pad2(t.number)}`).join(', ')} ${waitingBill.length === 1 ? 'pediu' : 'pediram'} a conta` });
 
   // ---------------- Movimentações do turno ----------------

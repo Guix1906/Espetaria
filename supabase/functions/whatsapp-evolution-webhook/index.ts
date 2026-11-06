@@ -43,6 +43,21 @@ Deno.serve(async (req) => {
     // deno-lint-ignore no-explicit-any
     const payload: any = await req.json();
     const event = String(payload?.event ?? '').toLowerCase().replace(/_/g, '.');
+    if (event === 'connection.update') {
+      // Grava cada mudança de conexão: a Visão geral e o aviso automático leem daqui (06/11)
+      const state = String(payload?.data?.state ?? '');
+      console.log(JSON.stringify({ tag: 'evolution-connection', state }));
+      const url = Deno.env.get('SUPABASE_URL');
+      const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+      if (url && key && state) {
+        await fetch(`${url}/rest/v1/audit_logs`, {
+          method: 'POST',
+          headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify({ action: 'WHATSAPP_CONEXAO', entity_type: 'whatsapp_bot', entity_id: crypto.randomUUID(), new_data: { state, reason: payload?.data?.statusReason ?? null } }),
+        }).catch(() => undefined);
+      }
+      return ok({ state });
+    }
     if (event !== 'messages.upsert') return ok({ ignored: payload?.event ?? null });
 
     const list = Array.isArray(payload?.data) ? payload.data : [payload?.data];

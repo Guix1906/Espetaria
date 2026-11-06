@@ -109,7 +109,36 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
     return () => { alive = false; window.clearInterval(id); };
   }, []);
 
-  const d = computeDashboard({ shiftId: currentShift?.id ?? null, tables, tabs, orders, orderItems, payments, deliveryOrders, stockMovements, jobs, printerMonitored: isSupabaseConfigured, now, botErrorAt });
+  // Robô ligado ao WhatsApp? (conexão + última mensagem de cliente), a cada 3 min
+  const [botLinkData, setBotLinkData] = useState<{ connected: boolean | null; lastIncomingAt: string | null; botOn: boolean } | null>(null);
+  useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    let alive = true;
+    const load = async () => {
+      const [settingsRes, lastInRes, connLogRes, statusRes] = await Promise.all([
+        supabase.from('restaurant_settings').select('whatsapp_bot').limit(1).maybeSingle(),
+        supabase.from('whatsapp_bot_messages').select('created_at').eq('direction', 'IN').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.from('audit_logs').select('new_data').eq('action', 'WHATSAPP_CONEXAO').order('created_at', { ascending: false }).limit(1).maybeSingle(),
+        supabase.functions.invoke('whatsapp-status', { body: {} }).catch(() => ({ data: null, error: true })),
+      ]);
+      const mode = String((settingsRes.data?.whatsapp_bot as { mode?: string } | null)?.mode ?? 'OFF');
+      let connected: boolean | null = null;
+      const status = statusRes as { data: { connected?: boolean; error?: string } | null; error: unknown };
+      if (!status.error && status.data && typeof status.data.connected === 'boolean' && !status.data.error) connected = status.data.connected;
+      else {
+        const state = String((connLogRes.data?.new_data as { state?: string } | null)?.state ?? '');
+        if (state === 'open') connected = true;
+        else if (state === 'close') connected = false;
+      }
+      if (alive) setBotLinkData({ connected, lastIncomingAt: lastInRes.data?.created_at ?? null, botOn: mode !== 'OFF' });
+    };
+    void load();
+    const id = window.setInterval(() => void load(), 180000);
+    return () => { alive = false; window.clearInterval(id); };
+  }, []);
+
+  const botLink = botLinkData ? { ...botLinkData, shiftOpenedAt: currentShift?.opened_at ?? null } : null;
+  const d = computeDashboard({ shiftId: currentShift?.id ?? null, tables, tabs, orders, orderItems, payments, deliveryOrders, stockMovements, jobs, printerMonitored: isSupabaseConfigured, now, botErrorAt, botLink });
   const go = (tab: ActiveTab) => onNavigateTab?.(tab);
   const goAlert = (target: DashboardAlert['target']) => {
     if (target !== 'ready') return go(target);
