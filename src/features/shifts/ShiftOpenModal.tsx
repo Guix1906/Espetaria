@@ -101,7 +101,14 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   /** Arroz é lançado direto em porções (o rendimento muda a cada dia). */
   const usesCubas = (p: Product) => p.is_cubas && p !== rice;
   const portionsOf = (p: Product) => portionsOverride[p.id] || p.portions_per_cuba || 1;
-  const valueOf = (id: string): PrepValue => prepValues[id] ?? { quantity: '', cubas: '' };
+  /** Pedido do dono (06/11): tudo que não é espeto já vem com 8; espeto continua em branco. */
+  const DEFAULT_NON_SKEWER = '8';
+  const valueOf = (id: string): PrepValue => {
+    if (prepValues[id]) return prepValues[id];
+    const p = stockProducts.find((s) => s.id === id);
+    if (!p || skewers.some((s) => s.id === id)) return { quantity: '', cubas: '' };
+    return usesCubas(p) ? { quantity: '', cubas: DEFAULT_NON_SKEWER } : { quantity: DEFAULT_NON_SKEWER, cubas: '' };
+  };
   const isFilled = (p: Product) => {
     if (disabledProducts[p.id]) return true;
     return (usesCubas(p) ? valueOf(p.id).cubas : valueOf(p.id).quantity).trim() !== '';
