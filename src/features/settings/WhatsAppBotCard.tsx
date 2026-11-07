@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { callRpc } from '../../lib/remote';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
-import { type BotMode, type BotSettings, botWebhookBaseUrl, parseTestPhones, resolveBotSettings } from '../../lib/whatsappBot';
+import { type BotMode, type BotSettings, botWebhookBaseUrl, resolveBotSettings } from '../../lib/whatsappBot';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 
@@ -17,9 +17,8 @@ interface Conversation {
 }
 
 const MODES: { id: BotMode; label: string; description: string }[] = [
-  { id: 'OFF', label: 'Desligado', description: 'O robô não responde ninguém.' },
-  { id: 'TEST', label: 'Só números de teste', description: 'Responde apenas os números da lista abaixo. Use enquanto o Anota AI atende os clientes.' },
-  { id: 'ALL', label: 'Todos os clientes', description: 'Responde qualquer cliente. Desligue antes o robô do Anota AI para não responder em dobro.' },
+  { id: 'ALL', label: 'Ligado', description: 'O robô responde automaticamente os clientes no WhatsApp da loja.' },
+  { id: 'OFF', label: 'Desligado', description: 'O robô fica desligado e não responde mensagens.' },
 ];
 
 const PAUSE_LABEL: Record<string, string> = { HANDOFF: 'pediu atendente', HUMAN: 'equipe respondendo', LIMIT: 'mensagens demais' };
@@ -33,11 +32,10 @@ export function WhatsAppBotCard() {
   const { notify } = useFeedback();
   const saved = useMemo(() => resolveBotSettings(settings.whatsapp_bot), [settings.whatsapp_bot]);
   const [draft, setDraft] = useState<BotSettings>(saved);
-  const [phonesText, setPhonesText] = useState(saved.test_phones.join('\n'));
   const [conversations, setConversations] = useState<Conversation[] | null>(null);
-  useEffect(() => { setDraft(saved); setPhonesText(saved.test_phones.join('\n')); }, [saved]);
+  useEffect(() => { setDraft(saved); }, [saved]);
 
-  const next: BotSettings = { ...draft, test_phones: parseTestPhones(phonesText) };
+  const next: BotSettings = { ...draft, test_phones: [] };
   const dirty = JSON.stringify(next) !== JSON.stringify(saved);
   const canSeeConversations = isSupabaseConfigured && (role === 'MASTER' || role === 'GERENTE');
 
@@ -50,12 +48,8 @@ export function WhatsAppBotCard() {
   useEffect(() => { void loadConversations(); }, [loadConversations]);
 
   const save = () => {
-    if (next.mode === 'TEST' && next.test_phones.length === 0) {
-      notify('Coloque pelo menos um número de teste (com DDD) ou escolha outro modo.', 'error');
-      return;
-    }
     updateSettings({ whatsapp_bot: next });
-    notify('Robô salvo.', 'success');
+    notify('Robô salvo com sucesso.', 'success');
   };
 
   const resume = async (phone: string) => {
@@ -77,31 +71,49 @@ export function WhatsAppBotCard() {
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="mb-2 text-sm font-semibold text-ink">Quem o robô responde</legend>
-        <div className="grid gap-2 md:grid-cols-3">
+        <legend className="mb-2 text-sm font-semibold text-ink">Situação do robô</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
           {MODES.map((m) => (
-            <label key={m.id} className={`flex cursor-pointer flex-col gap-1 rounded-sm border p-3 ${draft.mode === m.id ? 'border-brand-500 bg-brand-50' : 'border-line bg-surface'}`}>
-              <span className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <input type="radio" name="bot-mode" value={m.id} checked={draft.mode === m.id} onChange={() => setDraft({ ...draft, mode: m.id })} className="h-4 w-4" />
+            <label
+              key={m.id}
+              className={`flex cursor-pointer flex-col gap-1 rounded-xl border p-3.5 transition ${
+                draft.mode === m.id
+                  ? 'border-brand-500 bg-brand-50/70 shadow-xs'
+                  : 'border-line bg-surface hover:bg-surface-muted'
+              }`}
+            >
+              <span className="flex items-center gap-2 text-sm font-bold text-ink">
+                <input
+                  type="radio"
+                  name="bot-mode"
+                  value={m.id}
+                  checked={draft.mode === m.id}
+                  onChange={() => setDraft({ ...draft, mode: m.id })}
+                  className="h-4 w-4 text-brand-600 focus:ring-brand-500"
+                />
                 {m.label}
               </span>
-              <span className="text-xs text-ink-muted">{m.description}</span>
+              <span className="text-xs text-ink-muted pl-6">{m.description}</span>
             </label>
           ))}
         </div>
       </fieldset>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div>
-          <label htmlFor="bot-phones" className="mb-1 block text-sm font-semibold text-ink">Números de teste</label>
-          <p className="mb-2 text-xs text-ink-muted">Um por linha, com DDD. Ex.: 11 98765-4321</p>
-          <textarea id="bot-phones" rows={4} value={phonesText} onChange={(e) => setPhonesText(e.target.value)} className={`${inputClass} font-mono`} />
-        </div>
-        <div>
-          <label htmlFor="bot-info" className="mb-1 block text-sm font-semibold text-ink">Informações que o robô pode usar</label>
-          <p className="mb-2 text-xs text-ink-muted">Horário de funcionamento, formas de pagamento, tempo médio de entrega, se aceita encomendas... O robô só responde o que estiver aqui ou no sistema.</p>
-          <textarea id="bot-info" rows={4} value={draft.store_info} onChange={(e) => setDraft({ ...draft, store_info: e.target.value })} placeholder={'Ex.: Abrimos de terça a domingo, das 18h às 23h.\nEntrega em 35 a 50 minutos.'} className={inputClass} />
-        </div>
+      <div>
+        <label htmlFor="bot-info" className="mb-1 block text-sm font-semibold text-ink">
+          Informações que o robô pode usar
+        </label>
+        <p className="mb-2 text-xs text-ink-muted">
+          Horário de funcionamento, formas de pagamento, tempo médio de entrega, etc. O robô responde com base nisso e no cardápio cadastrado.
+        </p>
+        <textarea
+          id="bot-info"
+          rows={3}
+          value={draft.store_info}
+          onChange={(e) => setDraft({ ...draft, store_info: e.target.value })}
+          placeholder={'Ex.: Abrimos de terça a domingo, das 18h às 23h30.\nEntregas em 35 a 50 minutos.'}
+          className={inputClass}
+        />
       </div>
 
       <div className="flex flex-wrap items-end gap-4">
