@@ -1,5 +1,5 @@
 import { VoidTabButton } from '../tables/VoidTabButton';
-import { ArrowLeftRight, ChevronDown, Printer, Trash2 } from 'lucide-react';
+import { ArrowLeftRight, ChevronDown, Plus, Printer, Trash2 } from 'lucide-react';
 import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
 import { useState } from 'react';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -21,7 +21,7 @@ interface TabItemsPanelProps {
 
 /** Itens já lançados na comanda da mesa, com servir, cancelar, trocar e reimprimir. */
 export function TabItemsPanel({ table, compact = false }: TabItemsPanelProps) {
-  const { tabs, getTabOrderItems, cancelOrderItemAtomic, reprintOrderItemProduction, reprintTableProduction } = useTableStore();
+  const { tabs, getTabOrderItems, cancelOrderItemAtomic, reprintOrderItemProduction, reprintTableProduction, addOrderAtomic } = useTableStore();
   const { currentProfile } = useAuthStore();
   const { currentShift } = useShiftStore();
   const { notify, requestText, requestChoice } = useFeedback();
@@ -36,6 +36,46 @@ export function TabItemsPanel({ table, compact = false }: TabItemsPanelProps) {
   const [expanded, setExpanded] = useState(false);
   const [swappingItem, setSwappingItem] = useState<OrderItem | null>(null);
   const [reprintingAll, setReprintingAll] = useState(false);
+  const [repeatingItemId, setRepeatingItemId] = useState<string | null>(null);
+
+  const handleRepeatItem = (item: OrderItem) => {
+    if (!tab) {
+      notify('Comanda aberta não encontrada nesta mesa.', 'error');
+      return;
+    }
+    if (!currentShift) {
+      notify('Turno fechado: não é possível adicionar pedidos.', 'error');
+      return;
+    }
+    const prod = products.find((p) => p.id === item.product_id);
+    if (!prod) {
+      notify('Produto não encontrado no cardápio.', 'error');
+      return;
+    }
+    if (!prod.available) {
+      notify(`${item.product_name} está esgotado no momento.`, 'error');
+      return;
+    }
+    setRepeatingItemId(item.id);
+    try {
+      addOrderAtomic(
+        currentShift.id,
+        tab.id,
+        [{
+          productId: item.product_id,
+          quantity: 1,
+          doneness: item.doneness || undefined,
+          notes: item.notes || undefined,
+        }],
+        currentProfile.id
+      );
+      notify(`+1x ${item.product_name} adicionado à mesa!`, 'success');
+    } catch (err: unknown) {
+      notify(err instanceof Error ? err.message : 'Erro ao repetir item.', 'error');
+    } finally {
+      setRepeatingItemId(null);
+    }
+  };
 
   const preparingCount = active.filter(isPendingProduction).reduce((s, i) => s + i.quantity, 0);
   const readyCount = active.filter((i) => isFreshReady(i)).reduce((s, i) => s + i.quantity, 0);
@@ -180,6 +220,18 @@ export function TabItemsPanel({ table, compact = false }: TabItemsPanelProps) {
                   {item.notes && <p className="mt-0.5 text-base text-ink-secondary">Obs: {item.notes}</p>}
                 </div>
                 <div className="flex shrink-0 items-center gap-1.5">
+                  {/* Botão de Repetição Rápida: +1 deste item */}
+                  <button
+                    type="button"
+                    disabled={repeatingItemId === item.id}
+                    className="btn-secondary px-2.5 py-2 text-sm font-bold text-emerald-800 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 flex items-center gap-1 active:scale-95 transition disabled:opacity-50"
+                    onClick={() => void handleRepeatItem(item)}
+                    title={`Pedir mais 1x ${item.product_name}`}
+                    aria-label={`Pedir mais 1 ${item.product_name}`}
+                  >
+                    <Plus className="h-4 w-4 text-emerald-700" aria-hidden="true" />
+                    <span>+1</span>
+                  </button>
                   {/* Botão de Reenviar à Produção (Reimprimir) */}
                   {canReprint && (
                     <button

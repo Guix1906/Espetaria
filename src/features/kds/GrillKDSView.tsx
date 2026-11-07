@@ -193,6 +193,10 @@ export const GrillKDSView: React.FC = () => {
         </>}
       />
 
+      <GrillLiveSummary orderItems={[...onGrillItems, ...deliveryOrders
+        .filter((o) => o.status === 'PREPARING' || o.status === 'CONFIRMED')
+        .flatMap((o) => o.items.map((i) => ({ ...i, status: 'IN_PREPARATION' as const })))]} />
+
       {tickets.length === 0 ? (
         <EmptyState title="Nada na brasa agora" description="Assim que um pedido com espeto for enviado, ele aparece aqui e sai na impressora." icon={Sparkles} />
       ) : (
@@ -261,10 +265,6 @@ export const GrillKDSView: React.FC = () => {
           })}
         </ul>
       )}
-
-      <GrillLiveSummary orderItems={[...onGrillItems, ...deliveryOrders
-        .filter((o) => o.status === 'PREPARING' || o.status === 'CONFIRMED')
-        .flatMap((o) => o.items.map((i) => ({ ...i, status: 'IN_PREPARATION' as const })))]} />
 
       <details className="surface-card overflow-hidden">
         <summary className="flex cursor-pointer items-center justify-between gap-3 px-4 py-3.5 text-sm font-semibold text-ink">

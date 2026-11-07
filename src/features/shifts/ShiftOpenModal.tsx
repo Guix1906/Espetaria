@@ -130,6 +130,9 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     (p) => !disabledProducts[p.id] && (usesCubas(p) ? valueOf(p.id).cubas : valueOf(p.id).quantity).trim() === ''
   ).length;
   const disabledCount = stockProducts.filter((p) => disabledProducts[p.id]).length;
+  const uncountedSkewers = skewers.filter(
+    (p) => !disabledProducts[p.id] && !(toNumber(valueOf(p.id).quantity) ?? 0)
+  );
 
   const setField = (productId: string, field: keyof PrepValue, value: string) =>
     setPrepValues((prev) => ({ ...prev, [productId]: { ...valueOf(productId), [field]: value } }));
@@ -659,7 +662,25 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 <span>{disabledCount === 1 ? '1 produto desabilitado hoje' : `${disabledCount} produtos desabilitados hoje`} (não poderão ser pedidos pelos garçons).</span>
               </p>
             )}
-            {missingCount > 0 && (
+            {uncountedSkewers.length > 0 && (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs sm:text-sm text-amber-900 space-y-1.5 shadow-xs">
+                <div className="flex items-center gap-2 font-bold text-amber-800">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-amber-700" />
+                  <span>Atenção: {uncountedSkewers.length} {uncountedSkewers.length === 1 ? 'espeto está' : 'espetos estão'} sem quantidade informada!</span>
+                </div>
+                <p className="text-xs text-amber-800/90 leading-relaxed">
+                  Eles e as suas versões com acompanhamento começarão o turno como <strong>esgotados</strong> para os garçons:
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {uncountedSkewers.map((s) => (
+                    <span key={s.id} className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100/90 text-amber-950 font-semibold text-xs border border-amber-300">
+                      {s.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {missingCount > 0 && uncountedSkewers.length === 0 && (
               <p className="text-sm font-semibold text-amber-800" role="status">
                 {missingCount === 1 ? '1 produto sem quantidade' : `${missingCount} produtos sem quantidade`} (ficam fora do turno).
               </p>

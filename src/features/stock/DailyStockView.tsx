@@ -7,6 +7,7 @@ import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { SearchField } from '../../components/ui/SearchField';
 import { StatusTag } from '../../components/ui/StatusTag';
+import { isComboProduct } from '../../lib/comboStock';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { generateId } from '../../lib/utils';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -23,6 +24,8 @@ const DEFAULT_LOW_STOCK = 3;
 /** Limite de estoque baixo do produto (cadastro) ou o padrão de 5. */
 export const lowStockLimit = (product?: Pick<Product, 'low_stock_threshold'> | null) => product?.low_stock_threshold ?? DEFAULT_LOW_STOCK;
 const SECTOR_LABEL: Record<string, string> = { GRILL: 'Churrasqueira', KITCHEN: 'Cozinha', BAR: 'Bar' };
+const COMBO_SUFFIX = /\s+com acompanhamento\s*$/i;
+const norm = (name: string) => name.trim().toLocaleLowerCase('pt-BR');
 
 export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick }) => {
   const { requestText, notify } = useFeedback();
@@ -98,6 +101,29 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
 
   const isOut = (s: DailyPrepStock) => s.is_exhausted || s.current_quantity <= 0;
   const isLow = (s: DailyPrepStock) => !isOut(s) && s.current_quantity <= lowStockLimit(s.product);
+
+  const findBaseStock = (comboStock: DailyPrepStock) => {
+    if (!comboStock.product) return undefined;
+    const baseName = norm(comboStock.product.name.replace(COMBO_SUFFIX, ''));
+    return dailyPrepStock.find((s) => s.product && !isComboProduct(s.product) && norm(s.product.name) === baseName);
+  };
+
+  const findCompanionCombo = (baseStock: DailyPrepStock) => {
+    if (!baseStock.product || isComboProduct(baseStock.product)) return undefined;
+    const baseName = norm(baseStock.product.name);
+    return dailyPrepStock.find((s) => s.product && isComboProduct(s.product) && norm(s.product.name.replace(COMBO_SUFFIX, '')) === baseName);
+  };
+
+  const handleComboAdjustClick = (stock: DailyPrepStock) => {
+    const base = findBaseStock(stock);
+    if (base) {
+      notify(`O estoque do combo segue o espeto base (${base.product?.name}). Ajuste a contagem física do espeto base.`, 'info');
+      setAdjustModalItem(base);
+      setNewCount(base.current_quantity);
+    } else {
+      notify('O espeto base ainda não foi lançado no turno. Lance a quantidade do espeto simples na seção acima para liberar o combo.', 'error');
+    }
+  };
   const query = searchTerm.trim().toLocaleLowerCase('pt-BR');
   const filteredStock = dailyPrepStock.filter((s) => {
     const prod = s.product;
@@ -140,43 +166,100 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
           <ul className="divide-y divide-line">
             {filteredStock.map((stock) => {
               const prod = stock.product!;
+              const isCombo = isComboProduct(prod);
+              const companionCombo = !isCombo ? findCompanionCombo(stock) : null;
+              const hasBaseInFiltered = isCombo && filteredStock.some((s) => s.product && !isComboProduct(s.product) && norm(s.product.name) === norm(prod.name.replace(COMBO_SUFFIX, '')));
+
+              // Se o combo já é exibido agrupado dentro do cartão do espeto base, não duplica como cartão principal
+              if (hasBaseInFiltered) return null;
+
               const out = isOut(stock);
               const low = isLow(stock);
               const pct = stock.initial_quantity > 0 ? Math.min(100, Math.max(0, Math.round((stock.current_quantity / stock.initial_quantity) * 100))) : 0;
               return (
-                <li key={stock.id} className="grid grid-cols-1 gap-3 p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)_70px_70px_70px_auto] lg:items-center lg:gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-[15px] font-semibold text-ink">{prod.name}</h3>
-                      {out ? <StatusTag kind="alert">Esgotado</StatusTag> : low ? <StatusTag kind="preparing">Estoque baixo</StatusTag> : <StatusTag kind="occupied">Disponível</StatusTag>}
+                <li key={stock.id} className="p-4 space-y-3">
+                  <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1.2fr)_70px_70px_70px_auto] lg:items-center lg:gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-[15px] font-semibold text-ink">{prod.name}</h3>
+                        {isCombo && (
+                          <span className="status-badge bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold">
+                            Combo Automático
+                          </span>
+                        )}
+                        {out ? <StatusTag kind="alert">Esgotado</StatusTag> : low ? <StatusTag kind="preparing">Estoque baixo</StatusTag> : <StatusTag kind="occupied">Disponível</StatusTag>}
+                      </div>
+                      <p className="mt-0.5 text-[13px] text-ink-muted">
+                        {SECTOR_LABEL[prod.sector] ?? 'Outros'}{prod.is_cubas && ` · ${stock.cubas_count} ${stock.cubas_count === 1 ? 'cuba' : 'cubas'} (${stock.portions_per_cuba} porções cada)`}
+                        {isCombo && ' · Saldo vinculado ao espeto base + arroz'}
+                      </p>
+                      {stock.is_exhausted && stock.exhaust_reason && <p className="mt-1 text-[13px] text-rose-800">Motivo: {stock.exhaust_reason}</p>}
                     </div>
-                    <p className="mt-0.5 text-[13px] text-ink-muted">
-                      {SECTOR_LABEL[prod.sector] ?? 'Outros'}{prod.is_cubas && ` · ${stock.cubas_count} ${stock.cubas_count === 1 ? 'cuba' : 'cubas'} (${stock.portions_per_cuba} porções cada)`}
-                    </p>
-                    {stock.is_exhausted && stock.exhaust_reason && <p className="mt-1 text-[13px] text-rose-800">Motivo: {stock.exhaust_reason}</p>}
-                  </div>
-                  <div>
-                    <div className="mb-1 flex items-baseline justify-between gap-2">
-                      <span className={`font-mono text-[15px] font-bold ${out ? 'text-rose-700' : low ? 'text-amber-800' : 'text-ink'}`}>{stock.current_quantity}</span>
-                      <span className="font-mono text-[13px] text-ink-muted">de {stock.initial_quantity}</span>
+                    <div>
+                      <div className="mb-1 flex items-baseline justify-between gap-2">
+                        <span className={`font-mono text-[15px] font-bold ${out ? 'text-rose-700' : low ? 'text-amber-800' : 'text-ink'}`}>{stock.current_quantity}</span>
+                        <span className="font-mono text-[13px] text-ink-muted">de {stock.initial_quantity}</span>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-sm bg-surface-muted">
+                        <div className={`h-full rounded-sm ${out ? 'bg-rose-600' : low ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                    <div className="h-2 w-full overflow-hidden rounded-sm bg-surface-muted">
-                      <div className={`h-full rounded-sm ${out ? 'bg-rose-600' : low ? 'bg-amber-500' : 'bg-emerald-600'}`} style={{ width: `${pct}%` }} />
+                    <div className="grid grid-cols-3 gap-2 text-sm lg:contents">
+                      <p className="rounded-md bg-surface-soft p-2 text-center lg:bg-transparent lg:p-0 lg:text-right"><span className="block text-[13px] text-ink-muted lg:hidden">Vendido</span><span className="font-mono font-semibold text-ink">{stock.consumed_quantity}</span></p>
+                      <p className="rounded-md bg-surface-soft p-2 text-center lg:bg-transparent lg:p-0 lg:text-right"><span className="block text-[13px] text-ink-muted lg:hidden">Perda</span><span className={`font-mono font-semibold ${stock.discarded_quantity ? 'text-rose-700' : 'text-ink'}`}>{stock.discarded_quantity}</span></p>
+                      <p className="rounded-md bg-surface-soft p-2 text-center lg:bg-transparent lg:p-0 lg:text-right"><span className="block text-[13px] text-ink-muted lg:hidden">Ajuste</span><span className="font-mono font-semibold text-ink">{stock.adjusted_quantity}</span></p>
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <button type="button" onClick={() => void handleToggleExhaust(stock)} className={`min-h-[44px] flex-1 lg:flex-none ${out ? 'btn-secondary' : 'btn-danger'}`}>
+                        {out ? <><RotateCcw className="h-4 w-4" />Reativar</> : <><Ban className="h-4 w-4" />Esgotar</>}
+                      </button>
+                      {isCombo ? (
+                        <button type="button" onClick={() => handleComboAdjustClick(stock)} className="btn-secondary min-h-[44px] flex-1 lg:flex-none text-xs font-semibold text-brand-800 border-brand-200 bg-brand-50 hover:bg-brand-100">
+                          <SlidersHorizontal className="h-4 w-4" />Ajustar no espeto
+                        </button>
+                      ) : (
+                        <button type="button" onClick={() => { setAdjustModalItem(stock); setNewCount(stock.current_quantity); }} className="btn-secondary min-h-[44px] flex-1 lg:flex-none">
+                          <SlidersHorizontal className="h-4 w-4" />Contagem
+                        </button>
+                      )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-sm lg:contents">
-                    <p className="rounded-md bg-surface-soft p-2 text-center lg:bg-transparent lg:p-0 lg:text-right"><span className="block text-[13px] text-ink-muted lg:hidden">Vendido</span><span className="font-mono font-semibold text-ink">{stock.consumed_quantity}</span></p>
-                    <p className="rounded-md bg-surface-soft p-2 text-center lg:bg-transparent lg:p-0 lg:text-right"><span className="block text-[13px] text-ink-muted lg:hidden">Perda</span><span className={`font-mono font-semibold ${stock.discarded_quantity ? 'text-rose-700' : 'text-ink'}`}>{stock.discarded_quantity}</span></p>
-                    <p className="rounded-md bg-surface-soft p-2 text-center lg:bg-transparent lg:p-0 lg:text-right"><span className="block text-[13px] text-ink-muted lg:hidden">Ajuste</span><span className="font-mono font-semibold text-ink">{stock.adjusted_quantity}</span></p>
-                  </div>
-                  <div className="flex items-center justify-end gap-2">
-                    <button type="button" onClick={() => void handleToggleExhaust(stock)} className={`min-h-[44px] flex-1 lg:flex-none ${out ? 'btn-secondary' : 'btn-danger'}`}>
-                      {out ? <><RotateCcw className="h-4 w-4" />Reativar</> : <><Ban className="h-4 w-4" />Esgotar</>}
-                    </button>
-                    <button type="button" onClick={() => { setAdjustModalItem(stock); setNewCount(stock.current_quantity); }} className="btn-secondary min-h-[44px] flex-1 lg:flex-none">
-                      <SlidersHorizontal className="h-4 w-4" />Contagem
-                    </button>
-                  </div>
+
+                  {/* Agrupamento em cartão único: Versão com Acompanhamento */}
+                  {companionCombo && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs sm:text-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-bold text-ink flex items-center gap-1.5">
+                            <span className="text-amber-700 font-mono">↳</span> {companionCombo.product?.name}
+                          </span>
+                          <span className="status-badge bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-[11px]">
+                            Combo Automático
+                          </span>
+                          {isOut(companionCombo) ? (
+                            <StatusTag kind="alert">Esgotado</StatusTag>
+                          ) : (
+                            <span className="text-xs text-ink-muted font-medium">
+                              Disponível: <strong className="font-mono text-ink font-bold">{companionCombo.current_quantity}</strong>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-ink-muted">
+                          <span>Vendido: <strong className="font-mono font-bold text-ink">{companionCombo.consumed_quantity}</strong></span>
+                          <span className="hidden md:inline italic text-ink-muted">Saldo segue este espeto e o arroz</span>
+                          {companionCombo.is_exhausted && (
+                            <button
+                              type="button"
+                              onClick={() => void handleToggleExhaust(companionCombo)}
+                              className="text-xs font-bold text-rose-700 underline hover:text-rose-900"
+                            >
+                              Reativar combo
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </li>
               );
             })}

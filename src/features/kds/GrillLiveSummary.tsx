@@ -42,8 +42,25 @@ export function GrillLiveSummary({ orderItems }: { orderItems: GrillSummaryItem[
   return (
     <section className="surface-card overflow-hidden">
       <button type="button" aria-expanded={isExpanded} aria-controls={contentId} onClick={() => setIsExpanded(!isExpanded)} className="flex w-full flex-wrap items-center justify-between gap-3 bg-surface-soft px-4 py-3.5 text-left">
-        <span className="flex items-center gap-2 text-sm font-semibold text-ink"><Flame className="h-4 w-4 text-accent-700" aria-hidden="true" />Total por espeto</span>
-        <span className="flex flex-wrap items-center gap-2"><span className="status-badge bg-brand-50 text-brand-800">{totalOnGrill} na brasa</span>{totalWaiting > 0 && <span className="status-badge bg-amber-50 text-amber-800">{totalWaiting} na fila</span>}{isExpanded ? <ChevronUp className="h-4 w-4 text-ink-muted" /> : <ChevronDown className="h-4 w-4 text-ink-muted" />}</span>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="flex items-center gap-1.5 text-sm font-bold text-ink">
+            <Flame className="h-4 w-4 text-accent-700" aria-hidden="true" />
+            <span>Volume na brasa</span>
+          </span>
+          <span className="status-badge bg-brand-50 text-brand-800 font-bold">{totalOnGrill} na brasa</span>
+          {totalWaiting > 0 && <span className="status-badge bg-amber-50 text-amber-800">{totalWaiting} na fila</span>}
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="hidden sm:flex items-center gap-1.5">
+            {skewers.slice(0, 4).map((s) => (
+              <span key={s.productId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-surface border border-line text-xs font-semibold text-ink">
+                <span className="font-mono font-bold text-brand-800">{s.totalCount}x</span>
+                <span className="truncate max-w-[110px]">{s.productName}</span>
+              </span>
+            ))}
+          </div>
+          {isExpanded ? <ChevronUp className="h-4 w-4 text-ink-muted" /> : <ChevronDown className="h-4 w-4 text-ink-muted" />}
+        </div>
       </button>
       {isExpanded && <div id={contentId} className="grid grid-cols-1 gap-3 border-t border-line p-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">{skewers.map((skewer) => <div key={skewer.productId} className="rounded-xl border border-line bg-surface p-4"><div className="flex items-start justify-between gap-2"><h2 className="text-sm font-semibold text-ink">{skewer.productName}</h2><span className="text-lg font-bold text-brand-800 tabular-nums">{skewer.totalCount}x</span></div>{skewer.waitingCount > 0 && <p className="mt-2 text-xs text-ink-muted">{skewer.onGrillCount} na brasa · {skewer.waitingCount} aguardando</p>}<div className="mt-3 flex flex-wrap gap-1.5">{(Object.entries(skewer.donenessBreakdown) as [MeatDoneness, number][]).filter(([, count]) => count > 0).map(([doneness, count]) => <span key={doneness} className="rounded-sm bg-amber-50 px-2 py-1 text-xs font-medium text-amber-900">{count}x {formatDoneness(doneness)}</span>)}</div></div>)}</div>}
     </section>
