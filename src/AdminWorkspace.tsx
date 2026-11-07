@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { Header } from './components/layout/Header';
 import { isPendingProduction } from './lib/productionStatus';
 import { NavigationTabs } from './components/layout/NavigationTabs';
@@ -70,7 +70,7 @@ function getInitialAdminTab(allowedTabs: ActiveTab[]): ActiveTab {
 
 export function AdminWorkspace() {
   const currentProfile = useAuthStore((s) => s.currentProfile);
-  const allowedTabs = tabsForRole(currentProfile.role);
+  const allowedTabs = useMemo(() => tabsForRole(currentProfile.role), [currentProfile.role]);
   const [requestedTab, setRequestedTab] = useState<ActiveTab>(() => getInitialAdminTab(allowedTabs));
   // Nunca renderiza uma tela fora das permissões do papel atual
   // No programa do PC não existe a tela de Conversas: a aba WhatsApp é o WhatsApp Web

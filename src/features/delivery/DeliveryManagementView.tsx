@@ -15,7 +15,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { etaMaxMinutes } from '../../lib/eta';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { DriverPayoutsView } from './DriverPayoutsView';
 import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -157,7 +157,8 @@ export const DeliveryManagementView: React.FC = () => {
   const typedOrders = deliveryOrders.filter((order) => (kindFilter === 'ALL' ? orderKind(order) !== 'DINE_IN' : orderKind(order) === kindFilter));
   const openShift = useShiftStore((s) => (s.currentShift?.status === 'ABERTO' ? s.currentShift : null));
   const openShiftId = openShift?.id ?? null;
-  const closedShiftIds = useShiftStore((s) => new Set(s.shiftsHistory.filter((sh) => sh.status === 'FECHADO').map((sh) => sh.id)));
+  const shiftsHistory = useShiftStore((s) => s.shiftsHistory);
+  const closedShiftIds = useMemo(() => new Set(shiftsHistory.filter((sh) => sh.status === 'FECHADO').map((sh) => sh.id)), [shiftsHistory]);
 
   // Pedidos de turnos encerrados não devem aparecer como pendentes nas abas ativas do dia seguinte
   const isOrderActiveInCurrentSession = (o: DeliveryOrder) => {
