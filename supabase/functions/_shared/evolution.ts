@@ -41,9 +41,25 @@ export async function sendText(phone: string, text: string): Promise<string | nu
   return body?.key?.id ?? null;
 }
 
+/** Garante que a instância na Evolution API fique sempre com presença ativa (alwaysOnline: true) para o WhatsApp não desconectar por inatividade. */
+export async function ensureAlwaysOnline(): Promise<void> {
+  try {
+    const { url, key, instance } = config();
+    await fetch(`${url}/settings/set/${instance}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: key },
+      body: JSON.stringify({ alwaysOnline: true }),
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch {
+    // silencioso
+  }
+}
+
 /** Pede um QR Code novo para ligar o celular. Lança erro se a Evolution recusar. */
 export async function connectQr(): Promise<{ qr: string | null; pairingCode: string | null }> {
   const { url, key, instance } = config();
+  await ensureAlwaysOnline();
   const res = await fetch(`${url}/instance/connect/${instance}`, {
     headers: { apikey: key },
     signal: AbortSignal.timeout(20000),

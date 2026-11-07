@@ -7,7 +7,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { corsHeadersFor } from '../_shared/cors.ts';
-import { connectedAccount, connectionState, connectQr, logoutInstance, sendText } from '../_shared/evolution.ts';
+import { connectedAccount, connectionState, connectQr, ensureAlwaysOnline, logoutInstance, sendText } from '../_shared/evolution.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsHeadersFor(req);
@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
     return json({ error: err instanceof Error ? err.message : String(err) }, 502);
   }
   const state = await connectionState();
+  if (state.connected) void ensureAlwaysOnline();
   const account = state.connected ? await connectedAccount() : { number: null, profileName: null };
   return json({ provider, instance: Deno.env.get('EVOLUTION_INSTANCE') || null, ...state, ...account });
 });
