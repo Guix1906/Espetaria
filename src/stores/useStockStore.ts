@@ -543,10 +543,17 @@ export const useStockStore = create<StockState>((set, get) => ({
       if (stock.shift_id !== shiftId) return;
       const prod = updatedProducts.find((p) => p.id === stock.product_id);
       if (!prod || !isComboProduct(prod)) return;
-      const parts = stockUnitIds(prod, updatedProducts).slice(1)
+      const requiredUnitIds = stockUnitIds(prod, updatedProducts).slice(1);
+      const parts = requiredUnitIds
         .map((id) => dailyPrepList.find((s) => s.shift_id === shiftId && s.product_id === id))
         .filter((s): s is DailyPrepStock => !!s);
-      if (!parts.length) return;
+      // Combo exige ambas as peças (espeto base e arroz) no turno
+      if (parts.length < requiredUnitIds.length || requiredUnitIds.length < 2) {
+        if (stock.current_quantity !== 0 || !stock.is_exhausted) {
+          dailyPrepList[index] = { ...stock, current_quantity: 0, is_exhausted: true };
+        }
+        return;
+      }
       const avail = Math.max(0, Math.min(...parts.map((s) => s.current_quantity)));
       if (avail !== stock.current_quantity) dailyPrepList[index] = { ...stock, current_quantity: avail, is_exhausted: avail <= 0 ? true : stock.is_exhausted };
     });
