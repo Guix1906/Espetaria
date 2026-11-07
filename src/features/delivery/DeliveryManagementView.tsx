@@ -155,13 +155,34 @@ export const DeliveryManagementView: React.FC = () => {
   const [kindFilter, setKindFilter] = useState<OrderKind | 'ALL'>(() => peekOrderKindFocus() ?? (currentProfile.role === 'ENTREGADOR' ? 'DELIVERY' : 'ALL'));
   useEffect(() => { clearOrderKindFocus(); }, []);
   const typedOrders = deliveryOrders.filter((order) => (kindFilter === 'ALL' ? orderKind(order) !== 'DINE_IN' : orderKind(order) === kindFilter));
-  const openShiftId = useShiftStore((s) => (s.currentShift?.status === 'ABERTO' ? s.currentShift.id : null));
-  const isDeliveredHere = (o: DeliveryOrder) => o.status === 'DELIVERED' && (!openShiftId || o.shift_id === openShiftId);
+  const openShift = useShiftStore((s) => (s.currentShift?.status === 'ABERTO' ? s.currentShift : null));
+  const openShiftId = openShift?.id ?? null;
+  const closedShiftIds = useShiftStore((s) => new Set(s.shiftsHistory.filter((sh) => sh.status === 'FECHADO').map((sh) => sh.id)));
+
+  // Pedidos de turnos encerrados não devem aparecer como pendentes nas abas ativas do dia seguinte
+  const isOrderActiveInCurrentSession = (o: DeliveryOrder) => {
+    if (o.status === 'DELIVERED' || o.status === 'CANCELLED') return false;
+    if (openShiftId) {
+      return !o.shift_id || o.shift_id === openShiftId;
+    }
+    // Turno fechado: se tem shift_id de turno encerrado ou foi feito há mais de 6 horas, é de turno anterior
+    if (o.shift_id && closedShiftIds.has(o.shift_id)) return false;
+    const hoursAgo = (Date.now() - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
+    return hoursAgo < 6 && !o.shift_id;
+  };
+
+  const isDeliveredHere = (o: DeliveryOrder) => {
+    if (o.status !== 'DELIVERED') return false;
+    if (openShiftId) return !o.shift_id || o.shift_id === openShiftId;
+    const hoursAgo = (Date.now() - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
+    return hoursAgo < 16;
+  };
+
   const filteredOrders = typedOrders.filter((order) => {
-    if (filter === 'ALL_ACTIVE') return isInProduction(order.status);
-    if (filter === 'AWAITING_PAYMENT') return order.status === 'AWAITING_PAYMENT';
-    if (filter === 'READY') return order.status === 'READY';
-    if (filter === 'OUT_FOR_DELIVERY') return order.status === 'OUT_FOR_DELIVERY';
+    if (filter === 'ALL_ACTIVE') return isOrderActiveInCurrentSession(order) && isInProduction(order.status);
+    if (filter === 'AWAITING_PAYMENT') return isOrderActiveInCurrentSession(order) && order.status === 'AWAITING_PAYMENT';
+    if (filter === 'READY') return isOrderActiveInCurrentSession(order) && order.status === 'READY';
+    if (filter === 'OUT_FOR_DELIVERY') return isOrderActiveInCurrentSession(order) && order.status === 'OUT_FOR_DELIVERY';
     if (filter === 'DELIVERED') return isDeliveredHere(order);
     return true;
   });
@@ -222,10 +243,10 @@ export const DeliveryManagementView: React.FC = () => {
     }
   };
 
-  const countActive = typedOrders.filter((o) => isInProduction(o.status)).length;
-  const countAwaiting = typedOrders.filter((o) => o.status === 'AWAITING_PAYMENT').length;
-  const countReady = typedOrders.filter((o) => o.status === 'READY').length;
-  const countDispatched = typedOrders.filter((o) => o.status === 'OUT_FOR_DELIVERY').length;
+  const countActive = typedOrders.filter((o) => isOrderActiveInCurrentSession(o) && isInProduction(o.status)).length;
+  const countAwaiting = typedOrders.filter((o) => isOrderActiveInCurrentSession(o) && o.status === 'AWAITING_PAYMENT').length;
+  const countReady = typedOrders.filter((o) => isOrderActiveInCurrentSession(o) && o.status === 'READY').length;
+  const countDispatched = typedOrders.filter((o) => isOrderActiveInCurrentSession(o) && o.status === 'OUT_FOR_DELIVERY').length;
   const countDelivered = typedOrders.filter(isDeliveredHere).length;
 
   return (
@@ -265,7 +286,7 @@ export const DeliveryManagementView: React.FC = () => {
       {/* Tipo do pedido: cada um na sua aba */}
       <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-md bg-surface-muted p-1" role="group" aria-label="Tipo de pedido">
         {([['ALL', 'Todos'], ['DELIVERY', 'Entrega'], ['PICKUP', 'Retirada'], ['DINE_IN', 'Consumir no local']] as const).map(([key, label]) => {
-          const active = deliveryOrders.filter((o) => isInProduction(o.status) || o.status === 'OUT_FOR_DELIVERY' || o.status === 'AWAITING_PAYMENT');
+          const active = deliveryOrders.filter((o) => isOrderActiveInCurrentSession(o) && (isInProduction(o.status) || o.status === 'OUT_FOR_DELIVERY' || o.status === 'AWAITING_PAYMENT'));
           const count = key === 'ALL' ? active.filter((o) => orderKind(o) !== 'DINE_IN').length : active.filter((o) => orderKind(o) === key).length;
           return <button key={key} type="button" aria-pressed={kindFilter === key} onClick={() => setKindFilter(key)} className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-sm px-3 text-sm font-medium ${kindFilter === key ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{label} <span className="font-mono">{count}</span></button>;
         })}

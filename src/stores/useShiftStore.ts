@@ -3,6 +3,7 @@ import { Shift } from '../types/domain';
 import { generateId } from '../lib/utils';
 import { useStockStore, PrepItemInput } from './useStockStore';
 import { useTableStore } from './useTableStore';
+import { useDeliveryStore } from './useDeliveryStore';
 import { logger } from '../lib/logger';
 import { callRpc } from '../lib/remote';
 
@@ -132,6 +133,16 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       tabs: tableStore.tabs.map((t) => (t.status === 'OPEN' ? { ...t, status: 'CLOSED' as const, closed_at: closeNow, closed_by: userId } : t)),
       orders: tableStore.orders.map((o) => (o.status !== 'CANCELLED' && o.status !== 'CLOSED' ? { ...o, status: 'CLOSED' as const, updated_at: closeNow } : o)),
       orderItems: tableStore.orderItems.map((i) => (i.status !== 'CANCELLED' && i.status !== 'DELIVERED' ? { ...i, status: 'DELIVERED' as const, delivered_at: closeNow, updated_at: closeNow } : i)),
+    });
+
+    // Finaliza automaticamente pedidos de delivery pendentes (Em entrega, Pronto, etc.) do turno encerrado como ENTREGUES
+    const deliveryStore = useDeliveryStore.getState();
+    useDeliveryStore.setState({
+      deliveryOrders: deliveryStore.deliveryOrders.map((o) =>
+        (o.shift_id === current.id || !o.shift_id) && o.status !== 'DELIVERED' && o.status !== 'CANCELLED'
+          ? { ...o, status: 'DELIVERED' as const, delivered_at: o.delivered_at ?? closeNow }
+          : o
+      ),
     });
 
     void callRpc('close_shift', {
