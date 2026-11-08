@@ -132,6 +132,20 @@ export async function getWebhook(): Promise<any> {
   }
 }
 
+/** Reinicia a instância na Evolution API para renovar a escuta de mensagens sem perder o login. */
+// deno-lint-ignore no-explicit-any
+export async function restartInstance(): Promise<any> {
+  const { url, key, instance } = config();
+  const res = await fetch(`${url}/instance/restart/${instance}`, {
+    method: 'POST',
+    headers: { apikey: key },
+    signal: AbortSignal.timeout(15000),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(`Evolution ${res.status}: ${JSON.stringify(body).slice(0, 300)}`);
+  return body;
+}
+
 /** Configura o webhook na Evolution para repassar mensagens recebidas e status de conexão. */
 // deno-lint-ignore no-explicit-any
 export async function setWebhook(webhookUrl: string): Promise<any> {

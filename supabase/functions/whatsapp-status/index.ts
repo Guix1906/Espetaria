@@ -7,7 +7,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { corsHeadersFor } from '../_shared/cors.ts';
-import { connectedAccount, connectionState, connectQr, ensureAlwaysOnline, getWebhook, logoutInstance, sendText, setWebhook } from '../_shared/evolution.ts';
+import { connectedAccount, connectionState, connectQr, ensureAlwaysOnline, getWebhook, logoutInstance, restartInstance, sendText, setWebhook } from '../_shared/evolution.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsHeadersFor(req);
@@ -58,6 +58,10 @@ Deno.serve(async (req) => {
       const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-evolution-webhook?token=${encodeURIComponent(token)}`;
       const result = await setWebhook(webhookUrl);
       return json({ ok: true, webhookUrl: webhookUrl.replace(/token=[^&]+/, 'token=***'), result });
+    }
+    if (action === 'restart') {
+      const result = await restartInstance();
+      return json({ ok: true, result });
     }
     if (action === 'connect') return json(await connectQr());
     if (action === 'logout') {

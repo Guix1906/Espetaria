@@ -68,6 +68,22 @@ function ConnectionCheck() {
       <button type="button" className="btn-secondary text-xs" onClick={check} disabled={checking}>
         {checking ? 'Verificando...' : 'Testar conexão do WhatsApp'}
       </button>
+      <button
+        type="button"
+        className="btn-secondary text-xs"
+        onClick={async () => {
+          setChecking(true);
+          try {
+            await supabase.functions.invoke('whatsapp-status', { body: { action: 'restart' } });
+            await check();
+          } finally {
+            setChecking(false);
+          }
+        }}
+        disabled={checking}
+      >
+        Renovar escuta do WhatsApp
+      </button>
       <button type="button" className="btn-secondary text-xs" aria-expanded={showConnect} onClick={() => setShowConnect(!showConnect)}>
         {showConnect ? 'Fechar QR Code do robô' : 'QR Code do robô'}
       </button>

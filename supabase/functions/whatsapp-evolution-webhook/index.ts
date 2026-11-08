@@ -21,18 +21,31 @@ Deno.serve(async (req) => {
     try {
       const base = (Deno.env.get('EVOLUTION_URL') || '').replace(/\/$/, '');
       const instance = encodeURIComponent(Deno.env.get('EVOLUTION_INSTANCE') || '');
-      const res = await fetch(`${base}/webhook/find/${instance}`, { headers: { apikey: Deno.env.get('EVOLUTION_API_KEY') || '' } });
+      const apiKey = Deno.env.get('EVOLUTION_API_KEY') || '';
+      const urlObj = new URL(req.url);
+      if (urlObj.searchParams.get('restart') === '1') {
+        const restartRes = await fetch(`${base}/instance/restart/${instance}`, {
+          method: 'POST',
+          headers: { apikey: apiKey },
+        });
+        const restartBody = await restartRes.json().catch(() => null);
+        return ok({ restart: true, status: restartRes.status, response: restartBody });
+      }
+      const [res, stateRes] = await Promise.all([
+        fetch(`${base}/webhook/find/${instance}`, { headers: { apikey: apiKey } }),
+        fetch(`${base}/instance/connectionState/${instance}`, { headers: { apikey: apiKey } }),
+      ]);
       const body = await res.json().catch(() => null);
+      const stateBody = await stateRes.json().catch(() => null);
       const url = String(body?.url ?? body?.webhook?.url ?? '');
       const sameToken = url.includes(`token=${expected}`);
       return ok({
         status: res.status,
+        connectionState: stateBody,
         enabled: body?.enabled ?? body?.webhook?.enabled ?? null,
         url: url.replace(/token=[^&]+/, 'token=***'),
         token_ok: sameToken,
         events: body?.events ?? body?.webhook?.events ?? null,
-        byEvents: body?.webhookByEvents ?? body?.webhook?.webhookByEvents ?? null,
-        base64: body?.webhookBase64 ?? body?.webhook?.webhookBase64 ?? null,
       });
     } catch (err) {
       return ok({ error: err instanceof Error ? err.message : String(err) });
