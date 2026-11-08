@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { checkForUpdates } from './updater.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const CHECK_INTERVAL_MS = 30 * 60 * 1000; // Checa a cada 30 minutos
+const CHECK_INTERVAL_MS = 3 * 60 * 1000; // Checa a cada 3 minutos
 
 const log = (...args) => console.log(new Date().toLocaleTimeString('pt-BR'), '[runner]', ...args);
 
