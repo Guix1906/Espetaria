@@ -7,7 +7,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { corsHeadersFor } from '../_shared/cors.ts';
-import { connectedAccount, connectionState, connectQr, ensureAlwaysOnline, logoutInstance, sendText } from '../_shared/evolution.ts';
+import { connectedAccount, connectionState, connectQr, ensureAlwaysOnline, getWebhook, logoutInstance, sendText, setWebhook } from '../_shared/evolution.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsHeadersFor(req);
@@ -50,6 +50,15 @@ Deno.serve(async (req) => {
       }).eq('phone', to);
       return json({ ok: true });
     }
+    if (action === 'get_webhook') {
+      return json(await getWebhook());
+    }
+    if (action === 'set_webhook') {
+      const token = Deno.env.get('EVOLUTION_WEBHOOK_TOKEN') || '';
+      const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-evolution-webhook?token=${encodeURIComponent(token)}`;
+      const result = await setWebhook(webhookUrl);
+      return json({ ok: true, webhookUrl: webhookUrl.replace(/token=[^&]+/, 'token=***'), result });
+    }
     if (action === 'connect') return json(await connectQr());
     if (action === 'logout') {
       await logoutInstance();
@@ -59,7 +68,25 @@ Deno.serve(async (req) => {
     return json({ error: err instanceof Error ? err.message : String(err) }, 502);
   }
   const state = await connectionState();
-  if (state.connected) void ensureAlwaysOnline();
+  if (state.connected) {
+    void ensureAlwaysOnline();
+    // Auto-valida se o webhook da Evolution está ativo apontando para o nosso endpoint
+    try {
+      const token = Deno.env.get('EVOLUTION_WEBHOOK_TOKEN');
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      if (token && supabaseUrl) {
+        const webhookInfo = await getWebhook();
+        const currentUrl = String(webhookInfo?.url ?? webhookInfo?.webhook?.url ?? '');
+        const isEnabled = webhookInfo?.enabled ?? webhookInfo?.webhook?.enabled;
+        if (!isEnabled || !currentUrl.includes(`token=${token}`)) {
+          const webhookUrl = `${supabaseUrl}/functions/v1/whatsapp-evolution-webhook?token=${encodeURIComponent(token)}`;
+          await setWebhook(webhookUrl);
+        }
+      }
+    } catch {
+      // silencioso
+    }
+  }
   const account = state.connected ? await connectedAccount() : { number: null, profileName: null };
   return json({ provider, instance: Deno.env.get('EVOLUTION_INSTANCE') || null, ...state, ...account });
 });

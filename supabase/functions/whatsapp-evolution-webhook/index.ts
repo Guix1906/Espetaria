@@ -61,19 +61,27 @@ Deno.serve(async (req) => {
     if (event !== 'messages.upsert') return ok({ ignored: payload?.event ?? null });
 
     const list = Array.isArray(payload?.data) ? payload.data : [payload?.data];
-    for (const msg of list) {
-      if (!msg || msg?.key?.fromMe) continue; // ignora o que a própria loja enviou
-      const jid = String(msg?.key?.remoteJid ?? '');
-      if (jid.endsWith('@g.us')) continue; // ignora grupos
-      const text = msg?.message?.conversation ?? msg?.message?.extendedTextMessage?.text ?? `[${msg?.messageType ?? 'mídia'}]`;
-      console.log(JSON.stringify({
-        tag: 'evolution-message',
-        instance: payload?.instance,
-        from: jid.split('@')[0],
-        name: msg?.pushName ?? null,
-        text: String(text).slice(0, 1000),
-        at: msg?.messageTimestamp ?? null,
-      }));
+    const url = Deno.env.get('SUPABASE_URL');
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (url && key) {
+      const first = list[0] ?? {};
+      await fetch(`${url}/rest/v1/audit_logs`, {
+        method: 'POST',
+        headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          action: 'WHATSAPP_MENSAGEM_RECEBIDA',
+          entity_type: 'whatsapp_bot',
+          entity_id: crypto.randomUUID(),
+          new_data: {
+            fromMe: !!first?.key?.fromMe,
+            remoteJid: first?.key?.remoteJid,
+            remoteJidAlt: first?.key?.remoteJidAlt,
+            senderPn: first?.key?.senderPn,
+            pushName: first?.pushName,
+            text: first?.message?.conversation ?? first?.message?.extendedTextMessage?.text ?? null,
+          },
+        }),
+      }).catch(() => undefined);
     }
 
     // Repassa ao robô de atendimento (ele decide se responde: modo OFF/TEST/ALL).

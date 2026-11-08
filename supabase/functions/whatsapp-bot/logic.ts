@@ -204,10 +204,16 @@ export function parseEvolutionIncoming(payload: any): Incoming {
   const key = data?.key;
   if (!key) return { kind: 'ignore' };
   let jid = String(key.remoteJid ?? '');
-  // Contas com "@lid" (id oculto): o número real vem em remoteJidAlt/senderPn
-  if (jid.endsWith('@lid')) jid = String(key.remoteJidAlt ?? key.senderPn ?? '');
-  if (!jid.endsWith('@s.whatsapp.net')) return { kind: 'ignore' }; // grupos, status, canais
-  const phone = digits(jid.split('@')[0]);
+  // Contas com "@lid" (id oculto): o número real vem em remoteJidAlt/senderPn/sender/participant
+  if (jid.endsWith('@lid')) jid = String(key.remoteJidAlt ?? key.senderPn ?? data.sender ?? key.participant ?? '');
+  if (!jid.includes('@s.whatsapp.net')) {
+    const alt = String(data.sender ?? key.participant ?? '');
+    if (alt.includes('@s.whatsapp.net')) jid = alt;
+  }
+  if (!jid.includes('@s.whatsapp.net')) return { kind: 'ignore' }; // grupos, status, canais
+  // Remove sufixo de dispositivo (ex.: :12@s.whatsapp.net) antes de extrair dígitos
+  const cleanJid = jid.split('@')[0].split(':')[0];
+  const phone = digits(cleanJid);
   if (phone.length < 10) return { kind: 'ignore' };
 
   const m = data.message ?? {};

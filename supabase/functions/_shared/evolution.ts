@@ -116,3 +116,45 @@ export async function connectionState(): Promise<{ connected: boolean; state: st
     return { connected: false, state: 'error', error: err instanceof Error ? err.message : String(err) };
   }
 }
+
+/** Consulta o webhook configurado na Evolution. */
+// deno-lint-ignore no-explicit-any
+export async function getWebhook(): Promise<any> {
+  try {
+    const { url, key, instance } = config();
+    const res = await fetch(`${url}/webhook/find/${instance}`, {
+      headers: { apikey: key },
+      signal: AbortSignal.timeout(10000),
+    });
+    return await res.json().catch(() => null);
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/** Configura o webhook na Evolution para repassar mensagens recebidas e status de conexão. */
+// deno-lint-ignore no-explicit-any
+export async function setWebhook(webhookUrl: string): Promise<any> {
+  const { url, key, instance } = config();
+  const res = await fetch(`${url}/webhook/set/${instance}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: key },
+    body: JSON.stringify({
+      webhook: {
+        enabled: true,
+        url: webhookUrl,
+        byEvents: false,
+        base64: false,
+        events: [
+          'CONNECTION_UPDATE',
+          'MESSAGES_UPSERT',
+        ],
+      },
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(`Evolution ${res.status}: ${JSON.stringify(body).slice(0, 300)}`);
+  return body;
+}
+
