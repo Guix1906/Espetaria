@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { deliverySummarySector } from '../worker.js';
 
-describe('via do motoboy', () => {
+describe('via de conferência e entrega', () => {
   it('delivery com espeto sai na churrasqueira', () => {
     expect(deliverySummarySector('DELIVERY', ['GRILL', 'BAR'])).toBe('GRILL');
   });
@@ -9,8 +9,9 @@ describe('via do motoboy', () => {
     expect(deliverySummarySector('DELIVERY', ['KITCHEN'])).toBe('KITCHEN');
     expect(deliverySummarySector(undefined, ['BAR', 'KITCHEN'])).toBe('KITCHEN');
   });
-  it('retirada no balcão não imprime', () => {
-    expect(deliverySummarySector('PICKUP', ['GRILL'])).toBeNull();
+  it('retirada no balcão também imprime conferência', () => {
+    expect(deliverySummarySector('PICKUP', ['GRILL'])).toBe('GRILL');
+    expect(deliverySummarySector('PICKUP', ['KITCHEN'])).toBe('KITCHEN');
   });
   it('sem saber os itens, vai para a churrasqueira', () => {
     expect(deliverySummarySector('DELIVERY', [])).toBe('GRILL');

@@ -48,7 +48,15 @@ export async function ensureAlwaysOnline(): Promise<void> {
     await fetch(`${url}/settings/set/${instance}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: key },
-      body: JSON.stringify({ alwaysOnline: true }),
+      body: JSON.stringify({
+        rejectCall: false,
+        msgCall: '',
+        groupsIgnore: false,
+        alwaysOnline: true,
+        readMessages: false,
+        readStatus: false,
+        syncFullHistory: false,
+      }),
       signal: AbortSignal.timeout(10000),
     });
   } catch {
@@ -154,16 +162,20 @@ export async function setWebhook(webhookUrl: string): Promise<any> {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', apikey: key },
     body: JSON.stringify({
-      enabled: true,
-      url: webhookUrl,
-      webhook_by_events: false,
-      webhookByEvents: false,
-      byEvents: false,
-      base64: false,
-      events: [
-        'CONNECTION_UPDATE',
-        'MESSAGES_UPSERT',
-      ],
+      webhook: {
+        enabled: true,
+        url: webhookUrl,
+        webhook_by_events: false,
+        webhookByEvents: false,
+        byEvents: false,
+        base64: false,
+        events: [
+          'CONNECTION_UPDATE',
+          'MESSAGES_UPSERT',
+          'MESSAGES_UPDATE',
+          'SEND_MESSAGE',
+        ],
+      },
     }),
     signal: AbortSignal.timeout(15000),
   });

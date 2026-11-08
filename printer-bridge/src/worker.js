@@ -38,12 +38,10 @@ export function sideDishCopy(job) {
 }
 
 /**
- * Via do motoboy (cupom de expedição): só para entrega no endereço; retirada não tem.
- * Sai na CHURRASQUEIRA quando o pedido tem espeto; se for só cozinha/bar, sai na COZINHA.
- * Devolve null quando não deve imprimir.
+ * Via de conferência / expedição (Delivery e Retirada):
+ * Sai no CAIXA se configurado (PRINTER_CASHIER); senão, na CHURRASQUEIRA se o pedido tem espeto, ou na COZINHA.
  */
 export function deliverySummarySector(orderType, itemSectors) {
-  if (orderType === 'PICKUP') return null;
   return (itemSectors || []).includes('GRILL') || !(itemSectors || []).length ? 'GRILL' : 'KITCHEN';
 }
 
@@ -250,11 +248,12 @@ export class PrintWorker {
     return this.templates;
   }
 
-  /** Setor onde sai a via do motoboy (ver deliverySummarySector). */
+  /** Setor onde sai a via de conferência/expedição (Caixa se configurado, senão churrasqueira/cozinha). */
   async summarySector(job) {
+    if (this.config?.printers?.CASHIER) return 'CASHIER';
     const orderType = job.payload?.order_type;
     const { data, error } = await this.supabase.from('delivery_order_items').select('sector').eq('delivery_order_id', job.order_id);
-    if (error) log('[bridge] Setores do pedido indisponíveis, via do motoboy vai para a churrasqueira:', error.message);
+    if (error) log('[bridge] Setores do pedido indisponíveis, via de conferência vai para a churrasqueira:', error.message);
     return deliverySummarySector(orderType, (data || []).map((row) => row.sector));
   }
 
@@ -275,12 +274,11 @@ export class PrintWorker {
     const maxRetries = 3;
     const attempt = (job.attempts || 0) + 1;
     try {
-      // O cupom único do delivery já tem cliente, endereço e pagamento:
-      // resumo separado só se PRINT_DELIVERY_SUMMARY=true no .env
+      // Via de conferência/expedição do delivery e retirada:
       if (job.kind === 'DELIVERY_SUMMARY') {
-        if (process.env.PRINT_DELIVERY_SUMMARY !== 'true') {
+        if (process.env.PRINT_DELIVERY_SUMMARY === 'false') {
           await this.complete(job.id, true, null, 'DISPENSADO');
-          log(`[bridge] – ${label} dispensado (pedido inteiro no cupom único)`);
+          log(`[bridge] – ${label} dispensado (PRINT_DELIVERY_SUMMARY=false)`);
           return;
         }
         const sector = await this.summarySector(job);

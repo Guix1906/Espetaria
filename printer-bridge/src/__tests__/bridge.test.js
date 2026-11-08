@@ -105,7 +105,20 @@ describe('Roteamento e cupons', () => {
     }, baseConfig).toText();
     expect(text).toContain('VIA DO ENTREGADOR');
     expect(text).toContain('R$ 35,00');
-    expect(text).toContain('levar R$ 15,00');
+        expect(text).toContain('levar R$ 15,00');
+  });
+
+  it('cupom de expedição de retirada no balcão', () => {
+    const text = buildTicket({
+      ...grillJob, kind: 'DELIVERY_SUMMARY', sector: 'NONE', origin: 'DELIVERY',
+      items: [{ name: 'Picanha', quantity: 1, unit_price: 30 }],
+      payload: { order_type: 'PICKUP', customer_name: 'Leila', phone: '99999999999',
+                 subtotal: 30, delivery_fee: 0, total: 30, payment_method: 'PIX' },
+    }, baseConfig).toText();
+    expect(text).toContain('RETIRADA NO LOCAL');
+    expect(text).toContain('Pedido 12');
+    expect(text).toContain('Nome: Leila');
+    expect(text).toContain('Forma de Pagamento: PIX');
   });
 });
 

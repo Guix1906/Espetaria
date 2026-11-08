@@ -23,6 +23,31 @@ Deno.serve(async (req) => {
       const instance = encodeURIComponent(Deno.env.get('EVOLUTION_INSTANCE') || '');
       const apiKey = Deno.env.get('EVOLUTION_API_KEY') || '';
       const urlObj = new URL(req.url);
+      if (urlObj.searchParams.get('update_webhook') === '1') {
+        const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-evolution-webhook?token=${encodeURIComponent(expected)}`;
+        const setRes = await fetch(`${base}/webhook/set/${instance}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: apiKey },
+          body: JSON.stringify({
+            webhook: {
+              enabled: true,
+              url: webhookUrl,
+              webhook_by_events: false,
+              webhookByEvents: false,
+              byEvents: false,
+              base64: false,
+              events: [
+                'CONNECTION_UPDATE',
+                'MESSAGES_UPSERT',
+                'MESSAGES_UPDATE',
+                'SEND_MESSAGE',
+              ],
+            },
+          }),
+        });
+        const setBody = await setRes.json().catch(() => null);
+        return ok({ update_webhook: true, status: setRes.status, response: setBody });
+      }
       if (urlObj.searchParams.get('restart') === '1') {
         const restartRes = await fetch(`${base}/instance/restart/${instance}`, {
           method: 'POST',
@@ -31,21 +56,38 @@ Deno.serve(async (req) => {
         const restartBody = await restartRes.json().catch(() => null);
         return ok({ restart: true, status: restartRes.status, response: restartBody });
       }
-      const [res, stateRes] = await Promise.all([
+      const [res, stateRes, messagesRes, settingsRes, fetchInstRes] = await Promise.all([
         fetch(`${base}/webhook/find/${instance}`, { headers: { apikey: apiKey } }),
         fetch(`${base}/instance/connectionState/${instance}`, { headers: { apikey: apiKey } }),
+        fetch(`${base}/chat/findMessages/${instance}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: apiKey },
+          body: JSON.stringify({
+            where: {
+              key: {
+                fromMe: false,
+              },
+            },
+            take: 10,
+          }),
+        }),
+        fetch(`${base}/settings/find/${instance}`, { headers: { apikey: apiKey } }),
+        fetch(`${base}/instance/fetchInstances?instanceName=${instance}`, { headers: { apikey: apiKey } }),
       ]);
       const body = await res.json().catch(() => null);
       const stateBody = await stateRes.json().catch(() => null);
+      const messagesBody = await messagesRes.json().catch(() => null);
+      const settingsBody = await settingsRes.json().catch(() => null);
+      const fetchInstBody = await fetchInstRes.json().catch(() => null);
       const url = String(body?.url ?? body?.webhook?.url ?? '');
-      const sameToken = url.includes(`token=${expected}`);
+      const urlToken = new URL(url).searchParams.get('token') || '';
       return ok({
         status: res.status,
         connectionState: stateBody,
-        enabled: body?.enabled ?? body?.webhook?.enabled ?? null,
-        url: url.replace(/token=[^&]+/, 'token=***'),
-        token_ok: sameToken,
-        events: body?.events ?? body?.webhook?.events ?? null,
+        webhook: body,
+        settings: settingsBody,
+        instanceInfo: fetchInstBody,
+        recentMessages: messagesBody,
       });
     } catch (err) {
       return ok({ error: err instanceof Error ? err.message : String(err) });
@@ -71,7 +113,7 @@ Deno.serve(async (req) => {
       }
       return ok({ state });
     }
-    if (event !== 'messages.upsert') return ok({ ignored: payload?.event ?? null });
+    if (event !== 'messages.upsert' && event !== 'send.message') return ok({ ignored: payload?.event ?? null });
 
     const list = Array.isArray(payload?.data) ? payload.data : [payload?.data];
     const url = Deno.env.get('SUPABASE_URL');
