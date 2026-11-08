@@ -133,20 +133,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
       {/* CABEÇALHO MODERNO E INTEGRADO */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Visão geral</h1>
-            <span
-              title={currentShift?.name}
-              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                currentShift
-                  ? 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-600/20'
-                  : 'bg-amber-50 text-amber-900 ring-1 ring-inset ring-amber-600/20'
-              }`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${currentShift ? 'bg-emerald-600 animate-pulse' : 'bg-amber-600'}`} aria-hidden="true" />
-              {currentShift ? 'Turno aberto' : 'Turno fechado'}
-            </span>
-          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Visão geral</h1>
           <p className="mt-0.5 text-xs text-ink-muted first-letter:uppercase">
             {new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
             {currentShift?.name ? ` · ${currentShift.name}` : ''}

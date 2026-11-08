@@ -37,26 +37,21 @@ export const PAGE_TITLES: Record<ActiveTab, string> = {
 
 export const NAVIGATION_GROUPS = [
   {
-    label: 'Principal',
-    items: [
-      { id: 'master', icon: LayoutDashboard },
-      { id: 'finance', icon: Landmark },
-      { id: 'reports', icon: BarChart3 },
-    ],
-  },
-  {
     label: 'Operação',
     items: [
+      { id: 'master', icon: LayoutDashboard },
       { id: 'waiter', icon: Utensils },
       { id: 'delivery', icon: Bike },
       { id: 'kds', icon: Flame },
-      { id: 'stock', icon: PackageCheck },
       { id: 'cashier', icon: Receipt },
+      { id: 'stock', icon: PackageCheck },
     ],
   },
   {
     label: 'Administração',
     items: [
+      { id: 'finance', icon: Landmark },
+      { id: 'reports', icon: BarChart3 },
       { id: 'products', icon: PackagePlus },
       { id: 'menu', icon: QrCode },
       { id: 'team', icon: Users },
@@ -71,7 +66,7 @@ const ALL_TABS = Object.keys(PAGE_TITLES) as ActiveTab[];
 /** Telas que cada papel pode acessar (a primeira é a tela inicial). */
 export const ROLE_TABS: Record<AppRole, ActiveTab[]> = {
   MASTER: ['master', ...ALL_TABS.filter((t) => t !== 'master')],
-  GERENTE: ['master', 'finance', 'reports', 'waiter', 'tables', 'delivery', 'kds', 'stock', 'cashier', 'products', 'menu', 'team', 'audit', 'settings', 'whatsapp'],
+  GERENTE: ['master', 'waiter', 'tables', 'delivery', 'kds', 'cashier', 'stock', 'finance', 'reports', 'products', 'menu', 'team', 'audit', 'settings', 'whatsapp'],
   CAIXA: ['cashier', 'waiter', 'tables', 'delivery', 'menu'],
   CHURRASQUEIRA: ['kds', 'stock'],
   COZINHA: ['kds', 'stock'],
