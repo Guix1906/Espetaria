@@ -1,5 +1,5 @@
 import { focusOrderKind, hasGrillItems, isDineInOrder } from '../../lib/deliveryStatus';
-import { Search } from 'lucide-react';
+import { Bike, Clock, Flame, Search, UtensilsCrossed } from 'lucide-react';
 import { useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
 import { formatElapsedMinutes } from '../../lib/formatters';
@@ -25,6 +25,8 @@ const COLUMNS: {
   id: BoardColumn;
   title: string;
   empty: string;
+  emptySub: string;
+  icon: typeof Clock;
   borderColor: string;
   headerBg: string;
   headerText: string;
@@ -35,6 +37,8 @@ const COLUMNS: {
     id: 'preparing',
     title: 'Em preparo',
     empty: 'Nada em preparo',
+    emptySub: 'Pedidos aguardando início de produção',
+    icon: Clock,
     borderColor: 'border-t-4 border-t-amber-500',
     headerBg: 'bg-amber-50/80',
     headerText: 'text-amber-950',
@@ -45,6 +49,8 @@ const COLUMNS: {
     id: 'grill',
     title: 'Na brasa',
     empty: 'Nada na brasa',
+    emptySub: 'Grelha livre e pronta para novos espetos',
+    icon: Flame,
     borderColor: 'border-t-4 border-t-brand-600',
     headerBg: 'bg-brand-50/80',
     headerText: 'text-brand-950',
@@ -54,7 +60,9 @@ const COLUMNS: {
   {
     id: 'delivery',
     title: 'Delivery',
-    empty: 'Nenhum pedido em andamento',
+    empty: 'Nenhum pedido ativo',
+    emptySub: 'Pedidos em rota, embalagem e retirada',
+    icon: Bike,
     borderColor: 'border-t-4 border-t-sky-500',
     headerBg: 'bg-sky-50/80',
     headerText: 'text-sky-950',
@@ -189,8 +197,12 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
                 </span>
               </h3>
               {rows.length === 0 ? (
-                <div className="m-auto p-6 text-center text-xs text-ink-muted">
-                  {term ? 'Nenhum resultado' : col.empty}
+                <div className="m-auto flex flex-col items-center justify-center p-6 text-center">
+                  <div className={`mb-2.5 flex h-10 w-10 items-center justify-center rounded-xl ${col.headerBg} ${col.headerText} opacity-80 border ${col.headerBorder}`}>
+                    <col.icon className="h-5 w-5" />
+                  </div>
+                  <p className="text-xs font-bold text-ink">{term ? 'Nenhum resultado' : col.empty}</p>
+                  <p className="mt-0.5 text-[11px] text-ink-muted max-w-[190px]">{term ? 'Tente buscar com outro termo' : col.emptySub}</p>
                 </div>
               ) : (
                 <ul className="max-h-[32rem] flex-1 space-y-2 overflow-y-auto p-2.5">

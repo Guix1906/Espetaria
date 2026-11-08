@@ -8,17 +8,22 @@ import {
   Bike,
   CheckCircle2,
   Clock,
+  Clock3,
   Flame,
+  History,
   Lock,
   PackageCheck,
   PieChart,
   Plus,
   Printer,
+  QrCode,
+  Smartphone,
+  Sparkles,
   Users,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
-import { usePrinterHealth } from '../../components/layout/PrinterStatusWidget';
+import { PrinterDiagnosticsModal, usePrinterHealth } from '../../components/layout/PrinterStatusWidget';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useNavFocusStore } from '../../stores/useNavFocusStore';
@@ -50,7 +55,7 @@ const BOT_CANNED_REPLIES = [
 ];
 
 /** Funcionamento da espetaria agora. Valores em dinheiro ficam em Financeiro e Relatórios. */
-export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavigateTab, onOpenShiftClick: _onOpenShiftClick }) => {
+export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavigateTab, onOpenShiftClick }) => {
   const { currentShift } = useShiftStore();
   const { tables, tabs, orders, orderItems, payments } = useTableStore();
   const { deliveryOrders } = useDeliveryStore();
@@ -58,6 +63,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const { jobs } = usePrintStore();
   const { isBridgeAlive } = usePrinterHealth();
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [feedFilter, setFeedFilter] = useState<'Tudo' | 'Casa' | 'Delivery'>('Tudo');
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
@@ -134,19 +140,20 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Visão geral</h1>
-          <p className="mt-0.5 text-xs text-ink-muted first-letter:uppercase">
-            {new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
-            {currentShift?.name ? ` · ${currentShift.name}` : ''}
+          <p className="mt-0.5 text-xs text-ink-muted">
+            {currentShift
+              ? `Cockpit operacional em tempo real · ${currentShift.name}`
+              : 'Painel de controle do salão, brasa e delivery'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          {currentShift?.status === 'ABERTO' && (
+          {currentShift?.status === 'ABERTO' ? (
             <>
               <button
                 type="button"
                 onClick={() => setIsCloseModalOpen(true)}
-                className="btn-secondary min-h-[40px] px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50"
+                className="btn-secondary min-h-[40px] px-3.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:border-rose-300"
               >
                 <Lock className="h-3.5 w-3.5" aria-hidden="true" />
                 Fechar turno
@@ -155,22 +162,57 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                 <button
                   type="button"
                   onClick={() => go('waiter')}
-                  className="btn-primary min-h-[40px] px-3.5 text-xs font-semibold shadow-sm"
+                  className="btn-primary min-h-[40px] px-4 text-xs font-semibold shadow-sm"
                 >
                   <Plus className="h-4 w-4" aria-hidden="true" />
                   Novo pedido
                 </button>
               )}
             </>
+          ) : (
+            onOpenShiftClick && (
+              <button
+                type="button"
+                onClick={onOpenShiftClick}
+                className="btn-primary min-h-[40px] px-4 text-xs font-semibold shadow-sm"
+              >
+                <Clock3 className="h-4 w-4" aria-hidden="true" />
+                Abrir turno
+              </button>
+            )
           )}
         </div>
       </div>
 
-      {/* AVISO DE TURNO FECHADO (SEM BOTÃO DUPLICADO - ACESSO ÚNICO PELO TOPO) */}
+      {/* CARD DE RECEPÇÃO / INÍCIO DE TURNO */}
       {!currentShift && (
-        <div className="notice flex items-center gap-2.5 rounded-xl border border-amber-200 bg-amber-50/90 p-3.5 text-sm font-medium text-amber-900" role="status">
-          <AlertCircle className="h-5 w-5 shrink-0 text-amber-700" />
-          <span>Turno fechado. Abra o turno para lançar pedidos no salão e no delivery.</span>
+        <div className="relative overflow-hidden rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-50 via-surface to-amber-50/40 p-4 sm:p-5 shadow-sm" role="status">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start gap-3.5">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-900 border border-amber-200 shadow-xs">
+                <Clock3 className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-ink">Turno fechado</h2>
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900 border border-amber-200">Aguardando início</span>
+                </div>
+                <p className="text-xs sm:text-sm text-ink-secondary">
+                  Turno fechado. Abra o turno para lançar pedidos no salão e no delivery.
+                </p>
+              </div>
+            </div>
+            {onOpenShiftClick && (
+              <button
+                type="button"
+                onClick={onOpenShiftClick}
+                className="btn-primary min-h-[44px] px-5 text-sm font-bold shadow-md hover:shadow-lg transition-all shrink-0 self-start sm:self-auto"
+              >
+                <Clock3 className="h-4 w-4" aria-hidden="true" />
+                Iniciar turno agora
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -207,25 +249,25 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           type="button"
           onClick={() => go('waiter')}
           disabled={!onNavigateTab}
-          className="group flex flex-col justify-between rounded-2xl border border-line bg-surface p-4 text-left transition-all hover:border-brand-300 hover:shadow-sm"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-surface p-4 text-left transition-all duration-200 hover:border-emerald-400 hover:shadow-md border-t-4 border-t-emerald-500"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-ink-muted">Mesas abertas</span>
-            <span className="rounded-lg bg-surface-muted p-1.5 text-ink-muted transition group-hover:bg-brand-50 group-hover:text-brand-700">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Mesas abertas</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 transition group-hover:scale-110">
               <Users className="h-4 w-4" />
             </span>
           </div>
-          <div className="mt-2">
-            <span className="font-mono text-2xl font-bold tracking-tight text-ink sm:text-3xl">{d.salon.openTabs.length}</span>
-            <p className="mt-1 truncate text-xs text-ink-muted">
-              {d.salon.people} {d.salon.people === 1 ? 'pessoa' : 'pessoas'}
-              {d.salon.waitingBill.length > 0 && (
-                <span className="ml-1.5 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-semibold text-amber-900">
-                  {d.salon.waitingBill.length} {d.salon.waitingBill.length === 1 ? 'pediu a conta' : 'pediram a conta'}
-                </span>
-              )}
-            </p>
+          <div className="my-2">
+            <span className="font-mono text-3xl font-extrabold tracking-tight text-ink">{d.salon.openTabs.length}</span>
           </div>
+          <p className="truncate text-xs font-medium text-ink-muted">
+            {d.salon.people > 0 ? `${d.salon.people} ${d.salon.people === 1 ? 'pessoa no salão' : 'pessoas no salão'}` : 'Nenhuma mesa aberta'}
+            {d.salon.waitingBill.length > 0 && (
+              <span className="ml-1.5 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">
+                {d.salon.waitingBill.length} {d.salon.waitingBill.length === 1 ? 'pediu conta' : 'pediram conta'}
+              </span>
+            )}
+          </p>
         </button>
 
         {/* 2. Produção agora */}
@@ -234,25 +276,25 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           onClick={() => go('kds')}
           disabled={!onNavigateTab}
           title="Produção agora"
-          className="group flex flex-col justify-between rounded-2xl border border-line bg-surface p-4 text-left transition-all hover:border-brand-300 hover:shadow-sm"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-surface p-4 text-left transition-all duration-200 hover:border-brand-400 hover:shadow-md border-t-4 border-t-brand-600"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-ink-muted">Produção agora</span>
-            <span className="rounded-lg bg-surface-muted p-1.5 text-ink-muted transition group-hover:bg-amber-50 group-hover:text-amber-700">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Produção agora</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition group-hover:scale-110">
               <Flame className="h-4 w-4" />
             </span>
           </div>
-          <div className="mt-2">
+          <div className="my-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="font-mono text-2xl font-bold tracking-tight text-ink sm:text-3xl">
+              <span className="font-mono text-3xl font-extrabold tracking-tight text-ink">
                 {d.production.GRILL.salon + d.production.GRILL.delivery}
               </span>
-              <span className="text-xs font-medium text-ink-muted">na brasa</span>
+              <span className="text-xs font-bold text-brand-800">na brasa</span>
             </div>
-            <p className="mt-1 truncate text-xs text-ink-muted">
-              Churrasqueira: {d.production.GRILL.salon + d.production.GRILL.delivery} · Cozinha: {d.production.KITCHEN.salon + d.production.KITCHEN.delivery}
-            </p>
           </div>
+          <p className="truncate text-xs font-medium text-ink-muted">
+            Churrasqueira: {d.production.GRILL.salon + d.production.GRILL.delivery} · Cozinha: {d.production.KITCHEN.salon + d.production.KITCHEN.delivery}
+          </p>
         </button>
 
         {/* 3. Prontos para levar */}
@@ -260,24 +302,23 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           type="button"
           onClick={() => goAlert('ready')}
           disabled={!onNavigateTab}
-          className={`group flex flex-col justify-between rounded-2xl border p-4 text-left transition-all hover:shadow-sm ${
-            d.salon.readyOldest >= ALERT_LIMITS.readyNotServed
-              ? 'border-amber-300 bg-amber-50/50 hover:border-amber-400'
-              : 'border-line bg-surface hover:border-brand-300'
+          className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200 hover:border-amber-400 hover:shadow-md border-t-4 border-t-amber-500 ${
+            d.salon.readyOldest >= ALERT_LIMITS.readyNotServed ? 'bg-amber-50/50 border-amber-300' : 'bg-surface border-line'
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-ink-muted">Prontos para levar</span>
-            <span className="rounded-lg bg-surface-muted p-1.5 text-ink-muted transition group-hover:bg-emerald-50 group-hover:text-emerald-700">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Prontos para servir</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700 transition group-hover:scale-110">
               <CheckCircle2 className="h-4 w-4" />
             </span>
           </div>
-          <div className="mt-2">
-            <span className="font-mono text-2xl font-bold tracking-tight text-ink sm:text-3xl">{d.salon.readyCount}</span>
-            <p className="mt-1 truncate text-xs text-ink-muted">
-              {d.salon.readyCount ? `Mais antigo há ${d.salon.readyOldest} min` : 'Nada esperando'}
-            </p>
+          <div className="my-2">
+            <span className="font-mono text-3xl font-extrabold tracking-tight text-ink">{d.salon.readyCount}</span>
+            <span className="ml-1.5 text-xs font-bold text-amber-800">{d.salon.readyCount === 1 ? 'item' : 'itens'}</span>
           </div>
+          <p className="truncate text-xs font-medium text-ink-muted">
+            {d.salon.readyCount > 0 ? `Mais antigo há ${d.salon.readyOldest} min` : 'Nada esperando'}
+          </p>
         </button>
 
         {/* 4. Delivery e retirada agora */}
@@ -286,31 +327,29 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           onClick={() => go('delivery')}
           disabled={!onNavigateTab}
           title="Delivery e retirada agora"
-          className={`group flex flex-col justify-between rounded-2xl border p-4 text-left transition-all hover:shadow-sm ${
-            lateIds.size > 0
-              ? 'border-rose-300 bg-rose-50/50 hover:border-rose-400'
-              : 'border-line bg-surface hover:border-brand-300'
+          className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200 hover:border-sky-400 hover:shadow-md border-t-4 border-t-sky-500 ${
+            lateIds.size > 0 ? 'bg-rose-50/40 border-rose-300' : 'bg-surface border-line'
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-medium uppercase tracking-wider text-ink-muted">Delivery e retirada agora</span>
-            <span className="rounded-lg bg-surface-muted p-1.5 text-ink-muted transition group-hover:bg-sky-50 group-hover:text-sky-700">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Delivery & Retirada</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-700 transition group-hover:scale-110">
               <Bike className="h-4 w-4" />
             </span>
           </div>
-          <div className="mt-2">
+          <div className="my-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="font-mono text-2xl font-bold tracking-tight text-ink sm:text-3xl">{deliveryCount}</span>
-              <span className="text-xs font-medium text-ink-muted">ativos</span>
+              <span className="font-mono text-3xl font-extrabold tracking-tight text-ink">{deliveryCount}</span>
+              <span className="text-xs font-bold text-sky-800">ativos</span>
             </div>
-            <p className="mt-1 truncate text-xs text-ink-muted">
-              {lateIds.size > 0 ? (
-                <span className="font-semibold text-rose-700">{lateIds.size} {lateIds.size === 1 ? 'atrasado' : 'atrasados'}</span>
-              ) : (
-                <span>Nenhum atrasado</span>
-              )}
-            </p>
           </div>
+          <p className="truncate text-xs font-medium text-ink-muted">
+            {lateIds.size > 0 ? (
+              <span className="font-bold text-rose-700">{lateIds.size} {lateIds.size === 1 ? 'atrasado' : 'atrasados'}</span>
+            ) : (
+              'Em preparo, rota e balcão'
+            )}
+          </p>
         </button>
       </section>
 
@@ -343,10 +382,81 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           </div>
         </div>
 
-        {/* PAINEL LATERAL (4 COLUNAS NO DESKTOP): ESTOQUE DO TURNO + FEED AO VIVO */}
+        {/* PAINEL LATERAL (4 COLUNAS NO DESKTOP): ATALHOS + ESTOQUE + FEED */}
         <div className="xl:col-span-4 space-y-4">
-          {/* 1. Estoque do turno (Mise en place & espetos disponíveis) */}
-          <StockSnapshot onOpenStock={onNavigateTab ? () => onNavigateTab('stock') : undefined} />
+          {/* ATALHOS OPERACIONAIS DA GERÊNCIA */}
+          <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink border-b border-line pb-2.5">
+              <Sparkles className="h-4 w-4 text-brand-600" />
+              Atalhos operacionais
+            </h2>
+            <div className="grid grid-cols-2 gap-2">
+              <a
+                href="#/garcom"
+                className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft/60 p-2.5 text-xs font-semibold text-ink transition hover:bg-brand-50 hover:border-brand-300 hover:text-brand-900"
+              >
+                <Smartphone className="h-4 w-4 shrink-0 text-brand-600" />
+                <span className="truncate">Área do garçom</span>
+              </a>
+              {onNavigateTab && (
+                <button
+                  type="button"
+                  onClick={() => go('menu')}
+                  className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft/60 p-2.5 text-xs font-semibold text-ink transition hover:bg-brand-50 hover:border-brand-300 hover:text-brand-900"
+                >
+                  <QrCode className="h-4 w-4 shrink-0 text-brand-600" />
+                  <span className="truncate">Cardápio digital</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setIsDiagnosticsOpen(true)}
+                className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft/60 p-2.5 text-xs font-semibold text-ink transition hover:bg-brand-50 hover:border-brand-300 hover:text-brand-900"
+              >
+                <Printer className="h-4 w-4 shrink-0 text-brand-600" />
+                <span className="truncate">Testar impressora</span>
+              </button>
+              {onNavigateTab && (
+                <button
+                  type="button"
+                  onClick={() => go('stock')}
+                  className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft/60 p-2.5 text-xs font-semibold text-ink transition hover:bg-brand-50 hover:border-brand-300 hover:text-brand-900"
+                >
+                  <PackageCheck className="h-4 w-4 shrink-0 text-brand-600" />
+                  <span className="truncate">Estoque diário</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* ESTOQUE DO TURNO / MISE EN PLACE */}
+          {currentShift ? (
+            <StockSnapshot onOpenStock={onNavigateTab ? () => onNavigateTab('stock') : undefined} />
+          ) : (
+            <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-line pb-2.5">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
+                  <Flame className="h-4 w-4 text-brand-600" />
+                  Mise en place do dia
+                </h2>
+                <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-ink-muted">Pré-turno</span>
+              </div>
+              <div className="pt-3 pb-1 text-center">
+                <p className="text-xs text-ink-muted leading-relaxed">
+                  Ao abrir o turno, o estoque diário de espetos na brasa e bebidas é sincronizado aqui para acompanhamento contínuo.
+                </p>
+                {onOpenShiftClick && (
+                  <button
+                    type="button"
+                    onClick={onOpenShiftClick}
+                    className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-bold text-brand-700 hover:text-brand-900 underline underline-offset-2"
+                  >
+                    Iniciar contagem do turno
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* 2. Mais pedidos no turno */}
           {topByQty.length > 0 && (
@@ -401,7 +511,13 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
               </div>
             </div>
             {feed.length === 0 ? (
-              <p className="py-4 text-center text-xs text-ink-muted">Nenhuma movimentação neste turno.</p>
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <History className="h-6 w-6 text-ink-muted/50 mb-1.5" />
+                <p className="text-xs font-semibold text-ink">Sem movimentações recentes</p>
+                <p className="text-[11px] text-ink-muted mt-0.5 max-w-[220px]">
+                  {currentShift ? 'Novos pedidos e baixas de estoque aparecerão aqui.' : 'Nenhuma movimentação neste turno.'}
+                </p>
+              </div>
             ) : (
               <ul className="max-h-[22rem] space-y-2 overflow-y-auto pr-1 pt-2">
                 {feed.slice(0, 30).map((ev) => (
@@ -456,6 +572,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
         </p>
       )}
 
+      <PrinterDiagnosticsModal isOpen={isDiagnosticsOpen} onClose={() => setIsDiagnosticsOpen(false)} />
       <ShiftCloseModal isOpen={isCloseModalOpen} onClose={() => setIsCloseModalOpen(false)} />
     </div>
   );
