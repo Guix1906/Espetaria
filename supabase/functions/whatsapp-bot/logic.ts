@@ -204,10 +204,10 @@ export function parseEvolutionIncoming(payload: any): Incoming {
   const key = data?.key;
   if (!key) return { kind: 'ignore' };
   let jid = String(key.remoteJid ?? '');
-  // Contas com "@lid" (id oculto): o número real vem em remoteJidAlt/senderPn/sender/participant
-  if (jid.endsWith('@lid')) jid = String(key.remoteJidAlt ?? key.senderPn ?? data.sender ?? key.participant ?? '');
+  // Contas com "@lid" (id oculto): o número real vem em remoteJidAlt/senderPn/sender/participant ou payload.sender
+  if (jid.endsWith('@lid')) jid = String(key.remoteJidAlt ?? key.senderPn ?? data.sender ?? payload?.sender ?? key.participant ?? '');
   if (!jid.includes('@s.whatsapp.net')) {
-    const alt = String(data.sender ?? key.participant ?? '');
+    const alt = String(data.sender ?? payload?.sender ?? key.participant ?? '');
     if (alt.includes('@s.whatsapp.net')) jid = alt;
   }
   if (!jid.includes('@s.whatsapp.net')) return { kind: 'ignore' }; // grupos, status, canais
@@ -216,9 +216,22 @@ export function parseEvolutionIncoming(payload: any): Incoming {
   const phone = digits(cleanJid);
   if (phone.length < 10) return { kind: 'ignore' };
 
-  const m = data.message ?? {};
+  let m = data.message ?? {};
+  // Desembrulha mensagens temporárias (ephemeralMessage) ou viewOnce
+  if (m.ephemeralMessage?.message) m = m.ephemeralMessage.message;
+  if (m.viewOnceMessage?.message) m = m.viewOnceMessage.message;
+  if (m.viewOnceMessageV2?.message) m = m.viewOnceMessageV2.message;
+  if (m.documentWithCaptionMessage?.message) m = m.documentWithCaptionMessage.message;
+
   const text = String(
-    m.conversation ?? m.extendedTextMessage?.text ?? m.imageMessage?.caption ?? m.videoMessage?.caption ?? '',
+    m.conversation ??
+    m.extendedTextMessage?.text ??
+    m.imageMessage?.caption ??
+    m.videoMessage?.caption ??
+    m.buttonsResponseMessage?.selectedButtonId ??
+    m.listResponseMessage?.singleSelectReply?.selectedRowId ??
+    m.templateButtonReplyMessage?.selectedId ??
+    '',
   ).trim();
   const media = EVOLUTION_MEDIA[String(data.messageType ?? '')] ?? MEDIA_KEYS.find((k) => m[`${k}Message`]) ?? null;
   if (!text && !media) return { kind: 'ignore' };
@@ -228,7 +241,7 @@ export function parseEvolutionIncoming(payload: any): Incoming {
     phone,
     text: text.slice(0, 2000),
     messageId: key.id ? String(key.id) : null,
-    senderName: key.fromMe ? null : data.pushName || null,
+    senderName: key.fromMe ? null : (data.pushName || payload?.pushName || null),
     fromApi: false,
     media: text ? null : media,
   };

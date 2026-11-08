@@ -180,7 +180,13 @@ async function askGemini(context: string, history: StoredMessage[], currentText?
 
 async function handle(payload: unknown) {
   const msg = parseIncoming(payload);
-  if (msg.kind === 'ignore') return;
+  if (msg.kind === 'ignore') {
+    const ev = String((payload as any)?.event ?? '').toLowerCase().replace(/_/g, '.');
+    if (ev === 'messages.upsert') {
+      console.warn('[whatsapp-bot] Mensagem ignorada pelo parser:', JSON.stringify(payload).slice(0, 1000));
+    }
+    return;
+  }
   const db = admin();
 
   const { data: settings } = await db.from('restaurant_settings').select('*').limit(1).maybeSingle();
@@ -222,6 +228,7 @@ async function handle(payload: unknown) {
   if (msg.messageId && !inserted?.length) return;
 
   if (!botAllowed) {
+    console.log(`[whatsapp-bot] Mensagem de ${msg.phone} ignorada pelo modo do robô: ${bot.mode}`);
     await db.from('whatsapp_conversations').upsert({
       phone: msg.phone,
       ...(msg.senderName ? { customer_name: msg.senderName } : {}),
@@ -247,7 +254,10 @@ async function handle(payload: unknown) {
       .order('created_at', { ascending: false }).limit(16),
     msg.media ? Promise.resolve('') : loadContext(db, msg.phone, settings ?? {}, bot.store_info),
   ]);
-  if (conversation?.bot_paused_until && new Date(conversation.bot_paused_until).getTime() > Date.now()) return;
+  if (conversation?.bot_paused_until && new Date(conversation.bot_paused_until).getTime() > Date.now()) {
+    console.log(`[whatsapp-bot] Mensagem de ${msg.phone} ignorada: conversa pausada até ${conversation.bot_paused_until}`);
+    return;
+  }
   if ((count ?? 0) >= MAX_BOT_REPLIES_PER_HOUR) {
     await pause(db, msg.phone, bot.pause_hours, 'LIMIT');
     return;

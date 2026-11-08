@@ -12,8 +12,8 @@ const ok = (body: unknown = { ok: true }) =>
 Deno.serve(async (req) => {
   const expected = Deno.env.get('EVOLUTION_WEBHOOK_TOKEN') || '';
   const token = new URL(req.url).searchParams.get('token') || '';
-  if (!expected || token !== expected) {
-    return req.method === 'POST' ? new Response('unauthorized', { status: 401 }) : ok({ ok: true, info: 'webhook Evolution ativo' });
+  if (req.method === 'POST' && (!expected || token !== expected)) {
+    return new Response('unauthorized', { status: 401 });
   }
 
   // GET com o token: diagnóstico (como o webhook está cadastrado na Evolution; a chave não aparece)
@@ -65,6 +65,12 @@ Deno.serve(async (req) => {
     const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (url && key) {
       const first = list[0] ?? {};
+      let m = first?.message ?? {};
+      if (m.ephemeralMessage?.message) m = m.ephemeralMessage.message;
+      if (m.viewOnceMessage?.message) m = m.viewOnceMessage.message;
+      if (m.viewOnceMessageV2?.message) m = m.viewOnceMessageV2.message;
+      const textPreview = m.conversation ?? m.extendedTextMessage?.text ?? m.imageMessage?.caption ?? (first?.messageType ? `[${first.messageType}]` : null);
+
       await fetch(`${url}/rest/v1/audit_logs`, {
         method: 'POST',
         headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
@@ -77,8 +83,9 @@ Deno.serve(async (req) => {
             remoteJid: first?.key?.remoteJid,
             remoteJidAlt: first?.key?.remoteJidAlt,
             senderPn: first?.key?.senderPn,
-            pushName: first?.pushName,
-            text: first?.message?.conversation ?? first?.message?.extendedTextMessage?.text ?? null,
+            sender: payload?.sender ?? first?.sender,
+            pushName: first?.pushName ?? payload?.pushName,
+            text: textPreview,
           },
         }),
       }).catch(() => undefined);
@@ -87,15 +94,14 @@ Deno.serve(async (req) => {
     // Repassa ao robô de atendimento (ele decide se responde: modo OFF/TEST/ALL).
     // Mensagens da própria loja também vão, para o robô pausar quando a equipe responde.
     const botToken = Deno.env.get('WHATSAPP_BOT_TOKEN');
-    if (botToken) {
-      const botUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-bot?token=${encodeURIComponent(botToken)}`;
-      const forward = fetch(botUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) })
-        .then((r) => { if (!r.ok) console.error(`[whatsapp-evolution-webhook] robô respondeu ${r.status}`); })
-        .catch((err) => console.error('[whatsapp-evolution-webhook] robô:', err instanceof Error ? err.message : String(err)));
-      // deno-lint-ignore no-explicit-any
-      const runtime = (globalThis as any).EdgeRuntime;
-      if (runtime?.waitUntil) runtime.waitUntil(forward);
-      else await forward;
+    if (botToken && url) {
+      const botUrl = `${url}/functions/v1/whatsapp-bot?token=${encodeURIComponent(botToken)}`;
+      try {
+        const res = await fetch(botUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (!res.ok) console.error(`[whatsapp-evolution-webhook] robô respondeu ${res.status}`);
+      } catch (err) {
+        console.error('[whatsapp-evolution-webhook] robô:', err instanceof Error ? err.message : String(err));
+      }
     }
   } catch (err) {
     // Nunca devolve erro para a Evolution não ficar reenviando; só registra.
