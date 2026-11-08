@@ -1,5 +1,5 @@
 import { focusOrderKind, hasGrillItems, isDineInOrder } from '../../lib/deliveryStatus';
-import { Bike, Clock, Flame, Search, UtensilsCrossed } from 'lucide-react';
+import { Bike, Clock, Flame, Search } from 'lucide-react';
 import { useState } from 'react';
 import type { ActiveTab } from '../../components/layout/navigation';
 import { formatElapsedMinutes } from '../../lib/formatters';

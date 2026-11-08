@@ -2,7 +2,6 @@ import { isDineInOrder } from '../../lib/deliveryStatus';
 import { StockSnapshot } from './StockSnapshot';
 import { LiveBoard } from './LiveBoard';
 import {
-  AlertCircle,
   AlertTriangle,
   ArrowRight,
   Bike,
