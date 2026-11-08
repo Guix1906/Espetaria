@@ -6,7 +6,7 @@ import { formatElapsedMinutes } from '../../lib/formatters';
 import { isPendingProduction } from '../../lib/productionStatus';
 import { useTableStore } from '../../stores/useTableStore';
 import type { DeliveryOrder, OrderItem, RestaurantTable, Tab } from '../../types/domain';
-import { LEVEL_CARD, elapsedLevel, type ElapsedLevel } from '../kds/KDSElapsedTimer';
+import { elapsedLevel, type ElapsedLevel } from '../kds/KDSElapsedTimer';
 import { stageOf, type DeliveryStage } from './dashboardMetrics';
 
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -23,8 +23,8 @@ export type BoardChannel = 'Salão' | 'Delivery' | 'Consumir no local' | 'Retira
 const FILTERS = ['Todos', 'Salão', 'Delivery', 'Consumir no local', 'Retirada'] as const;
 const COLUMNS: { id: BoardColumn; title: string; dot: string; empty: string }[] = [
   { id: 'preparing', title: 'Em preparo', dot: 'bg-amber-500', empty: 'Nada em preparo' },
-  { id: 'grill', title: 'Na brasa', dot: 'bg-brand-700', empty: 'Nada na brasa' },
-  { id: 'delivery', title: 'Delivery', dot: 'bg-emerald-600', empty: 'Nenhum pedido em andamento' },
+  { id: 'grill', title: 'Na brasa', dot: 'bg-brand-600', empty: 'Nada na brasa' },
+  { id: 'delivery', title: 'Delivery', dot: 'bg-sky-600', empty: 'Nenhum pedido em andamento' },
 ];
 
 /** Espeto pendente vai para Na brasa; a mesa sem espeto fica em Em preparo, para nenhuma mesa aberta sumir do quadro. */
@@ -38,7 +38,17 @@ export function deliveryColumn(o: Pick<DeliveryOrder, 'order_type' | 'notes' | '
   return o.status !== 'READY' && hasGrillItems(o) ? 'grill' : 'preparing';
 }
 
-interface Card { key: string; column: BoardColumn; channel: BoardChannel; level: ElapsedLevel; title: string; time: string; items: string; status: string; onClick?: () => void }
+interface Card {
+  key: string;
+  column: BoardColumn;
+  channel: BoardChannel;
+  level: ElapsedLevel;
+  title: string;
+  time: string;
+  items: string;
+  status: string;
+  onClick?: () => void;
+}
 
 interface LiveBoardProps {
   now: number;
@@ -100,37 +110,90 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
 
   return (
     <section className="space-y-3" aria-label="Movimento agora">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-md bg-surface-muted p-1" role="group" aria-label="Filtrar por canal">
-          {FILTERS.map((f) => <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)} className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-sm px-3 text-sm font-medium ${filter === f ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{f}</button>)}
+      {/* FILTROS E BUSCA INTEGRADOS E COMPACTOS */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex max-w-full gap-1 overflow-x-auto rounded-lg bg-surface-muted p-1" role="group" aria-label="Filtrar por canal">
+          {FILTERS.map((f) => (
+            <button
+              key={f}
+              type="button"
+              aria-pressed={filter === f}
+              onClick={() => setFilter(f)}
+              className={`min-h-[34px] shrink-0 whitespace-nowrap rounded-md px-3 text-xs font-semibold transition ${
+                filter === f ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
         </div>
-        <label className="relative min-w-[12rem] flex-1">
+        <label className="relative min-w-[14rem] flex-1 sm:max-w-xs">
           <span className="sr-only">Buscar mesa, cliente ou pedido</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
-          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar mesa, cliente ou pedido" className="min-h-[44px] w-full rounded-md border pl-9 pr-3 text-[15px]" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar mesa ou cliente..."
+            className="min-h-[36px] w-full rounded-lg border border-line bg-surface pl-8 pr-3 text-xs shadow-inner focus:border-brand-500 focus:outline-none"
+          />
         </label>
       </div>
+
+      {/* 3 COLUNAS KANBAN */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         {COLUMNS.map((col) => {
           const rows = cards.filter((c) => c.column === col.id);
           return (
-            <div key={col.id} className="flex min-h-[20rem] flex-col overflow-hidden rounded-lg border border-line bg-surface">
-              <h2 className="flex items-center gap-2.5 border-b border-line px-4 py-3 text-base font-semibold text-ink">
-                <span className={`h-2.5 w-2.5 rounded-sm ${col.dot}`} aria-hidden="true" />
+            <div key={col.id} className="flex min-h-[22rem] flex-col overflow-hidden rounded-xl border border-line bg-surface-soft/40 shadow-sm">
+              <h3 className="flex items-center gap-2 border-b border-line bg-surface px-3.5 py-2.5 text-xs font-bold uppercase tracking-wider text-ink">
+                <span className={`h-2 w-2 rounded-full ${col.dot}`} aria-hidden="true" />
                 <span className="flex-1">{col.title}</span>
-                <span className="rounded-sm bg-surface-muted px-2 py-0.5 font-mono text-[13px] font-medium">{rows.length}</span>
-              </h2>
-              {rows.length === 0 ? <p className="m-auto p-6 text-sm text-ink-muted">{term ? 'Nada encontrado' : col.empty}</p> : (
-                <ul className="max-h-[32rem] flex-1 space-y-2.5 overflow-y-auto bg-surface-soft p-3">
+                <span className="rounded-full bg-surface-muted px-2 py-0.5 font-mono text-[11px] font-bold text-ink-muted">
+                  {rows.length}
+                </span>
+              </h3>
+              {rows.length === 0 ? (
+                <div className="m-auto p-6 text-center text-xs text-ink-muted">
+                  {term ? 'Nenhum resultado' : col.empty}
+                </div>
+              ) : (
+                <ul className="max-h-[32rem] flex-1 space-y-2 overflow-y-auto p-2.5">
                   {rows.map((c) => (
                     <li key={c.key}>
-                      <button type="button" onClick={c.onClick} disabled={!c.onClick} className={`block w-full space-y-1.5 rounded-md border border-line border-l-4 bg-surface px-3 py-2.5 text-left transition hover:bg-surface-muted ${LEVEL_CARD[c.level]}`}>
-                        <span className="flex items-baseline justify-between gap-2"><span className="truncate font-semibold text-ink">{c.title}</span><span className="shrink-0 font-mono text-xs text-ink-muted">{c.time}</span></span>
-                        <span className="line-clamp-2 block text-sm text-ink-secondary">{c.items}</span>
-                        <span className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                          <span className="rounded-sm bg-surface-muted px-2 py-0.5 text-ink-secondary">{c.channel}</span>
-                          <span className={`font-semibold ${c.level === 'urgent' ? 'text-rose-700' : c.level === 'warning' ? 'text-amber-800' : 'text-ink-muted'}`}>{c.status}</span>
-                        </span>
+                      <button
+                        type="button"
+                        onClick={c.onClick}
+                        disabled={!c.onClick}
+                        className={`group block w-full space-y-1 rounded-xl border bg-surface p-3 text-left transition-all duration-150 hover:shadow-sm hover:border-ink/30 ${
+                          c.level === 'urgent'
+                            ? 'border-l-[4px] border-l-rose-600 border-rose-200 bg-rose-50/20'
+                            : c.level === 'warning'
+                            ? 'border-l-[4px] border-l-amber-500 border-amber-200 bg-amber-50/20'
+                            : 'border-line hover:border-brand-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate text-xs font-bold text-ink">{c.title}</span>
+                          <span className="shrink-0 font-mono text-[11px] text-ink-muted">{c.time}</span>
+                        </div>
+                        <p className="line-clamp-2 text-xs text-ink-secondary leading-snug">{c.items}</p>
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5 text-[11px]">
+                          <span className="rounded bg-surface-muted px-1.5 py-0.5 text-ink-muted font-medium">
+                            {c.channel}
+                          </span>
+                          <span
+                            className={`font-semibold ${
+                              c.level === 'urgent'
+                                ? 'text-rose-700'
+                                : c.level === 'warning'
+                                ? 'text-amber-800'
+                                : 'text-ink-muted'
+                            }`}
+                          >
+                            {c.status}
+                          </span>
+                        </div>
                       </button>
                     </li>
                   ))}

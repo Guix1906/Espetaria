@@ -553,7 +553,7 @@ export function PublicMenuApp() {
   const statusLine = (
     <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-muted">
       <span aria-hidden="true" className={`h-[7px] w-[7px] rounded-full ${isOpen ? 'bg-emerald-600' : 'bg-rose-600'}`} />
-      {isOpen ? `Aberto agora · ${isPickup ? pickupEta : deliveryEta}` : 'Fechado no momento'}
+      {isOpen ? `Aberto agora · ${isPickup ? pickupEta : deliveryEta}` : `Fechado no momento · ${storeClosedText(now)}`}
     </p>
   );
   const logo = <img src="/brand/logo-sabor-da-carne-288.webp" alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-full border border-[#e8b64a] object-cover" />;
@@ -1003,7 +1003,7 @@ export function PublicMenuApp() {
             <p className="mt-2 flex items-center gap-2.5 text-[12px] uppercase tracking-[3px] text-[#e8b64a]"><span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" />Espetos na brasa<span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" /></p>
           </div>
           <div className="mt-[18px] space-y-3 px-5">
-            <p className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[14px] ${isOpen ? 'border-line bg-surface-soft' : 'border-[#4a2620] bg-[#2a1a16]'}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-[#d8382f]'}`} />{isOpen ? <span><b className="font-semibold">Aberto agora</b> · {isPickup ? pickupEta : deliveryEta}</span> : <span><b className="font-semibold">Fechado</b> · {storeClosedText(new Date())}</span>}</p>
+            <p className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[14px] ${isOpen ? 'border-line bg-surface-soft' : 'border-[#4a2620] bg-[#2a1a16]'}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-[#d8382f]'}`} />{isOpen ? <span><b className="font-semibold">Aberto agora</b> · {isPickup ? pickupEta : deliveryEta}</span> : <span><b className="font-semibold">Fechado</b> · {storeClosedText(now)}</span>}</p>
             
             {searchBox}
           </div>

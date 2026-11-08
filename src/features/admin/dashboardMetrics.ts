@@ -223,8 +223,8 @@ export function computeDashboard(input: DashboardInput) {
   const active = shiftDeliveries.filter((d) => stageOf(d) !== null);
   const stages: Record<DeliveryStage, DeliveryOrder[]> = { AWAITING_PAYMENT: [], IN_PRODUCTION: [], READY: [], OUT_FOR_DELIVERY: [] };
   active.forEach((d) => stages[stageOf(d)!].push(d));
-  const lateDeliveries = active.filter((d) => !isPickup(d) && d.status !== 'AWAITING_PAYMENT' && minutesSince(d.created_at, now) >= ALERT_LIMITS.deliveryLate);
-  const pickupsWaiting = active.filter((d) => isPickup(d) && d.status === 'READY');
+  const lateDeliveries = active.filter((d) => !isPickup(d) && d.status !== 'AWAITING_PAYMENT' && minutesSince(d.created_at, now) >= ALERT_LIMITS.deliveryLate && minutesSince(d.created_at, now) <= 360);
+  const pickupsWaiting = active.filter((d) => isPickup(d) && d.status === 'READY' && minutesSince(d.ready_at ?? d.created_at, now) <= 360);
   const channel = (pickup: boolean) => {
     const list = sales.filter((d) => isPickup(d) === pickup);
     const realized = list.filter(isRealized);

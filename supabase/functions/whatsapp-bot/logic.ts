@@ -36,6 +36,96 @@ export function resolveBotSettings(saved: Partial<BotSettings> | null | undefine
 }
 
 // ---------------------------------------------------------------------------
+// Horário de funcionamento oficial (18h às 23h, fechado às quartas)
+// ---------------------------------------------------------------------------
+
+export const OPENS_AT = 18;
+export const CLOSES_AT = 23;
+export const CLOSED_WEEKDAY = 3;
+export const WEEKDAY_NAMES = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
+
+/**
+ * Obtém partes de data e hora garantindo o fuso horário oficial (America/Sao_Paulo).
+ * Evita divergências entre clientes e servidores que executam em UTC ou fusos diferentes.
+ */
+export function getBrasiliaDateParts(date: Date = new Date()): {
+  year: number;
+  month: number;
+  day: number;
+  dayOfWeek: number;
+  hour: number;
+  minute: number;
+  dateKey: string;
+} {
+  const dtf = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    weekday: 'short',
+    hour: 'numeric',
+    minute: 'numeric',
+    hourCycle: 'h23',
+  });
+  const parts = dtf.formatToParts(date);
+  const map: Record<string, string> = {};
+  for (const p of parts) map[p.type] = p.value;
+  const weekdayMap: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const year = parseInt(map.year ?? '0', 10);
+  const month = parseInt(map.month ?? '0', 10);
+  const day = parseInt(map.day ?? '0', 10);
+  const hour = parseInt(map.hour ?? '0', 10);
+  const minute = parseInt(map.minute ?? '0', 10);
+  const dayOfWeek = (map.weekday ? weekdayMap[map.weekday] : undefined) ?? 0;
+  const p = (n: number) => String(n).padStart(2, '0');
+  const dateKey = `${year}-${p(month)}-${p(day)}`;
+  return { year, month, day, dayOfWeek, hour, minute, dateKey };
+}
+
+/** Data no formato do banco (AAAA-MM-DD), em horário oficial de Brasília. */
+export function localDateKey(now: Date): string {
+  return getBrasiliaDateParts(now).dateKey;
+}
+
+/** Exceção "abrir delivery hoje mesmo assim" vale só no dia em que foi ligada. */
+export function isOverrideActive(now: Date, overrideDate?: string | null): boolean {
+  return !!overrideDate && overrideDate === localDateKey(now);
+}
+
+/**
+ * Dentro do horário oficial do delivery (18h às 23h, fechado às quartas)?
+ * Vale mesmo que alguém esqueça o turno aberto: na quarta e fora das 18h–23h a loja fica fechada.
+ */
+export function isWithinStoreHours(now: Date, overrideDate?: string | null): boolean {
+  const parts = getBrasiliaDateParts(now);
+  if (overrideDate && overrideDate === parts.dateKey) return true;
+  return parts.dayOfWeek !== CLOSED_WEEKDAY && parts.hour >= OPENS_AT && parts.hour < CLOSES_AT;
+}
+
+/**
+ * Loja aberta para novos pedidos?
+ * Deve obedecer fielmente ao horário de funcionamento (18h às 23h, fechado às quartas),
+ * mesmo se o cliente esquecer o turno aberto de um dia para o outro.
+ */
+export function isStoreOpen(hasOpenShift: boolean, now: Date, overrideDate?: string | null): boolean {
+  return hasOpenShift && isWithinStoreHours(now, overrideDate);
+}
+
+/** Frase explicativa de previsão de abertura com base no horário de Brasília. */
+export function storeClosedText(now: Date): string {
+  const parts = getBrasiliaDateParts(now);
+  const day = parts.dayOfWeek;
+  const hour = parts.hour;
+  if (day !== CLOSED_WEEKDAY) {
+    if (hour < OPENS_AT) return `abre hoje às ${OPENS_AT}h`;
+    if (hour < CLOSES_AT) return `atendimento hoje até ${CLOSES_AT}h`;
+  }
+  const tomorrow = (day + 1) % 7;
+  if (tomorrow === CLOSED_WEEKDAY) return `abre ${WEEKDAY_NAMES[(tomorrow + 1) % 7]} às ${OPENS_AT}h`;
+  return `abre amanhã às ${OPENS_AT}h`;
+}
+
+// ---------------------------------------------------------------------------
 // Telefones
 // ---------------------------------------------------------------------------
 
@@ -181,8 +271,14 @@ Como responder
 - Pedidos não são feitos pelo chat. Para pedir, com entrega ou retirada no local, o cliente usa o link do cardápio digital. Você pode sugerir itens do cardápio quando ele pedir uma sugestão.
 - Item marcado como esgotado não está disponível hoje.
 - Horário e funcionamento:
-  * Se a loja estiver fechada no momento (informado em "Pedidos pelo cardápio digital: FECHADO no momento" ou antes das 18h): avise OBRIGATORIAMENTE logo no início que a espetaria está fechada no momento e que nosso atendimento e delivery iniciam às 18h. Em seguida, informe que o cliente já pode ir dando uma olhada no cardápio pelo link digital para escolher com antecedência.
-  * Se a loja estiver aberta: cumprimente, diga que é o atendente virtual da loja e envie o link do cardápio digital para fazer o pedido.
+  * Horário oficial da espetaria: das 18h às 23h (horário de Brasília). Fechado às quartas-feiras.
+  * Se a loja estiver fechada no momento (informado em "Pedidos pelo cardápio digital: FECHADO no momento" ou fora das 18h às 23h / quarta-feira):
+    - Avise OBRIGATORIAMENTE logo no início que a espetaria está fechada no momento.
+    - Se for fora do horário (ex.: antes das 18h, depois das 23h ou na quarta-feira), informe com clareza a previsão de abertura indicada nos dados (ex.: "nosso atendimento e delivery iniciam hoje às 18h", "nosso atendimento encerrou às 23h e voltamos amanhã às 18h", ou "às quartas-feiras não abrimos e voltamos na quinta às 18h").
+    - Em seguida, informe que o cliente já pode ir dando uma olhada no cardápio pelo link digital para escolher com antecedência para quando abrirmos.
+    - NUNCA diga que a espetaria está aberta quando estiver indicado "FECHADO no momento".
+  * Se a loja estiver aberta ("Pedidos pelo cardápio digital: ABERTO agora"):
+    - Cumprimente, diga que é o atendente virtual da loja e envie o link do cardápio digital para fazer o pedido.
 - Sobre pedidos: use PEDIDOS DESTE CLIENTE para dizer a situação e mande o link de acompanhamento. Se o cliente falar de um pedido que não aparece ali (feito por outro aplicativo ou por telefone, por exemplo), diga que vai verificar com a equipe e chame um atendente.
 - Formatação do WhatsApp: *negrito* entre asteriscos. Não use títulos com # nem listas longas.
 
@@ -272,7 +368,8 @@ export function buildContextBlock(store: StoreData, orders: CustomerOrder[], app
   if (store.address) lines.push(`Endereço: ${store.address}`);
   if (store.phone) lines.push(`Telefone: ${store.phone}`);
   lines.push(`Agora: ${now} (horário de Brasília)`);
-  lines.push(`Pedidos pelo cardápio digital: ${store.isOpen ? 'ABERTO agora' : 'FECHADO no momento'}`);
+  lines.push('Horário oficial de atendimento: das 18h às 23h (horário de Brasília), fechado às quartas.');
+  lines.push(`Pedidos pelo cardápio digital: ${store.isOpen ? 'ABERTO agora' : `FECHADO no momento (${storeClosedText(store.now)})`}`);
   if (store.menuUrl) lines.push(`Link do cardápio digital: ${store.menuUrl}`);
   if (store.pixKey) lines.push(`Chave PIX: ${store.pixKey}`);
   if (store.zones.length) lines.push(`Entrega (bairro e taxa): ${store.zones.map((z) => `${z.name} ${brl(z.fee)}`).join('; ')}`);
@@ -306,7 +403,7 @@ export interface StoredMessage {
   body: string;
 }
 
-/** Histórico em turnos cliente (user) / loja (model); o primeiro precisa ser do cliente. */
+/** Histórico em turnos cliente (user) / loja (model); o primeiro e o último precisam ser do cliente. */
 export function toChatTurns(history: StoredMessage[]): { role: 'user' | 'model'; content: string }[] {
   const out: { role: 'user' | 'model'; content: string }[] = [];
   for (const m of history) {
@@ -317,14 +414,28 @@ export function toChatTurns(history: StoredMessage[]): { role: 'user' | 'model';
     if (last && last.role === role) last.content += `\n${content}`;
     else out.push({ role, content });
   }
+  // A API do Gemini não aceita requisições terminando com turno do 'model':
+  // garante que a lista sempre termine com a pergunta/fala do cliente ('user')
+  while (out.length > 0 && out[out.length - 1].role === 'model') {
+    out.pop();
+  }
   return out;
 }
 
 /** Corpo do generateContent do Gemini: instruções + dados da loja + conversa, resposta em JSON. */
-export function buildGeminiRequest(context: string, history: StoredMessage[]) {
+export function buildGeminiRequest(context: string, history: StoredMessage[], currentMessage?: string) {
+  const turns = toChatTurns(history);
+  const text = (currentMessage || '').trim();
+  if (text) {
+    if (turns.length === 0 || turns[turns.length - 1].role !== 'user') {
+      turns.push({ role: 'user', content: text });
+    } else if (!turns[turns.length - 1].content.includes(text)) {
+      turns[turns.length - 1].content += `\n${text}`;
+    }
+  }
   return {
     systemInstruction: { parts: [{ text: SYSTEM_PROMPT }, { text: context }] },
-    contents: toChatTurns(history).map((t) => ({ role: t.role, parts: [{ text: t.content }] })),
+    contents: turns.map((t) => ({ role: t.role, parts: [{ text: t.content }] })),
     generationConfig: {
       responseMimeType: 'application/json',
       responseSchema: REPLY_SCHEMA,

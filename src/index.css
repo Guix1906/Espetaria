@@ -57,7 +57,8 @@
   button, input, select, textarea { font: inherit; }
   button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
   button, a { touch-action: manipulation; }
-  button { min-width: 44px; min-height: 44px; transition: background-color 160ms, border-color 160ms, color 160ms, box-shadow 160ms; }
+  button { min-width: 44px; min-height: 44px; transition: background-color 160ms, border-color 160ms, color 160ms, box-shadow 160ms, transform 100ms cubic-bezier(0.16, 1, 0.3, 1); }
+  button:active:not(:disabled), a.btn-primary:active, a.btn-secondary:active { transform: scale(0.98); }
   button:disabled { cursor: not-allowed; }
   button:disabled:not(.table-card):not(.product-card) { opacity: 0.55; }
   :where(button, a, input, select, textarea, [tabindex]):focus-visible {
@@ -244,3 +245,34 @@
 .menu-dark .border-amber-200, .menu-dark .border-amber-300 { border-color: #4d3c22; }
 .menu-dark .text-amber-900 { color: #f0d9a8; }
 .menu-dark .btn-primary:hover:not(:disabled) { background: rgb(var(--color-brand-600)); border-color: rgb(var(--color-brand-600)); }
+
+/* Animações e microinterações de modernização */
+@keyframes app-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.app-fade-in {
+  animation: app-fade-in 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes pulse-attention {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.45); }
+  50% { box-shadow: 0 0 0 5px rgba(217, 119, 6, 0.15); }
+}
+.pulse-attention {
+  animation: pulse-attention 2s infinite ease-in-out;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, rgb(var(--color-surface-muted)) 25%, rgb(var(--color-surface)) 50%, rgb(var(--color-surface-muted)) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.6s infinite ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-fade-in, .pulse-attention, .skeleton-shimmer { animation: none !important; }
+}

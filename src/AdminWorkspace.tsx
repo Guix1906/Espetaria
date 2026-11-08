@@ -156,25 +156,27 @@ export function AdminWorkspace() {
         <PWAInstallBanner />
         <Header activeTab={activeTab} onOpenShiftClick={() => setIsShiftModalOpen(true)} onMenuClick={() => setIsMobileMenuOpen(true)} isMenuOpen={isMobileMenuOpen} />
         <main id="main-content" ref={mainRef} tabIndex={-1} aria-label={PAGE_TITLES[activeTab]} className="min-w-0 flex-1 pb-8 outline-none">
-          {/* key: ao trocar de tela, um erro da tela anterior não fica preso */}
-          <ErrorBoundary key={activeTab} area={activeTab} inline>
-          <Suspense fallback={screenLoading}>
-          {(activeTab === 'waiter' || activeTab === 'tables') && <WaiterModule onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
-          {activeTab === 'kds' && <KDSModule />}
-          {activeTab === 'cashier' && <CashierModule />}
-          {activeTab === 'delivery' && <DeliveryManagementView />}
-          {activeTab === 'menu' && <DigitalMenuQrView />}
-          {activeTab === 'whatsapp' && <WhatsAppView onNavigateTab={setActiveTab} />}
-          {activeTab === 'products' && <ProductCatalogManageView />}
-          {activeTab === 'finance' && <FinanceView />}
-          {activeTab === 'reports' && <ReportsView />}
-          {activeTab === 'master' && <MasterDashboardView onOpenShiftClick={() => setIsShiftModalOpen(true)} onNavigateTab={setActiveTab} />}
-          {activeTab === 'stock' && <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
-          {activeTab === 'audit' && <AuditLogView />}
-          {activeTab === 'team' && <TeamManagementView />}
-          {activeTab === 'settings' && <SettingsView />}
-          </Suspense>
-          </ErrorBoundary>
+          {/* key: ao trocar de tela, um erro da tela anterior não fica preso e a transição ocorre suavemente */}
+          <div key={activeTab} className="app-fade-in">
+            <ErrorBoundary area={activeTab} inline>
+            <Suspense fallback={screenLoading}>
+            {(activeTab === 'waiter' || activeTab === 'tables') && <WaiterModule onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
+            {activeTab === 'kds' && <KDSModule />}
+            {activeTab === 'cashier' && <CashierModule />}
+            {activeTab === 'delivery' && <DeliveryManagementView />}
+            {activeTab === 'menu' && <DigitalMenuQrView />}
+            {activeTab === 'whatsapp' && <WhatsAppView onNavigateTab={setActiveTab} />}
+            {activeTab === 'products' && <ProductCatalogManageView />}
+            {activeTab === 'finance' && <FinanceView />}
+            {activeTab === 'reports' && <ReportsView />}
+            {activeTab === 'master' && <MasterDashboardView onOpenShiftClick={() => setIsShiftModalOpen(true)} onNavigateTab={setActiveTab} />}
+            {activeTab === 'stock' && <DailyStockView onOpenShiftClick={() => setIsShiftModalOpen(true)} />}
+            {activeTab === 'audit' && <AuditLogView />}
+            {activeTab === 'team' && <TeamManagementView />}
+            {activeTab === 'settings' && <SettingsView />}
+            </Suspense>
+            </ErrorBoundary>
+          </div>
         </main>
       </div>
       <ShiftOpenModal isOpen={isShiftModalOpen} onClose={() => setIsShiftModalOpen(false)} />

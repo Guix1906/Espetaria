@@ -160,22 +160,24 @@ export const DeliveryManagementView: React.FC = () => {
   const shiftsHistory = useShiftStore((s) => s.shiftsHistory);
   const closedShiftIds = useMemo(() => new Set(shiftsHistory.filter((sh) => sh.status === 'FECHADO').map((sh) => sh.id)), [shiftsHistory]);
 
-  // Pedidos de turnos encerrados não devem aparecer como pendentes nas abas ativas do dia seguinte
+  // Pedidos de turnos encerrados ou com mais de 6 horas não devem aparecer como pendentes nas abas ativas do dia seguinte
   const isOrderActiveInCurrentSession = (o: DeliveryOrder) => {
     if (o.status === 'DELIVERED' || o.status === 'CANCELLED') return false;
+    const hoursAgo = (Date.now() - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
+    // Pedidos feitos há mais de 6 horas pertencem a turnos anteriores e não ficam pendentes acumulados no dia seguinte
+    if (hoursAgo >= 6) return false;
     if (openShiftId) {
       return !o.shift_id || o.shift_id === openShiftId;
     }
-    // Turno fechado: se tem shift_id de turno encerrado ou foi feito há mais de 6 horas, é de turno anterior
+    // Turno fechado: se tem shift_id de turno encerrado, é de turno anterior
     if (o.shift_id && closedShiftIds.has(o.shift_id)) return false;
-    const hoursAgo = (Date.now() - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
-    return hoursAgo < 6 && !o.shift_id;
+    return !o.shift_id;
   };
 
   const isDeliveredHere = (o: DeliveryOrder) => {
     if (o.status !== 'DELIVERED') return false;
-    if (openShiftId) return !o.shift_id || o.shift_id === openShiftId;
     const hoursAgo = (Date.now() - new Date(o.created_at).getTime()) / (1000 * 60 * 60);
+    if (openShiftId) return hoursAgo < 16 && (!o.shift_id || o.shift_id === openShiftId);
     return hoursAgo < 16;
   };
 
@@ -403,6 +405,16 @@ export const DeliveryManagementView: React.FC = () => {
                           <MoreHorizontal className="h-5 w-5" aria-hidden="true" />
                         </summary>
                         <div className="absolute bottom-full right-0 z-10 mb-1 w-48 rounded-md border border-line bg-surface p-1 shadow-card">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              updateDeliveryStatus(order.id, 'DELIVERED');
+                              notify(`Pedido #${order.order_number} marcado como entregue.`, 'success');
+                            }}
+                            className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-3 text-left text-[15px] font-semibold text-emerald-700 hover:bg-emerald-50"
+                          >
+                            <CheckCheck className="h-4 w-4" aria-hidden="true" />Marcar entregue
+                          </button>
                           <button type="button" onClick={() => void handleCancelOrder(order)} className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-3 text-left text-[15px] font-semibold text-rose-700 hover:bg-rose-50">
                             <Trash2 className="h-4 w-4" aria-hidden="true" />Cancelar pedido
                           </button>

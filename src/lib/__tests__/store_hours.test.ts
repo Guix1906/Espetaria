@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isWithinStoreHours, storeClosedText } from '../storeHours';
+import { isStoreOpen, isWithinStoreHours, storeClosedText } from '../storeHours';
 
 // 03/11/2026 é terça-feira
 const at = (day: number, hour: number) => new Date(2026, 10, day, hour, 0);
@@ -39,5 +39,20 @@ describe('cardápio fecha sozinho fora do horário (turno esquecido aberto)', ()
   it('quarta fica fechado o dia todo', () => {
     expect(isWithinStoreHours(at(4, 19))).toBe(false);
     expect(isWithinStoreHours(at(4, 21))).toBe(false);
+  });
+  it('isStoreOpen obedece ao horário fielmente mesmo se o turno estiver esquecido aberto', () => {
+    // Turno aberto no banco, mas fora do horário: FECHADO
+    expect(isStoreOpen(true, at(3, 10))).toBe(false); // 10h da manhã
+    expect(isStoreOpen(true, at(3, 15))).toBe(false); // 15h
+    expect(isStoreOpen(true, at(4, 19))).toBe(false); // quarta-feira 19h
+    expect(isStoreOpen(true, at(3, 23))).toBe(false); // 23h da noite
+    expect(isStoreOpen(true, at(3, 2))).toBe(false);  // madrugada
+
+    // Turno aberto e dentro do horário oficial: ABERTO
+    expect(isStoreOpen(true, at(3, 19))).toBe(true);
+    expect(isStoreOpen(true, at(3, 22))).toBe(true);
+
+    // Turno fechado: FECHADO mesmo dentro do horário
+    expect(isStoreOpen(false, at(3, 19))).toBe(false);
   });
 });

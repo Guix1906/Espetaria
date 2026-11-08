@@ -22,6 +22,7 @@ import {
   type CustomerOrder,
   HANDOFF_FALLBACK,
   isBotAllowedFor,
+  isWithinStoreHours,
   MAX_BOT_REPLIES_PER_HOUR,
   MEDIA_REPLY,
   parseGeminiResponse,
@@ -31,7 +32,7 @@ import {
   type StoredMessage,
 } from './logic.ts';
 
-// Flash-Lite: o mais rápido (pensamento mínimo por padrão) para conversa de WhatsApp
+// Modelo padrão ultra-rápido para WhatsApp (com fallback para flash-lite-latest e 3.5-flash)
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 
 declare const EdgeRuntime: { waitUntil(promise: Promise<unknown>): void } | undefined;
@@ -82,8 +83,10 @@ async function reply(db: SupabaseClient, phone: string, text: string) {
 /** Dados da loja, cardápio e pedidos do cliente para a IA. */
 async function loadContext(db: SupabaseClient, phone: string, settings: Record<string, unknown>, storeInfo: string) {
   const appUrl = (Deno.env.get('APP_URL') || '').match(/https?:\/\/[^\s]+/)?.[0].replace(/\/$/, '') || null;
+  const now = new Date();
   const { data: shift } = await db.from('shifts').select('id').eq('status', 'ABERTO').order('opened_at', { ascending: false }).limit(1).maybeSingle();
-  const [{ data: products }, { data: categories }, { data: zones }, { data: stock }, { data: orders }] = await Promise.all([
+  const [{ data: hoursOpen }, { data: products }, { data: categories }, { data: zones }, { data: stock }, { data: orders }] = await Promise.all([
+    db.rpc('delivery_hours_open'),
     db.from('products').select('id, name, price, category_id, tracks_stock, available, allows_doneness, display_order').eq('active', true).order('display_order').order('name'),
     db.from('categories').select('id, name, display_order').eq('active', true),
     db.from('delivery_zones').select('name, fee, display_order').eq('active', true).order('display_order'),
@@ -101,15 +104,21 @@ async function loadContext(db: SupabaseClient, phone: string, settings: Record<s
   const stockBy = new Map((stock ?? []).map((s: { product_id: string; current_quantity: number; is_exhausted: boolean }) => [s.product_id, s]));
   const sorted = [...(products ?? [])].sort((a, b) => (categoryOrder.get(a.category_id) ?? 99) - (categoryOrder.get(b.category_id) ?? 99));
 
+  // O atendimento e pedidos pelo cardápio digital obedecem fielmente ao horário de funcionamento
+  // (18h às 23h, fechado às quartas), mesmo se o turno estiver esquecido aberto de outro dia.
+  const overrideDate = (settings?.delivery_open_override_date as string) || null;
+  const inHours = typeof hoursOpen === 'boolean' ? hoursOpen : isWithinStoreHours(now, overrideDate);
+  const isOpen = inHours && Boolean(shift);
+
   return buildContextBlock(
     {
-      name: String(settings.name || 'Espetaria'),
-      address: (settings.address as string) || null,
-      phone: (settings.phone as string) || null,
-      pixKey: (settings.pix_key as string) || null,
-      isOpen: !!shift,
+      name: String(settings?.name || 'Espetaria'),
+      address: (settings?.address as string) || null,
+      phone: (settings?.phone as string) || null,
+      pixKey: (settings?.pix_key as string) || null,
+      isOpen,
       menuUrl: appUrl ? `${appUrl}/cardapio` : null,
-      now: new Date(),
+      now,
       storeInfo,
       zones: (zones ?? []).map((z) => ({ name: z.name, fee: Number(z.fee) })),
       products: sorted.map((p) => {
@@ -128,19 +137,44 @@ async function loadContext(db: SupabaseClient, phone: string, settings: Record<s
   );
 }
 
-async function askGemini(context: string, history: StoredMessage[]): Promise<{ reply: string; handoff: boolean }> {
-  const body = buildGeminiRequest(context, history);
+async function askGemini(context: string, history: StoredMessage[], currentText?: string): Promise<{ reply: string; handoff: boolean }> {
+  const body = buildGeminiRequest(context, history, currentText);
   if (body.contents.length === 0) return { reply: HANDOFF_FALLBACK, handoff: true };
   const apiKey = Deno.env.get('GEMINI_API_KEY');
   if (!apiKey) throw new Error('GEMINI_API_KEY não configurada.');
-  const model = Deno.env.get('GEMINI_MODEL') || DEFAULT_MODEL;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-    body: JSON.stringify(body),
-  });
+  const configuredModel = Deno.env.get('GEMINI_MODEL') || DEFAULT_MODEL;
+  const modelsToTry = [configuredModel, 'gemini-flash-lite-latest', 'gemini-3.5-flash']
+    .filter((m, i, arr) => arr.indexOf(m) === i);
+
+  let res: Response | null = null;
+  let lastErr: Error | null = null;
+  for (const m of modelsToTry) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent?key=${apiKey}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) break;
+        if (res.status === 503 || res.status === 429) {
+          await new Promise((r) => setTimeout(r, 1000));
+          continue;
+        }
+        break;
+      } catch (e) {
+        lastErr = e instanceof Error ? e : new Error(String(e));
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+    }
+    if (res && res.ok) break;
+  }
+
+  if (!res || !res.ok) {
+    const data = await res?.json().catch(() => null);
+    throw lastErr || new Error(`Gemini ${res?.status ?? 'erro'}: ${JSON.stringify(data).slice(0, 300)}`);
+  }
   const data = await res.json().catch(() => null);
-  if (!res.ok) throw new Error(`Gemini ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
   return parseGeminiResponse(data);
 }
 
@@ -226,12 +260,13 @@ async function handle(payload: unknown) {
 
   let answer: { reply: string; handoff: boolean };
   try {
-    answer = await askGemini(context, ((history ?? []) as StoredMessage[]).reverse());
+    answer = await askGemini(context, ((history ?? []) as StoredMessage[]).reverse(), msg.text);
   } catch (err) {
     // IA fora do ar (chave suspensa, limite, etc.): o cliente não fica sem resposta,
     // a conversa passa para a equipe e a falha vira alerta na Visão geral.
     await logBotError(db, err);
-    answer = { reply: HANDOFF_FALLBACK, handoff: true };
+    // Não congela a conversa por horas se for apenas oscilação transitória da API
+    answer = { reply: HANDOFF_FALLBACK, handoff: false };
   }
 
   await reply(db, msg.phone, answer.reply);

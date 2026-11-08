@@ -130,14 +130,41 @@ describe('Robô de atendimento do WhatsApp', () => {
     expect(text).toContain('Pedido #1025 · Entrega · pronto, aguardando o entregador sair');
   });
 
-  it('loja fechada não marca nada como esgotado', () => {
+  it('loja fechada não marca nada como esgotado e traz motivo de fechamento', () => {
+    const morning = new Date(2026, 10, 3, 10, 0); // 03/11/2026 é terça-feira, 10h da manhã
     const text = bot.buildContextBlock(
-      { name: 'Loja', address: null, phone: null, pixKey: null, isOpen: false, menuUrl: null, now: new Date(), storeInfo: '', zones: [],
+      { name: 'Loja', address: null, phone: null, pixKey: null, isOpen: false, menuUrl: null, now: morning, storeInfo: '', zones: [],
         products: [{ name: 'Coração', price: 16, category: null, exhausted: true, allowsDoneness: false }] },
       [], null,
     );
     expect(text).toContain('FECHADO no momento');
+    expect(text).toContain('abre hoje às 18h');
     expect(text).not.toContain('ESGOTADO');
     expect(text).toContain('Nenhum pedido feito pelo cardápio digital');
+  });
+
+  it('obedece fielmente ao horário oficial mesmo se o turno estiver esquecido aberto', () => {
+    const tuesday10h = new Date(2026, 10, 3, 10, 0);
+    const tuesday19h = new Date(2026, 10, 3, 19, 0);
+    const tuesday23h15 = new Date(2026, 10, 3, 23, 15);
+    const wednesday19h = new Date(2026, 10, 4, 19, 0);
+
+    // Turno esquecido aberto no banco: FORA do horário oficial deve ser FALSE
+    expect(bot.isStoreOpen(true, tuesday10h)).toBe(false);
+    expect(bot.isStoreOpen(true, tuesday23h15)).toBe(false);
+    expect(bot.isStoreOpen(true, wednesday19h)).toBe(false); // quarta fechado
+
+    // Turno aberto DENTRO do horário oficial: TRUE
+    expect(bot.isStoreOpen(true, tuesday19h)).toBe(true);
+
+    // Turno fechado: FALSE mesmo dentro do horário
+    expect(bot.isStoreOpen(false, tuesday19h)).toBe(false);
+  });
+
+  it('prompt do sistema proíbe categoricamente dizer que está aberto quando fechado', () => {
+    expect(bot.SYSTEM_PROMPT).toContain('FECHADO no momento');
+    expect(bot.SYSTEM_PROMPT).toContain('18h às 23h');
+    expect(bot.SYSTEM_PROMPT).toContain('Fechado às quartas-feiras');
+    expect(bot.SYSTEM_PROMPT).toContain('NUNCA diga que a espetaria está aberta');
   });
 });

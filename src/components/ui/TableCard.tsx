@@ -83,7 +83,7 @@ export function TableCard({
   // Caso Mesa Ativa (Ocupada ou Fechando conta)
   return (
     <article
-      className="table-card rounded-xl border border-line bg-surface shadow-xs hover:shadow-md transition overflow-visible flex flex-col justify-between relative"
+      className={`table-card rounded-xl border ${isWaitingBill ? 'border-amber-400 ring-2 ring-amber-400/30 pulse-attention' : 'border-line'} bg-surface shadow-xs hover:shadow-md transition overflow-visible flex flex-col justify-between relative`}
       aria-label={`Mesa ${table.number}, ${status.label}`}
     >
       <span className="sr-only status-badge">{status.label}</span>
