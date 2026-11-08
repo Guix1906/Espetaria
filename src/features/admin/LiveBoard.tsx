@@ -21,10 +21,46 @@ const DELIVERY_STAGE: Record<DeliveryStage, string> = {
 export type BoardColumn = 'preparing' | 'grill' | 'delivery';
 export type BoardChannel = 'Salão' | 'Delivery' | 'Consumir no local' | 'Retirada';
 const FILTERS = ['Todos', 'Salão', 'Delivery', 'Consumir no local', 'Retirada'] as const;
-const COLUMNS: { id: BoardColumn; title: string; dot: string; empty: string }[] = [
-  { id: 'preparing', title: 'Em preparo', dot: 'bg-amber-500', empty: 'Nada em preparo' },
-  { id: 'grill', title: 'Na brasa', dot: 'bg-brand-600', empty: 'Nada na brasa' },
-  { id: 'delivery', title: 'Delivery', dot: 'bg-sky-600', empty: 'Nenhum pedido em andamento' },
+const COLUMNS: {
+  id: BoardColumn;
+  title: string;
+  empty: string;
+  borderColor: string;
+  headerBg: string;
+  headerText: string;
+  headerBorder: string;
+  badgeStyle: string;
+}[] = [
+  {
+    id: 'preparing',
+    title: 'Em preparo',
+    empty: 'Nada em preparo',
+    borderColor: 'border-t-4 border-t-amber-500',
+    headerBg: 'bg-amber-50/80',
+    headerText: 'text-amber-950',
+    headerBorder: 'border-b border-amber-200/80',
+    badgeStyle: 'bg-amber-100 text-amber-900 border border-amber-200',
+  },
+  {
+    id: 'grill',
+    title: 'Na brasa',
+    empty: 'Nada na brasa',
+    borderColor: 'border-t-4 border-t-brand-600',
+    headerBg: 'bg-brand-50/80',
+    headerText: 'text-brand-950',
+    headerBorder: 'border-b border-brand-200/80',
+    badgeStyle: 'bg-brand-100 text-brand-900 border border-brand-200',
+  },
+  {
+    id: 'delivery',
+    title: 'Delivery',
+    empty: 'Nenhum pedido em andamento',
+    borderColor: 'border-t-4 border-t-sky-500',
+    headerBg: 'bg-sky-50/80',
+    headerText: 'text-sky-950',
+    headerBorder: 'border-b border-sky-200/80',
+    badgeStyle: 'bg-sky-100 text-sky-900 border border-sky-200',
+  },
 ];
 
 /** Espeto pendente vai para Na brasa; a mesa sem espeto fica em Em preparo, para nenhuma mesa aberta sumir do quadro. */
@@ -145,11 +181,10 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
         {COLUMNS.map((col) => {
           const rows = cards.filter((c) => c.column === col.id);
           return (
-            <div key={col.id} className="flex min-h-[22rem] flex-col overflow-hidden rounded-xl border border-line bg-surface-soft/40 shadow-sm">
-              <h3 className="flex items-center gap-2 border-b border-line bg-surface px-3.5 py-2.5 text-xs font-bold uppercase tracking-wider text-ink">
-                <span className={`h-2 w-2 rounded-full ${col.dot}`} aria-hidden="true" />
+            <div key={col.id} className={`flex min-h-[22rem] flex-col overflow-hidden rounded-xl border border-line ${col.borderColor} bg-surface-soft/40 shadow-sm`}>
+              <h3 className={`flex items-center justify-between ${col.headerBorder} ${col.headerBg} px-3.5 py-2.5 text-xs font-bold uppercase tracking-wider ${col.headerText}`}>
                 <span className="flex-1">{col.title}</span>
-                <span className="rounded-full bg-surface-muted px-2 py-0.5 font-mono text-[11px] font-bold text-ink-muted">
+                <span className={`rounded-full px-2 py-0.5 font-mono text-[11px] font-bold ${col.badgeStyle}`}>
                   {rows.length}
                 </span>
               </h3>
