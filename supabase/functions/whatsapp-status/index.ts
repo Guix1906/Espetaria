@@ -75,7 +75,9 @@ Deno.serve(async (req) => {
     return json({ error: err instanceof Error ? err.message : String(err) }, 502);
   }
   const state = await connectionState();
-  if (state.connected) {
+  // Consulta de status é SÓ LEITURA (09/11): antes regravava as configurações da Evolution a cada
+  // minuto (tela do WhatsApp aberta) e a cada 3 min (Visão geral). Configurações só ao conectar.
+  if (state.connected && action === 'repair') {
     void ensureAlwaysOnline();
     // Auto-valida se o webhook da Evolution está ativo apontando para o nosso endpoint
     try {
