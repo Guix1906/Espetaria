@@ -110,7 +110,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       expect(html).toContain('Delivery e retirada agora');
       expect(html).not.toContain('Faturamento do turno');
       expect(html).toContain('Produção agora');
-      expect(html).toContain('Turno fechado. Abra o turno');
+      expect(html).toContain('Abra o turno para lançar');
     });
 
     it('1.2 WaiterModule (Atendimento) deve abrir e renderizar sem erros', () => {

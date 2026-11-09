@@ -83,9 +83,8 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
               <Smartphone className="h-4 w-4" aria-hidden="true" />Área do garçom
             </a>
           )}
-          {currentShift?.status === 'ABERTO' ? null : isManager ? (
-            <button type="button" onClick={onOpenShiftClick} className="btn-primary min-h-[44px]"><Clock3 className="h-4 w-4" aria-hidden="true" />Abrir turno</button>
-          ) : (
+          {/* Abrir turno fica só no aviso da Visão geral (pedido do dono, 09/11) */}
+          {currentShift?.status !== 'ABERTO' && !isManager && (
             <span className="status-badge bg-amber-50 py-2 text-amber-800">Turno fechado</span>
           )}
           <button

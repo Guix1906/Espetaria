@@ -185,30 +185,15 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
 
       {/* CARD DE RECEPÇÃO / INÍCIO DE TURNO */}
       {!currentShift && (
-        <div className="relative overflow-hidden rounded-2xl border border-amber-300/80 bg-gradient-to-r from-amber-50 via-surface to-amber-50/40 p-4 sm:p-5 shadow-sm" role="status">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-900 border border-amber-200 shadow-xs">
-                <Clock3 className="h-5 w-5" aria-hidden="true" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-base font-bold text-ink">Turno fechado</h2>
-                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900 border border-amber-200">Aguardando início</span>
-                </div>
-                <p className="text-xs sm:text-sm text-ink-secondary">
-                  Turno fechado. Abra o turno para lançar pedidos no salão e no delivery.
-                </p>
-              </div>
+        <div className="rounded-md border border-line bg-surface p-4" role="status">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-semibold text-ink">Turno fechado</h2>
+              <p className="text-sm text-ink-secondary">Abra o turno para lançar pedidos no salão e no delivery.</p>
             </div>
             {onOpenShiftClick && (
-              <button
-                type="button"
-                onClick={onOpenShiftClick}
-                className="btn-primary min-h-[44px] px-5 text-sm font-bold shadow-md hover:shadow-lg transition-all shrink-0 self-start sm:self-auto"
-              >
-                <Clock3 className="h-4 w-4" aria-hidden="true" />
-                Iniciar turno agora
+              <button type="button" onClick={onOpenShiftClick} className="btn-primary min-h-[44px] px-5 shrink-0 self-start sm:self-auto">
+                Abrir turno
               </button>
             )}
           </div>
