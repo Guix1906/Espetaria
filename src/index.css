@@ -126,9 +126,9 @@
   .notice { @apply flex items-start gap-3 rounded-xl border p-4 text-sm leading-relaxed; }
   .empty-state { @apply surface-card flex flex-col items-center justify-center gap-3 px-5 py-14 text-center; }
   .table-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 0.85rem; }
-  .table-card { @apply surface-card flex min-h-[72px] w-full flex-col overflow-visible rounded-xl border border-line text-left; }
+  .table-card { @apply surface-card flex min-h-[72px] w-full flex-col overflow-visible rounded-xl border border-line text-left transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-brand-300; }
   .table-card:not(:disabled):hover { @apply shadow-floating; }
-  .product-card { @apply surface-card flex w-full flex-col p-4 text-left transition-colors sm:p-5; }
+  .product-card { @apply surface-card flex w-full flex-col p-4 text-left transition-all duration-200 sm:p-5 hover:border-brand-400 hover:shadow-md hover:-translate-y-0.5; }
   .product-card:not(:disabled):hover { @apply border-brand-400; }
   .subnav-sticky { @apply sticky z-20 border-b border-line bg-surface/95 backdrop-blur; top: var(--app-header-height); }
   .floating-cart { @apply fixed inset-x-0 bottom-0 z-20 p-3 sm:p-4; padding-bottom: max(12px, env(safe-area-inset-bottom)); background: linear-gradient(0deg, rgb(var(--color-canvas)) 65%, transparent); }

@@ -3,7 +3,7 @@ import { StatusTag } from '../../components/ui/StatusTag';
 import { Stepper } from '../../components/ui/Stepper';
 import { Button } from '../../components/ui/Button';
 import { DEFAULT_DELIVERY_ETA, DEFAULT_PICKUP_ETA } from '../../lib/eta';
-import { Check, ChevronDown, ChevronLeft, Minus, Plus, Search, X } from 'lucide-react';
+import { Banknote, Check, ChevronDown, ChevronLeft, CreditCard, Minus, Plus, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { comboBlockedByBase } from '../../lib/comboStock';
 import { DINE_IN_NOTE } from '../../lib/deliveryStatus';
@@ -48,6 +48,11 @@ const PAYMENTS: { id: DeliveryPaymentMethod; label: string; hint: string }[] = [
 // "X" e "X com acompanhamento" viram um card só, com as duas opções (o cadastro continua igual)
 const ESPETOS = 'Espetos';
 const COMBO_SIDES = '★ Completo inclui arroz, vinagrete, farofa e purê';
+const PixIcon = () => (
+  <svg className="h-4 w-4 shrink-0 text-[#00BDAE] inline-block" viewBox="0 0 512 512" fill="currentColor" aria-hidden="true">
+    <path d="M112.57 391.13c20.35 0 39.46-7.93 53.86-22.33l76.71-76.72c4.13-4.13 10.84-4.13 14.97 0l76.51 76.52c14.4 14.4 33.52 22.33 53.87 22.33h19.88l-94.88-94.88c-11.72-11.72-11.72-30.71 0-42.43l94.67-94.67h-19.67c-20.35 0-39.47 7.93-53.87 22.33l-76.51 76.52c-4.13 4.13-10.84 4.13-14.97 0l-76.71-76.72c-14.4-14.4-33.51-22.33-53.86-22.33h-19.89l94.88 94.88c11.72 11.72 11.72 30.71 0 42.43l-94.68 94.67h19.69zm-46.77-16.92L182.23 256 65.8 137.79c-7.39 7.39-11.8 17.51-11.8 28.18v180.06c0 10.67 4.41 20.79 11.8 28.18zm380.4 0c7.39-7.39 11.8-17.51 11.8-28.18V165.97c0-10.67 4.41-20.79-11.8-28.18L329.77 256l116.43 118.21z" />
+  </svg>
+);
 const display = "font-['Oswald',sans-serif]";
 const COMBO_SUFFIX = /\s+com acompanhamento\s*$/i;
 const NO_RICE = 'Sem arroz';
@@ -551,8 +556,15 @@ export function PublicMenuApp() {
   /* ---------- telas ---------- */
 
   const statusLine = (
-    <p className="mt-0.5 flex items-center gap-1.5 text-[13px] text-ink-muted">
-      <span aria-hidden="true" className={`h-[7px] w-[7px] rounded-full ${isOpen ? 'bg-emerald-600' : 'bg-rose-600'}`} />
+    <p className="mt-0.5 flex items-center gap-2 text-[13px] font-medium text-ink-muted">
+      {isOpen ? (
+        <span className="relative flex h-2 w-2 shrink-0">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+        </span>
+      ) : (
+        <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-rose-600" />
+      )}
       {isOpen ? `Aberto agora · ${isPickup ? pickupEta : deliveryEta}` : `Fechado no momento · ${storeClosedText(now)}`}
     </p>
   );
@@ -599,8 +611,10 @@ export function PublicMenuApp() {
     const title = <h3 className={`${display} text-[21px] font-semibold uppercase leading-tight tracking-[.3px]`}>{p.name.replace(COMBO_SUFFIX, '')}</h3>;
     // Espeto: foto grande e as duas opções, como no layout. Demais itens: linha compacta para a página não ficar enorme
     if (featuredCard) return (
-      <article className="overflow-hidden rounded-2xl border border-line bg-surface-soft">
-        <Photo product={p} priority={priority} className={`aspect-video w-full ${soldOut ? 'opacity-50 grayscale' : ''}`} />
+      <article className="group overflow-hidden rounded-2xl border border-line bg-surface-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md">
+        <div className="overflow-hidden">
+          <Photo product={p} priority={priority} className={`aspect-video w-full transition-transform duration-300 ease-out group-hover:scale-105 ${soldOut ? 'opacity-50 grayscale' : ''}`} />
+        </div>
         <div className="p-4">
           {title}
           {description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{description}</p>}
@@ -611,8 +625,10 @@ export function PublicMenuApp() {
       </article>
     );
     return (
-      <article className="flex gap-3 rounded-2xl border border-line bg-surface-soft p-3">
-        <Photo product={p} variant="s" className={`h-[92px] w-[92px] shrink-0 rounded-[10px] ${soldOut ? 'opacity-50 grayscale' : ''}`} />
+      <article className="group flex gap-3 rounded-2xl border border-line bg-surface-soft p-3 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md">
+        <div className="h-[92px] w-[92px] shrink-0 overflow-hidden rounded-[10px]">
+          <Photo product={p} variant="s" className={`h-full w-full object-cover transition-transform duration-300 ease-out group-hover:scale-105 ${soldOut ? 'opacity-50 grayscale' : ''}`} />
+        </div>
         <div className="min-w-0 flex-1">
           <h3 className="text-[16px] font-semibold leading-snug">{p.name}</h3>
           {description && <p className="mt-0.5 line-clamp-2 text-[13px] leading-[1.35] text-ink-muted">{description}</p>}
@@ -686,15 +702,27 @@ export function PublicMenuApp() {
     </div>
   );
 
+  const paymentBadge = (id: DeliveryPaymentMethod) => {
+    if (id === 'PIX') return <span className="inline-flex items-center gap-1 rounded bg-[#00BDAE]/10 px-1.5 py-0.5 text-xs font-bold text-[#008f84]"><PixIcon /> PIX</span>;
+    if (id === 'CARTAO_ENTREGA') return <span className="inline-flex items-center gap-1 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-semibold text-amber-900"><CreditCard className="h-3.5 w-3.5 text-amber-700" /> Maquininha</span>;
+    return <span className="inline-flex items-center gap-1 rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-semibold text-emerald-900"><Banknote className="h-3.5 w-3.5 text-emerald-700" /> Dinheiro</span>;
+  };
+
   const paymentOptions = (inRow = false) => (
     <div role="radiogroup" aria-label="Forma de pagamento" className={inRow ? 'grid grid-cols-3 gap-3' : 'space-y-3'}>
       {PAYMENTS.map((m) => {
         const on = payment === m.id;
         return (
-          <div key={m.id} className={`rounded-md bg-surface ${on ? 'border-2 border-brand-500 p-[15px]' : 'border border-line p-4'}`}>
+          <div key={m.id} className={`rounded-xl bg-surface transition-all duration-150 ${on ? 'border-2 border-brand-500 p-[15px] shadow-xs' : 'border border-line p-4 hover:border-line-strong'}`}>
             <button type="button" role="radio" aria-checked={on} onClick={() => { setPayment(m.id); setFormError(null); }} className="flex w-full items-start gap-3 text-left">
               <Radio on={on} />
-              <span><span className="block text-[16px] font-semibold">{m.id === 'CARTAO_ENTREGA' && isPickup ? 'Cartão no local' : m.label}</span><span className="mt-0.5 block text-[14px] text-ink-muted">{m.id === 'DINHEIRO' && isPickup ? 'Pague no balcão' : m.id === 'PIX' && settings.pix_key?.trim() ? `Chave ${settings.pix_key.trim()}. QR Code ao enviar o pedido` : m.hint}</span></span>
+              <div className="flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="block text-[16px] font-semibold text-ink">{m.id === 'CARTAO_ENTREGA' && isPickup ? 'Cartão no local' : m.label}</span>
+                  {paymentBadge(m.id)}
+                </div>
+                <span className="mt-0.5 block text-[14px] text-ink-muted">{m.id === 'DINHEIRO' && isPickup ? 'Pague no balcão' : m.id === 'PIX' && settings.pix_key?.trim() ? `Chave ${settings.pix_key.trim()}. QR Code ao enviar o pedido` : m.hint}</span>
+              </div>
             </button>
             {on && m.id === 'DINHEIRO' && !inRow && cashFields}
           </div>

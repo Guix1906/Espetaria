@@ -46,6 +46,11 @@ const COMMON_NOTES = ['Sem sal grosso', 'Pouco sal', 'Mais torradinho', 'Cortar 
 const ACOMPANHAMENTO_NOTES = ['Sem cebola', 'Farofa à parte'];
 export const NO_RICE = 'Sem arroz';
 const NO_COUNTS: Record<string, number> = { MAL_PASSADA: 0, AO_PONTO: 0, BEM_PASSADA: 0 };
+const DONENESS_THEME: Record<string, { activeBorder: string; activeBg: string; tag: string }> = {
+  MAL_PASSADA: { activeBorder: 'border-rose-400', activeBg: 'bg-rose-50/80', tag: 'Suculenta' },
+  AO_PONTO: { activeBorder: 'border-amber-400', activeBg: 'bg-amber-50/80', tag: 'Padrão da casa' },
+  BEM_PASSADA: { activeBorder: 'border-stone-400', activeBg: 'bg-stone-100', tag: 'Bem tostada' },
+};
 
 /** Detecta se o produto é um suco/bebida que precisa de escolha de sabor. */
 function isJuiceProduct(product: Product): boolean {
@@ -193,31 +198,46 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
             </div>
           </div>
         )}
-        {product.allows_doneness && <fieldset className="space-y-2">
+        {product.allows_doneness && <fieldset className="space-y-2.5">
           <legend className="mb-2 text-base font-semibold text-ink">Ponto da carne <span className="font-normal text-ink-muted">· obrigatório</span></legend>
           {options.map((option) => {
             const on = selectedDoneness === option.value;
             const count = donenessCounts[option.value] || 0;
+            const theme = DONENESS_THEME[option.value] || { activeBorder: 'border-brand-500', activeBg: 'bg-brand-50', tag: '' };
             if (!isEditing) {
               return (
-                <div key={option.value} className={`flex items-center gap-2 rounded-md border pr-1.5 ${count > 0 ? 'border-brand-500 bg-brand-50' : 'border-line-strong bg-surface'}`}>
-                  <button type="button" aria-pressed={count > 0} onClick={() => handleRowClick(option.value)} className="flex min-h-[52px] min-w-0 flex-1 items-center gap-2.5 px-3 text-left text-[17px] font-semibold text-ink">
-                    <span className="h-6 w-2 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />{option.label}
+                <div key={option.value} className={`flex items-center gap-2 rounded-xl border pr-2 transition-all duration-150 ${count > 0 ? `${theme.activeBorder} ${theme.activeBg} shadow-xs` : 'border-line bg-surface hover:border-line-strong'}`}>
+                  <button type="button" aria-pressed={count > 0} onClick={() => handleRowClick(option.value)} className="flex min-h-[54px] min-w-0 flex-1 items-center justify-between gap-2.5 px-3.5 text-left">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="h-7 w-2 shrink-0 rounded-full shadow-xs" style={{ background: option.swatch }} aria-hidden="true" />
+                      <div className="min-w-0">
+                        <span className="block text-[17px] font-bold text-ink leading-tight">{option.label}</span>
+                        <span className="block text-[12px] text-ink-muted leading-tight mt-0.5">{option.description}</span>
+                      </div>
+                    </div>
+                    {theme.tag && (
+                      <span className="hidden sm:inline-block shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-ink-muted bg-surface/80 border border-line">
+                        {theme.tag}
+                      </span>
+                    )}
                   </button>
                   {count > 0 ? (
-                    <Stepper qty={count} label={option.label} plusDisabled={!canAddMore} onMinus={() => updateDonenessCount(option.value, -1)} onPlus={() => updateDonenessCount(option.value, 1)} />
+                    <Stepper size={44} qty={count} label={option.label} plusDisabled={!canAddMore} onMinus={() => updateDonenessCount(option.value, -1)} onPlus={() => updateDonenessCount(option.value, 1)} />
                   ) : (
-                    <button type="button" disabled={!canAddMore} onClick={() => updateDonenessCount(option.value, 1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-line-strong text-brand-500 disabled:opacity-40 active:bg-surface-muted" aria-label={`Adicionar ${option.label}`}><Plus className="h-4 w-4" /></button>
+                    <button type="button" disabled={!canAddMore} onClick={() => updateDonenessCount(option.value, 1)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line-strong text-brand-600 hover:bg-brand-50 active:scale-95 disabled:opacity-40" aria-label={`Adicionar ${option.label}`}><Plus className="h-5 w-5" /></button>
                   )}
                 </div>
               );
             }
             return (
-              <label key={option.value} className={`flex min-h-[52px] cursor-pointer items-center gap-3 rounded-md border px-3.5 py-2 ${on ? 'border-brand-500 bg-brand-50' : 'border-line-strong bg-surface'}`}>
-                <input type="radio" name="meat-doneness" value={option.value} checked={on} onChange={() => { setSelectedDoneness(option.value); setErrorMessage(null); }} className="h-[22px] w-[22px] shrink-0 accent-brand-500" />
-                <span className="h-6 w-2 shrink-0 rounded-sm" style={{ background: option.swatch }} aria-hidden="true" />
-                <span className="flex-1 text-[17px] font-semibold text-ink">{option.label}</span>
-                {on && <Check className="h-5 w-5 text-brand-500" aria-hidden="true" />}
+              <label key={option.value} className={`flex min-h-[54px] cursor-pointer items-center gap-3 rounded-xl border px-3.5 py-2.5 transition-all duration-150 ${on ? `${theme.activeBorder} ${theme.activeBg} shadow-xs` : 'border-line bg-surface hover:border-line-strong'}`}>
+                <input type="radio" name="meat-doneness" value={option.value} checked={on} onChange={() => { setSelectedDoneness(option.value); setErrorMessage(null); }} className="h-5 w-5 shrink-0 accent-brand-500" />
+                <span className="h-7 w-2 shrink-0 rounded-full shadow-xs" style={{ background: option.swatch }} aria-hidden="true" />
+                <div className="flex-1 min-w-0">
+                  <span className="block text-[17px] font-bold text-ink leading-tight">{option.label}</span>
+                  <span className="block text-[12px] text-ink-muted leading-tight mt-0.5">{option.description}</span>
+                </div>
+                {on && <Check className="h-5 w-5 text-brand-600 shrink-0" aria-hidden="true" />}
               </label>
             );
           })}
