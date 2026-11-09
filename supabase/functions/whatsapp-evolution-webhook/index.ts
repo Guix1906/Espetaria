@@ -48,6 +48,16 @@ Deno.serve(async (req) => {
         const setBody = await setRes.json().catch(() => null);
         return ok({ update_webhook: true, status: setRes.status, response: setBody });
       }
+      if (urlObj.searchParams.get('get_qr') === '1') {
+        const qrRes = await fetch(`${base}/instance/connect/${instance}`, { headers: { apikey: apiKey } });
+        const qrBody = await qrRes.json().catch(() => null);
+        return ok({ get_qr: true, status: qrRes.status, response: qrBody });
+      }
+      if (urlObj.searchParams.get('logout') === '1') {
+        const logoutRes = await fetch(`${base}/instance/logout/${instance}`, { method: 'DELETE', headers: { apikey: apiKey } });
+        const logoutBody = await logoutRes.json().catch(() => null);
+        return ok({ logout: true, status: logoutRes.status, response: logoutBody });
+      }
       if (urlObj.searchParams.get('restart') === '1') {
         const restartRes = await fetch(`${base}/instance/restart/${instance}`, {
           method: 'POST',
