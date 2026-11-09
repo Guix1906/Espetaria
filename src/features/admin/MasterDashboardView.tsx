@@ -7,7 +7,6 @@ import {
   Bike,
   CheckCircle2,
   Clock,
-  Clock3,
   Flame,
   History,
   Lock,
@@ -168,18 +167,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                 </button>
               )}
             </>
-          ) : (
-            onOpenShiftClick && (
-              <button
-                type="button"
-                onClick={onOpenShiftClick}
-                className="btn-primary min-h-[40px] px-4 text-xs font-semibold shadow-sm"
-              >
-                <Clock3 className="h-4 w-4" aria-hidden="true" />
-                Abrir turno
-              </button>
-            )
-          )}
+          ) : null}
         </div>
       </div>
 
