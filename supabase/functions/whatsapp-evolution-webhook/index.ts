@@ -137,6 +137,11 @@ Deno.serve(async (req) => {
       }
       return ok({ state });
     }
+    // Rastro de todos os eventos (só o nome e de quem é a mensagem): mostra o que para quando o robô fica "surdo"
+    {
+      const d0 = Array.isArray(payload?.data) ? payload.data[0] : payload?.data;
+      console.log(JSON.stringify({ tag: 'evolution-event', event, fromMe: d0?.key?.fromMe ?? null, status: d0?.status ?? d0?.update?.status ?? null }));
+    }
     if (event !== 'messages.upsert' && event !== 'send.message') return ok({ ignored: payload?.event ?? null });
 
     const list = Array.isArray(payload?.data) ? payload.data : [payload?.data];
