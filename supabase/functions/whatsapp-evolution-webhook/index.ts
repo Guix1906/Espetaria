@@ -12,7 +12,8 @@ const ok = (body: unknown = { ok: true }) =>
 Deno.serve(async (req) => {
   const expected = Deno.env.get('EVOLUTION_WEBHOOK_TOKEN') || '';
   const token = new URL(req.url).searchParams.get('token') || '';
-  if (req.method === 'POST' && (!expected || token !== expected)) {
+  // Toda chamada exige o token (09/11: o GET estava aberto e um "?logout=1" derrubou o robô às 08:04).
+  if (!expected || token !== expected) {
     return new Response('unauthorized', { status: 401 });
   }
 
@@ -53,11 +54,7 @@ Deno.serve(async (req) => {
         const qrBody = await qrRes.json().catch(() => null);
         return ok({ get_qr: true, status: qrRes.status, response: qrBody });
       }
-      if (urlObj.searchParams.get('logout') === '1') {
-        const logoutRes = await fetch(`${base}/instance/logout/${instance}`, { method: 'DELETE', headers: { apikey: apiKey } });
-        const logoutBody = await logoutRes.json().catch(() => null);
-        return ok({ logout: true, status: logoutRes.status, response: logoutBody });
-      }
+      // Sem "logout" aqui: desconectar só pela tela (Configurações → WhatsApp, Master/Gerente, com confirmação).
       if (urlObj.searchParams.get('restart') === '1') {
         const restartRes = await fetch(`${base}/instance/restart/${instance}`, {
           method: 'POST',
