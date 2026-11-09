@@ -56,6 +56,23 @@ Deno.serve(async (req) => {
         const restartBody = await restartRes.json().catch(() => null);
         return ok({ restart: true, status: restartRes.status, response: restartBody });
       }
+      if (urlObj.searchParams.get('update_settings') === '1') {
+        const setRes = await fetch(`${base}/settings/set/${instance}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: apiKey },
+          body: JSON.stringify({
+            rejectCall: false,
+            msgCall: '',
+            groupsIgnore: true,
+            alwaysOnline: true,
+            readMessages: false,
+            readStatus: false,
+            syncFullHistory: false,
+          }),
+        });
+        const setBody = await setRes.json().catch(() => null);
+        return ok({ update_settings: true, status: setRes.status, response: setBody });
+      }
       const [res, stateRes, messagesRes, settingsRes, fetchInstRes] = await Promise.all([
         fetch(`${base}/webhook/find/${instance}`, { headers: { apikey: apiKey } }),
         fetch(`${base}/instance/connectionState/${instance}`, { headers: { apikey: apiKey } }),
@@ -116,10 +133,20 @@ Deno.serve(async (req) => {
     if (event !== 'messages.upsert' && event !== 'send.message') return ok({ ignored: payload?.event ?? null });
 
     const list = Array.isArray(payload?.data) ? payload.data : [payload?.data];
+    const first = list[0] ?? {};
+    const rawRemoteJid = String(first?.key?.remoteJid ?? '');
+    // Grupos (@g.us), transmissões (@broadcast) e canais (@newsletter) são ignorados pelo gateway
+    if (
+      rawRemoteJid.includes('@g.us') ||
+      rawRemoteJid.includes('@broadcast') ||
+      rawRemoteJid.includes('@newsletter')
+    ) {
+      return ok({ ignored: 'group_or_broadcast' });
+    }
+
     const url = Deno.env.get('SUPABASE_URL');
     const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (url && key) {
-      const first = list[0] ?? {};
       let m = first?.message ?? {};
       if (m.ephemeralMessage?.message) m = m.ephemeralMessage.message;
       if (m.viewOnceMessage?.message) m = m.viewOnceMessage.message;

@@ -203,7 +203,18 @@ export function parseEvolutionIncoming(payload: any): Incoming {
   const data = Array.isArray(payload.data) ? payload.data[0] : payload.data;
   const key = data?.key;
   if (!key) return { kind: 'ignore' };
-  let jid = String(key.remoteJid ?? '');
+
+  const rawRemoteJid = String(key.remoteJid ?? '');
+  // Grupos (@g.us), status/transmissões (@broadcast) e canais (@newsletter) NUNCA são atendidos
+  if (
+    rawRemoteJid.includes('@g.us') ||
+    rawRemoteJid.includes('@broadcast') ||
+    rawRemoteJid.includes('@newsletter')
+  ) {
+    return { kind: 'ignore' };
+  }
+
+  let jid = rawRemoteJid;
   // Contas com "@lid" (id oculto): o número real vem em remoteJidAlt/senderPn/sender/participant ou payload.sender
   if (jid.endsWith('@lid')) jid = String(key.remoteJidAlt ?? key.senderPn ?? data.sender ?? payload?.sender ?? key.participant ?? '');
   if (!jid.includes('@s.whatsapp.net')) {

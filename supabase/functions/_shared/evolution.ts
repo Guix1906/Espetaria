@@ -51,7 +51,7 @@ export async function ensureAlwaysOnline(): Promise<void> {
       body: JSON.stringify({
         rejectCall: false,
         msgCall: '',
-        groupsIgnore: false,
+        groupsIgnore: true,
         alwaysOnline: true,
         readMessages: false,
         readStatus: false,

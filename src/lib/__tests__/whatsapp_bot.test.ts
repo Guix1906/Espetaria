@@ -56,6 +56,9 @@ describe('Robô de atendimento do WhatsApp', () => {
     expect(bot.parseIncoming(evo({}))).toMatchObject({ kind: 'customer', phone: '5511987654321', text: 'Tem picanha?', messageId: 'EVO1', senderName: 'Maria', media: null });
     expect(bot.parseIncoming(evo({ fromMe: true }))).toMatchObject({ kind: 'self', senderName: null });
     expect(bot.parseIncoming(evo({ remoteJid: '120363@g.us' })).kind).toBe('ignore');
+    expect(bot.parseIncoming({ ...evo({ remoteJid: '120363-1384279584@g.us' }), sender: '5511987654321@s.whatsapp.net' }).kind).toBe('ignore');
+    expect(bot.parseIncoming(evo({ remoteJid: 'status@broadcast' })).kind).toBe('ignore');
+    expect(bot.parseIncoming(evo({ remoteJid: '123@newsletter' })).kind).toBe('ignore');
     expect(bot.parseIncoming(evo({ remoteJid: '999@lid', remoteJidAlt: '5511987654321@s.whatsapp.net' }))).toMatchObject({ phone: '5511987654321' });
     expect(bot.parseIncoming({ ...evo({ remoteJid: '999@lid' }), sender: '5511987654321@s.whatsapp.net' })).toMatchObject({ phone: '5511987654321' });
     expect(bot.parseIncoming(evo({ remoteJid: '5511987654321:14@s.whatsapp.net' }))).toMatchObject({ phone: '5511987654321' });
