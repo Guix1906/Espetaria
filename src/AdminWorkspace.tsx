@@ -80,17 +80,11 @@ export function AdminWorkspace() {
   const mainRef = useRef<HTMLElement>(null);
   const previousTab = useRef(activeTab);
 
-  // Programa do PC: o WhatsApp Web é desenhado pelo programa, por cima desta área
-  // A escolha sobrevive à atualização automática: quem está no WhatsApp continua nele
-  const [desktopWebOpen, setDesktopWebOpen] = useState(() => {
-    try { return !!window.pontoDesktop && sessionStorage.getItem('ponto_desktop_whatsapp') === '1'; } catch { return false; }
-  });
+  // Garante que o programa do PC nunca abra o WhatsApp Web por cima do sistema
   useEffect(() => {
-    window.pontoDesktop?.showWhatsApp(desktopWebOpen);
-    try { sessionStorage.setItem('ponto_desktop_whatsapp', desktopWebOpen ? '1' : '0'); } catch {}
-  }, [desktopWebOpen]);
+    window.pontoDesktop?.showWhatsApp(false);
+  }, []);
 
-  // Aba "Sistema" volta para a última tela aberta antes do WhatsApp
   const lastSystemTab = useRef<ActiveTab>(activeTab === 'whatsapp' ? (allowedTabs[0] ?? 'waiter') : activeTab);
   if (activeTab !== 'whatsapp') lastSystemTab.current = activeTab;
 
@@ -145,11 +139,7 @@ export function AdminWorkspace() {
     <div className="app-shell">
       <a href="#main-content" className="skip-link">Pular para o conteúdo</a>
       <TopTabs
-        whatsappActive={activeTab === 'whatsapp'}
-        canUseWhatsApp={allowedTabs.includes('whatsapp')}
-        onSystem={() => { setDesktopWebOpen(false); setActiveTab(lastSystemTab.current); }}
-        onWhatsApp={() => { setDesktopWebOpen(false); setActiveTab('whatsapp'); }}
-        desktopWeb={window.pontoDesktop ? { active: desktopWebOpen, onOpen: () => setDesktopWebOpen(true) } : undefined}
+        onSystem={() => setActiveTab(lastSystemTab.current)}
       />
       <NavigationTabs allowed={allowedTabs} activeTab={activeTab} onChangeTab={setActiveTab} openTablesCount={openTablesCount} exhaustedCount={exhaustedCount} pendingProductionCount={pendingProductionCount} waitingBillCount={waitingBillCount} activeDeliveriesCount={activeDeliveriesCount} isMobileOpen={isMobileMenuOpen} onCloseMobile={() => setIsMobileMenuOpen(false)} />
       <div className="app-workspace flex flex-col">
