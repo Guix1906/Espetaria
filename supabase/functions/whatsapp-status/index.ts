@@ -7,7 +7,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { corsHeadersFor } from '../_shared/cors.ts';
-import { connectedAccount, connectionState, connectQr, ensureAlwaysOnline, getWebhook, logoutInstance, restartInstance, sendText, setWebhook } from '../_shared/evolution.ts';
+import { connectedAccount, connectionState, connectQr, diagnostics, ensureAlwaysOnline, getWebhook, logoutInstance, restartInstance, sendText, setWebhook } from '../_shared/evolution.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsHeadersFor(req);
@@ -49,6 +49,9 @@ Deno.serve(async (req) => {
         ...(bot.pause_on_human === false ? {} : { bot_paused_until: new Date(Date.now() + hours * 3_600_000).toISOString(), pause_reason: 'HUMAN' }),
       }).eq('phone', to);
       return json({ ok: true });
+    }
+    if (action === 'diagnostics') {
+      return json(await diagnostics());
     }
     if (action === 'get_webhook') {
       return json(await getWebhook());

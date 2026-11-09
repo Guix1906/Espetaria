@@ -25,6 +25,53 @@ function config() {
   return { url, key, instance: encodeURIComponent(instance) };
 }
 
+/**
+ * Diagnóstico só de leitura (09/11): todas as instâncias do servidor (nome, número, estado),
+ * configurações e as últimas mensagens recebidas guardadas pela própria Evolution (sem texto).
+ */
+// deno-lint-ignore no-explicit-any
+export async function diagnostics(): Promise<any> {
+  const { url, key, instance } = config();
+  const get = async (path: string, init?: RequestInit) => {
+    try {
+      const res = await fetch(`${url}${path}`, { ...init, headers: { apikey: key, 'Content-Type': 'application/json', ...(init?.headers ?? {}) } });
+      return { status: res.status, body: await res.json().catch(() => null) };
+    } catch (err) {
+      return { status: 0, body: { error: err instanceof Error ? err.message : String(err) } };
+    }
+  };
+  const [all, settings, msgs] = await Promise.all([
+    get('/instance/fetchInstances'),
+    get(`/settings/find/${instance}`),
+    get(`/chat/findMessages/${instance}`, { method: 'POST', body: JSON.stringify({ where: { key: { fromMe: false } }, limit: 15 }) }),
+  ]);
+  // deno-lint-ignore no-explicit-any
+  const list: any[] = Array.isArray(all.body) ? all.body : [];
+  // deno-lint-ignore no-explicit-any
+  const records: any[] = msgs.body?.messages?.records ?? (Array.isArray(msgs.body) ? msgs.body : []);
+  return {
+    instances: list.map((i) => ({
+      name: i?.name ?? i?.instance?.instanceName,
+      number: i?.ownerJid ?? i?.number ?? i?.instance?.owner ?? null,
+      state: i?.connectionStatus ?? i?.instance?.status ?? null,
+      integration: i?.integration ?? null,
+      clientName: i?.clientName ?? null,
+      updatedAt: i?.updatedAt ?? null,
+      disconnectionReasonCode: i?.disconnectionReasonCode ?? null,
+      disconnectionAt: i?.disconnectionAt ?? null,
+      counts: i?._count ?? null,
+    })),
+    settings: settings.body,
+    lastIncoming: records.slice(0, 15).map((m) => ({
+      at: m?.messageTimestamp ? new Date(Number(m.messageTimestamp) * 1000).toISOString() : null,
+      jidEnd: String(m?.key?.remoteJid ?? '').split('@')[0].slice(-4),
+      type: m?.messageType ?? null,
+      stub: m?.messageStubType ?? null,
+    })),
+    messagesStatus: msgs.status,
+  };
+}
+
 /** Envia texto. Devolve o id da mensagem; lança erro se a Evolution recusar. */
 export async function sendText(phone: string, text: string): Promise<string | null> {
   const { url, key, instance } = config();
