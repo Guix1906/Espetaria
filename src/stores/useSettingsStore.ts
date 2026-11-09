@@ -29,6 +29,7 @@ export const DEFAULT_SETTINGS: RestaurantSettings = {
   printer_kitchen_enabled: true,
   printer_cashier_enabled: true,
   daily_rice_flavors: [],
+  saved_rice_flavors: ['Arroz Branco', 'Baião de Dois', 'Arroz Carreteiro', 'Arroz de Alho', 'Arroz com Brócolis', 'Arroz à Grega', 'cuxa'],
   daily_juice_flavors: [],
   updated_at: new Date().toISOString(),
 };
@@ -66,7 +67,7 @@ const REMOTE_COLUMNS = [
 const OPTIONAL_COLUMNS = [
   { columns: ['delivery_eta', 'pickup_eta'], message: 'Tempo de entrega/retirada salvo só neste aparelho: falta rodar a migração 00033 no Supabase.' },
   { columns: ['driver_per_delivery', 'driver_fuel_fixed'], message: 'Valores do entregador salvos só neste aparelho: falta rodar a migração 00036 no Supabase.' },
-  { columns: ['daily_rice_flavors', 'daily_juice_flavors'], message: 'Sabores do dia salvos só neste aparelho.' },
+  { columns: ['daily_rice_flavors', 'daily_juice_flavors', 'saved_rice_flavors'], message: 'Sabores do dia salvos só neste aparelho.' },
   { columns: ['delivery_open_override_date'], message: 'Liberação do delivery não salva: falta rodar a migração 00058 no Supabase.' },
 ] as const;
 

@@ -339,6 +339,8 @@ export interface RestaurantSettings {
   print_templates?: Partial<import('../lib/printTemplates').PrintTemplates> | null;
   /** Sabores de arroz do dia cadastrados pelo proprietário. */
   daily_rice_flavors?: string[];
+  /** Catálogo persistente de todos os sabores de arroz disponíveis para o turno. */
+  saved_rice_flavors?: string[];
   /** Sabores de suco do dia cadastrados pelo proprietário. */
   daily_juice_flavors?: string[];
   updated_at: string;

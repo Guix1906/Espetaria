@@ -74,14 +74,29 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   const [activeTab, setActiveTab] = useState<'skewers' | 'sides'>('skewers');
   const [showCombosPreview, setShowCombosPreview] = useState(false);
 
+  // Catálogo completo salvo de sabores de arroz (persistente entre turnos)
+  const [localSavedRices, setLocalSavedRices] = useState<string[]>(() => {
+    try {
+      const fromLocal = localStorage.getItem('espetaria_saved_rice_flavors');
+      if (fromLocal) return JSON.parse(fromLocal);
+    } catch {}
+    return settings.saved_rice_flavors || DEFAULT_RICE_OPTIONS;
+  });
+
   // Lista consolidada de arrozes cadastrados
-  const allRegisteredRices = React.useMemo(() => {
-    const fromSettings = settings.daily_rice_flavors || [];
-    const fromProducts = products
-      .filter((p) => /arroz|bai[aã]o/i.test(p.name))
-      .map((p) => p.name.replace(/\s*\([^)]*\)\s*/g, '').trim());
-    return Array.from(new Set([...fromSettings, ...fromProducts, ...DEFAULT_RICE_OPTIONS])).filter(Boolean);
-  }, [settings.daily_rice_flavors, products]);
+  const allSavedRices = React.useMemo(() => {
+    const list = [
+      ...(settings.saved_rice_flavors || []),
+      ...(settings.daily_rice_flavors || []),
+      ...localSavedRices,
+      ...DEFAULT_RICE_OPTIONS,
+    ];
+    // Remove "Arroz" puro genérico se já existirem opções mais específicas
+    const unique = Array.from(new Set(list))
+      .map((r) => r.trim())
+      .filter((r) => Boolean(r) && r.toLowerCase() !== 'arroz');
+    return unique;
+  }, [settings.saved_rice_flavors, settings.daily_rice_flavors, localSavedRices]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -224,11 +239,41 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   const handleAddCustomRice = () => {
     const trimmed = customRiceInput.trim();
     if (!trimmed) return;
-    if (!selectedRiceFlavors.some((f) => f.toLowerCase() === trimmed.toLowerCase())) {
-      setSelectedRiceFlavors([...selectedRiceFlavors, trimmed]);
+
+    // Normaliza para reaproveitar maiúsculas/minúsculas se já existir
+    const existing = allSavedRices.find((r) => r.toLowerCase() === trimmed.toLowerCase());
+    const flavorToAdd = existing || trimmed;
+
+    // 1. Marca como selecionado no turno de hoje
+    if (!selectedRiceFlavors.includes(flavorToAdd)) {
+      setSelectedRiceFlavors((prev) => [...prev, flavorToAdd]);
     }
+
+    // 2. Salva permanentemente no catálogo de arrozes
+    if (!allSavedRices.some((r) => r.toLowerCase() === trimmed.toLowerCase())) {
+      const updated = [...allSavedRices, flavorToAdd];
+      setLocalSavedRices(updated);
+      try {
+        localStorage.setItem('espetaria_saved_rice_flavors', JSON.stringify(updated));
+      } catch {}
+      updateSettings({ saved_rice_flavors: updated });
+    }
+
     setCustomRiceInput('');
     setIsAddingCustomRice(false);
+  };
+
+  const handleRemoveSavedRice = (flavor: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = allSavedRices.filter((r) => r.toLowerCase() !== flavor.toLowerCase());
+    setLocalSavedRices(updated);
+    try {
+      localStorage.setItem('espetaria_saved_rice_flavors', JSON.stringify(updated));
+    } catch {}
+    updateSettings({ saved_rice_flavors: updated });
+    if (selectedRiceFlavors.includes(flavor)) {
+      setSelectedRiceFlavors((prev) => prev.filter((r) => r !== flavor));
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -261,7 +306,10 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
       }
 
       if (selectedRiceFlavors.length > 0) {
-        updateSettings({ daily_rice_flavors: selectedRiceFlavors });
+        updateSettings({
+          daily_rice_flavors: selectedRiceFlavors,
+          saved_rice_flavors: allSavedRices,
+        });
       }
 
       openShift(shiftName, notes, toNumber(cashStart) ?? 0, items, currentProfile.id, disabledIds);
@@ -473,35 +521,52 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             />
           </div>
 
-          {/* Arroz do Dia (Seleção Rápida de 1 Toque) */}
+          {/* Arroz do Dia (Seleção Rápida de 1 Toque - Salvo Permanentemente) */}
           <div className="p-3.5 rounded-xl border border-line bg-surface space-y-2.5">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <span className="text-xs font-bold text-ink">Arroz do Dia (visível para os garçons)</span>
-                <p className="text-[11px] text-ink-muted">Toque para ativar os sabores preparados hoje:</p>
+                <p className="text-[11px] text-ink-muted">Toque para ativar os sabores preparados hoje (ficam sempre salvos aqui):</p>
               </div>
               <span className="text-[11px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
-                {selectedRiceFlavors.join(' & ')}
+                {selectedRiceFlavors.length > 0 ? selectedRiceFlavors.join(' & ') : 'Nenhum selecionado'}
               </span>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5">
-              {allRegisteredRices.slice(0, 6).map((option) => {
+            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+              {allSavedRices.map((option) => {
                 const isSelected = selectedRiceFlavors.includes(option);
+                const isCustom = !DEFAULT_RICE_OPTIONS.includes(option);
                 return (
-                  <button
+                  <div
                     key={option}
-                    type="button"
-                    onClick={() => toggleRiceFlavor(option)}
-                    className={`h-7 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1 border ${
+                    className={`inline-flex items-center rounded-lg text-xs font-bold transition border shadow-2xs ${
                       isSelected
-                        ? 'border-brand-600 bg-brand-600 text-white shadow-2xs'
-                        : 'border-line bg-surface text-ink hover:border-brand-400'
+                        ? 'border-brand-600 bg-brand-600 text-white'
+                        : 'border-line bg-white text-ink hover:border-brand-400'
                     }`}
                   >
-                    {isSelected && <Check className="w-3 h-3" />}
-                    <span>{option}</span>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => toggleRiceFlavor(option)}
+                      className="h-8 px-2.5 flex items-center gap-1.5"
+                    >
+                      {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
+                      <span>{option}</span>
+                    </button>
+                    {isCustom && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleRemoveSavedRice(option, e)}
+                        title={`Remover "${option}" dos salvos`}
+                        className={`h-8 pr-2 pl-0.5 text-xs opacity-60 hover:opacity-100 transition ${
+                          isSelected ? 'text-white hover:text-rose-200' : 'text-ink-muted hover:text-rose-600'
+                        }`}
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
                 );
               })}
 
@@ -509,21 +574,45 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 <button
                   type="button"
                   onClick={() => setIsAddingCustomRice(true)}
-                  className="h-7 px-2 text-xs font-semibold text-brand-700 hover:underline"
+                  className="h-8 px-2.5 rounded-lg border border-dashed border-brand-400 bg-brand-50/60 text-xs font-bold text-brand-700 hover:bg-brand-100 flex items-center gap-1 transition"
                 >
-                  + Outro sabor
+                  <span>+ Outro sabor</span>
                 </button>
               ) : (
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-brand-300 shadow-xs">
                   <input
                     type="text"
+                    autoFocus
                     value={customRiceInput}
                     onChange={(e) => setCustomRiceInput(e.target.value)}
-                    placeholder="Nome do arroz..."
-                    className="h-7 px-2 text-xs rounded border border-line-strong"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddCustomRice();
+                      } else if (e.key === 'Escape') {
+                        setIsAddingCustomRice(false);
+                      }
+                    }}
+                    placeholder="Nome do arroz (ex: cuxa)..."
+                    className="h-7 px-2 text-xs rounded border border-line text-ink focus:outline-none focus:ring-1 focus:ring-brand-600 w-36 sm:w-44 font-medium"
                   />
-                  <button type="button" onClick={handleAddCustomRice} className="btn-primary h-7 px-2 text-xs">
-                    OK
+                  <button
+                    type="button"
+                    onClick={handleAddCustomRice}
+                    disabled={!customRiceInput.trim()}
+                    className="btn-primary h-7 px-2.5 text-xs font-bold disabled:opacity-50"
+                  >
+                    Salvar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsAddingCustomRice(false);
+                      setCustomRiceInput('');
+                    }}
+                    className="h-7 px-1.5 text-xs text-ink-muted hover:text-ink"
+                  >
+                    Cancelar
                   </button>
                 </div>
               )}
