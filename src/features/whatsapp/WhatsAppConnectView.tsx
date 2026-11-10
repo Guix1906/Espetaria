@@ -27,7 +27,12 @@ export function WhatsAppConnectView({ embedded = false }: { embedded?: boolean }
     setBusy(true);
     setError(null);
     try {
-      const data = await whatsAppAction<{ qr: string | null; pairingCode: string | null }>('connect');
+      // A D-API às vezes ainda está gerando o código: tenta de novo por alguns segundos
+      let data = await whatsAppAction<{ qr: string | null; pairingCode: string | null }>('connect');
+      for (let i = 0; i < 4 && !data.qr && !data.pairingCode; i++) {
+        await new Promise((r) => window.setTimeout(r, 2500));
+        data = await whatsAppAction<{ qr: string | null; pairingCode: string | null }>('connect');
+      }
       setQr({ image: data.qr, pairingCode: data.pairingCode });
       if (!data.qr) void refresh();
     } catch (err) {
@@ -49,7 +54,7 @@ export function WhatsAppConnectView({ embedded = false }: { embedded?: boolean }
   }, [scanning, requestQr]);
 
   const disconnect = async () => {
-    const ok = await confirm({ title: 'Desconectar WhatsApp', message: 'Os clientes param de receber os avisos do pedido e o robô para de responder até você ler o QR Code de novo.', confirmText: 'Desconectar', variant: 'danger' });
+    const ok = await confirm({ title: 'Desconectar WhatsApp', message: 'O celular sai da D-API: os clientes param de receber os avisos do pedido e o robô para de responder até você ler o QR Code de novo.', confirmText: 'Desconectar', variant: 'danger' });
     if (!ok) return;
     setBusy(true);
     setError(null);
@@ -74,6 +79,7 @@ export function WhatsAppConnectView({ embedded = false }: { embedded?: boolean }
             <div>
               <p className="text-base font-semibold text-ink">{!isSupabaseConfigured ? 'Modo demonstração' : !status ? 'Verificando...' : connected ? 'Conectado' : 'Desconectado'}</p>
               {connected && status?.number && <p className="font-mono text-sm text-ink-muted">{formatPhone(status.number)}{status.profileName ? ` · ${status.profileName}` : ''}</p>}
+              {status?.instance && <p className="text-[13px] text-ink-muted">Conexão pela D-API · sessão {status.instance}</p>}
             </div>
           </div>
           {connected && <button type="button" className="btn-secondary min-h-[44px] text-rose-700" onClick={disconnect} disabled={busy}><Unplug className="h-4 w-4" aria-hidden="true" />Desconectar</button>}
@@ -96,6 +102,7 @@ export function WhatsAppConnectView({ embedded = false }: { embedded?: boolean }
                 <li>Toque em Aparelhos conectados e depois em Conectar um aparelho.</li>
                 <li>Aponte a câmera para o código ao lado.</li>
               </ol>
+              <p className="text-[13px] text-ink-muted">O código vem da D-API. Só é preciso ler quando aparecer Desconectado; se já estiver conectado pelo painel da D-API, não leia de novo.</p>
               {qr?.pairingCode && <p>Código de conexão: <span className="font-mono font-semibold text-ink">{qr.pairingCode}</span></p>}
               {qr?.image && <p className="flex items-center gap-1.5 text-[13px] text-ink-muted"><RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />O código é trocado sozinho a cada 30 segundos.</p>}
             </div>
