@@ -19,7 +19,6 @@ export const WHATSAPP_EVENTS: { event: WhatsAppEvent; label: string; when: strin
   { event: 'PREPARING', label: 'Pedido em preparo', when: 'Quando um pedido que estava parado (pendente ou confirmado) entra em preparo. Pedido do cardápio já nasce em preparo e recebe só "Pedido recebido".' },
   { event: 'READY', label: 'Pronto para retirada', when: 'Só na retirada no local: quando o churrasqueiro toca em "Espeto pronto". No delivery o cliente não recebe esta mensagem.' },
   { event: 'OUT_FOR_DELIVERY', label: 'Saiu para entrega', when: 'Só no delivery: quando o entregador toca em "Saiu para entrega".' },
-  { event: 'DELIVERED', label: 'Entregue', when: 'Só no delivery: quando a entrega é confirmada.' },
   { event: 'CANCELLED', label: 'Cancelado', when: 'Se o pedido for cancelado.' },
 ];
 

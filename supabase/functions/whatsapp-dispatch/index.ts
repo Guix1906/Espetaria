@@ -106,7 +106,8 @@ Deno.serve(async (req) => {
       if (!order) throw new Error('Pedido não encontrado.');
 
       const template = resolveTemplate(job.event, savedTemplates);
-      if (!template || !template.enabled) {
+      // "Entregue" nunca sai (10/11, pedido do dono): fechar o turno finaliza os pedidos e mandava mensagem a todos
+      if (!template || !template.enabled || job.event === 'DELIVERED') {
         await admin.from('whatsapp_outbox')
           .update({ status: 'SKIPPED', last_error: template ? 'Mensagem desligada nas configurações.' : 'Evento sem mensagem.' })
           .eq('id', job.id);
