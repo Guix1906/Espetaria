@@ -6,5 +6,11 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["vite", "--mode", "demo", "--port", "3003", "--strictPort"],
       "port": 3003
+    },
+    {
+      "name": "demo-atual",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--mode", "demo", "--port", "3005", "--strictPort"],
+      "port": 3005
     }  ]
 }

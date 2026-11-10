@@ -72,7 +72,8 @@ export function WhatsAppConnectView({ embedded = false }: { embedded?: boolean }
     <div className={embedded ? 'space-y-4' : 'page-layout'}>
       {!embedded && <PageHeader eyebrow="Atendimento" title="WhatsApp" description="Ligue o celular da loja ao sistema para enviar os avisos de pedido e atender pelo robô." icon={MessageCircle} />}
 
-      <section className="surface-card max-w-3xl space-y-4 p-4 sm:p-5" aria-live="polite">
+      <section className={`surface-card space-y-4 p-4 sm:p-5 ${embedded ? '' : 'max-w-3xl'}`} aria-live="polite">
+        {embedded && <h3 className="text-base font-semibold text-ink">Conexão do WhatsApp</h3>}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${connected ? 'bg-emerald-600' : 'bg-rose-600'}`} aria-hidden="true" />

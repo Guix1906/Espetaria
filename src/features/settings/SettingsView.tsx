@@ -28,6 +28,7 @@ import { PixAutoCard } from './PixAutoCard';
 import { DeliveryHoursCard } from './DeliveryHoursCard';
 import { WhatsAppAutoCard } from './WhatsAppAutoCard';
 import { WhatsAppBotCard } from './WhatsAppBotCard';
+import { WhatsAppConnectView } from '../whatsapp/WhatsAppConnectView';
 import { formatBRL } from '../../lib/formatters';
 import { maskCnpj, maskPhone, pixKeyError, toPixText } from '../../lib/inputMasks';
 import { PrintBridgeStatus, PrinterHealthTag } from './PrintBridgeStatus';
@@ -271,7 +272,7 @@ export const SettingsView: React.FC = () => {
         )}
       </div>
 
-      {activeTab === 'whatsapp' && <div className="space-y-6"><WhatsAppAutoCard /><WhatsAppBotCard /></div>}
+      {activeTab === 'whatsapp' && <div className="space-y-5"><WhatsAppConnectView embedded /><WhatsAppBotCard /><WhatsAppAutoCard /></div>}
       {activeTab === 'templates' && <PrintTemplatesEditor />}
       {activeTab === 'tables' && <TableManagementView />}
       {activeTab === 'zones' && <DeliveryZonesView />}
