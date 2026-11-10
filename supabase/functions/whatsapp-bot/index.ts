@@ -157,6 +157,12 @@ async function askGemini(context: string, history: StoredMessage[], currentText?
           body: JSON.stringify(body),
         });
         if (res.ok) break;
+        if (res.status === 400 && (body.generationConfig as any)?.thinkingConfig) {
+          // Modelo não aceita o ajuste de raciocínio: manda de novo sem ele
+          delete (body.generationConfig as any).thinkingConfig;
+          attempt--;
+          continue;
+        }
         if (res.status === 503 || res.status === 429) {
           await new Promise((r) => setTimeout(r, 1000));
           continue;

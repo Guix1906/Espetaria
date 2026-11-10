@@ -504,6 +504,8 @@ export function buildGeminiRequest(context: string, history: StoredMessage[], cu
       responseMimeType: 'application/json',
       responseSchema: REPLY_SCHEMA,
       maxOutputTokens: 8000,
+      // Responder rápido: pouco "raciocínio" antes de escrever (se o modelo não aceitar, index.ts tenta sem)
+      thinkingConfig: { thinkingLevel: 'low' },
     },
   };
 }
