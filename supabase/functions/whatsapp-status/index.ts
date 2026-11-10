@@ -7,7 +7,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { corsHeadersFor } from '../_shared/cors.ts';
-import { connectedAccount, connectionState, connectQr, diagnostics, ensureAlwaysOnline, getWebhook, logoutInstance, restartInstance, sendText, setWebhook } from '../_shared/evolution.ts';
+import { connectedAccount, connectionState, connectQr, diagnostics, ensureAlwaysOnline, getWebhook, logoutInstance, ourWebhookUrl, restartInstance, sendText, setWebhook } from '../_shared/whatsapp.ts';
 
 Deno.serve(async (req) => {
   const corsHeaders = corsHeadersFor(req);
@@ -30,7 +30,7 @@ Deno.serve(async (req) => {
     if (action === 'send') {
       const body = String(text ?? '').trim().slice(0, 4000);
       const to = String(phone ?? '');
-      if (provider !== 'evolution') return json({ error: 'Envio pelo painel exige a Evolution API.' }, 400);
+      if (provider !== 'evolution' && provider !== 'dapi') return json({ error: 'Envio pelo painel exige a D-API (ou a Evolution).' }, 400);
       if (!to || !body) return json({ error: 'Conversa ou mensagem vazia.' }, 400);
       const { data: known } = await admin.from('whatsapp_conversations').select('phone').eq('phone', to).maybeSingle();
       if (!known) return json({ error: 'Conversa não encontrada.' }, 404);
@@ -57,8 +57,7 @@ Deno.serve(async (req) => {
       return json(await getWebhook());
     }
     if (action === 'set_webhook') {
-      const token = Deno.env.get('EVOLUTION_WEBHOOK_TOKEN') || '';
-      const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/whatsapp-evolution-webhook?token=${encodeURIComponent(token)}`;
+      const webhookUrl = ourWebhookUrl();
       const result = await setWebhook(webhookUrl);
       return json({ ok: true, webhookUrl: webhookUrl.replace(/token=[^&]+/, 'token=***'), result });
     }
@@ -77,7 +76,9 @@ Deno.serve(async (req) => {
   const state = await connectionState();
   // Consulta de status é SÓ LEITURA (09/11): antes regravava as configurações da Evolution a cada
   // minuto (tela do WhatsApp aberta) e a cada 3 min (Visão geral). Configurações só ao conectar.
-  if (state.connected && action === 'repair') {
+  if (state.connected && action === 'repair' && provider === 'dapi') {
+    await setWebhook(ourWebhookUrl()).catch(() => undefined);
+  } else if (state.connected && action === 'repair') {
     void ensureAlwaysOnline();
     // Auto-valida se o webhook da Evolution está ativo apontando para o nosso endpoint
     try {
@@ -97,5 +98,5 @@ Deno.serve(async (req) => {
     }
   }
   const account = state.connected ? await connectedAccount() : { number: null, profileName: null };
-  return json({ provider, instance: Deno.env.get('EVOLUTION_INSTANCE') || null, ...state, ...account });
+  return json({ provider, instance: (provider === 'evolution' ? Deno.env.get('EVOLUTION_INSTANCE') : Deno.env.get('DAPI_SESSION_ID')) || null, ...state, ...account });
 });

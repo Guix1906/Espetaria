@@ -258,9 +258,43 @@ export function parseEvolutionIncoming(payload: any): Incoming {
   };
 }
 
+const DAPI_MEDIA = new Set(['audio', 'ptt', 'image', 'video', 'sticker', 'document', 'location', 'contact', 'contacts']);
+
+/**
+ * Webhook da D-API (10/11): "messages.received" (cliente, ou fromMe digitado no celular da loja)
+ * e "messages.sent" (enviada pela própria API = eco do robô/avisos).
+ */
+// deno-lint-ignore no-explicit-any
+export function parseDapiIncoming(payload: any): Incoming {
+  const event = String(payload?.event ?? '');
+  if (event !== 'messages.received' && event !== 'messages.sent') return { kind: 'ignore' };
+  const data = payload?.data ?? {};
+  if (data.is_group || data.isMetaAI) return { kind: 'ignore' };
+  const fromMe = event === 'messages.sent' || !!data.fromMe;
+  const jid = String((fromMe ? data.to?.jid : data.from?.jid) ?? '');
+  if (!jid || jid.includes('@g.us') || jid.includes('@broadcast') || jid.includes('@newsletter') || jid.endsWith('@lid')) return { kind: 'ignore' };
+  const phone = digits(jid.split('@')[0].split(':')[0]);
+  if (phone.length < 10) return { kind: 'ignore' };
+  const type = String(data.type ?? 'text').toLowerCase();
+  if (type === 'reaction' || type === 'edited_message' || type === 'revoked') return { kind: 'ignore' };
+  const text = String(data.message ?? data.caption ?? '').trim();
+  const media = DAPI_MEDIA.has(type) ? (type === 'ptt' ? 'audio' : type === 'contacts' ? 'contact' : type) : null;
+  if (!text && !media) return { kind: 'ignore' };
+  return {
+    kind: fromMe ? 'self' : 'customer',
+    phone,
+    text: text.slice(0, 2000),
+    messageId: data.id ? String(data.id) : null,
+    senderName: fromMe ? null : (data.from_name || data.from?.name || null),
+    fromApi: event === 'messages.sent',
+    media: text ? null : media,
+  };
+}
+
 // deno-lint-ignore no-explicit-any
 export function parseIncoming(payload: any): Incoming {
   if (!payload || typeof payload !== 'object') return { kind: 'ignore' };
+  if (payload.sessionId && /^messages\.(received|sent)$/.test(String(payload.event ?? ''))) return parseDapiIncoming(payload);
   if (payload.event) return parseEvolutionIncoming(payload);
   if (payload.type && payload.type !== 'ReceivedCallback') return { kind: 'ignore' };
   if (payload.isGroup || payload.isNewsletter || payload.broadcast || payload.isStatusReply) return { kind: 'ignore' };

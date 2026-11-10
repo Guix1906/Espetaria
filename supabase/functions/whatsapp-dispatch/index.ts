@@ -19,6 +19,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
 import { normalizePhone, sendText as evolutionSendText } from '../_shared/evolution.ts';
+import { sendText as dapiSendText } from '../_shared/dapi.ts';
 import { render, resolveTemplate, variables } from './templates.ts';
 
 const MAX_ATTEMPTS = 5;
@@ -46,6 +47,7 @@ async function send(phone: string, text: string): Promise<string | null> {
   }
 
   if (provider === 'evolution') return evolutionSendText(to, text);
+  if (provider === 'dapi') return dapiSendText(to, text);
 
   if (provider === 'meta') {
     const res = await fetch(`https://graph.facebook.com/v21.0/${Deno.env.get('META_PHONE_NUMBER_ID')}/messages`, {

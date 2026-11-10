@@ -9,6 +9,8 @@
 // ============================================================================
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
+import { connectionState } from '../_shared/dapi.ts';
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -19,6 +21,20 @@ Deno.serve(async (req) => {
   const { data: cfg } = await db.from('whatsapp_monitor_config').select('token').eq('id', 1).maybeSingle();
   const sent = req.headers.get('x-monitor-token') || '';
   if (!cfg?.token || sent !== cfg.token) return json({ error: 'unauthorized' }, 401);
+
+  // D-API (10/11): grava só o estado da sessão e a última mensagem que chegou pelo webhook
+  if ((Deno.env.get('WHATSAPP_PROVIDER') || '').toLowerCase() === 'dapi') {
+    const t0 = Date.now();
+    const st = await connectionState();
+    const { data: hook } = await db.from('audit_logs').select('created_at').eq('action', 'WHATSAPP_MENSAGEM_RECEBIDA')
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    await db.from('whatsapp_monitor').insert({
+      evolution_ok: st.state !== 'error', evolution_ms: Date.now() - t0, ponto_state: st.state,
+      webhook_last_msg: hook?.created_at ?? null, ponto_last_in: hook?.created_at ?? null, error: st.error ?? null,
+    });
+    await db.from('whatsapp_monitor').delete().lt('at', new Date(Date.now() - 10 * 86_400_000).toISOString());
+    return json({ ok: true, provider: 'dapi' });
+  }
 
   const base = (Deno.env.get('EVOLUTION_URL') || '').replace(/\/$/, '');
   const key = Deno.env.get('EVOLUTION_API_KEY') || '';

@@ -15,7 +15,7 @@
 // ============================================================================
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
 
-import { sendText as evolutionSendText } from '../_shared/evolution.ts';
+import { sendText as providerSendText } from '../_shared/whatsapp.ts';
 import {
   buildContextBlock,
   buildGeminiRequest,
@@ -45,7 +45,7 @@ function admin(): SupabaseClient {
 
 /** Envia texto (Evolution ou Z-API) e devolve o id da mensagem (para reconhecer o eco no webhook). */
 async function sendText(phone: string, text: string): Promise<string | null> {
-  if ((Deno.env.get('WHATSAPP_PROVIDER') || '').toLowerCase() === 'evolution') return evolutionSendText(phone, text);
+  if (['evolution', 'dapi'].includes((Deno.env.get('WHATSAPP_PROVIDER') || '').toLowerCase())) return providerSendText(phone, text);
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const clientToken = Deno.env.get('ZAPI_CLIENT_TOKEN');
   if (clientToken) headers['Client-Token'] = clientToken;

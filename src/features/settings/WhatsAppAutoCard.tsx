@@ -210,7 +210,7 @@ export function WhatsAppAutoCard() {
       <ConnectionCheck />
 
       <p className="rounded-sm bg-surface-soft p-3 text-xs text-ink-secondary">
-        O envio usa o número conectado no provedor de WhatsApp (Evolution API ou Z-API, configurado no Supabase). O status de cada mensagem (enviada, na fila, desligada ou com falha) aparece no cartão do pedido, na tela Delivery.
+        O envio usa o número conectado no provedor de WhatsApp (D-API, configurada no Supabase). O status de cada mensagem (enviada, na fila, desligada ou com falha) aparece no cartão do pedido, na tela Delivery.
       </p>
     </div>
   );
