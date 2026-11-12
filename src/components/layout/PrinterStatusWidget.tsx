@@ -22,8 +22,12 @@ export const usePrinterHealth = () => {
 
   const isBridgeAlive = heartbeatAgeSeconds < 60;
   // O PC não testa a porta 9100 para não disputar com o Anota AI; quem mostra impressora com problema é cupom que falhou
-  const recentFailure = (sector: 'GRILL' | 'KITCHEN') =>
-    jobs.find((j) => j.sector === sector && j.status === 'FAILED' && now - new Date(j.created_at).getTime() < 30 * 60 * 1000);
+  // Falha que veio antes de um cupom impresso com sucesso no mesmo setor não conta: a impressora já voltou.
+  const recentFailure = (sector: 'GRILL' | 'KITCHEN') => {
+    const at = (j: (typeof jobs)[number]) => new Date(j.printed_at ?? j.updated_at ?? j.created_at).getTime();
+    const lastPrinted = Math.max(0, ...jobs.filter((j) => j.sector === sector && j.status === 'PRINTED').map(at));
+    return jobs.find((j) => j.sector === sector && j.status === 'FAILED' && now - new Date(j.created_at).getTime() < 30 * 60 * 1000 && at(j) > lastPrinted);
+  };
   const grillFailure = recentFailure('GRILL');
   const kitchenFailure = recentFailure('KITCHEN');
   const isGrillOk = isBridgeAlive && Boolean(printerStatus?.grill_online) && !grillFailure;
