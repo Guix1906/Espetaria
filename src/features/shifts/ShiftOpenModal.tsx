@@ -329,7 +329,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     return (
       <div
         key={p.id}
-        className={`flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition ${
+        className={`flex flex-col gap-2 p-2.5 sm:p-3 rounded-xl border transition ${
           isDisabled
             ? 'bg-rose-50/40 border-rose-200 opacity-60'
             : val.trim() !== '' && val !== '0'
@@ -337,8 +337,8 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             : 'bg-surface-soft border-line'
         }`}
       >
-        <div className="min-w-0 flex-1 pr-2">
-          <div className="flex items-center gap-1.5 flex-wrap">
+        <div className="min-w-0 flex items-baseline justify-between gap-2">
+          <div className="min-w-0 flex items-center gap-1.5 flex-wrap">
             <span className={`font-semibold text-xs sm:text-sm leading-tight break-words min-w-0 ${isDisabled ? 'line-through text-ink-muted' : 'text-ink'}`}>
               {p.name}
             </span>
@@ -348,7 +348,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               </span>
             )}
           </div>
-          <div className="text-[11px] text-ink-muted font-mono">
+          <div className="text-[11px] text-ink-muted font-mono shrink-0">
             {formatBRL(p.price)}
           </div>
         </div>
@@ -357,13 +357,13 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
           <button
             type="button"
             onClick={() => toggleDisable(p.id)}
-            className="text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 px-2.5 py-1 rounded-lg flex items-center gap-1"
+            className="self-end text-xs font-semibold text-brand-700 bg-brand-50 hover:bg-brand-100 border border-brand-200 px-2.5 py-1 rounded-lg flex items-center gap-1"
           >
             <RotateCcw className="w-3 h-3" />
             <span>Habilitar</span>
           </button>
         ) : (
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => step(p.id, field, -stepDelta)}
