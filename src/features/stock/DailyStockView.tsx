@@ -40,7 +40,6 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
   const [selectedSector, setSelectedSector] = useState<'ALL' | 'GRILL' | 'KITCHEN' | 'BAR'>('ALL');
   const [adjustModalItem, setAdjustModalItem] = useState<DailyPrepStock | null>(null);
   const [newCount, setNewCount] = useState<number>(0);
-  const [adjustReason, setAdjustReason] = useState<string>('');
 
   if (!currentShift || currentShift.status !== 'ABERTO') {
     return <div className="page-layout"><PageHeader eyebrow="Controle de produção" title="Estoque diário" description="Acompanhe a disponibilidade dos produtos e a preparação do turno." icon={Flame} /><EmptyState title="Turno fechado" description="Informe os espetos, as bebidas e as cubas preparados para começar a acompanhar o estoque." icon={Clock} action={<button type="button" onClick={onOpenShiftClick} className="btn-primary">Abrir turno</button>} /></div>;
@@ -65,9 +64,8 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
     e.preventDefault();
     if (!adjustModalItem) return;
     try {
-      adjustStockPhysicalCount(currentShift.id, adjustModalItem.product_id, newCount, currentProfile.id, adjustReason || 'Diferença na contagem física');
+      adjustStockPhysicalCount(currentShift.id, adjustModalItem.product_id, newCount, currentProfile.id, 'Diferença na contagem física');
       setAdjustModalItem(null);
-      setAdjustReason('');
     } catch (err: unknown) {
       notify(err instanceof Error ? err.message : 'Erro ao ajustar estoque.', 'error');
     }
@@ -279,10 +277,6 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
               <div>
                 <label className="mb-1 block font-semibold text-ink" htmlFor="stock-new-count">Nova quantidade contada</label>
                 <input id="stock-new-count" type="number" min="0" inputMode="numeric" value={newCount} onChange={(e) => setNewCount(Math.max(0, Number(e.target.value)))} className="h-12 w-full rounded-md border border-line-strong bg-surface px-3.5 font-mono text-base font-bold text-ink focus:border-brand-600 focus:outline-none" />
-              </div>
-              <div>
-                <label className="mb-1 block font-semibold text-ink" htmlFor="stock-reason">Motivo da diferença</label>
-                <input id="stock-reason" type="text" placeholder="Ex.: queimou na brasa, contagem errada na abertura" value={adjustReason} onChange={(e) => setAdjustReason(e.target.value)} required className="h-12 w-full rounded-md border border-line-strong bg-surface px-3.5 text-base text-ink focus:border-brand-600 focus:outline-none" />
               </div>
               <div className="grid grid-cols-2 gap-2.5 pt-2">
                 <button type="button" onClick={() => setAdjustModalItem(null)} className="btn-secondary h-12 text-[15px]">Cancelar</button>
