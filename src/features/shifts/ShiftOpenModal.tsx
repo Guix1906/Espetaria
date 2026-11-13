@@ -406,7 +406,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
 
   return (
     <Dialog label="Abrir turno" onClose={onClose}>
-      <div className="dialog-panel relative w-full max-w-2xl bg-surface border border-line rounded-2xl shadow-card overflow-hidden my-auto max-h-[92vh] flex flex-col text-ink zoom-in-95 duration-200">
+      <div className="dialog-panel relative w-full max-w-6xl bg-surface border border-line rounded-2xl shadow-card overflow-hidden my-auto max-h-[95vh] flex flex-col text-ink zoom-in-95 duration-200">
 
         {/* Cabeçalho */}
         <div className="px-5 py-4 border-b border-line flex items-center justify-between">
@@ -659,7 +659,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             </div>
 
             {activeTab === 'skewers' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {skewers.map(unitRow)}
               </div>
             )}
@@ -672,7 +672,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                     {unitRow(rice)}
                   </div>
                 )}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {[...starters, ...otherSides].map(unitRow)}
                 </div>
               </div>
@@ -691,7 +691,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 {showCombosPreview ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
               {showCombosPreview && (
-                <div className="p-3 border-t border-line grid grid-cols-2 gap-2 text-xs bg-surface-soft">
+                <div className="p-3 border-t border-line grid grid-cols-2 lg:grid-cols-3 gap-2 text-xs bg-surface-soft">
                   {combos.map((combo) => {
                     const base = baseOf(combo);
                     const baseQty = base && !disabledProducts[base.id] ? qtyOf(base) : 0;
