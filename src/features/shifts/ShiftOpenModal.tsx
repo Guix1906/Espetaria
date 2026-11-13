@@ -339,7 +339,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
       >
         <div className="min-w-0 flex-1 pr-2">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <span className={`font-semibold text-xs sm:text-sm truncate ${isDisabled ? 'line-through text-ink-muted' : 'text-ink'}`}>
+            <span className={`font-semibold text-xs sm:text-sm leading-tight break-words min-w-0 ${isDisabled ? 'line-through text-ink-muted' : 'text-ink'}`}>
               {p.name}
             </span>
             {isRice(p) && selectedRiceFlavors.length > 0 && (
@@ -697,8 +697,8 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                     const baseQty = base && !disabledProducts[base.id] ? qtyOf(base) : 0;
                     const avail = Math.min(baseQty, riceQty);
                     return (
-                      <div key={combo.id} className="flex justify-between items-center py-1">
-                        <span className="truncate pr-1 text-ink-secondary">{combo.name}</span>
+                      <div key={combo.id} className="flex justify-between items-center gap-1 py-1">
+                        <span className="min-w-0 break-words leading-tight pr-1 text-ink-secondary">{combo.name}</span>
                         <span className="font-mono font-bold text-brand-700 shrink-0">{avail} disp.</span>
                       </div>
                     );
