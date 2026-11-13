@@ -15,7 +15,13 @@ export function LoginScreen() {
 
   useEffect(() => {
     document.title = 'Entrar | Ponto';
-    staffApi.needsSetup().then(setNeedsSetup).catch(() => setNeedsSetup(false));
+    // Depois que o primeiro administrador existe, isso não muda mais: o aparelho lembra e não chama o servidor a cada abertura.
+    const SETUP_DONE = 'ponto_setup_done';
+    try { if (localStorage.getItem(SETUP_DONE) === '1') return; } catch { /* segue para a consulta */ }
+    staffApi.needsSetup().then((needs) => {
+      setNeedsSetup(needs);
+      if (!needs) { try { localStorage.setItem(SETUP_DONE, '1'); } catch { /* sem armazenamento */ } }
+    }).catch(() => setNeedsSetup(false));
   }, []);
 
   const submit = async (event: FormEvent) => {
