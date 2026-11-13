@@ -294,10 +294,20 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
         if (usesCubas(prod)) {
           const cubas = toNumber(val.cubas) ?? 0;
           if (cubas > 0) items.push({ productId: prod.id, cubasCount: cubas, portionsPerCuba: portionsOf(prod) });
+          else disabledIds.push(prod.id);
         } else {
           const qty = toNumber(val.quantity) ?? 0;
           if (qty > 0) items.push({ productId: prod.id, quantity: qty });
+          // Em branco (ou zero) = não tem hoje: fica esgotado, igual a marcar o botão de indisponível.
+          else disabledIds.push(prod.id);
         }
+      });
+
+      // "X com acompanhamento" sem o espeto X contado (ou sem arroz) também fica esgotado.
+      const riceOff = !rice || disabledIds.includes(rice.id);
+      combos.forEach((combo) => {
+        const base = baseOf(combo);
+        if (riceOff || !base || disabledIds.includes(base.id)) disabledIds.push(combo.id);
       });
 
       if (items.length === 0) {
