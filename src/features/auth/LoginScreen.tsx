@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { LockKeyhole } from 'lucide-react';
 import { AccessTabs, AuthShell, ForgotPassword, PasswordField, authButton, authError, authInput, authLabel, friendlyAuthError, rememberEmail, rememberedEmail } from './AuthShell';
-import { staffApi } from '../../lib/staffApi';
 import { useAuthStore } from '../../stores/useAuthStore';
 
 export function LoginScreen() {
@@ -10,18 +9,10 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Primeiro acesso: ainda não existe nenhum administrador com login
-  const [needsSetup, setNeedsSetup] = useState(false);
 
+  // A loja já tem administrador: a tela de "criar administrador" foi retirada (pedido do dono, 14/11).
   useEffect(() => {
     document.title = 'Entrar | Ponto';
-    // Depois que o primeiro administrador existe, isso não muda mais: o aparelho lembra e não chama o servidor a cada abertura.
-    const SETUP_DONE = 'ponto_setup_done';
-    try { if (localStorage.getItem(SETUP_DONE) === '1') return; } catch { /* segue para a consulta */ }
-    staffApi.needsSetup().then((needs) => {
-      setNeedsSetup(needs);
-      if (!needs) { try { localStorage.setItem(SETUP_DONE, '1'); } catch { /* sem armazenamento */ } }
-    }).catch(() => setNeedsSetup(false));
   }, []);
 
   const submit = async (event: FormEvent) => {
@@ -39,8 +30,6 @@ export function LoginScreen() {
       setBusy(false);
     }
   };
-
-  if (needsSetup) return <FirstAdminSetup onDone={() => setNeedsSetup(false)} />;
 
   return (
     <AuthShell>
@@ -62,53 +51,6 @@ export function LoginScreen() {
         <button type="submit" disabled={busy} className={authButton}>{busy ? 'Entrando...' : 'Entrar'}</button>
         <ForgotPassword />
         <p className="flex items-center justify-center gap-1.5 pt-2 text-xs text-ink-muted"><LockKeyhole className="h-3.5 w-3.5" aria-hidden="true" />Cada colaborador usa o próprio login.</p>
-      </form>
-    </AuthShell>
-  );
-}
-/** Cadastro do primeiro administrador (Master). Some assim que ele existir. */
-function FirstAdminSetup({ onDone }: { onDone: () => void }) {
-  const { signIn } = useAuthStore();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (busy) return;
-    if (password !== confirm) { setError('As senhas não conferem.'); return; }
-    setBusy(true);
-    setError(null);
-    try {
-      await staffApi.setupFirstAdmin({ name: name.trim(), email: email.trim(), password });
-      await signIn(email, password);
-      onDone();
-    } catch (failure: unknown) {
-      setError(friendlyAuthError(failure, 'Não foi possível concluir o cadastro.'));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <AuthShell>
-      <form onSubmit={submit} className="space-y-4" aria-labelledby="setup-title">
-        <div>
-          <p className="text-sm font-semibold text-brand-500">Primeiro acesso</p>
-          <h1 id="setup-title" className="mt-1 text-[30px] font-semibold leading-tight tracking-[-0.02em] text-ink">Criar administrador</h1>
-          <p className="mt-1.5 text-sm text-ink-muted">Cadastre o responsável pelo sistema. Depois, ele cadastra gerentes, garçons e demais colaboradores em <strong className="font-medium text-ink">Equipe</strong>. Esta tela aparece só uma vez.</p>
-        </div>
-        {error && <p role="alert" className={authError}>{error}</p>}
-        <div><label htmlFor="setup-name" className={authLabel}>Nome</label><input id="setup-name" className={authInput} autoComplete="name" required value={name} onChange={(e) => setName(e.target.value)} /></div>
-        <div><label htmlFor="setup-email" className={authLabel}>E-mail (login)</label><input id="setup-email" className={authInput} type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} /></div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div><label htmlFor="setup-password" className={authLabel}>Senha</label><PasswordField id="setup-password" autoComplete="new-password" minLength={8} value={password} onChange={setPassword} /></div>
-          <div><label htmlFor="setup-confirm" className={authLabel}>Confirmar senha</label><PasswordField id="setup-confirm" autoComplete="new-password" minLength={8} value={confirm} onChange={setConfirm} /></div>
-        </div>
-        <button type="submit" disabled={busy} className={authButton}>{busy ? 'Criando...' : 'Criar administrador e entrar'}</button>
       </form>
     </AuthShell>
   );
