@@ -68,7 +68,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
     } catch (err) {
       logger.warn({ context: 'AuthStore', message: 'Sessão persistida inválida', error: err });
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
       set({ isAuthenticated: false });
     } finally {
       set({ isInitializing: false });
@@ -91,24 +91,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ currentProfile: profile, availableProfiles: [profile], isAuthenticated: true });
       logger.info({ context: 'AuthStore', message: `Login: ${profile.name} (${profile.role})` });
     } catch (err) {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
       throw err;
     }
   },
 
   signOut: async () => {
     if (isSupabaseConfigured) {
-      // Sair nunca pode prender o usuário: se o servidor falhar ou demorar,
-      // encerra a sessão só neste aparelho e segue.
-      try {
-        const result = await Promise.race([
-          supabase.auth.signOut(),
-          new Promise<{ error: Error }>((resolve) => setTimeout(() => resolve({ error: new Error('timeout') }), 5000)),
-        ]);
-        if (result.error) await supabase.auth.signOut({ scope: 'local' });
-      } catch {
-        await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
-      }
+      // Sair vale SÓ neste aparelho. A mesma conta fica aberta no PC da loja, no celular do dono
+      // e nos celulares dos garçons: o "Sair" padrão (global) derrubava todos de uma vez (14/11).
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
     }
     set({ isAuthenticated: !isSupabaseConfigured, availableProfiles: isSupabaseConfigured ? [] : INITIAL_PROFILES });
   },
