@@ -22,6 +22,7 @@ import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { TableTransferModal } from './TableTransferModal';
 import { TabItemsPanel } from './TabItemsPanel';
 import { optimizeThumbnailUrl } from '../../lib/imageOptimization';
+import { syncService } from '../../lib/syncService';
 
 const TOP = 'TOP';
 /** Aba Espetos: só os de carne. Assados da categoria Entradas (queijo, pão de alho, cebola) ficam em Porções, como no cardápio digital. */
@@ -127,6 +128,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   };
 
   const activeTab = tabs.find((tab) => (tab.table_id === table.id || tab.table_id === `table-${table.number}`) && tab.status === 'OPEN');
+  // Abriu a mesa ou o carrinho: saldo do estoque direto do banco, para o garçom nunca ver número velho
+  useEffect(() => { void syncService.refreshStock(); }, [table.id, isCartDrawerOpen]);
   // Rascunho esquecido de outra comanda desta mesa não pode sair no pedido do cliente atual
   useEffect(() => {
     if (activeTab) useCartStore.getState().bindCartToTab(table.id, activeTab.id);

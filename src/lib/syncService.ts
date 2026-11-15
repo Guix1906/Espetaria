@@ -35,6 +35,7 @@ class SyncService {
   private isHydrated = false;
   private isHydrating = false;
   private isPolling = false;
+  private isRefreshingStock = false;
   private pollTimer: number | null = null;
   private isSubscribed = false;
   private hadConnectionLoss = false;
@@ -505,6 +506,7 @@ class SyncService {
         const wasAway = event.type === 'online' || (this.hiddenAt > 0 && Date.now() - this.hiddenAt > 20000);
         this.hiddenAt = 0;
         void (wasAway ? this.hydrateAll() : this.pollOperationalDelta(true));
+        if (!wasAway) void this.refreshStock();
       };
       window.addEventListener('online', resync);
       document.addEventListener('visibilitychange', resync);
@@ -515,6 +517,7 @@ class SyncService {
         if (document.visibilityState === 'visible') {
           this.recoverFromConnectionLoss();
           void this.pollOperationalDelta(false);
+          void this.refreshStock();
         }
       }, 10000);
       this.pollTimer = intervalId;
@@ -532,6 +535,43 @@ class SyncService {
     } catch (err) {
       logger.warn({ context: 'SyncService', message: 'Erro ao assinar canal postgres-db-sync', error: err });
       return () => {};
+    }
+  }
+
+  /**
+   * Estoque do turno e disponibilidade dos produtos direto do banco (consulta leve, ~40 linhas).
+   * Roda a cada 10 s e ao abrir uma mesa no celular do garçom, além do aviso em tempo real:
+   * o saldo que o garçom vê nunca fica parado se um aviso se perder (pedido do dono, 14/11).
+   */
+  public async refreshStock(): Promise<void> {
+    if (!isSupabaseConfigured || this.isHydrating || this.isRefreshingStock) return;
+    const shiftId = useShiftStore.getState().currentShift?.id;
+    if (!shiftId) return;
+    this.isRefreshingStock = true;
+    try {
+      const [{ data: stock, error: stockErr }, { data: availability, error: prodErr }] = await Promise.all([
+        supabase.from('daily_prep_stock').select('*').eq('shift_id', shiftId),
+        supabase.from('products').select('id,available,active'),
+      ]);
+      if (stockErr || prodErr || !stock || !availability) return;
+      // O turno pode ter mudado enquanto a consulta voltava
+      if (useShiftStore.getState().currentShift?.id !== shiftId) return;
+      const byId = new Map(availability.map((p) => [p.id as string, p as { available: boolean; active: boolean }]));
+      const { products } = useStockStore.getState();
+      const changed = products.some((p) => {
+        const remote = byId.get(p.id);
+        return remote && (remote.available !== p.available || remote.active !== p.active);
+      });
+      useStockStore.setState({
+        dailyPrepStock: stock as DailyPrepStock[],
+        ...(changed
+          ? { products: products.map((p) => { const r = byId.get(p.id); return r ? { ...p, available: r.available, active: r.active } : p; }) }
+          : {}),
+      });
+    } catch (err) {
+      logger.warn({ context: 'SyncService', message: 'Falha ao atualizar estoque', error: err });
+    } finally {
+      this.isRefreshingStock = false;
     }
   }
 
