@@ -75,7 +75,9 @@ describe('Area dedicada do garcom', () => {
     const html = pad({ table, dedicated: true, onBackToTables: vi.fn() });
     expect(html).not.toContain('Novo produto');
     expect(html).toContain('Ver consumo');
-    expect(html).toContain('Esta comanda foi encerrada');
+    // Sem comanda no aparelho: oferece abrir de novo em vez de travar a mesa
+    expect(html).toContain('Esta mesa está sem comanda aberta');
+    expect(html).toContain('Abrir comanda');
     const admin = pad({ table, onBackToTables: vi.fn() });
     expect(admin).toContain('Novo produto');
     useAuthStore.setState({ currentProfile: waiter });

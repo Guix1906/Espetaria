@@ -9,7 +9,7 @@ import { audioService } from '../lib/audio';
 import { logger } from '../lib/logger';
 import { usePrintStore } from './usePrintStore';
 import { callRpc, useRemoteErrorStore } from '../lib/remote';
-import { isSupabaseConfigured } from '../lib/supabase';
+import { isSupabaseConfigured, supabase } from '../lib/supabase';
 import { computeTabTotals, fromCents, getServiceFeeRate, sumMoney, toCents } from '../lib/utils';
 import { useAuthStore } from './useAuthStore';
 
@@ -37,6 +37,11 @@ export function stockStatusForCancel(status: OrderItemStatus, returnStock?: bool
 
 /** Abertura de comanda a caminho do banco: o primeiro pedido espera por ela para não chegar antes. */
 const pendingTabOpens = new Map<string, Promise<unknown>>();
+
+/** Comanda aberta neste aparelho que ainda está a caminho do banco: a recarga não pode apagá-la. */
+export function isTabOpening(tabId: string): boolean {
+  return pendingTabOpens.has(tabId);
+}
 /** Pagamentos a caminho do banco: encerrar a conta espera por eles, senão o banco recusa por pagamento insuficiente. */
 const pendingPayments = new Map<string, Promise<unknown>>();
 
@@ -64,6 +69,11 @@ interface TableState {
     userId: string,
     shiftId: string
   ) => Tab;
+  /**
+   * Comanda aberta da mesa para lançar pedido: a do aparelho; se ele não tiver, a do banco;
+   * se a mesa estiver livre no banco, abre uma nova. Nunca deixa o garçom travado em "comanda não encontrada".
+   */
+  ensureOpenTab: (tableId: string, userId: string, shiftId: string, openIfMissing?: boolean) => Promise<Tab | null>;
   addOrderAtomic: (
     shiftId: string,
     tabId: string,
@@ -193,6 +203,37 @@ export const useTableStore = create<TableState>((set, get) => ({
     });
 
     return newTab;
+  },
+
+  ensureOpenTab: async (tableId, userId, shiftId, openIfMissing = true) => {
+    const table = get().tables.find((t) => t.id === tableId || `table-${t.number}` === tableId);
+    if (!table) throw new Error('Mesa não encontrada.');
+    const isThisTable = (tab: Tab) => tab.status === 'OPEN' && (tab.table_id === table.id || tab.table_id === `table-${table.number}`);
+    const local = get().tabs.find(isThisTable);
+    if (local) return local;
+
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase.from('tabs').select('*').eq('table_id', table.id).eq('status', 'OPEN')
+        .order('opened_at', { ascending: false }).limit(1).maybeSingle();
+      if (!error && data) {
+        const remote = { ...(data as Tab), subtotal: Number(data.subtotal), service_fee: Number(data.service_fee), discount: Number(data.discount), total: Number(data.total) } as Tab;
+        // Outra busca pode ter trazido a comanda enquanto esta voltava
+        const again = get().tabs.find(isThisTable);
+        if (again) return again;
+        set({
+          tabs: [remote, ...get().tabs.filter((t) => t.id !== remote.id)],
+          tables: get().tables.map((t) => (t.id === table.id ? { ...t, status: t.status === 'AGUARDANDO_CONTA' ? 'AGUARDANDO_CONTA' : 'OCUPADA', current_tab: remote } : t)),
+        });
+        logger.warn({ context: 'TableStore', message: `Comanda da Mesa ${table.number} recuperada do banco` });
+        return remote;
+      }
+      if (error) throw new Error('Sem conexão para conferir a mesa. Confira a internet e tente de novo.');
+    }
+
+    if (!openIfMissing) return null;
+    // Mesa livre no banco (a comanda foi encerrada ou liberada): abre outra para o pedido não se perder
+    logger.warn({ context: 'TableStore', message: `Mesa ${table.number} sem comanda aberta: abrindo nova para lançar o pedido` });
+    return get().openTab(table.id, `Mesa ${table.number}`, 1, '', userId, shiftId);
   },
 
   addOrderAtomic: (shiftId, tabId, items, userId, notes, onRejected) => {

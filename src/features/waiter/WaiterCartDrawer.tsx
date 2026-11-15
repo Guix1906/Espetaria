@@ -57,14 +57,17 @@ export function WaiterCartDrawer({ table, isOpen, onClose, onSuccess }: WaiterCa
     return left === null ? undefined : Math.max(1, left);
   })();
 
-  const handleSendOrder = () => {
+  const handleSendOrder = async () => {
+    if (isSubmitting) return;
     if (!currentShift || currentShift.status !== 'ABERTO') { setErrorMessage('Abra um turno antes de enviar o pedido.'); return; }
-    if (!activeTab) { setErrorMessage('Comanda não encontrada para esta mesa.'); return; }
     if (!items.length) { setErrorMessage('Adicione um produto antes de enviar o pedido.'); return; }
     setIsSubmitting(true);
     setErrorMessage(null);
     try {
-      addOrderAtomic(currentShift.id, activeTab.id, items.map((item) => ({ productId: item.product.id, quantity: item.quantity, doneness: item.doneness, notes: item.notes || undefined })), currentProfile.id, undefined, () => useCartStore.getState().restoreItems(table.id, items));
+      // Comanda sumiu deste celular: busca no banco ou abre outra, em vez de travar o garçom
+      const tab = activeTab ?? await useTableStore.getState().ensureOpenTab(table.id, currentProfile.id, currentShift.id);
+      if (!tab) throw new Error('Não foi possível abrir a comanda desta mesa. Tente de novo.');
+      addOrderAtomic(currentShift.id, tab.id, items.map((item) => ({ productId: item.product.id, quantity: item.quantity, doneness: item.doneness, notes: item.notes || undefined })), currentProfile.id, undefined, () => useCartStore.getState().restoreItems(table.id, items));
       clearCart(table.id);
       onSuccess();
       onClose();

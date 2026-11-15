@@ -83,14 +83,10 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   };
 
   const [isSendingQuick, setIsSendingQuick] = useState(false);
-  const handleQuickSend = () => {
+  const handleQuickSend = async () => {
     if (isSendingQuick) return;
     if (!currentShift || currentShift.status !== 'ABERTO') {
       notify('O turno precisa estar aberto para enviar o pedido.', 'error');
-      return;
-    }
-    if (!activeTab) {
-      notify('Comanda não encontrada para esta mesa.', 'error');
       return;
     }
     const cartItems = getCart(table.id);
@@ -102,9 +98,12 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
     setIsSendingQuick(true);
     triggerHaptic(30);
     try {
+      // Comanda sumiu deste celular: busca no banco ou abre outra, em vez de travar o garçom
+      const tab = activeTab ?? await useTableStore.getState().ensureOpenTab(table.id, currentProfile.id, currentShift.id);
+      if (!tab) throw new Error('Não foi possível abrir a comanda desta mesa. Tente de novo.');
       addOrderAtomic(
         currentShift.id,
-        activeTab.id,
+        tab.id,
         cartItems.map((item) => ({
           productId: item.product.id,
           quantity: item.quantity,
@@ -130,6 +129,17 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   const activeTab = tabs.find((tab) => (tab.table_id === table.id || tab.table_id === `table-${table.number}`) && tab.status === 'OPEN');
   // Abriu a mesa ou o carrinho: saldo do estoque direto do banco, para o garçom nunca ver número velho
   useEffect(() => { void syncService.refreshStock(); }, [table.id, isCartDrawerOpen]);
+  // Mesa aberta na lista mas sem comanda neste celular: confere no banco antes de mostrar "encerrada"
+  const [checkingTab, setCheckingTab] = useState(false);
+  useEffect(() => {
+    if (activeTab || !currentShift) return;
+    let cancelled = false;
+    setCheckingTab(true);
+    useTableStore.getState().ensureOpenTab(table.id, currentProfile.id, currentShift.id, false)
+      .catch(() => null)
+      .finally(() => { if (!cancelled) setCheckingTab(false); });
+    return () => { cancelled = true; };
+  }, [table.id, activeTab?.id, currentShift?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // Rascunho esquecido de outra comanda desta mesa não pode sair no pedido do cliente atual
   useEffect(() => {
     if (activeTab) useCartStore.getState().bindCartToTab(table.id, activeTab.id);
@@ -323,7 +333,18 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
       </div>
       <div className="mx-auto max-w-5xl space-y-3 px-3 pt-3 sm:px-6">
         {/* Um aviso só, o mais importante: encerrada > enviado > conta pedida */}
-        {!activeTab ? <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">Esta comanda foi encerrada. Volte às mesas para iniciar outro atendimento.</p>
+        {!activeTab ? (checkingTab
+            ? <p role="status" className="notice border-line bg-surface-soft text-ink-secondary">Conferindo a comanda desta mesa...</p>
+            : <div role="alert" className="notice flex-wrap items-center justify-between gap-2 border-rose-200 bg-rose-50 text-rose-800">
+                <span>Esta mesa está sem comanda aberta.</span>
+                <button type="button" className="btn-primary min-h-[44px] px-3 text-sm"
+                  onClick={() => {
+                    if (!currentShift) return;
+                    useTableStore.getState().ensureOpenTab(table.id, currentProfile.id, currentShift.id)
+                      .then((tab) => { if (tab) notify(`Comanda da Mesa ${pad2(table.number)} aberta.`, 'success'); })
+                      .catch((err: unknown) => notify(err instanceof Error ? err.message : 'Não foi possível abrir a comanda.', 'error'));
+                  }}>Abrir comanda</button>
+              </div>)
           : orderSent && cartCount === 0 ? <div role="status" className="notice items-center justify-between border-emerald-200 bg-emerald-50 text-emerald-800"><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5" aria-hidden="true" /><span>Pedido enviado à produção.</span></div><button type="button" className="icon-button bg-emerald-50 text-emerald-800" onClick={() => setOrderSent(false)} aria-label="Dispensar confirmação"><X className="h-4 w-4" /></button></div>
           : (billRequested || table.status === 'AGUARDANDO_CONTA') ? <p role="status" className="notice border-brand-200 bg-brand-50 text-brand-900">Conta pedida. Aguarde o atendimento do caixa.</p>
           : null}

@@ -2,7 +2,7 @@ import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from './supabase';
 import { logger } from './logger';
 import { audioService } from './audio';
-import { useTableStore } from '../stores/useTableStore';
+import { useTableStore, isTabOpening } from '../stores/useTableStore';
 import { useShiftStore } from '../stores/useShiftStore';
 import { useStockStore } from '../stores/useStockStore';
 import { useAuthStore } from '../stores/useAuthStore';
@@ -120,13 +120,21 @@ class SyncService {
 
       if (tabsError) throw tabsError;
 
-      const activeTabs = ((dbTabs || []) as Tab[]).map((t) => ({
+      const dbTabList = ((dbTabs || []) as Tab[]).map((t) => ({
         ...t,
         subtotal: Number(t.subtotal),
         service_fee: Number(t.service_fee),
         discount: Number(t.discount),
         total: Number(t.total),
       }));
+      // Mesa recém-aberta neste celular que o banco ainda não devolveu (envio a caminho, celular estava bloqueado):
+      // mantém, senão o garçom recebe "comanda não encontrada" ao lançar (sábado 14/11)
+      const dbTabIds = new Set(dbTabList.map((t) => t.id));
+      const keptLocalTabs = useTableStore.getState().tabs.filter((t) =>
+        t.status === 'OPEN' && !dbTabIds.has(t.id) &&
+        (isTabOpening(t.id) || Date.now() - new Date(t.opened_at).getTime() < 60_000)
+      );
+      const activeTabs = [...dbTabList, ...keptLocalTabs];
 
       // 4. Busca pagamentos, pedidos e itens das comandas (em partes, para não estourar a URL em noite cheia)
       const tabIds = activeTabs.map((t) => t.id);
