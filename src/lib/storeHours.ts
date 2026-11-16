@@ -52,11 +52,36 @@ export function isOverrideActive(now: Date, overrideDate?: string | null): boole
   return !!overrideDate && overrideDate === localDateKey(now);
 }
 
+/** Verifica se o delivery foi encerrado/pausado manualmente hoje (pelo botão). */
+export function isDeliveryManuallyClosed(
+  now: Date,
+  cutoffTime?: string | null,
+  settingsUpdatedAt?: string | null
+): boolean {
+  if (!cutoffTime) return false;
+  const parts = getBrasiliaDateParts(now);
+  if (settingsUpdatedAt) {
+    const updatedParts = getBrasiliaDateParts(new Date(settingsUpdatedAt));
+    if (updatedParts.dateKey !== parts.dateKey) return false;
+  }
+  const partsArray = cutoffTime.split(':');
+  const cHour = Number(partsArray[0]);
+  const cMin = Number(partsArray[1]);
+  if (isNaN(cHour) || isNaN(cMin)) return false;
+  return parts.hour > cHour || (parts.hour === cHour && parts.minute >= cMin);
+}
+
 /**
  * Dentro do horário do delivery? Vale mesmo que alguém esqueça o turno aberto:
  * na quarta e fora das 18h–23h o cardápio fica fechado.
  */
-export function isWithinStoreHours(now: Date, overrideDate?: string | null): boolean {
+export function isWithinStoreHours(
+  now: Date,
+  overrideDate?: string | null,
+  cutoffTime?: string | null,
+  settingsUpdatedAt?: string | null
+): boolean {
+  if (isDeliveryManuallyClosed(now, cutoffTime, settingsUpdatedAt)) return false;
   const parts = getBrasiliaDateParts(now);
   if (overrideDate && overrideDate === parts.dateKey) return true;
   return parts.dayOfWeek !== CLOSED_WEEKDAY && parts.hour >= OPENS_AT && parts.hour < CLOSES_AT;
@@ -67,12 +92,25 @@ export function isWithinStoreHours(now: Date, overrideDate?: string | null): boo
  * Deve obedecer fielmente ao horário de funcionamento estabelecido (18h às 23h, fechado às quartas),
  * mesmo se o cliente esquecer o turno aberto de um dia para o outro.
  */
-export function isStoreOpen(hasOpenShift: boolean, now: Date, overrideDate?: string | null): boolean {
-  return hasOpenShift && isWithinStoreHours(now, overrideDate);
+export function isStoreOpen(
+  hasOpenShift: boolean,
+  now: Date,
+  overrideDate?: string | null,
+  cutoffTime?: string | null,
+  settingsUpdatedAt?: string | null
+): boolean {
+  return hasOpenShift && isWithinStoreHours(now, overrideDate, cutoffTime, settingsUpdatedAt);
 }
 
 /** Frase depois de "Fechado ·", com a loja fechada no sistema. */
-export function storeClosedText(now: Date): string {
+export function storeClosedText(
+  now: Date,
+  cutoffTime?: string | null,
+  settingsUpdatedAt?: string | null
+): string {
+  if (isDeliveryManuallyClosed(now, cutoffTime, settingsUpdatedAt)) {
+    return 'pedidos delivery encerrados hoje';
+  }
   const parts = getBrasiliaDateParts(now);
   const day = parts.dayOfWeek;
   const hour = parts.hour;

@@ -11,7 +11,9 @@ import {
   History,
   Lock,
   PackageCheck,
+  PauseCircle,
   PieChart,
+  PlayCircle,
   Plus,
   Printer,
   QrCode,
@@ -26,9 +28,12 @@ import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useNavFocusStore } from '../../stores/useNavFocusStore';
 import { usePrintStore } from '../../stores/usePrintStore';
+import { useSettingsStore } from '../../stores/useSettingsStore';
 import { useShiftStore } from '../../stores/useShiftStore';
 import { useStockStore } from '../../stores/useStockStore';
 import { useTableStore } from '../../stores/useTableStore';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
+import { isDeliveryManuallyClosed } from '../../lib/storeHours';
 import type { DeliveryOrder } from '../../types/domain';
 import { ALERT_LIMITS, computeDashboard, type ActivityEvent, type DashboardAlert } from './dashboardMetrics';
 import { ShiftCloseModal } from './ShiftCloseModal';
@@ -60,11 +65,28 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const { stockMovements } = useStockStore();
   const { jobs } = usePrintStore();
   const { isBridgeAlive } = usePrinterHealth();
-  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
-  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
+  const { notify } = useFeedback();
+  const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.updateSettings);
+
   const [feedFilter, setFeedFilter] = useState<'Tudo' | 'Casa' | 'Delivery'>('Tudo');
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
+
+  const isDeliveryClosed = isDeliveryManuallyClosed(new Date(now), settings.delivery_cutoff_time, settings.updated_at);
+
+  const handleToggleDelivery = () => {
+    if (isDeliveryClosed) {
+      updateSettings({ delivery_cutoff_time: null });
+      notify('Delivery reaberto com sucesso. Novos pedidos liberados no cardápio.', 'success');
+    } else {
+      updateSettings({ delivery_cutoff_time: '00:00:00' });
+      notify('Delivery encerrado para novos pedidos. O salão continua aberto normalmente.', 'success');
+    }
+  };
+
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
 
   // Última falha do robô do WhatsApp (gravada pela Edge Function whatsapp-bot)
   const [botErrorAt, setBotErrorAt] = useState<string | null>(null);
@@ -148,6 +170,28 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
         <div className="flex items-center gap-2">
           {currentShift?.status === 'ABERTO' ? (
             <>
+              <button
+                type="button"
+                onClick={handleToggleDelivery}
+                className={`min-h-[40px] px-3.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer ${
+                  !isDeliveryClosed
+                    ? 'btn-secondary text-amber-800 hover:bg-amber-50 hover:border-amber-300'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                }`}
+                title={!isDeliveryClosed ? 'Encerra o delivery para novos pedidos hoje sem fechar o salão' : 'Reabre o delivery para aceitar novos pedidos'}
+              >
+                {!isDeliveryClosed ? (
+                  <>
+                    <PauseCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                    Encerrar delivery
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                    Reabrir delivery
+                  </>
+                )}
+              </button>
               <button
                 type="button"
                 onClick={() => setIsCloseModalOpen(true)}

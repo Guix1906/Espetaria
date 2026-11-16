@@ -325,7 +325,7 @@ export function PublicMenuApp() {
   // Relógio de minuto em minuto: às 23h (ou à 0h de quarta) o cardápio fecha sozinho
   const [now, setNow] = useState(() => new Date());
   useEffect(() => { const id = window.setInterval(() => setNow(new Date()), 30_000); return () => window.clearInterval(id); }, []);
-  const isOpen = currentShift?.status === 'ABERTO' && isWithinStoreHours(now, settings.delivery_open_override_date);
+  const isOpen = currentShift?.status === 'ABERTO' && isWithinStoreHours(now, settings.delivery_open_override_date, settings.delivery_cutoff_time, settings.updated_at);
 
   // Atualizar a página: continua na mesma etapa, com a sacola e as escolhas guardadas
   const [step, setStep] = useState<Step>(() => {
@@ -565,7 +565,7 @@ export function PublicMenuApp() {
       ) : (
         <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-rose-600" />
       )}
-      {isOpen ? `Aberto agora · ${isPickup ? pickupEta : deliveryEta}` : `Fechado no momento · ${storeClosedText(now)}`}
+      {isOpen ? `Aberto agora · ${isPickup ? pickupEta : deliveryEta}` : `Fechado no momento · ${storeClosedText(now, settings.delivery_cutoff_time, settings.updated_at)}`}
     </p>
   );
   const logo = <img src="/brand/logo-sabor-da-carne-288.webp" alt="" width={56} height={56} className="h-14 w-14 shrink-0 rounded-full border border-[#e8b64a] object-cover" />;
@@ -1031,7 +1031,7 @@ export function PublicMenuApp() {
             <p className="mt-2 flex items-center gap-2.5 text-[12px] uppercase tracking-[3px] text-[#e8b64a]"><span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" />Espetos na brasa<span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" /></p>
           </div>
           <div className="mt-[18px] space-y-3 px-5">
-            <p className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[14px] ${isOpen ? 'border-line bg-surface-soft' : 'border-[#4a2620] bg-[#2a1a16]'}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-[#d8382f]'}`} />{isOpen ? <span><b className="font-semibold">Aberto agora</b> · {isPickup ? pickupEta : deliveryEta}</span> : <span><b className="font-semibold">Fechado</b> · {storeClosedText(now)}</span>}</p>
+            <p className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[14px] ${isOpen ? 'border-line bg-surface-soft' : 'border-[#4a2620] bg-[#2a1a16]'}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-[#d8382f]'}`} />{isOpen ? <span><b className="font-semibold">Aberto agora</b> · {isPickup ? pickupEta : deliveryEta}</span> : <span><b className="font-semibold">Fechado</b> · {storeClosedText(now, settings.delivery_cutoff_time, settings.updated_at)}</span>}</p>
             
             {searchBox}
           </div>

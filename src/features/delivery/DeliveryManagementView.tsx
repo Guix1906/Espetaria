@@ -10,10 +10,13 @@ import {
   MessageCircle,
   MoreHorizontal,
   PackageCheck,
+  PauseCircle,
   Phone,
+  PlayCircle,
   Send,
   Trash2
 } from 'lucide-react';
+import { isDeliveryManuallyClosed } from '../../lib/storeHours';
 import { etaMaxMinutes } from '../../lib/eta';
 import React, { useEffect, useMemo, useState } from 'react';
 import { DriverPayoutsView } from './DriverPayoutsView';
@@ -132,11 +135,24 @@ export const DeliveryManagementView: React.FC = () => {
   const { deliveryOrders, updateDeliveryStatus, markDeliveryPaid, whatsappMessages, retryWhatsAppMessage } = useDeliveryStore();
   const { currentProfile } = useAuthStore();
   const settings = useSettingsStore((s) => s.settings);
+  const updateSettings = useSettingsStore((s) => s.updateSettings);
 
   const [activeTab, setActiveTab] = useState<'orders' | 'payouts'>('orders');
   const [openCards, setOpenCards] = useState<Record<string, boolean>>({});
   const toggleCard = (id: string) => setOpenCards((current) => ({ ...current, [id]: !current[id] }));
   const now = useNow();
+
+  const isDeliveryClosed = isDeliveryManuallyClosed(new Date(now), settings.delivery_cutoff_time, settings.updated_at);
+
+  const handleToggleDelivery = () => {
+    if (isDeliveryClosed) {
+      updateSettings({ delivery_cutoff_time: null });
+      notify('Delivery reaberto com sucesso. Novos pedidos liberados no cardápio.', 'success');
+    } else {
+      updateSettings({ delivery_cutoff_time: '00:00:00' });
+      notify('Delivery encerrado para novos pedidos. O salão continua aberto normalmente.', 'success');
+    }
+  };
   // Entregador abre direto nos pedidos prontos para sair
   const [filter, setFilter] = useState<DeliveryFilter>(() => (currentProfile.role === 'ENTREGADOR' ? 'READY' : 'ALL_ACTIVE'));
   // Mensagens que falharam por instabilidade da API ficam "na fila": tenta de novo a cada minuto
@@ -255,7 +271,44 @@ export const DeliveryManagementView: React.FC = () => {
   return (
     <div className="page-layout">
 
-      <PageHeader eyebrow="Pedidos e entregas" title="Delivery" description="Acompanhe cada pedido, organize as saídas e mantenha o cliente informado." icon={Bike} />
+      <PageHeader
+        eyebrow="Pedidos e entregas"
+        title="Delivery"
+        description="Acompanhe cada pedido, organize as saídas e mantenha o cliente informado."
+        icon={Bike}
+        actions={
+          canCancel ? (
+            <div className="flex items-center gap-2">
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${!isDeliveryClosed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
+                <span className={`h-2 w-2 rounded-full ${!isDeliveryClosed ? 'bg-emerald-600 animate-pulse' : 'bg-rose-600'}`} />
+                {!isDeliveryClosed ? 'Delivery Aberto' : 'Delivery Fechado'}
+              </span>
+              <button
+                type="button"
+                onClick={handleToggleDelivery}
+                className={`min-h-[38px] px-3.5 rounded-md text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer ${
+                  !isDeliveryClosed
+                    ? 'bg-rose-50 text-rose-700 border border-rose-300 hover:bg-rose-100'
+                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                }`}
+                title={!isDeliveryClosed ? 'Encerra o cardápio digital para novos pedidos de delivery hoje' : 'Reabre o cardápio digital para aceitar novos pedidos'}
+              >
+                {!isDeliveryClosed ? (
+                  <>
+                    <PauseCircle className="h-4 w-4" />
+                    Encerrar Delivery
+                  </>
+                ) : (
+                  <>
+                    <PlayCircle className="h-4 w-4" />
+                    Reabrir Delivery
+                  </>
+                )}
+              </button>
+            </div>
+          ) : undefined
+        }
+      />
 
       {/* Abas de navegação */}
       <div className="flex flex-wrap gap-2 border-b border-line pb-1">

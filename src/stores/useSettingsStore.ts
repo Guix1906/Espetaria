@@ -60,7 +60,7 @@ const REMOTE_COLUMNS = [
   'name', 'cnpj', 'phone', 'address', 'service_fee_percent', 'allow_custom_service_fee', 'timezone',
   'pix_key', 'pix_key_type', 'pix_merchant_name', 'pix_merchant_city', 'auto_print_orders', 'print_paper_width',
   'whatsapp_auto_enabled', 'whatsapp_dispatch_url', 'whatsapp_dispatch_token', 'whatsapp_templates', 'print_templates',
-  'whatsapp_bot', 'pix_auto_enabled', 'pix_auto_minutes',
+  'whatsapp_bot', 'pix_auto_enabled', 'pix_auto_minutes', 'delivery_cutoff_time',
 ] as const;
 
 /** Colunas de migrações recentes: gravadas à parte para não travar o resto se o SQL ainda não rodou. */
