@@ -116,6 +116,8 @@ export class PrintWorker {
           log('[bridge] ⚠ WebSocket desconectado — operando em modo polling até reconexão.');
         } else if (status === 'SUBSCRIBED') {
           log('[bridge] ✔ WebSocket conectado.');
+          this.reportHeartbeat();
+          this.tick();
         }
       });
 
@@ -271,8 +273,8 @@ export class PrintWorker {
 
   async handle(job) {
     const label = `${job.kind} #${job.order_number} [${job.sector}]`;
-    const maxRetries = 3;
-    const attempt = (job.attempts || 0) + 1;
+    const maxRetries = 8;
+    const attempt = Number(job.attempts || 1);
     try {
       // Via de conferência/expedição do delivery e retirada:
       if (job.kind === 'DELIVERY_SUMMARY') {
@@ -317,8 +319,9 @@ export class PrintWorker {
       }
     } catch (err) {
       if (attempt < maxRetries) {
-        const backoffMs = Math.min(1000 * Math.pow(2, attempt - 1), 8000);
-        log(`[bridge] ↻ ${label} falhou (tentativa ${attempt}/${maxRetries}), retentando em ${backoffMs}ms: ${err.message}`);
+        const backoffSchedule = [3000, 5000, 8000, 12000, 20000, 30000, 45000, 60000];
+        const backoffMs = backoffSchedule[Math.min(attempt - 1, backoffSchedule.length - 1)];
+        log(`[bridge] ↻ ${label} falhou (tentativa ${attempt}/${maxRetries}), retentando em ${backoffMs / 1000}s: ${err.message}`);
         setTimeout(() => {
           this.supabase.rpc(this.rpcName('requeue_print_job'), { p_job_id: job.id, p_error: err.message }).then(({ error }) => {
             if (error) log('[bridge] ERRO ao re-enfileirar:', error.message);
@@ -328,7 +331,7 @@ export class PrintWorker {
         await this.complete(job.id, false, err.message, null);
         this.stats.failed++;
         this.stats.lastError = err.message;
-        log(`[bridge] ✖ ${label} falha permanente após ${maxRetries} tentativas: ${err.message}`);
+        log(`[bridge] ✖ ${label} falha permanente após ${maxRetries} tentativas (~3 min de tolerância): ${err.message}`);
       }
     }
   }

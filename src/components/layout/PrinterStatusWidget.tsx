@@ -8,7 +8,7 @@ import { useFeedback } from '../ui/FeedbackProvider';
 const BANNER_ROLES: string[] = ['MASTER', 'GERENTE', 'CAIXA'];
 
 export const usePrinterHealth = () => {
-  const { printerStatus, jobs } = usePrintStore();
+  const { printerStatus, jobs, dismissedFailedJobIds } = usePrintStore();
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -21,18 +21,21 @@ export const usePrinterHealth = () => {
     : 999;
 
   const isBridgeAlive = heartbeatAgeSeconds < 60;
-  // O PC não testa a porta 9100 para não disputar com o Anota AI; quem mostra impressora com problema é cupom que falhou
-  // Falha que veio antes de um cupom impresso com sucesso no mesmo setor não conta: a impressora já voltou.
-  const recentFailure = (sector: 'GRILL' | 'KITCHEN') => {
-    const at = (j: (typeof jobs)[number]) => new Date(j.printed_at ?? j.updated_at ?? j.created_at).getTime();
-    const lastPrinted = Math.max(0, ...jobs.filter((j) => j.sector === sector && j.status === 'PRINTED').map(at));
-    return jobs.find((j) => j.sector === sector && j.status === 'FAILED' && now - new Date(j.created_at).getTime() < 30 * 60 * 1000 && at(j) > lastPrinted);
-  };
-  const grillFailure = recentFailure('GRILL');
-  const kitchenFailure = recentFailure('KITCHEN');
-  const isGrillOk = isBridgeAlive && Boolean(printerStatus?.grill_online) && !grillFailure;
-  const isKitchenOk = isBridgeAlive && Boolean(printerStatus?.kitchen_online) && !kitchenFailure;
-  const allOk = isGrillOk && isKitchenOk;
+
+  // Cupons com falha ativos (não dispensados pelo usuário e nos últimos 60 minutos)
+  const failedJobs = jobs.filter(
+    (j) =>
+      j.status === 'FAILED' &&
+      !(dismissedFailedJobIds || []).includes(j.id) &&
+      now - new Date(j.created_at).getTime() < 60 * 60 * 1000
+  );
+
+  const grillFailedJobs = failedJobs.filter((j) => j.sector === 'GRILL');
+  const kitchenFailedJobs = failedJobs.filter((j) => j.sector === 'KITCHEN');
+
+  const isGrillOk = isBridgeAlive && Boolean(printerStatus?.grill_online) && grillFailedJobs.length === 0;
+  const isKitchenOk = isBridgeAlive && Boolean(printerStatus?.kitchen_online) && kitchenFailedJobs.length === 0;
+  const allOk = isBridgeAlive && failedJobs.length === 0;
 
   return {
     heartbeatAgeSeconds,
@@ -41,38 +44,73 @@ export const usePrinterHealth = () => {
     isKitchenOk,
     allOk,
     printerStatus,
-    grillFailure,
-    kitchenFailure,
+    failedJobs,
+    grillFailedJobs,
+    kitchenFailedJobs,
+    grillFailure: grillFailedJobs[0] || null,
+    kitchenFailure: kitchenFailedJobs[0] || null,
   };
 };
 
 export const PrinterAlertBanner: React.FC = () => {
-  const { isBridgeAlive, isGrillOk, isKitchenOk, allOk } = usePrinterHealth();
+  const { isBridgeAlive, failedJobs, allOk } = usePrinterHealth();
   const { currentProfile } = useAuthStore();
+  const { retryAllFailedJobs } = usePrintStore();
+  const { notify } = useFeedback();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
   const isManagerOrCashier = BANNER_ROLES.includes(currentProfile.role);
 
   if (allOk || !isManagerOrCashier) return null;
 
+  const handleRetryAll = async () => {
+    setIsRetrying(true);
+    try {
+      const count = await retryAllFailedJobs();
+      notify(`${count} cupom(ns) reenviados para a fila de impressão.`, 'success');
+    } catch (err: any) {
+      notify(`Erro ao reenviar cupons: ${err.message || 'Falha'}`, 'error');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
   return (
     <>
-      <div className="bg-rose-600 text-white px-4 py-2 text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 shadow-md animate-fadeIn">
+      <div
+        className={`px-4 py-2 text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 shadow-md animate-fadeIn ${
+          !isBridgeAlive ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white'
+        }`}
+      >
         <div className="flex items-center gap-2 min-w-0">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-300" />
+          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-200" />
           <span>
             {!isBridgeAlive
-              ? 'Computador de impressão local da loja está desconectado. Verifique se o PC da loja está ligado.'
-              : `Atenção: ${!isKitchenOk ? 'impressora da Cozinha' : ''}${!isKitchenOk && !isGrillOk ? ' e ' : ''}${!isGrillOk ? 'impressora da Churrasqueira' : ''} sem responder. Confira se está ligada e na rede.`}
+              ? 'Computador de impressão local da loja está desconectado. Verifique se o PC da loja está ligado e com internet.'
+              : `Atenção: ${failedJobs.length} cupom(ns) não puderam ser impressos (queda de energia ou impressora desligada).`}
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsModalOpen(true)}
-          className="min-h-[44px] bg-white text-rose-900 px-3 py-1 rounded-lg text-xs font-bold hover:bg-rose-50 transition shrink-0 shadow-xs"
-        >
-          Diagnosticar / Testar
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {isBridgeAlive && failedJobs.length > 0 && (
+            <button
+              type="button"
+              disabled={isRetrying}
+              onClick={handleRetryAll}
+              className="min-h-[36px] bg-white text-amber-900 px-3 py-1 rounded-lg text-xs font-bold hover:bg-amber-50 transition shadow-xs flex items-center gap-1.5"
+            >
+              <RefreshCw className={`w-3 h-3 ${isRetrying ? 'animate-spin' : ''}`} />
+              {isRetrying ? 'Reenviando...' : `Reenviar cupons (${failedJobs.length})`}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setIsModalOpen(true)}
+            className="min-h-[36px] bg-black/20 text-white border border-white/30 px-3 py-1 rounded-lg text-xs font-bold hover:bg-black/30 transition shadow-xs"
+          >
+            Diagnosticar / Detalhes
+          </button>
+        </div>
       </div>
 
       <PrinterDiagnosticsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
@@ -81,11 +119,11 @@ export const PrinterAlertBanner: React.FC = () => {
 };
 
 export const PrinterStatusWidget: React.FC = () => {
-  const { isBridgeAlive, isGrillOk, isKitchenOk, allOk } = usePrinterHealth();
+  const { isBridgeAlive, failedJobs, allOk } = usePrinterHealth();
   const { currentProfile } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
 
-  // Com problema, quem vê a faixa vermelha (PrinterAlertBanner) não precisa do mesmo aviso aqui
+  // Com problema, quem vê a faixa (PrinterAlertBanner) não precisa do mesmo aviso duplicado no topo
   if (!allOk && BANNER_ROLES.includes(currentProfile.role)) return null;
 
   return (
@@ -97,12 +135,16 @@ export const PrinterStatusWidget: React.FC = () => {
         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition shadow-xs ${
           allOk
             ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-            : 'border-rose-400 bg-rose-50 text-rose-800 hover:bg-rose-100 animate-pulse'
+            : !isBridgeAlive
+            ? 'border-rose-400 bg-rose-50 text-rose-800 hover:bg-rose-100 animate-pulse'
+            : 'border-amber-400 bg-amber-50 text-amber-800 hover:bg-amber-100'
         }`}
         title={
           allOk
             ? 'Cozinha e Churrasqueira conectadas e prontas'
-            : 'Atenção: Falha na conexão com as impressoras. Clique para detalhes.'
+            : !isBridgeAlive
+            ? 'Atenção: Computador de impressão da loja offline. Clique para detalhes.'
+            : `Atenção: ${failedJobs.length} cupom(ns) não impressos. Clique para detalhes.`
         }
       >
         {allOk ? (
@@ -111,17 +153,16 @@ export const PrinterStatusWidget: React.FC = () => {
             <Printer className="w-3.5 h-3.5 text-emerald-700" />
             <span className="hidden md:inline">Impressoras OK</span>
           </>
-        ) : (
+        ) : !isBridgeAlive ? (
           <>
             <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+            <span>PC Impressão Offline</span>
+          </>
+        ) : (
+          <>
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
             <span>
-              {!isBridgeAlive
-                ? 'PC Impressão Offline'
-                : !isKitchenOk && !isGrillOk
-                ? 'Impressoras Offline'
-                : !isKitchenOk
-                ? 'Cozinha Offline'
-                : 'Churrasqueira Offline'}
+              {failedJobs.length} {failedJobs.length === 1 ? 'falha pendente' : 'falhas pendentes'}
             </span>
           </>
         )}
@@ -136,10 +177,18 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
   isOpen,
   onClose,
 }) => {
-  const { isBridgeAlive, isGrillOk, isKitchenOk, heartbeatAgeSeconds, printerStatus, grillFailure, kitchenFailure } = usePrinterHealth();
-  const { loadPrinterStatus, sendTestPrintAll } = usePrintStore();
+  const {
+    isBridgeAlive,
+    heartbeatAgeSeconds,
+    printerStatus,
+    failedJobs,
+    grillFailedJobs,
+    kitchenFailedJobs,
+  } = usePrinterHealth();
+  const { loadPrinterStatus, sendTestPrintAll, retryAllFailedJobs, dismissFailedJobs, processJob } = usePrintStore();
   const { notify } = useFeedback();
   const [isTesting, setIsTesting] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [testSuccessMessage, setTestSuccessMessage] = useState<string | null>(null);
 
   const handleTestPrint = async () => {
@@ -154,6 +203,23 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
     } finally {
       setIsTesting(false);
     }
+  };
+
+  const handleRetryAll = async () => {
+    setIsRetrying(true);
+    try {
+      const count = await retryAllFailedJobs();
+      notify(`${count} cupom(ns) reenviados com sucesso para a impressora.`, 'success');
+    } catch (err: any) {
+      notify(`Erro ao reenviar cupons: ${err.message || 'Falha'}`, 'error');
+    } finally {
+      setIsRetrying(false);
+    }
+  };
+
+  const handleDismissAll = () => {
+    dismissFailedJobs();
+    notify('Avisos de cupons com falha dispensados.', 'info');
   };
 
   const handleRefresh = async () => {
@@ -185,8 +251,76 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
           </button>
         </div>
         <p className="text-xs text-ink-muted">
-          O computador da loja avisa aqui que está ligado. Impressora com problema aparece quando um cupom falha; use o teste abaixo para conferir antes de abrir.
+          O computador da loja gerencia a fila física. Se a energia cair, os cupons são retidos e podem ser reenviados abaixo com 1 clique, sem precisar excluir nenhum pedido.
         </p>
+
+        {/* Card de Alerta de Cupons com Falha (Queda de energia ou impressora desligada) */}
+        {failedJobs.length > 0 && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
+                <span className="font-bold text-sm text-amber-900">
+                  Cupons pendentes de impressão ({failedJobs.length})
+                </span>
+              </div>
+              <span className="text-[11px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+                Queda de energia / Desligada
+              </span>
+            </div>
+            <p className="text-xs text-amber-800 leading-relaxed">
+              Estes pedidos falharam ao imprimir enquanto as impressoras estavam sem energia ou reiniciando. Você pode reenviá-los agora com 1 clique ou dispensar os avisos se já foram preparados.
+            </p>
+            <div className="max-h-36 overflow-y-auto divide-y divide-amber-200/70 rounded-lg border border-amber-200 bg-white/70 px-3 py-1 text-xs">
+              {failedJobs.map((j) => (
+                <div key={j.id} className="py-2 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                        j.sector === 'GRILL' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'
+                      }`}
+                    >
+                      {j.sector === 'GRILL' ? 'Churrasqueira' : 'Cozinha'}
+                    </span>
+                    <span className="font-bold text-ink">#{j.order_number}</span>
+                    <span className="text-ink-muted truncate">
+                      {j.origin === 'DELIVERY' ? `Delivery (${j.customer_name || 'Cliente'})` : `Mesa ${j.table_number}`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={isRetrying}
+                    onClick={async () => {
+                      await processJob(j.id);
+                      notify(`Comanda #${j.order_number} reenviada.`, 'success');
+                    }}
+                    className="text-[11px] font-bold text-brand-700 hover:text-brand-900 underline shrink-0"
+                  >
+                    Reenviar
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <button
+                type="button"
+                disabled={isRetrying}
+                onClick={handleRetryAll}
+                className="btn-primary py-1.5 px-3 text-xs font-bold flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+                {isRetrying ? 'Reenviando...' : `Reenviar todos os ${failedJobs.length} cupons`}
+              </button>
+              <button
+                type="button"
+                onClick={handleDismissAll}
+                className="btn-secondary py-1.5 px-3 text-xs font-semibold"
+              >
+                Dispensar avisos
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Cartão do Bridge Local */}
         <div className="rounded-xl border border-line bg-surface p-3.5 space-y-2">
@@ -215,7 +349,11 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
           {/* Cozinha */}
           <div
             className={`rounded-xl border p-3.5 space-y-2 ${
-              isKitchenOk ? 'border-emerald-200 bg-emerald-50/40' : 'border-rose-200 bg-rose-50/40'
+              !isBridgeAlive
+                ? 'border-rose-200 bg-rose-50/40'
+                : kitchenFailedJobs.length > 0
+                ? 'border-amber-200 bg-amber-50/40'
+                : 'border-emerald-200 bg-emerald-50/40'
             }`}
           >
             <div className="flex items-center justify-between">
@@ -225,26 +363,40 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
               </span>
               <span
                 className={`status-badge text-[13px] font-bold ${
-                  isKitchenOk ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                  !isBridgeAlive
+                    ? 'bg-rose-600 text-white'
+                    : kitchenFailedJobs.length > 0
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-emerald-600 text-white'
                 }`}
               >
-                {isKitchenOk ? 'Online' : 'Offline'}
+                {!isBridgeAlive
+                  ? 'Sem sinal'
+                  : kitchenFailedJobs.length > 0
+                  ? `Atenção (${kitchenFailedJobs.length})`
+                  : 'Online'}
               </span>
             </div>
             <p className="text-xs font-mono text-ink-secondary">
               IP: {printerStatus?.kitchen_ip ?? '192.168.3.12:9100'}
             </p>
             <p className="text-xs text-ink-muted">
-              {isKitchenOk
-                ? 'Nenhum cupom falhou nos últimos 30 minutos.'
-                : `Não respondeu: ${kitchenFailure?.last_error || 'verifique cabo e energia'}`}
+              {!isBridgeAlive
+                ? 'Aguardando comunicação do computador da loja.'
+                : kitchenFailedJobs.length > 0
+                ? `${kitchenFailedJobs.length} cupom(ns) com falha recente. Clique em reenviar acima.`
+                : 'Conectada e pronta para imprimir.'}
             </p>
           </div>
 
           {/* Churrasqueira */}
           <div
             className={`rounded-xl border p-3.5 space-y-2 ${
-              isGrillOk ? 'border-emerald-200 bg-emerald-50/40' : 'border-rose-200 bg-rose-50/40'
+              !isBridgeAlive
+                ? 'border-rose-200 bg-rose-50/40'
+                : grillFailedJobs.length > 0
+                ? 'border-amber-200 bg-amber-50/40'
+                : 'border-emerald-200 bg-emerald-50/40'
             }`}
           >
             <div className="flex items-center justify-between">
@@ -254,19 +406,29 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
               </span>
               <span
                 className={`status-badge text-[13px] font-bold ${
-                  isGrillOk ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                  !isBridgeAlive
+                    ? 'bg-rose-600 text-white'
+                    : grillFailedJobs.length > 0
+                    ? 'bg-amber-600 text-white'
+                    : 'bg-emerald-600 text-white'
                 }`}
               >
-                {isGrillOk ? 'Online' : 'Offline'}
+                {!isBridgeAlive
+                  ? 'Sem sinal'
+                  : grillFailedJobs.length > 0
+                  ? `Atenção (${grillFailedJobs.length})`
+                  : 'Online'}
               </span>
             </div>
             <p className="text-xs font-mono text-ink-secondary">
               IP: {printerStatus?.grill_ip ?? '192.168.3.17:9100'}
             </p>
             <p className="text-xs text-ink-muted">
-              {isGrillOk
-                ? 'Nenhum cupom falhou nos últimos 30 minutos.'
-                : `Não respondeu: ${grillFailure?.last_error || 'verifique cabo e energia'}`}
+              {!isBridgeAlive
+                ? 'Aguardando comunicação do computador da loja.'
+                : grillFailedJobs.length > 0
+                ? `${grillFailedJobs.length} cupom(ns) com falha recente. Clique em reenviar acima.`
+                : 'Conectada e pronta para imprimir.'}
             </p>
           </div>
         </div>

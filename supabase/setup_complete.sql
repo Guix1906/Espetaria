@@ -3015,6 +3015,31 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION retry_all_failed_print_jobs()
+RETURNS INT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $
+DECLARE
+    v_uid UUID := require_role(ARRAY['MASTER', 'GERENTE', 'CAIXA', 'GARCOM', 'CHURRASQUEIRA', 'COZINHA', 'BAR']::app_role[]);
+    v_count INT;
+BEGIN
+    WITH updated AS (
+        UPDATE print_queue
+           SET status = 'PENDING',
+               next_attempt_at = NOW(),
+               last_error = NULL,
+               attempts = 0,
+               updated_at = NOW()
+         WHERE status = 'FAILED'
+     RETURNING id
+    )
+    SELECT COUNT(*) INTO v_count FROM updated;
+    RETURN v_count;
+END;
+$;
+
 CREATE OR REPLACE FUNCTION retry_print_job(p_job_id UUID)
 RETURNS VOID
 LANGUAGE plpgsql
@@ -3087,7 +3112,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    v_max_attempts CONSTANT INT := 6;
+    v_max_attempts CONSTANT INT := 8;
 BEGIN
     IF p_success THEN
         UPDATE print_queue
@@ -3137,6 +3162,7 @@ BEGIN
         'cancel_delivery_order(UUID, TEXT)',
         'reprint_print_job(UUID, TEXT)',
         'retry_print_job(UUID)',
+        'retry_all_failed_print_jobs()',
         'enqueue_test_print(production_sector)'
     ]
     LOOP

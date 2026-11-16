@@ -52,6 +52,9 @@ interface PrintState {
   processJob: (jobId: string) => Promise<boolean>;
   reprintJob: (jobId: string, reason?: string) => PrintJob;
   retryJob: (jobId: string) => void;
+  retryAllFailedJobs: () => Promise<number>;
+  dismissedFailedJobIds: string[];
+  dismissFailedJobs: () => void;
   clearPrintedJobs: () => Promise<boolean>;
   /** Exclui cupons da fila (no banco, com Supabase). Retorna false se o banco recusar. */
   deleteJobs: (jobIds: string[]) => Promise<boolean>;
@@ -105,6 +108,52 @@ export const usePrintStore = create<PrintState>((set, get) => ({
   // Com Supabase, a fila oficial é a tabela print_queue (gerada pelo banco)
   jobs: isSupabaseConfigured ? [] : loadInitialQueue(),
   printerStatus: null,
+  dismissedFailedJobIds: [],
+
+  dismissFailedJobs: () => {
+    const failedIds = get().jobs.filter((j) => j.status === 'FAILED').map((j) => j.id);
+    set({ dismissedFailedJobIds: failedIds });
+  },
+
+  retryAllFailedJobs: async () => {
+    const failedJobs = get().jobs.filter((j) => j.status === 'FAILED');
+    if (!failedJobs.length) return 0;
+
+    if (!isSupabaseConfigured) {
+      failedJobs.forEach((job) => get().retryJob(job.id));
+      set({ dismissedFailedJobIds: [] });
+      return failedJobs.length;
+    }
+
+    const failedIds = new Set(failedJobs.map((j) => j.id));
+    set({
+      jobs: get().jobs.map((j) =>
+        failedIds.has(j.id) ? { ...j, status: 'PENDING' as const, last_error: undefined, attempts: 0 } : j
+      ),
+      dismissedFailedJobIds: [],
+    });
+
+    try {
+      const res = await callRpc<number>('retry_all_failed_print_jobs', {}, 'PrintStore');
+      if (typeof res === 'number') {
+        await get().loadRemoteJobs();
+        return res;
+      }
+    } catch {
+      // Fallback para chamada individual se a RPC em lote ainda não foi executada no banco
+    }
+
+    let successCount = 0;
+    await Promise.allSettled(
+      failedJobs.map(async (j) => {
+        const ok = await callRpc('retry_print_job', { p_job_id: j.id }, 'PrintStore');
+        if (ok !== null) successCount++;
+      })
+    );
+
+    await get().loadRemoteJobs();
+    return successCount;
+  },
 
   loadPrinterStatus: async () => {
     if (!isSupabaseConfigured) return;

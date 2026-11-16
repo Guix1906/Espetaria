@@ -15,7 +15,11 @@ export function sectorPrinterHealth(jobs: PrintJob[], sector: PrinterSector, now
   const mine = jobs.filter((j) => j.sector === sector);
   // Falha antiga não conta se a impressora já imprimiu algo depois dela.
   const lastPrinted = Math.max(0, ...mine.filter((j) => j.status === 'PRINTED').map((j) => new Date(j.updated_at ?? j.created_at).getTime()));
-  const stuck = mine.some((j) => (j.status === 'FAILED' && new Date(j.updated_at ?? j.created_at).getTime() > lastPrinted) ||((j.status === 'PENDING' || j.status === 'PRINTING') && now - new Date(j.created_at).getTime() > STALE_AFTER_MS));
+  const stuck = mine.some(
+    (j) =>
+      (j.status === 'FAILED' && now - new Date(j.updated_at ?? j.created_at).getTime() < 5 * 60 * 1000 && new Date(j.updated_at ?? j.created_at).getTime() > lastPrinted) ||
+      ((j.status === 'PENDING' || j.status === 'PRINTING') && now - new Date(j.created_at).getTime() > 2 * STALE_AFTER_MS)
+  );
   if (stuck) return 'NO_SIGNAL';
   return 'ON';
 }
@@ -43,8 +47,9 @@ export function PrinterHealthTag({ jobs, sector }: { jobs: PrintJob[]; sector: P
 export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
   const { notify } = useFeedback();
   const [now, setNow] = useState(() => Date.now());
-  const { printerStatus, loadPrinterStatus, sendTestPrintAll } = usePrintStore();
+  const { printerStatus, loadPrinterStatus, sendTestPrintAll, retryAllFailedJobs } = usePrintStore();
   const [testingAll, setTestingAll] = useState(false);
+  const [retryingAll, setRetryingAll] = useState(false);
   const [testSuccess, setTestSuccess] = useState<string | null>(null);
 
   const heartbeatAgeSeconds = printerStatus?.last_heartbeat
@@ -97,6 +102,28 @@ export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          {failed.length > 0 && (
+            <button
+              type="button"
+              disabled={retryingAll}
+              onClick={async () => {
+                setRetryingAll(true);
+                try {
+                  const count = await retryAllFailedJobs();
+                  notify(`${count} cupom(ns) reenviados para a impressora.`, 'success');
+                } catch (e: any) {
+                  notify('Erro ao reenviar cupons: ' + (e.message || 'Falha'), 'error');
+                } finally {
+                  setRetryingAll(false);
+                }
+              }}
+              className="btn-primary py-2 px-3 text-xs font-bold flex items-center justify-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${retryingAll ? 'animate-spin' : ''}`} />
+              {retryingAll ? 'Reenviando...' : `Reenviar falhas (${failed.length})`}
+            </button>
+          )}
+
           <button
             type="button"
             disabled={testingAll}

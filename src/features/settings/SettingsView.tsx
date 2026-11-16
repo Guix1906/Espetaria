@@ -9,6 +9,7 @@ import {
   MessageCircle,
   Printer,
   QrCode,
+  RefreshCw,
   Settings as SettingsIcon,
   ShieldCheck,
   Store,
@@ -75,6 +76,7 @@ export const SettingsView: React.FC = () => {
     processJob,
     reprintJob,
     deleteJobs,
+    retryAllFailedJobs,
     formatTicketText,
     sendTestPrint,
   } = usePrintStore();
@@ -225,6 +227,7 @@ export const SettingsView: React.FC = () => {
 
   const pendingCount = jobs.filter((j) => j.status === 'PENDING').length;
   const printedCount = jobs.filter((j) => j.status === 'PRINTED').length;
+  const failedCount = jobs.filter((j) => j.status === 'FAILED').length;
 
   return (
     <div className="page-layout pb-24">
@@ -486,8 +489,24 @@ export const SettingsView: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className={`status-badge ${pendingCount > 0 ? 'bg-amber-50 text-amber-800' : 'bg-surface-muted text-ink-secondary'}`}>Pendentes: <span className="font-mono">{pendingCount}</span></span>
               <span className="status-badge bg-surface-muted text-ink">Impressos: <span className="font-mono">{printedCount}</span></span>
+              {failedCount > 0 && (
+                <span className="status-badge bg-rose-50 text-rose-800 font-bold animate-pulse">Falhas: <span className="font-mono">{failedCount}</span></span>
+              )}
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {failedCount > 0 && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const count = await retryAllFailedJobs();
+                    notify(`${count} cupom(ns) reenviados para a impressora.`, 'success');
+                  }}
+                  className="btn-primary text-xs flex items-center gap-1.5 bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" />
+                  Reenviar {failedCount} com falha
+                </button>
+              )}
               <button type="button" onClick={() => void confirmDelete(jobs.filter((j) => j.status === 'PRINTED').map((j) => j.id), 'todos os cupons impressos')} className="btn-secondary text-xs">
                 <Trash2 className="h-4 w-4" aria-hidden="true" />Excluir impressos
               </button>
