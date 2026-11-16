@@ -18,6 +18,11 @@ export function fetchWithTimeout(ms, baseFetch = globalThis.fetch) {
   };
 }
 
+/** Erro de login vencido/recusado (o banco responde 401 / "JWT expired"). */
+export function isAuthError(err) {
+  return /jwt|401|token|unauthori[sz]ed|PGRST30[0-9]/i.test(String(err?.message || err?.code || err || ''));
+}
+
 /** Repete uma chamada ao banco até dar certo (queda de internet), esperando cada vez mais, por até ~10 min. */
 export async function retryRpc(call, { tries = 40, wait = (n) => Math.min(30000, 2000 * n), sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
   let last;
@@ -120,14 +125,36 @@ export class PrintWorker {
     this.heartbeatTimer = null;
   }
 
+  async signIn() {
+    const { error } = await this.supabase.auth.signInWithPassword({
+      email: this.config.printerEmail,
+      password: this.config.printerPassword,
+    });
+    if (error) throw new Error(`Login do usuário da impressora falhou: ${error.message}`);
+  }
+
+  /**
+   * Login vencido (PC dormiu ou ficou muito tempo sem internet): renova na hora em vez de
+   * esperar o relógio interno; se a renovação não der, faz o login de novo. No máximo 1 vez a cada 20 s.
+   */
+  async recoverSession(err) {
+    if (!this.restricted || !isAuthError(err)) return;
+    if (Date.now() - (this.lastRelogin || 0) < 20000) return;
+    this.lastRelogin = Date.now();
+    log('[bridge] Login vencido — renovando...');
+    try {
+      const { error } = await this.supabase.auth.refreshSession();
+      if (error) await this.signIn();
+      log('[bridge] ✔ Login renovado.');
+    } catch (e) {
+      log('[bridge] Não consegui renovar o login agora (tento de novo em seguida):', e.message);
+    }
+  }
+
   async start() {
     this.running = true;
     if (this.restricted) {
-      const { error } = await this.supabase.auth.signInWithPassword({
-        email: this.config.printerEmail,
-        password: this.config.printerPassword,
-      });
-      if (error) throw new Error(`Login do usuário da impressora falhou: ${error.message}`);
+      await this.signIn();
       log(`[bridge] Logado com acesso restrito (${this.config.printerEmail}).`);
     }
     log(`[bridge] Iniciado em modo ${this.config.mode.toUpperCase()} como "${this.config.workerName}".`);
@@ -275,6 +302,7 @@ export class PrintWorker {
       this.stats.lastError = err.message;
       if (!this.offlineSince) this.offlineSince = Date.now();
       log('[bridge] ERRO:', err.message);
+      await this.recoverSession(err);
     } finally {
       this.busy = false;
     }

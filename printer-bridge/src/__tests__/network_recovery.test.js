@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { fetchWithTimeout, retryRpc } from '../worker.js';
+import { fetchWithTimeout, retryRpc, isAuthError } from '../worker.js';
+
+describe('login vencido', () => {
+  it('reconhece o erro de login do banco', () => {
+    expect(isAuthError(new Error('Falha ao buscar fila: JWT expired'))).toBe(true);
+    expect(isAuthError({ code: 'PGRST301' })).toBe(true);
+    expect(isAuthError(new Error('Falha ao buscar fila: fetch failed'))).toBe(false);
+  });
+});
 
 describe('queda de internet', () => {
   it('consulta pendurada desiste no tempo limite', async () => {
