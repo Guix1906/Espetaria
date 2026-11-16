@@ -75,8 +75,8 @@ export function StockSnapshot({ onOpenStock }: { onOpenStock?: () => void }) {
             const pct = stock.initial_quantity > 0 ? Math.min(100, (stock.current_quantity / stock.initial_quantity) * 100) : 0;
             return (
               <li key={stock.id} className="flex items-center gap-2.5 py-2 text-xs first:pt-1 last:pb-0">
-                <span className="min-w-0 flex-1 truncate font-medium text-ink">{product.name}</span>
-                <span className="h-1.5 w-12 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true">
+                <span className="min-w-0 flex-1 break-words font-medium leading-snug text-ink" title={product.name}>{product.name}</span>
+                <span className="hidden h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-surface-muted sm:block" aria-hidden="true">
                   <span
                     className={`block h-full rounded-full ${out ? 'bg-rose-600' : isLow ? 'bg-amber-500' : 'bg-emerald-600'}`}
                     style={{ width: `${pct}%` }}
