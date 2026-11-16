@@ -5,6 +5,36 @@ import { sendRaw, writeSimulated, probe } from './transport.js';
 
 const log = (...args) => console.log(new Date().toLocaleTimeString('pt-BR'), ...args);
 
+/** fetch que desiste depois de `ms` (a internet cair no meio de uma consulta não trava o programa). */
+export function fetchWithTimeout(ms, baseFetch = globalThis.fetch) {
+  return (input, init = {}) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error(`Sem resposta do servidor em ${ms / 1000}s (internet?)`)), ms);
+    if (init.signal) {
+      if (init.signal.aborted) controller.abort(init.signal.reason);
+      else init.signal.addEventListener('abort', () => controller.abort(init.signal.reason), { once: true });
+    }
+    return baseFetch(input, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+  };
+}
+
+/** Repete uma chamada ao banco até dar certo (queda de internet), esperando cada vez mais, por até ~10 min. */
+export async function retryRpc(call, { tries = 40, wait = (n) => Math.min(30000, 2000 * n), sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  let last;
+  for (let n = 1; n <= tries; n++) {
+    try {
+      const { error } = await call();
+      if (!error) return true;
+      last = error;
+    } catch (err) {
+      last = err;
+    }
+    if (n < tries) await sleep(wait(n));
+  }
+  log('[bridge] Banco não respondeu depois de várias tentativas:', last?.message || last);
+  return false;
+}
+
 /** Imprime (ou simula) um único job. Lança erro em caso de falha. */
 export async function printJob(job, config) {
   const { target, address } = resolvePrinter(config, job.sector);
@@ -77,6 +107,8 @@ export class PrintWorker {
     this.config = config;
     this.supabase = createClient(config.supabaseUrl, this.restricted ? config.anonKey : config.serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: this.restricted },
+      // Queda de internet: sem limite de tempo uma consulta pode ficar pendurada para sempre e travar a fila.
+      global: { fetch: fetchWithTimeout(config.requestTimeoutMs || 15000) },
     });
     // No acesso restrito as RPCs passam pelos wrappers printer_* (checam se o usuário é a impressora)
     this.rpcName = (name) => (this.restricted ? `printer_${name}` : name);
@@ -212,8 +244,14 @@ export class PrintWorker {
 
   async tick() {
     if (!this.running) return;
+    // Vigia: se uma rodada ficou presa mais de 2 min (queda de rede no meio), libera para recomeçar.
+    if (this.busy && Date.now() - (this.busySince || 0) > 120000) {
+      log('[bridge] ⚠ Rodada anterior travou (provável queda de internet) — recomeçando.');
+      this.busy = false;
+    }
     if (this.busy) { this.again = true; return; }
     this.busy = true;
+    this.busySince = Date.now();
     try {
       do {
         this.again = false;
@@ -222,6 +260,11 @@ export class PrintWorker {
           p_limit: 10,
         });
         if (error) throw new Error(`Falha ao buscar fila: ${error.message}`);
+        if (this.offlineSince) {
+          log(`[bridge] ✔ Internet voltou (fora por ${Math.round((Date.now() - this.offlineSince) / 1000)}s) — retomando a fila.`);
+          this.offlineSince = null;
+          this.reportHeartbeat();
+        }
         if (jobs?.length) {
           // Setores diferentes em paralelo; mesma impressora é serializada no transporte
           await Promise.all(jobs.map((job) => this.handle(job)));
@@ -230,6 +273,7 @@ export class PrintWorker {
       } while (this.again && this.running);
     } catch (err) {
       this.stats.lastError = err.message;
+      if (!this.offlineSince) this.offlineSince = Date.now();
       log('[bridge] ERRO:', err.message);
     } finally {
       this.busy = false;
@@ -273,7 +317,8 @@ export class PrintWorker {
 
   async handle(job) {
     const label = `${job.kind} #${job.order_number} [${job.sector}]`;
-    const maxRetries = 8;
+    // ~15 min de tolerância (impressora sem energia/reiniciando) antes de desistir do cupom.
+    const maxRetries = 20;
     const attempt = Number(job.attempts || 1);
     try {
       // Via de conferência/expedição do delivery e retirada:
@@ -322,27 +367,27 @@ export class PrintWorker {
         const backoffSchedule = [3000, 5000, 8000, 12000, 20000, 30000, 45000, 60000];
         const backoffMs = backoffSchedule[Math.min(attempt - 1, backoffSchedule.length - 1)];
         log(`[bridge] ↻ ${label} falhou (tentativa ${attempt}/${maxRetries}), retentando em ${backoffMs / 1000}s: ${err.message}`);
+        // Sem internet o re-enfileirar falhava e o cupom ficava preso; agora insiste até o banco responder.
         setTimeout(() => {
-          this.supabase.rpc(this.rpcName('requeue_print_job'), { p_job_id: job.id, p_error: err.message }).then(({ error }) => {
-            if (error) log('[bridge] ERRO ao re-enfileirar:', error.message);
-          });
+          retryRpc(() => this.supabase.rpc(this.rpcName('requeue_print_job'), { p_job_id: job.id, p_error: err.message }))
+            .then(() => this.tick());
         }, backoffMs);
       } else {
         await this.complete(job.id, false, err.message, null);
         this.stats.failed++;
         this.stats.lastError = err.message;
-        log(`[bridge] ✖ ${label} falha permanente após ${maxRetries} tentativas (~3 min de tolerância): ${err.message}`);
+        log(`[bridge] ✖ ${label} falha permanente após ${maxRetries} tentativas (~15 min de tolerância): ${err.message}`);
       }
     }
   }
 
   async complete(id, success, error, printer) {
-    const { error: rpcError } = await this.supabase.rpc(this.rpcName('complete_print_job'), {
+    // Cupom já impresso: insiste em avisar o banco, senão ele seria impresso de novo como 2ª via.
+    await retryRpc(() => this.supabase.rpc(this.rpcName('complete_print_job'), {
       p_job_id: id,
       p_success: success,
       p_error: error,
       p_printer: printer,
-    });
-    if (rpcError) log('[bridge] Não foi possível atualizar o status do cupom:', rpcError.message);
+    }), { tries: 8 });
   }
 }
