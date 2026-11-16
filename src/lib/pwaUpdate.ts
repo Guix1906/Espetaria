@@ -63,8 +63,44 @@ export function initAutoUpdate() {
     window.location.reload();
   };
 
-  const triggerReload = () => {
+  /**
+   * Plano B: a versão nova está no ar há mais de 90 s e a tela continua na antiga (o service worker
+   * não conseguiu baixar a versão nova, por exemplo por queda de internet no meio). Apaga o que está
+   * guardado e recarrega direto do site. No máximo 1 vez a cada 5 min, para nunca virar recarga sem fim.
+   */
+  const hardReload = async () => {
+    try {
+      const last = Number(sessionStorage.getItem('ponto_hard_reload_at') || '0');
+      if (Date.now() - last < 5 * 60000) return false;
+      sessionStorage.setItem('ponto_hard_reload_at', String(Date.now()));
+    } catch {}
+    try {
+      const regs = await navigator.serviceWorker?.getRegistrations?.();
+      await Promise.all((regs || []).map((reg) => reg.unregister()));
+    } catch {}
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+      }
+    } catch {}
+    return true;
+  };
+
+  const triggerReload = (hard = false) => {
     if (isReloading) return;
+    if (hard) {
+      isReloading = true;
+      const go = () => void hardReload().then((ok) => { if (ok) window.location.reload(); else isReloading = false; });
+      if (!isUserInteracting()) { showUpdateToast(false); go(); return; }
+      showUpdateToast(true);
+      let waited = 0;
+      const wait = window.setInterval(() => {
+        waited += 1;
+        if (!isUserInteracting() || waited >= 180) { window.clearInterval(wait); go(); }
+      }, 1000);
+      return;
+    }
 
     // Proteção contra tela "piscando": se o aparelho não pegar a versão nova, para de insistir
     try {
@@ -119,6 +155,21 @@ export function initAutoUpdate() {
     });
   }
 
+  /** Guarda quando esta tela viu a versão nova pela primeira vez; true se já passou de 90 s sem entrar. */
+  const stuckOnOldVersion = (target: string) => {
+    try {
+      const raw = sessionStorage.getItem('ponto_update_target');
+      const seen = raw ? (JSON.parse(raw) as { build: string; at: number }) : null;
+      if (!seen || seen.build !== target) {
+        sessionStorage.setItem('ponto_update_target', JSON.stringify({ build: target, at: Date.now() }));
+        return false;
+      }
+      return Date.now() - seen.at > 90000;
+    } catch {
+      return false;
+    }
+  };
+
   const checkForUpdates = async () => {
     if (!navigator.onLine || isReloading) return;
 
@@ -140,6 +191,10 @@ export function initAutoUpdate() {
           const data = (await res.json()) as { buildTime?: string };
           if (data?.buildTime && data.buildTime !== currentBuildTime) {
             // Nova versão no ar na Cloudflare!
+            if (stuckOnOldVersion(data.buildTime)) {
+              triggerReload(true);
+              return;
+            }
             if (registrationRef) {
               await registrationRef.update();
             }
