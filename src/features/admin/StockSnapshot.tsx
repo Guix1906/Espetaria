@@ -68,21 +68,22 @@ export function StockSnapshot({ onOpenStock }: { onOpenStock?: () => void }) {
       </button>
 
       {isExpanded && (
-        <ul className="mt-3 divide-y divide-line/60 max-h-[19rem] overflow-y-auto pr-1">
+        <ul className="mt-3 divide-y divide-line/60 max-h-[24rem] overflow-y-auto pr-1">
           {rows.map(({ stock, product }) => {
             const out = stock.is_exhausted || stock.current_quantity <= 0;
             const isLow = !out && stock.current_quantity <= LOW_STOCK;
             const pct = stock.initial_quantity > 0 ? Math.min(100, (stock.current_quantity / stock.initial_quantity) * 100) : 0;
             return (
-              <li key={stock.id} className="flex items-center gap-2.5 py-2 text-xs first:pt-1 last:pb-0">
-                <span className="min-w-0 flex-1 break-words font-medium leading-snug text-ink" title={product.name}>{product.name}</span>
-                <span className="hidden h-1.5 w-12 shrink-0 overflow-hidden rounded-full bg-surface-muted sm:block" aria-hidden="true">
+              <li key={stock.id} className="py-2.5 text-xs first:pt-1 last:pb-0">
+                <p className="text-[13px] font-medium leading-snug text-ink">{product.name}</p>
+                <div className="mt-1.5 flex items-center gap-2.5">
+                <span className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-surface-muted" aria-hidden="true">
                   <span
                     className={`block h-full rounded-full ${out ? 'bg-rose-600' : isLow ? 'bg-amber-500' : 'bg-emerald-600'}`}
                     style={{ width: `${pct}%` }}
                   />
                 </span>
-                <span className={`w-14 shrink-0 text-right ${out ? 'font-bold text-rose-700' : isLow ? 'font-bold text-amber-700' : 'text-ink'}`}>
+                <span className={`shrink-0 text-right ${out ? 'font-bold text-rose-700' : isLow ? 'font-bold text-amber-700' : 'text-ink'}`}>
                   {stock.is_exhausted ? 'Bloqueado' : out ? 'Esgotado' : <><span className="tabular-nums">{stock.current_quantity}</span><span className="text-ink-muted tabular-nums font-normal">/{stock.initial_quantity}</span></>}
                 </span>
                 {stock.is_exhausted ? (
@@ -106,6 +107,7 @@ export function StockSnapshot({ onOpenStock }: { onOpenStock?: () => void }) {
                     Bloquear
                   </button>
                 )}
+                </div>
               </li>
             );
           })}
