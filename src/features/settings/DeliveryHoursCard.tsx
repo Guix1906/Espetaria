@@ -17,7 +17,7 @@ export function DeliveryHoursCard() {
   const inHours = isWithinStoreHours(now);
 
   return (
-    <section className="surface-card max-w-2xl space-y-3 p-4 sm:p-5" aria-labelledby="delivery-hours-title">
+    <section className="surface-card space-y-3 p-4 sm:p-5" aria-labelledby="delivery-hours-title">
       <div>
         <h3 id="delivery-hours-title" className="text-base font-bold text-ink">Horário do delivery</h3>
         <p className="text-sm text-ink-muted">

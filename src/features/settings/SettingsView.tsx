@@ -594,11 +594,11 @@ export const SettingsView: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'store' && <DeliveryHoursCard />}
-
-      {/* ABA 4: DADOS DA ESPETARIA */}
+      {/* ABA 4: DADOS DA ESPETARIA — no computador, horário e dados lado a lado (antes usava meia tela) */}
       {activeTab === 'store' && (
-        <form onSubmit={handleSaveStore} className="surface-card p-4 sm:p-5 max-w-2xl space-y-4">
+        <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <DeliveryHoursCard />
+        <form onSubmit={handleSaveStore} className="surface-card p-4 sm:p-5 space-y-4">
           <div className="border-b border-line pb-3">
             <h3 className="text-base font-bold text-ink">Dados da loja</h3>
             <p className="text-xs text-ink-muted">
@@ -692,6 +692,7 @@ export const SettingsView: React.FC = () => {
             <div className="mt-2">{feedbackFor('store')}</div>
           </div>
         </form>
+        </div>
       )}
     </div>
   );

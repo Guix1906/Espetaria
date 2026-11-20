@@ -99,6 +99,7 @@ explicar passo a passo, em linguagem simples, e sempre verificar no navegador).
 
 - Primeira abertura do cardapio (03/11): telas do cliente (`isPublicRoute`) nao registram service worker nem recarregam; `index.html` ja busca produtos e categorias (`takeMenuPreload`) e o plugin `cardapio-modulepreload` baixa os arquivos do cardapio junto com o principal. No painel, a primeira instalacao do SW nao recarrega.
 - Rascunho do garçom (03/11): fica no aparelho, ligado à comanda (`bindCartToTab` em `useCartStore`); rascunho de comanda anterior da mesa é descartado ao abrir a mesa. Botão Trocar só usa `ItemSwapModal`, sem aviso para escolher no cardápio (o item antigo não era cancelado); na troca nenhum ponto vem marcado e Completo exige o arroz (um só para toda a quantidade, porque a troca grava uma linha).
+- Repaginação visual (20/11, etapas 1–5): regras em `docs/padrao-visual.md` (botões por cor/uso, `.choice`, `SectionTabs` para seções, `FilterChip` para filtros, etiquetas sem borda, letra mínima 12 px). Salão: `TableCard` com tempo aberto + mapa compacto de livres; pedido no computador em duas colunas (`WaiterOrderPad` com `dedicated=false`); churrasqueira com cartões abertos; Caixa "Receber" → "Encerrar".
 - Combo que zerou fica com `available=false` no banco e a abertura do turno so libera o espeto contado: no garcom, combo com saldo vale pelo saldo (`getProductAvailability`).
 
 ## Chaves e credenciais — NÃO pedir ao usuário

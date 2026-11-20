@@ -200,6 +200,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
         )}
         {product.allows_doneness && <fieldset className="space-y-2.5">
           <legend className="mb-2 text-base font-semibold text-ink">Ponto da carne <span className="font-normal text-ink-muted">· obrigatório</span></legend>
+          {!isEditing && <p className="-mt-1 text-sm text-ink-muted">Toque no ponto para escolher. Pontos diferentes no mesmo pedido: use o + de cada um.</p>}
           {options.map((option) => {
             const on = selectedDoneness === option.value;
             const count = donenessCounts[option.value] || 0;

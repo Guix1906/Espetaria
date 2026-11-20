@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, AlertTriangle, CheckCircle2, RefreshCw, Server } from 'lucide-react';
+import { Printer, AlertTriangle, CheckCircle2, RefreshCw, Server, X } from 'lucide-react';
 import { usePrintStore } from '../../stores/usePrintStore';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { Dialog } from '../ui/Dialog';
@@ -249,7 +249,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
             className="w-8 h-8 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink hover:bg-surface-muted transition"
             aria-label="Fechar"
           >
-            ✕
+            <X className="h-4 w-4" />
           </button>
         </div>
         <p className="text-xs text-ink-muted">

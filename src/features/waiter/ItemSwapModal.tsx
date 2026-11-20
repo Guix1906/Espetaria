@@ -164,7 +164,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
 
         {/* Item Atual a ser cancelado */}
         <div className="rounded-xl border border-rose-200 bg-rose-50/70 p-3.5 space-y-1">
-          <div className="flex items-center justify-between text-sm font-bold text-rose-800 uppercase tracking-wide">
+          <div className="flex items-center justify-between text-sm font-semibold text-rose-800">
             <span>Item a cancelar na produção</span>
             <span>{formatBRL(oldTotal)}</span>
           </div>
@@ -256,7 +256,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
             <div className="space-y-3 rounded-xl border border-brand-200 bg-brand-50/50 p-4">
               <div className="flex items-start justify-between">
                 <div>
-                  <span className="text-sm font-bold uppercase tracking-wider text-brand-800">Novo produto escolhido</span>
+                  <span className="text-sm font-semibold text-brand-800">Novo produto escolhido</span>
                   <h4 className="text-lg font-bold text-ink leading-tight">{selectedProduct.name}</h4>
                   <p className="font-mono text-base font-semibold text-brand-700">{formatBRL(selectedProduct.price)} cada</p>
                 </div>
@@ -272,7 +272,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
               {/* Ponto da Carne */}
               {selectedProduct.allows_doneness && (
                 <div className="space-y-1.5 pt-1">
-                  <label className="text-sm font-bold uppercase text-ink-muted">Ponto da carne</label>
+                  <label className="text-sm font-semibold text-ink-secondary">Ponto da carne</label>
                   <div className="grid grid-cols-3 gap-1.5">
                     {DONENESS_OPTIONS.map((opt) => (
                       <button
@@ -293,7 +293,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
               {/* Observações */}
               {selectedProduct.allows_notes && (
                 <div className="space-y-1 pt-1">
-                  <label htmlFor="swap-notes" className="text-sm font-bold uppercase text-ink-muted">Observação</label>
+                  <label htmlFor="swap-notes" className="text-sm font-semibold text-ink-secondary">Observação</label>
                   <input
                     id="swap-notes"
                     type="text"

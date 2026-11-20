@@ -17,17 +17,17 @@ function showUpdateToast(waiting = false) {
   const existing = document.getElementById('ponto-update-toast');
   if (existing) {
     if (waiting) {
-      existing.innerHTML = '<span>⚡</span><span>Nova versão pronta. Atualizando em instantes...</span>';
+      existing.innerHTML = '<span>Nova versão pronta. Atualizando em instantes...</span>';
     }
     return;
   }
 
   const toast = document.createElement('div');
   toast.id = 'ponto-update-toast';
-  toast.className = 'fixed top-3 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2 bg-brand-700 text-white text-xs font-semibold rounded-full shadow-2xl flex items-center gap-2 animate-bounce border border-amber-300';
+  toast.className = 'fixed top-3 left-1/2 -translate-x-1/2 z-[9999] px-4 py-2 bg-ink text-white text-sm font-medium rounded-md shadow-floating flex items-center gap-2';
   toast.innerHTML = waiting
-    ? '<span>⚡</span><span>Nova versão pronta. Atualizando em instantes...</span>'
-    : '<span>⚡</span><span>Atualizando sistema para a versão mais recente...</span>';
+    ? '<span>Nova versão pronta. Atualizando em instantes...</span>'
+    : '<span>Atualizando o sistema para a versão mais recente...</span>';
   document.body.appendChild(toast);
 }
 

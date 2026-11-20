@@ -126,7 +126,7 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
 
         {/* Grade de mesas livres */}
         <div className="flex-1 overflow-y-auto space-y-2">
-          <p className="text-sm font-semibold text-ink-muted uppercase tracking-wide">
+          <p className="text-sm font-semibold text-ink-secondary">
             Mesas livres ({freeTables.length}):
           </p>
           {filtered.length === 0 ? (

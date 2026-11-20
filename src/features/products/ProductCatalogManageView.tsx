@@ -139,10 +139,11 @@ export const ProductCatalogManageView: React.FC = () => {
                   </div>
                   <span className="hidden text-sm text-ink-secondary md:block">{SECTOR_LABEL[product.sector] ?? product.sector}</span>
                   <span className="hidden text-right font-mono text-[15px] font-semibold text-ink md:block">{formatBRL(product.price)}</span>
-                  <span className="hidden md:block"><StatusTag kind={product.active ? 'occupied' : 'reserved'}>{product.active ? 'Ativo' : 'Pausado'}</StatusTag></span>
-                  <div className="flex items-center justify-end gap-2">
-                    <button type="button" onClick={() => toggleProductActive(product.id)} className="btn-secondary hidden min-h-[44px] md:inline-flex">{product.active ? 'Pausar' : 'Reativar'}</button>
-                    <button type="button" onClick={() => handleEdit(product)} className="btn-secondary hidden min-h-[44px] md:inline-flex">Editar</button>
+                  {/* Só marca o que foge do normal (pausado); "Ativo" em toda linha era ruído */}
+                  <span className="hidden md:block">{!product.active && <StatusTag kind="reserved">Pausado</StatusTag>}</span>
+                  <div className="flex items-center justify-end gap-1">
+                    {/* Editar à vista; pausar, reativar e excluir ficam no menu "..." */}
+                    <button type="button" onClick={() => handleEdit(product)} className="btn-secondary hidden min-h-[40px] md:inline-flex">Editar</button>
                     <MoreMenu product={product} onEdit={() => handleEdit(product)} onToggle={() => toggleProductActive(product.id)} onDelete={() => void handleDelete(product)} />
                   </div>
                 </li>
