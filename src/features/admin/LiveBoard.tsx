@@ -89,6 +89,7 @@ interface Card {
   level: ElapsedLevel;
   title: string;
   time: string;
+  since: string;
   items: string;
   status: string;
   onClick?: () => void;
@@ -123,6 +124,7 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
       level: bill ? 'urgent' : info.ready > 0 ? 'warning' : 'ok',
       title: `Mesa ${table ? pad2(table.number) : '—'}${name}`,
       time: formatElapsedMinutes(tab.opened_at, now),
+      since: tab.opened_at,
       items: (items.some(isPendingProduction) ? items.filter(isPendingProduction) : items).map((i) => `${i.quantity}× ${i.product_name}`).join(', ') || 'Sem pedido',
       status: bill ? 'Conta pedida' : info.ready > 0 ? `${info.ready} pronto${info.ready > 1 ? 's' : ''} para levar` : info.preparing > 0 ? `${info.preparing} ${tabColumn(items) === 'grill' ? 'na brasa' : 'em preparo'}` : info.itemCount ? 'Consumindo' : 'Sem pedido',
       onClick: table && goTable ? () => goTable(table.id, bill ? 'cashier' : 'waiter') : undefined,
@@ -140,6 +142,7 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
       level: lateIds.has(o.id) ? 'urgent' : elapsedLevel(o.created_at, now, 30, 45),
       title: `${o.customer_name.trim().split(' ')[0] || o.customer_name} · #${o.order_number}`,
       time: formatElapsedMinutes(o.created_at, now),
+      since: o.created_at,
       items: o.items.map((i) => `${i.quantity}× ${i.product_name}`).join(', '),
       status: stage ? (stage === 'READY' && pickup ? (dineIn ? 'Pronto no balcão' : 'Pronto, cliente vem buscar') : DELIVERY_STAGE[stage].charAt(0).toUpperCase() + DELIVERY_STAGE[stage].slice(1)) : '',
       onClick: go ? () => { if (pickup && dineIn) focusOrderKind('DINE_IN'); go('delivery'); } : undefined,
@@ -150,7 +153,7 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
   const cards = [...openTabs.map((t) => tabCard(t, tables.find((x) => x.id === t.table_id))), ...activeDeliveries.map(deliveryCard)]
     .filter((c) => filter === 'Todos' || c.channel === filter)
     .filter((c) => !term || `${c.title} ${c.items}`.toLowerCase().includes(term))
-    .sort((a, b) => RANK[a.level] - RANK[b.level]);
+    .sort((a, b) => RANK[a.level] - RANK[b.level] || a.since.localeCompare(b.since));
 
   return (
     <section className="space-y-3" aria-label="Movimento agora">
@@ -195,12 +198,10 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
         {COLUMNS.map((col) => {
           const rows = cards.filter((c) => c.column === col.id);
           return (
-            <div key={col.id} className={`flex min-h-[14rem] flex-col overflow-hidden rounded-md border border-line ${col.borderColor} bg-surface-soft/40 shadow-sm`}>
-              <h3 className={`flex items-center justify-between ${col.headerBorder} ${col.headerBg} px-3.5 py-2.5 text-sm font-semibold ${col.headerText}`}>
-                <span className="flex-1">{col.title}</span>
-                <span className={`rounded-sm px-2 py-0.5 font-mono text-xs font-bold ${col.badgeStyle}`}>
-                  {rows.length}
-                </span>
+            <div key={col.id} className="flex min-h-[14rem] flex-col overflow-hidden rounded-md bg-surface-soft/60">
+              <h3 className="flex items-center justify-between gap-2 px-3 pb-1 pt-2.5 text-sm font-semibold text-ink">
+                <span className="flex flex-1 items-center gap-1.5"><col.icon className="h-4 w-4 text-ink-muted" aria-hidden="true" />{col.title}</span>
+                <span className="font-mono text-xs font-semibold text-ink-muted">{rows.length}</span>
               </h3>
               {rows.length === 0 ? (
                 <div className="m-auto flex flex-col items-center justify-center p-6 text-center">
@@ -218,23 +219,21 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
                         type="button"
                         onClick={c.onClick}
                         disabled={!c.onClick}
-                        className={`group block w-full space-y-1 rounded-xl border bg-surface p-3 text-left transition-all duration-150 hover:shadow-sm hover:border-ink/30 ${
+                        className={`group block w-full space-y-1 rounded-md p-3 text-left transition-colors duration-150 ${
                           c.level === 'urgent'
-                            ? 'border-l-[4px] border-l-rose-600 border-rose-200 bg-rose-50/20'
+                            ? 'bg-rose-50 hover:bg-rose-100/70'
                             : c.level === 'warning'
-                            ? 'border-l-[4px] border-l-amber-500 border-amber-200 bg-amber-50/20'
-                            : 'border-line hover:border-brand-300'
+                            ? 'bg-amber-50 hover:bg-amber-100/70'
+                            : 'bg-surface hover:bg-surface-muted'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-xs font-bold text-ink">{c.title}</span>
-                          <span className="shrink-0 font-mono text-xs text-ink-muted">{c.time}</span>
+                          <span className="truncate text-sm font-semibold text-ink">{c.title}</span>
+                          <span className={`shrink-0 font-mono text-xs font-semibold ${c.level === 'urgent' ? 'text-rose-700' : c.level === 'warning' ? 'text-amber-800' : 'text-emerald-700'}`}>{c.time}</span>
                         </div>
-                        <p className="line-clamp-2 text-xs text-ink-secondary leading-snug">{c.items}</p>
+                        <p className="line-clamp-2 text-[13px] leading-snug text-ink-secondary">{c.items}</p>
                         <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5 text-xs">
-                          <span className="rounded bg-surface-muted px-1.5 py-0.5 text-ink-muted font-medium">
-                            {c.channel}
-                          </span>
+                          <span className="font-medium text-ink-muted">{c.channel}</span>
                           <span
                             className={`font-semibold ${
                               c.level === 'urgent'

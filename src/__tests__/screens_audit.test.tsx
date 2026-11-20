@@ -226,8 +226,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
       expect(html).toContain('Cliente Teste');
       expect(html).toContain('Mesa 01');
       expect(html).toContain('2 na brasa');
-      expect(html).toContain('Movimentações do turno');
-      expect(html).toContain('Comanda aberta · Mesa 01');
+      expect(html).not.toContain('Movimentações do turno');
       expect(html).not.toContain('R$');
     });
 

@@ -6,9 +6,7 @@ import {
   ArrowRight,
   Bike,
   CheckCircle2,
-  Clock,
   Flame,
-  History,
   Lock,
   PackageCheck,
   PauseCircle,
@@ -33,21 +31,13 @@ import { useTableStore } from '../../stores/useTableStore';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { isDeliveryManuallyClosed } from '../../lib/storeHours';
 import type { DeliveryOrder } from '../../types/domain';
-import { ALERT_LIMITS, computeDashboard, type ActivityEvent, type DashboardAlert } from './dashboardMetrics';
+import { ALERT_LIMITS, computeDashboard, type DashboardAlert } from './dashboardMetrics';
 import { ShiftCloseModal } from './ShiftCloseModal';
 
 interface MasterDashboardViewProps {
   onNavigateTab?: (tab: ActiveTab) => void;
   onOpenShiftClick?: () => void;
 }
-
-const TONE: Record<ActivityEvent['tone'], string> = {
-  success: 'bg-emerald-50 text-emerald-800',
-  warning: 'bg-amber-50 text-amber-900',
-  info: 'bg-sky-50 text-ink',
-  danger: 'bg-rose-50 text-rose-800',
-  neutral: 'bg-surface-muted text-ink',
-};
 
 /** Respostas fixas do robô (sem IA), iguais a MEDIA_REPLY/HANDOFF_FALLBACK em supabase/functions/whatsapp-bot/logic.ts. */
 const BOT_CANNED_REPLIES = [
@@ -67,7 +57,6 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
 
-  const [feedFilter, setFeedFilter] = useState<'Tudo' | 'Casa' | 'Delivery'>('Tudo');
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
   // Lugar das ações na barra do topo (criado pelo Header só na Visão geral)
@@ -151,7 +140,6 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const activeDeliveries = (Object.values(d.stages).flat() as DeliveryOrder[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
   const deliveryCount = activeDeliveries.filter((o) => !isDineInOrder(o)).length;
   const lateIds = new Set(d.lateDeliveries.map((o) => o.id));
-  const feed = d.feed.filter((e) => feedFilter === 'Tudo' || (feedFilter === 'Casa' ? e.channel === 'Casa' : e.channel === 'Delivery' || e.channel === 'Consumir no local' || e.channel === 'Retirada'));
   const printerProblem = isSupabaseConfigured && (!isBridgeAlive || d.stuckJobs.length > 0 || d.failedJobs.length > 0);
   const topByQty = [...d.topProducts].sort((a, b) => b.qty - a.qty).slice(0, 8);
 
@@ -209,26 +197,28 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
       )}
 
       {/* FAIXA COMPACTA DE ALERTAS INTELIGENTES */}
-      {d.alerts.length > 0 && (
-        <section aria-label="Alertas" className="space-y-1.5">
+      {(d.alerts.length > 0 || printerProblem) && (
+        <section aria-label="Precisa de você agora" className="flex flex-wrap items-center gap-2 rounded-md bg-rose-50 px-3 py-2.5">
+          <span className="flex items-center gap-1.5 pr-1 text-sm font-semibold text-rose-900">
+            <AlertTriangle className="h-4 w-4 text-rose-600" aria-hidden="true" />
+            Precisa de você agora
+          </span>
+          {printerProblem && (
+            <button type="button" onClick={() => setIsDiagnosticsOpen(true)} className="flex min-h-[36px] items-center gap-1.5 rounded-sm bg-surface px-3 text-[13px] font-medium text-ink hover:bg-surface-muted">
+              <Printer className="h-3.5 w-3.5 text-rose-600" aria-hidden="true" />
+              Impressora com cupom parado
+              <ArrowRight className="h-3.5 w-3.5 text-ink-muted" aria-hidden="true" />
+            </button>
+          )}
           {d.alerts.map((alert) => (
             <button
               key={alert.id}
               type="button"
               onClick={() => goAlert(alert.target)}
-              className={`flex min-h-[40px] w-full items-center justify-between gap-3 rounded-xl border px-3.5 py-2 text-left text-sm font-medium transition hover:brightness-95 ${
-                alert.tone === 'danger'
-                  ? 'border-rose-200 bg-rose-50/90 text-rose-900'
-                  : 'border-amber-200 bg-amber-50/90 text-amber-950'
-              }`}
+              className={`flex min-h-[36px] max-w-full items-center gap-1.5 rounded-sm bg-surface px-3 text-left text-[13px] font-medium hover:bg-surface-muted ${alert.tone === 'danger' ? 'text-rose-800' : 'text-ink'}`}
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <AlertTriangle className={`h-4 w-4 shrink-0 ${alert.tone === 'danger' ? 'text-rose-600' : 'text-amber-600'}`} aria-hidden="true" />
-                <span className="truncate">{alert.text}</span>
-              </div>
-              <span className="inline-flex items-center gap-1 text-xs font-semibold shrink-0 underline underline-offset-2">
-                Resolver <ArrowRight className="h-3.5 w-3.5" />
-              </span>
+              <span className="truncate">{alert.text}</span>
+              <ArrowRight className="h-3.5 w-3.5 shrink-0 text-ink-muted" aria-hidden="true" />
             </button>
           ))}
         </section>
@@ -251,6 +241,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           </div>
           <div className="my-2">
             <span className="font-mono text-3xl font-bold tracking-tight text-ink">{d.salon.openTabs.length}</span>
+            {tables.length > 0 && <span className="ml-1.5 text-sm text-ink-muted">de {tables.length}</span>}
           </div>
           <p className="truncate text-xs font-medium text-ink-muted">
             {d.salon.people > 0 ? `${d.salon.people} ${d.salon.people === 1 ? 'pessoa no salão' : 'pessoas no salão'}` : 'Nenhuma mesa aberta'}
@@ -352,15 +343,9 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2.5">
               <div>
-                <h2 className="text-base font-semibold text-ink">Quadro de pedidos ao vivo</h2>
-                <p className="text-xs text-ink-muted">Mesas do salão e pedidos de entrega organizados pelo fluxo da cozinha</p>
+                <h2 className="text-base font-semibold text-ink">Quadro ao vivo</h2>
+                <p className="text-xs text-ink-muted">O que espera há mais tempo fica em cima. A cor do relógio muda com a espera.</p>
               </div>
-              {printerProblem && (
-                <button type="button" onClick={() => setIsDiagnosticsOpen(true)} className="flex items-center gap-1.5 rounded-sm bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100">
-                  <Printer className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Impressora: atenção na fila · ver</span>
-                </button>
-              )}
             </div>
             <LiveBoard
               now={now}
@@ -417,75 +402,21 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                 </h2>
                 <span className="font-mono text-xs font-medium text-ink-muted">{topByQty.length} {topByQty.length === 1 ? 'item' : 'itens'}</span>
               </div>
-              <ul className="divide-y divide-line/60 pt-1">
-                {topByQty.slice(0, 5).map((p, idx) => (
-                  <li key={p.name} className="flex items-center justify-between py-2 text-xs">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-4 font-mono font-bold text-ink-muted">{idx + 1}</span>
-                      <div className="min-w-0">
-                        <span className="block truncate font-medium text-ink">{p.name}</span>
-                        <span className="block text-xs text-ink-muted">{p.channels}</span>
-                      </div>
+              <ul className="space-y-2.5 pt-3">
+                {topByQty.slice(0, 5).map((p) => (
+                  <li key={p.name} className="text-[13px]">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="min-w-0 truncate font-medium text-ink">{p.name}</span>
+                      <span className="shrink-0 font-mono font-semibold text-ink">{p.qty}</span>
                     </div>
-                    <span className="font-mono font-semibold text-ink ml-2 shrink-0">{p.qty} un</span>
+                    <span className="mt-1 block h-1.5 overflow-hidden rounded-sm bg-surface-muted" aria-hidden="true">
+                      <span className="block h-full rounded-sm bg-brand-600" style={{ width: `${Math.max(6, (p.qty / (topByQty[0]?.qty || 1)) * 100)}%` }} />
+                    </span>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-
-          {/* 3. Movimentações do turno (Feed ao vivo) */}
-          <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-2.5">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-ink">
-                <Clock className="h-4 w-4 text-brand-600" />
-                Movimentações do turno
-              </h2>
-              <div className="flex gap-1" role="group" aria-label="Filtrar movimentações">
-                {(['Tudo', 'Casa', 'Delivery'] as const).map((f) => (
-                  <button
-                    key={f}
-                    type="button"
-                    aria-pressed={feedFilter === f}
-                    onClick={() => setFeedFilter(f)}
-                    className={`rounded-md px-2 py-0.5 text-xs font-semibold transition ${
-                      feedFilter === f
-                        ? 'bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-600'
-                        : 'bg-surface-muted text-ink-muted hover:text-ink'
-                    }`}
-                  >
-                    {f}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {feed.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-6 text-center">
-                <History className="h-6 w-6 text-ink-muted/50 mb-1.5" />
-                <p className="text-xs font-semibold text-ink">Sem movimentações recentes</p>
-                <p className="text-xs text-ink-muted mt-0.5 max-w-[220px]">
-                  {currentShift ? 'Novos pedidos e baixas de estoque aparecerão aqui.' : 'Nenhuma movimentação neste turno.'}
-                </p>
-              </div>
-            ) : (
-              <ul className="max-h-[22rem] space-y-2 overflow-y-auto pr-1 pt-2">
-                {feed.slice(0, 30).map((ev) => (
-                  <li key={ev.id} className="flex items-start gap-2.5 rounded-lg border border-line/60 bg-surface-soft/60 p-2 text-xs">
-                    <span className="w-10 shrink-0 font-mono text-xs text-ink-muted pt-0.5">
-                      {new Date(ev.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className={`rounded px-1 py-0.2 text-xs font-semibold ${TONE[ev.tone]}`}>{ev.channel}</span>
-                        <span className="font-medium text-ink">{ev.title}</span>
-                      </div>
-                      <span className="mt-0.5 block truncate text-xs text-ink-muted">{ev.description}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
 
           {/* 4. Perdas e descartes (se houver) */}
           {d.losses.length > 0 && (
