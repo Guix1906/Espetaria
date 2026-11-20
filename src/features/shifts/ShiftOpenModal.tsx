@@ -12,6 +12,9 @@ import {
   RotateCcw,
   Sparkles,
   X,
+  Pencil,
+  Trash2,
+  Plus,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
@@ -68,6 +71,8 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   });
 
   const [selectedRiceFlavors, setSelectedRiceFlavors] = useState<string[]>(() => settings.daily_rice_flavors ?? []);
+  const [newRice, setNewRice] = useState('');
+  const [editingRice, setEditingRice] = useState<{ original: string; value: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'skewers' | 'sides'>('skewers');
   const [showCombosPreview, setShowCombosPreview] = useState(false);
 
@@ -96,7 +101,11 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     setErrorMsg(null);
     setRepeatState({ loading: false, message: null });
     setSelectedRiceFlavors(settings.daily_rice_flavors ?? []);
-  }, [isOpen, settings.daily_rice_flavors]);
+    setNewRice('');
+    setEditingRice(null);
+    // Só ao abrir: editar/excluir um arroz não pode desfazer o que já foi marcado.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -212,6 +221,48 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   const toggleRiceFlavor = (flavor: string) => {
     setErrorMsg(null);
     setSelectedRiceFlavors((prev) => (prev.includes(flavor) ? prev.filter((f) => f !== flavor) : [...prev, flavor]));
+  };
+
+  const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+  const addRice = () => {
+    const name = newRice.trim();
+    if (!name) return;
+    const existing = allSavedRices.find((r) => sameName(r, name));
+    const flavor = existing ?? name;
+    if (!existing) updateSettings({ saved_rice_flavors: [...allSavedRices, flavor] });
+    setSelectedRiceFlavors((prev) => (prev.includes(flavor) ? prev : [...prev, flavor]));
+    setNewRice('');
+    setErrorMsg(null);
+  };
+
+  const saveRename = () => {
+    if (!editingRice) return;
+    const name = editingRice.value.trim();
+    const old = editingRice.original;
+    if (!name || name === old) return setEditingRice(null);
+    if (allSavedRices.some((r) => r !== old && sameName(r, name))) {
+      setErrorMsg(`Já existe um arroz chamado "${name}".`);
+      return;
+    }
+    const swap = (list: string[]) => list.map((r) => (r === old ? name : r));
+    const daily = settings.daily_rice_flavors ?? [];
+    updateSettings({
+      saved_rice_flavors: swap(allSavedRices),
+      ...(daily.includes(old) ? { daily_rice_flavors: swap(daily) } : {}),
+    });
+    setSelectedRiceFlavors(swap);
+    setEditingRice(null);
+  };
+
+  const deleteRice = (flavor: string) => {
+    if (!window.confirm(`Excluir "${flavor}" da lista de arrozes?`)) return;
+    const daily = settings.daily_rice_flavors ?? [];
+    updateSettings({
+      saved_rice_flavors: allSavedRices.filter((r) => r !== flavor),
+      ...(daily.includes(flavor) ? { daily_rice_flavors: daily.filter((r) => r !== flavor) } : {}),
+    });
+    setSelectedRiceFlavors((prev) => prev.filter((r) => r !== flavor));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -492,29 +543,88 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 gap-2">
               {allSavedRices.map((option) => {
                 const isSelected = selectedRiceFlavors.includes(option);
+                if (editingRice?.original === option) {
+                  return (
+                    <div key={option} className="min-h-12 p-1.5 rounded-lg border-2 border-brand-600 bg-white flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        autoFocus
+                        aria-label="Novo nome do arroz"
+                        value={editingRice.value}
+                        onChange={(e) => setEditingRice({ original: option, value: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') { e.preventDefault(); saveRename(); }
+                          if (e.key === 'Escape') setEditingRice(null);
+                        }}
+                        className="flex-1 min-w-0 h-9 px-2 text-sm rounded border border-line-strong text-ink focus:outline-none focus:ring-2 focus:ring-brand-600"
+                      />
+                      <button type="button" onClick={saveRename} title="Salvar nome" aria-label="Salvar nome"
+                        className="w-9 h-9 rounded bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button type="button" onClick={() => setEditingRice(null)} title="Cancelar" aria-label="Cancelar"
+                        className="w-9 h-9 rounded text-ink-muted hover:bg-surface flex items-center justify-center shrink-0">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                }
                 return (
-                  <button
+                  <div
                     key={option}
-                    type="button"
-                    aria-pressed={isSelected}
-                    onClick={() => toggleRiceFlavor(option)}
-                    className={`min-h-12 px-3 rounded-lg border-2 text-sm font-bold flex items-center gap-2 text-left transition ${
-                      isSelected
-                        ? 'border-emerald-600 bg-emerald-600 text-white'
-                        : 'border-line-strong bg-white text-ink hover:border-brand-400'
+                    className={`min-h-12 rounded-lg border-2 flex items-center transition ${
+                      isSelected ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-line-strong bg-white text-ink hover:border-brand-400'
                     }`}
                   >
-                    <span
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
-                        isSelected ? 'border-white bg-white text-emerald-700' : 'border-line-strong'
-                      }`}
+                    <button
+                      type="button"
+                      aria-pressed={isSelected}
+                      onClick={() => toggleRiceFlavor(option)}
+                      className="flex-1 min-w-0 self-stretch px-3 text-sm font-bold flex items-center gap-2 text-left"
                     >
-                      {isSelected && <Check className="w-4 h-4" />}
-                    </span>
-                    <span>{option}</span>
-                  </button>
+                      <span
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+                          isSelected ? 'border-white bg-white text-emerald-700' : 'border-line-strong'
+                        }`}
+                      >
+                        {isSelected && <Check className="w-4 h-4" />}
+                      </span>
+                      <span className="break-words">{option}</span>
+                    </button>
+                    <button type="button" onClick={() => setEditingRice({ original: option, value: option })}
+                      title={`Editar ${option}`} aria-label={`Editar ${option}`}
+                      className={`w-9 h-9 rounded flex items-center justify-center shrink-0 ${isSelected ? 'hover:bg-emerald-700' : 'text-ink-muted hover:bg-surface hover:text-ink'}`}>
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button type="button" onClick={() => deleteRice(option)}
+                      title={`Excluir ${option}`} aria-label={`Excluir ${option}`}
+                      className={`w-9 h-9 mr-1 rounded flex items-center justify-center shrink-0 ${isSelected ? 'hover:bg-emerald-700' : 'text-ink-muted hover:bg-surface hover:text-rose-600'}`}>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 );
               })}
+            </div>
+
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newRice}
+                aria-label="Nome de um arroz que não está na lista"
+                onChange={(e) => setNewRice(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addRice(); } }}
+                placeholder="Não está na lista? Escreva o nome do arroz"
+                className="flex-1 min-w-0 h-12 px-3 text-sm rounded-lg border-2 border-line-strong bg-white text-ink placeholder-ink-muted focus:outline-none focus:ring-2 focus:ring-brand-600"
+              />
+              <button
+                type="button"
+                onClick={addRice}
+                disabled={!newRice.trim()}
+                className="btn-primary h-12 px-4 rounded-lg text-sm font-bold flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                Adicionar
+              </button>
             </div>
 
             <p className={`text-sm font-bold ${selectedRiceFlavors.length === 0 ? 'text-amber-800' : 'text-emerald-700'}`}>
@@ -522,7 +632,6 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 ? 'Nenhum arroz marcado ainda.'
                 : `Hoje tem: ${selectedRiceFlavors.join(', ')}`}
             </p>
-            <p className="text-xs text-ink-muted">Falta algum sabor na lista? O gerente cadastra em Estoque → Sabores do dia.</p>
           </div>
 
           {/* Seção de Contagem dos Produtos */}
