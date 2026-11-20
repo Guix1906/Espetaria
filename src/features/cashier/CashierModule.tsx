@@ -222,7 +222,7 @@ export const CashierModule: React.FC = () => {
                       </div>
 
                       {/* Nome do cliente só quando existe (antes repetia "Mesa 11" embaixo do título) */}
-                      {currentTab?.customer_name && (
+                      {currentTab?.customer_name && !/^mesa\s*\d+$/i.test(currentTab.customer_name.trim()) && (
                         <p className="text-xs text-ink-muted mt-1 truncate font-medium">{currentTab.customer_name}</p>
                       )}
 

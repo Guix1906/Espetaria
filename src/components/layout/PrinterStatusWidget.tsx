@@ -79,16 +79,18 @@ export const PrinterAlertBanner: React.FC = () => {
   return (
     <>
       <div
-        className={`px-4 py-2 text-xs sm:text-sm font-semibold flex items-center justify-between gap-3 shadow-md animate-fadeIn ${
-          !isBridgeAlive ? 'bg-rose-600 text-white' : 'bg-amber-600 text-white'
+        className={`px-4 py-1.5 text-sm font-medium flex items-center justify-between gap-3 border-b animate-fadeIn ${
+          !isBridgeAlive ? 'border-rose-200 bg-rose-50 text-rose-900' : 'border-amber-200 bg-amber-50 text-amber-950'
         }`}
+        role="alert"
       >
+        {/* Faixa fina e clara: avisa sem tomar o topo de todas as telas */}
         <div className="flex items-center gap-2 min-w-0">
-          <AlertTriangle className="w-4 h-4 shrink-0 text-amber-200" />
+          <AlertTriangle className={`w-4 h-4 shrink-0 ${!isBridgeAlive ? 'text-rose-600' : 'text-amber-600'}`} />
           <span>
             {!isBridgeAlive
-              ? 'Computador de impressão local da loja está desconectado. Verifique se o PC da loja está ligado e com internet.'
-              : `Atenção: ${failedJobs.length} cupom(ns) não puderam ser impressos (queda de energia ou impressora desligada).`}
+              ? 'Impressão sem sinal: confira se o computador da loja está ligado e com internet.'
+              : `${failedJobs.length} ${failedJobs.length === 1 ? 'cupom não foi impresso' : 'cupons não foram impressos'} (impressora desligada ou sem energia).`}
           </span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -97,7 +99,7 @@ export const PrinterAlertBanner: React.FC = () => {
               type="button"
               disabled={isRetrying}
               onClick={handleRetryAll}
-              className="min-h-[36px] bg-white text-amber-900 px-3 py-1 rounded-lg text-xs font-bold hover:bg-amber-50 transition shadow-xs flex items-center gap-1.5"
+              className="btn-primary min-h-[32px] px-3 py-1 text-xs"
             >
               <RefreshCw className={`w-3 h-3 ${isRetrying ? 'animate-spin' : ''}`} />
               {isRetrying ? 'Reenviando...' : `Reenviar cupons (${failedJobs.length})`}
@@ -106,9 +108,9 @@ export const PrinterAlertBanner: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsModalOpen(true)}
-            className="min-h-[36px] bg-black/20 text-white border border-white/30 px-3 py-1 rounded-lg text-xs font-bold hover:bg-black/30 transition shadow-xs"
+            className="btn-secondary min-h-[32px] px-3 py-1 text-xs"
           >
-            Diagnosticar / Detalhes
+            Ver detalhes
           </button>
         </div>
       </div>

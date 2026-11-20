@@ -16,9 +16,6 @@ import {
   PlayCircle,
   Plus,
   Printer,
-  QrCode,
-  Smartphone,
-  Sparkles,
   Users,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
@@ -162,7 +159,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Visão geral</h1>
           <p className="mt-0.5 text-xs text-ink-muted">
             {currentShift
-              ? `Cockpit operacional em tempo real · ${currentShift.name}`
+              ? `Operação em tempo real · ${currentShift.name}`
               : 'Painel de controle do salão, brasa e delivery'}
           </p>
         </div>
@@ -170,14 +167,20 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
         <div className="flex items-center gap-2">
           {currentShift?.status === 'ABERTO' ? (
             <>
+              {/* Fechar turno fica afastado e discreto (ação rara, com confirmação); a ação do dia a dia é Novo pedido */}
+              <button
+                type="button"
+                onClick={() => setIsCloseModalOpen(true)}
+                className="btn-ghost min-h-[40px] px-3 text-sm text-ink-muted hover:text-rose-700"
+              >
+                <Lock className="h-4 w-4" aria-hidden="true" />
+                Fechar turno
+              </button>
+              <span className="mx-1 hidden h-6 w-px bg-line sm:block" aria-hidden="true" />
               <button
                 type="button"
                 onClick={handleToggleDelivery}
-                className={`min-h-[40px] px-3.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 shadow-xs cursor-pointer ${
-                  !isDeliveryClosed
-                    ? 'btn-secondary text-amber-800 hover:bg-amber-50 hover:border-amber-300'
-                    : 'bg-emerald-600 text-white hover:bg-emerald-700'
-                }`}
+                className="btn-secondary min-h-[40px] px-3.5"
                 title={!isDeliveryClosed ? 'Encerra o delivery para novos pedidos hoje sem fechar o salão' : 'Reabre o delivery para aceitar novos pedidos'}
               >
                 {!isDeliveryClosed ? (
@@ -192,19 +195,11 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                   </>
                 )}
               </button>
-              <button
-                type="button"
-                onClick={() => setIsCloseModalOpen(true)}
-                className="btn-secondary min-h-[40px] px-3.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 hover:border-rose-300"
-              >
-                <Lock className="h-3.5 w-3.5" aria-hidden="true" />
-                Fechar turno
-              </button>
               {onNavigateTab && (
                 <button
                   type="button"
                   onClick={() => go('waiter')}
-                  className="btn-primary min-h-[40px] px-4 text-xs font-semibold shadow-sm"
+                  className="btn-primary min-h-[40px] px-4"
                 >
                   <Plus className="h-4 w-4" aria-hidden="true" />
                   Novo pedido
@@ -265,16 +260,16 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           type="button"
           onClick={() => go('waiter')}
           disabled={!onNavigateTab}
-          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-surface p-4 text-left transition-all duration-200 hover:border-emerald-400 hover:shadow-md border-t-4 border-t-emerald-500"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-md border border-line bg-surface p-4 text-left shadow-card transition-all duration-200 hover:border-line-strong hover:shadow-md"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Mesas abertas</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 transition group-hover:scale-110">
+            <span className="text-sm font-medium text-ink-secondary">Mesas abertas</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-muted text-ink-secondary">
               <Users className="h-4 w-4" />
             </span>
           </div>
           <div className="my-2">
-            <span className="font-mono text-3xl font-extrabold tracking-tight text-ink">{d.salon.openTabs.length}</span>
+            <span className="font-mono text-3xl font-bold tracking-tight text-ink">{d.salon.openTabs.length}</span>
           </div>
           <p className="truncate text-xs font-medium text-ink-muted">
             {d.salon.people > 0 ? `${d.salon.people} ${d.salon.people === 1 ? 'pessoa no salão' : 'pessoas no salão'}` : 'Nenhuma mesa aberta'}
@@ -292,20 +287,20 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           onClick={() => go('kds')}
           disabled={!onNavigateTab}
           title="Produção agora"
-          className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-surface p-4 text-left transition-all duration-200 hover:border-brand-400 hover:shadow-md border-t-4 border-t-brand-600"
+          className="group relative flex flex-col justify-between overflow-hidden rounded-md border border-line bg-surface p-4 text-left shadow-card transition-all duration-200 hover:border-line-strong hover:shadow-md"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Produção agora</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition group-hover:scale-110">
+            <span className="text-sm font-medium text-ink-secondary">Produção agora</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-muted text-ink-secondary">
               <Flame className="h-4 w-4" />
             </span>
           </div>
           <div className="my-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="font-mono text-3xl font-extrabold tracking-tight text-ink">
+              <span className="font-mono text-3xl font-bold tracking-tight text-ink">
                 {d.production.GRILL.salon + d.production.GRILL.delivery}
               </span>
-              <span className="text-xs font-bold text-brand-800">na brasa</span>
+              <span className="text-sm text-ink-muted">na brasa</span>
             </div>
           </div>
           <p className="truncate text-xs font-medium text-ink-muted">
@@ -318,19 +313,19 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           type="button"
           onClick={() => goAlert('ready')}
           disabled={!onNavigateTab}
-          className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200 hover:border-amber-400 hover:shadow-md border-t-4 border-t-amber-500 ${
+          className={`group relative flex flex-col justify-between overflow-hidden rounded-md border p-4 text-left shadow-card transition-all duration-200 hover:border-line-strong hover:shadow-md ${
             d.salon.readyOldest >= ALERT_LIMITS.readyNotServed ? 'bg-amber-50/50 border-amber-300' : 'bg-surface border-line'
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Prontos para servir</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700 transition group-hover:scale-110">
+            <span className="text-sm font-medium text-ink-secondary">Prontos para servir</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-muted text-ink-secondary">
               <CheckCircle2 className="h-4 w-4" />
             </span>
           </div>
           <div className="my-2">
-            <span className="font-mono text-3xl font-extrabold tracking-tight text-ink">{d.salon.readyCount}</span>
-            <span className="ml-1.5 text-xs font-bold text-amber-800">{d.salon.readyCount === 1 ? 'item' : 'itens'}</span>
+            <span className="font-mono text-3xl font-bold tracking-tight text-ink">{d.salon.readyCount}</span>
+            <span className="ml-1.5 text-sm text-ink-muted">{d.salon.readyCount === 1 ? 'item' : 'itens'}</span>
           </div>
           <p className="truncate text-xs font-medium text-ink-muted">
             {d.salon.readyCount > 0 ? `Mais antigo há ${d.salon.readyOldest} min` : 'Nada esperando'}
@@ -343,20 +338,20 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           onClick={() => go('delivery')}
           disabled={!onNavigateTab}
           title="Delivery e retirada agora"
-          className={`group relative flex flex-col justify-between overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200 hover:border-sky-400 hover:shadow-md border-t-4 border-t-sky-500 ${
+          className={`group relative flex flex-col justify-between overflow-hidden rounded-md border p-4 text-left shadow-card transition-all duration-200 hover:border-line-strong hover:shadow-md ${
             lateIds.size > 0 ? 'bg-rose-50/40 border-rose-300' : 'bg-surface border-line'
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Delivery & Retirada</span>
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-700 transition group-hover:scale-110">
+            <span className="text-sm font-medium text-ink-secondary">Delivery e retirada</span>
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-surface-muted text-ink-secondary">
               <Bike className="h-4 w-4" />
             </span>
           </div>
           <div className="my-2">
             <div className="flex items-baseline gap-1.5">
-              <span className="font-mono text-3xl font-extrabold tracking-tight text-ink">{deliveryCount}</span>
-              <span className="text-xs font-bold text-sky-800">ativos</span>
+              <span className="font-mono text-3xl font-bold tracking-tight text-ink">{deliveryCount}</span>
+              <span className="text-sm text-ink-muted">ativos</span>
             </div>
           </div>
           <p className="truncate text-xs font-medium text-ink-muted">
@@ -380,10 +375,10 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                 <p className="text-xs text-ink-muted">Mesas do salão e pedidos de entrega organizados pelo fluxo da cozinha</p>
               </div>
               {printerProblem && (
-                <div className="flex items-center gap-1.5 rounded-sm bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
+                <button type="button" onClick={() => setIsDiagnosticsOpen(true)} className="flex items-center gap-1.5 rounded-sm bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100">
                   <Printer className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Impressora: atenção na fila</span>
-                </div>
+                  <span>Impressora: atenção na fila · ver</span>
+                </button>
               )}
             </div>
             <LiveBoard
@@ -400,50 +395,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
 
         {/* PAINEL LATERAL (4 COLUNAS NO DESKTOP): ATALHOS + ESTOQUE + FEED */}
         <div className="xl:col-span-4 space-y-4">
-          {/* ATALHOS OPERACIONAIS DA GERÊNCIA */}
-          <div className="rounded-2xl border border-line bg-surface p-4 shadow-sm">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink border-b border-line pb-2.5">
-              <Sparkles className="h-4 w-4 text-brand-600" />
-              Atalhos operacionais
-            </h2>
-            <div className="grid grid-cols-2 gap-2">
-              <a
-                href="#/garcom"
-                className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft/60 p-2.5 text-xs font-semibold text-ink transition hover:bg-brand-50 hover:border-brand-300 hover:text-brand-900"
-              >
-                <Smartphone className="h-4 w-4 shrink-0 text-brand-600" />
-                <span className="truncate">Área do garçom</span>
-              </a>
-              {onNavigateTab && (
-                <button
-                  type="button"
-                  onClick={() => go('menu')}
-                  className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft/60 p-2.5 text-xs font-semibold text-ink transition hover:bg-brand-50 hover:border-brand-300 hover:text-brand-900"
-                >
-                  <QrCode className="h-4 w-4 shrink-0 text-brand-600" />
-                  <span className="truncate">Cardápio digital</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setIsDiagnosticsOpen(true)}
-                className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft/60 p-2.5 text-xs font-semibold text-ink transition hover:bg-brand-50 hover:border-brand-300 hover:text-brand-900"
-              >
-                <Printer className="h-4 w-4 shrink-0 text-brand-600" />
-                <span className="truncate">Testar impressora</span>
-              </button>
-              {onNavigateTab && (
-                <button
-                  type="button"
-                  onClick={() => go('stock')}
-                  className="flex items-center gap-2 rounded-xl border border-line bg-surface-soft/60 p-2.5 text-xs font-semibold text-ink transition hover:bg-brand-50 hover:border-brand-300 hover:text-brand-900"
-                >
-                  <PackageCheck className="h-4 w-4 shrink-0 text-brand-600" />
-                  <span className="truncate">Estoque diário</span>
-                </button>
-              )}
-            </div>
-          </div>
+          {/* Os atalhos (garçom, cardápio, estoque) saíram: já estão no menu e no topo. Testar impressora fica no aviso de impressora. */}
 
           {/* ESTOQUE DO TURNO / MISE EN PLACE */}
           {currentShift ? (

@@ -164,7 +164,7 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
               aria-pressed={filter === f}
               onClick={() => setFilter(f)}
               className={`min-h-[34px] shrink-0 whitespace-nowrap rounded-md px-3 text-xs font-semibold transition ${
-                filter === f ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
+                filter === f ? 'bg-surface font-semibold text-brand-800 shadow-sm ring-1 ring-brand-600' : 'text-ink-muted hover:text-ink'
               }`}
             >
               {f}
@@ -184,15 +184,21 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
         </label>
       </div>
 
-      {/* 3 COLUNAS KANBAN */}
+      {/* Sem nenhum pedido: um aviso só, em vez de 3 colunas grandes vazias */}
+      {cards.length === 0 && !term ? (
+        <div className="flex items-center gap-3 rounded-md border border-dashed border-line px-4 py-6 text-sm text-ink-muted">
+          <Flame className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <span>Nenhum pedido em andamento agora. Mesas e pedidos de entrega aparecem aqui assim que forem lançados.</span>
+        </div>
+      ) : (
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
         {COLUMNS.map((col) => {
           const rows = cards.filter((c) => c.column === col.id);
           return (
-            <div key={col.id} className={`flex min-h-[22rem] flex-col overflow-hidden rounded-xl border border-line ${col.borderColor} bg-surface-soft/40 shadow-sm`}>
-              <h3 className={`flex items-center justify-between ${col.headerBorder} ${col.headerBg} px-3.5 py-2.5 text-xs font-bold uppercase tracking-wider ${col.headerText}`}>
+            <div key={col.id} className={`flex min-h-[14rem] flex-col overflow-hidden rounded-md border border-line ${col.borderColor} bg-surface-soft/40 shadow-sm`}>
+              <h3 className={`flex items-center justify-between ${col.headerBorder} ${col.headerBg} px-3.5 py-2.5 text-sm font-semibold ${col.headerText}`}>
                 <span className="flex-1">{col.title}</span>
-                <span className={`rounded-full px-2 py-0.5 font-mono text-xs font-bold ${col.badgeStyle}`}>
+                <span className={`rounded-sm px-2 py-0.5 font-mono text-xs font-bold ${col.badgeStyle}`}>
                   {rows.length}
                 </span>
               </h3>
@@ -250,6 +256,7 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
           );
         })}
       </div>
+      )}
     </section>
   );
 }

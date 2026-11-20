@@ -148,9 +148,6 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
         </section>
       )}
 
-      {/* Cadastro de sabores do dia para os garçons */}
-      <DailyFlavorsManager />
-
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="filter-bar" aria-label="Setor do estoque">{(['ALL', 'GRILL', 'KITCHEN', 'BAR'] as const).map((sector) => <FilterChip key={sector} active={selectedSector === sector} onClick={() => setSelectedSector(sector)}>{sector === 'ALL' ? 'Todos os setores' : sector === 'KITCHEN' ? 'Cozinha e cubas' : SECTOR_LABEL[sector]}</FilterChip>)}</div>
         <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar produto no estoque" placeholder="Buscar espeto, porção ou bebida" className="w-full lg:w-72" />
@@ -265,6 +262,9 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
           </ul>
         </div>
       )}
+
+      {/* Sabores do dia (arroz e sucos) ficam depois da contagem, que é o que mais se usa nesta tela */}
+      <DailyFlavorsManager />
 
       {adjustModalItem && (
         <Dialog label="Contagem física" onClose={() => setAdjustModalItem(null)}>
