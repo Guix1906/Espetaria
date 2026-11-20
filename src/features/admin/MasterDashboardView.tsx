@@ -19,6 +19,7 @@ import {
   Users,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { ActiveTab } from '../../components/layout/navigation';
 import { PrinterDiagnosticsModal, usePrinterHealth } from '../../components/layout/PrinterStatusWidget';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
@@ -69,6 +70,9 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const [feedFilter, setFeedFilter] = useState<'Tudo' | 'Casa' | 'Delivery'>('Tudo');
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const id = window.setInterval(() => setNow(Date.now()), 30000); return () => window.clearInterval(id); }, []);
+  // Lugar das ações na barra do topo (criado pelo Header só na Visão geral)
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
+  useEffect(() => { setHeaderSlot(document.getElementById('overview-header-actions')); }, []);
 
   const isDeliveryClosed = isDeliveryManuallyClosed(new Date(now), settings.delivery_cutoff_time, settings.updated_at);
 
@@ -151,64 +155,41 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const printerProblem = isSupabaseConfigured && (!isBridgeAlive || d.stuckJobs.length > 0 || d.failedJobs.length > 0);
   const topByQty = [...d.topProducts].sort((a, b) => b.qty - a.qty).slice(0, 8);
 
+  // Ações do topo: Fechar turno (discreto) · Pausar delivery · Novo pedido
+  const headerActions = currentShift?.status === 'ABERTO' ? (
+    <>
+      <button type="button" onClick={() => setIsCloseModalOpen(true)} className="btn-ghost h-[46px] gap-2.5 px-4 text-base font-medium text-ink-secondary hover:text-rose-700">
+        <Lock className="h-[18px] w-[18px]" aria-hidden="true" />
+        Fechar turno
+      </button>
+      <span className="hidden h-[30px] w-px bg-line sm:block" aria-hidden="true" />
+      <button
+        type="button"
+        onClick={handleToggleDelivery}
+        className={`btn-secondary h-[46px] px-[18px] text-base font-medium ${isDeliveryClosed ? 'border-amber-400 bg-amber-50 text-amber-900' : 'text-ink'}`}
+        title={!isDeliveryClosed ? 'Pausa o delivery para novos pedidos sem fechar o salão' : 'Volta a aceitar pedidos de delivery'}
+      >
+        {isDeliveryClosed ? <PlayCircle className="h-4 w-4" aria-hidden="true" /> : <PauseCircle className="h-4 w-4" aria-hidden="true" />}
+        {isDeliveryClosed ? 'Retomar delivery' : 'Pausar delivery'}
+      </button>
+      {onNavigateTab && (
+        <button type="button" onClick={() => go('waiter')} className="btn-primary order-first col-span-2 h-[46px] px-[22px] text-base font-semibold sm:order-none sm:col-span-1">
+          <Plus className="h-4 w-4" aria-hidden="true" />
+          Novo pedido
+        </button>
+      )}
+    </>
+  ) : null;
+
   return (
     <div className="page-layout space-y-4">
-      {/* CABEÇALHO MODERNO E INTEGRADO */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-ink sm:text-3xl">Visão geral</h1>
-          <p className="mt-0.5 text-xs text-ink-muted">
-            {currentShift
-              ? `Operação em tempo real · ${currentShift.name}`
-              : 'Painel de controle do salão, brasa e delivery'}
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {currentShift?.status === 'ABERTO' ? (
-            <>
-              {/* Fechar turno fica afastado e discreto (ação rara, com confirmação); a ação do dia a dia é Novo pedido */}
-              <button
-                type="button"
-                onClick={() => setIsCloseModalOpen(true)}
-                className="btn-ghost min-h-[40px] px-3 text-sm text-ink-muted hover:text-rose-700"
-              >
-                <Lock className="h-4 w-4" aria-hidden="true" />
-                Fechar turno
-              </button>
-              <span className="mx-1 hidden h-6 w-px bg-line sm:block" aria-hidden="true" />
-              <button
-                type="button"
-                onClick={handleToggleDelivery}
-                className="btn-secondary min-h-[40px] px-3.5"
-                title={!isDeliveryClosed ? 'Encerra o delivery para novos pedidos hoje sem fechar o salão' : 'Reabre o delivery para aceitar novos pedidos'}
-              >
-                {!isDeliveryClosed ? (
-                  <>
-                    <PauseCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                    Encerrar delivery
-                  </>
-                ) : (
-                  <>
-                    <PlayCircle className="h-3.5 w-3.5" aria-hidden="true" />
-                    Reabrir delivery
-                  </>
-                )}
-              </button>
-              {onNavigateTab && (
-                <button
-                  type="button"
-                  onClick={() => go('waiter')}
-                  className="btn-primary min-h-[40px] px-4"
-                >
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                  Novo pedido
-                </button>
-              )}
-            </>
-          ) : null}
-        </div>
-      </div>
+      {/* Cabeçalho (layout "Visão Geral Header v3"): no computador as ações sobem para a barra do topo;
+          em tela menor ficam aqui, quebrando linha quando faltar espaço */}
+      <h1 className="sr-only">Visão geral</h1>
+      {headerActions && headerSlot && createPortal(headerActions, headerSlot)}
+      {headerActions && (
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center sm:justify-end sm:gap-2.5 lg:hidden">{headerActions}</div>
+      )}
 
       {/* CARD DE RECEPÇÃO / INÍCIO DE TURNO */}
       {!currentShift && (

@@ -58,19 +58,38 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
     return () => { document.removeEventListener('pointerdown', dismiss); document.removeEventListener('keydown', escape); };
   }, [roleDropdownOpen]);
 
+  // Visão geral (layout "Cabeçalho da Visão Geral v3", 20/11): uma barra só com a data, o turno,
+  // as ações da tela (Fechar turno · Pausar delivery · Novo pedido, colocadas pelo MasterDashboardView) e o avatar.
+  const overview = activeTab === 'master';
+  const today = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
+  const todayLabel = today.replace(/-feira/, '').replace(/^./, (c) => c.toUpperCase());
+  const openedAt = currentShift?.status === 'ABERTO' && currentShift.opened_at
+    ? new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(new Date(currentShift.opened_at))
+    : null;
+
   return (
     <header ref={headerRef} className="app-header">
-      <div className="mx-auto flex h-14 max-w-[1600px] items-center justify-between gap-3 px-4 sm:h-auto sm:flex-wrap sm:py-3 sm:px-6 xl:px-8">
+      <div className={`mx-auto flex h-14 max-w-[1600px] items-center justify-between gap-3 px-4 sm:h-auto sm:flex-wrap sm:py-3 sm:px-6 xl:px-8 ${overview ? 'lg:gap-5 lg:py-4 xl:px-9' : ''}`}>
         <div className="flex min-w-0 items-center gap-3">
           <button type="button" aria-label="Abrir menu de navegação" aria-expanded={isMenuOpen} onClick={onMenuClick} className="icon-button lg:hidden"><Menu className="h-5 w-5" /></button>
           <p className="truncate text-sm font-semibold text-ink lg:hidden">{PAGE_TITLES[activeTab]}</p>
-          <div className="hidden lg:block">
+          {overview && (
+            <div className="hidden min-w-[220px] flex-col gap-1 lg:flex">
+              <p className="text-[22px] font-semibold leading-tight tracking-[-0.3px] text-ink">{todayLabel}</p>
+              {openedAt
+                ? <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-800"><span className="h-[7px] w-[7px] rounded-full bg-emerald-600" aria-hidden="true" />Aberto desde {openedAt}</p>
+                : <p className="flex items-center gap-1.5 text-sm font-medium text-ink-muted"><span className="h-[7px] w-[7px] rounded-full bg-line-strong" aria-hidden="true" />Turno fechado</p>}
+            </div>
+          )}
+          <div className={overview ? 'hidden' : 'hidden lg:block'}>
             <div className="flex items-center gap-2 text-sm"><span className="text-ink-muted">Espetaria</span><span className="text-ink-muted" aria-hidden="true">/</span><span className="font-semibold text-ink">{PAGE_TITLES[activeTab]}</span></div>
             <div className="mt-1 flex items-center gap-1.5 text-xs text-ink-muted"><CalendarDays className="h-3.5 w-3.5" aria-hidden="true" />{new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}</div>
           </div>
         </div>
 
-        <div className="hidden flex-wrap items-center gap-2 sm:flex">
+        {/* Ações da Visão geral entram aqui (portal do MasterDashboardView) */}
+        {overview && <div id="overview-header-actions" className="ml-auto hidden flex-wrap items-center gap-2.5 lg:flex" />}
+        <div className={`hidden flex-wrap items-center gap-2 sm:flex ${overview ? 'lg:hidden' : ''}`}>
           <PrinterStatusWidget />
           {currentShift?.status === 'ABERTO' ? (
             <div className="status-badge max-w-full bg-emerald-50 py-2 text-emerald-800" title={currentShift.name}>
@@ -97,19 +116,33 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
         <div className="flex items-center gap-2 sm:hidden">
           <PrinterStatusWidget />
         </div>
-        <div ref={profileRef} className="relative shrink-0">
+        <div ref={profileRef} className={`relative shrink-0 ${overview ? 'lg:flex lg:items-center lg:gap-3.5' : ''}`}>
+          {overview && <span className="hidden h-[30px] w-px bg-line lg:block" aria-hidden="true" />}
+          {overview ? (
+            <button ref={profileButtonRef} type="button" aria-label={`Perfil: ${currentProfile.name}. Abrir menu da conta`} aria-expanded={roleDropdownOpen} aria-controls={profileId} onClick={() => setRoleDropdownOpen(!roleDropdownOpen)} title={`${currentProfile.name} · ${formatRole(currentProfile.role)}`}
+              className="flex h-[42px] w-[42px] items-center justify-center rounded-full bg-brand-50 font-semibold text-ink hover:bg-brand-100">
+              {currentProfile.name.trim().charAt(0).toUpperCase() || <UserRound className="h-4 w-4" aria-hidden="true" />}
+            </button>
+          ) : (
           <button ref={profileButtonRef} type="button" aria-label={`Perfil: ${currentProfile.name}. Trocar perfil operacional`} aria-expanded={roleDropdownOpen} aria-controls={profileId} onClick={() => setRoleDropdownOpen(!roleDropdownOpen)} className="flex items-center gap-2.5 rounded-xl border border-line bg-surface p-1.5 pr-2.5 text-left hover:bg-surface-soft">
             <span className="flex h-9 w-9 items-center justify-center rounded-sm bg-brand-50 text-brand-800"><UserRound className="h-4 w-4" aria-hidden="true" /></span>
             <span className="hidden xl:block"><span className="block text-sm font-semibold text-ink">{currentProfile.name.split(' ')[0]}</span><span className="block text-xs text-ink-muted">{formatRole(currentProfile.role)}</span></span>
             <ChevronDown className="h-4 w-4 text-ink-muted" aria-hidden="true" />
           </button>
+          )}
           {roleDropdownOpen && (
-            <div id={profileId} className="absolute right-0 z-50 mt-3 w-[min(320px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-surface p-2 shadow-floating">
+            <div id={profileId} className="absolute right-0 top-full z-50 mt-3 w-[min(320px,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-line bg-surface p-2 shadow-floating">
               <div className="space-y-1 border-b border-line p-2 sm:hidden">
                 <p className="px-1 py-1 text-[13px] text-ink-muted">{currentShift?.status === 'ABERTO' ? `Turno aberto · ${currentShift.name}` : 'Turno fechado'}</p>
                 {currentShift?.status !== 'ABERTO' && isManager && <button type="button" onClick={() => { setRoleDropdownOpen(false); onOpenShiftClick(); }} className="btn-primary min-h-[44px] w-full"><Clock3 className="h-4 w-4" aria-hidden="true" />Abrir turno</button>}
                 <button type="button" aria-pressed={isAudioEnabled} onClick={toggleAudio} className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium text-ink hover:bg-surface-muted">{isAudioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}{isAudioEnabled ? 'Som ligado' : 'Som desligado'}</button>
               </div>
+              {/* Na Visão geral o botão de som saiu do topo: fica aqui no menu */}
+              {overview && (
+                <div className="hidden border-b border-line p-2 sm:block">
+                  <button type="button" aria-pressed={isAudioEnabled} onClick={toggleAudio} className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium text-ink hover:bg-surface-muted">{isAudioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}{isAudioEnabled ? 'Som dos alertas ligado' : 'Som dos alertas desligado'}</button>
+                </div>
+              )}
               {isManager && (
                 <div className="border-b border-line p-2">
                   <a href="#/garcom" className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 text-sm font-medium text-ink hover:bg-surface-muted" title="Ver e usar a tela do garçom com o seu login"><Smartphone className="h-4 w-4" aria-hidden="true" />Área do garçom</a>

@@ -220,7 +220,9 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
 
     it('2.1 MasterDashboardView com dados ativos lista a operação e não mostra dinheiro', () => {
       const html = renderWithFeedback(<MasterDashboardView />);
-      expect(html).toContain('Turno Auditoria');
+      // Turno aberto: as ações do novo cabeçalho aparecem (o nome do turno foi para "Aberto desde HH:MM" no topo)
+      expect(html).toContain('Pausar delivery');
+      expect(html).toContain('Fechar turno');
       expect(html).toContain('Cliente Teste');
       expect(html).toContain('Mesa 01');
       expect(html).toContain('2 na brasa');

@@ -55,14 +55,50 @@ export const usePrinterHealth = () => {
 export const PrinterAlertBanner: React.FC = () => {
   const { isBridgeAlive, failedJobs, allOk } = usePrinterHealth();
   const { currentProfile } = useAuthStore();
-  const { retryAllFailedJobs } = usePrintStore();
+  const { retryAllFailedJobs, sendTestPrintAll } = usePrintStore();
   const { notify } = useFeedback();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
 
   const isManagerOrCashier = BANNER_ROLES.includes(currentProfile.role);
 
   if (allOk || !isManagerOrCashier) return null;
+
+  const handleTest = async () => {
+    setIsTesting(true);
+    try {
+      await sendTestPrintAll();
+      notify('Cupom de teste enviado. Se o computador da loja voltar, ele sai na impressora e este aviso some.', 'info');
+    } catch (err: any) {
+      notify(`Não foi possível enviar o teste: ${err?.message || 'erro'}`, 'error');
+    } finally {
+      setIsTesting(false);
+    }
+  };
+
+  // Computador da loja sem sinal: faixa do layout "Visão Geral Header v3" (bolinha vermelha, texto e Testar impressão)
+  if (!isBridgeAlive) {
+    return (
+      <>
+        <div className="flex flex-wrap items-center gap-3.5 border-b border-rose-200 bg-rose-50 px-4 py-3 sm:px-6 xl:px-9" role="alert">
+          <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-rose-600" aria-hidden="true" />
+          <p className="min-w-[240px] flex-1 text-[15px] text-ink">
+            <strong className="font-semibold text-rose-800">Impressora sem sinal.</strong>{' '}
+            Os pedidos não estão saindo no papel — confira se o computador da loja está ligado e com internet.
+          </p>
+          <div className="flex items-center gap-2">
+            <button type="button" disabled={isTesting} onClick={() => void handleTest()} className="inline-flex h-9 items-center gap-1.5 rounded-md border border-rose-300 bg-white px-3.5 text-sm font-medium text-rose-800 hover:bg-rose-50 disabled:opacity-60">
+              {isTesting && <RefreshCw className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />}
+              {isTesting ? 'Enviando...' : 'Testar impressão'}
+            </button>
+            <button type="button" onClick={() => setIsModalOpen(true)} className="h-9 rounded-md px-2.5 text-sm font-medium text-rose-800 underline-offset-2 hover:underline">Detalhes</button>
+          </div>
+        </div>
+        <PrinterDiagnosticsModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      </>
+    );
+  }
 
   const handleRetryAll = async () => {
     setIsRetrying(true);
