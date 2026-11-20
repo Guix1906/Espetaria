@@ -13,13 +13,12 @@ import {
   PieChart,
   PlayCircle,
   Plus,
-  Printer,
   Users,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { ActiveTab } from '../../components/layout/navigation';
-import { PrinterDiagnosticsModal, usePrinterHealth } from '../../components/layout/PrinterStatusWidget';
+import { PrinterDiagnosticsModal } from '../../components/layout/PrinterStatusWidget';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useNavFocusStore } from '../../stores/useNavFocusStore';
@@ -52,7 +51,6 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const { deliveryOrders } = useDeliveryStore();
   const { stockMovements } = useStockStore();
   const { jobs } = usePrintStore();
-  const { isBridgeAlive } = usePrinterHealth();
   const { notify } = useFeedback();
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.updateSettings);
@@ -140,7 +138,6 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
   const activeDeliveries = (Object.values(d.stages).flat() as DeliveryOrder[]).sort((a, b) => a.created_at.localeCompare(b.created_at));
   const deliveryCount = activeDeliveries.filter((o) => !isDineInOrder(o)).length;
   const lateIds = new Set(d.lateDeliveries.map((o) => o.id));
-  const printerProblem = isSupabaseConfigured && (!isBridgeAlive || d.stuckJobs.length > 0 || d.failedJobs.length > 0);
   const topByQty = [...d.topProducts].sort((a, b) => b.qty - a.qty).slice(0, 8);
 
   // Ações do topo: Fechar turno (discreto) · Pausar delivery · Novo pedido
@@ -197,19 +194,12 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
       )}
 
       {/* FAIXA COMPACTA DE ALERTAS INTELIGENTES */}
-      {(d.alerts.length > 0 || printerProblem) && (
+      {d.alerts.length > 0 && (
         <section aria-label="Precisa de você agora" className="flex flex-wrap items-center gap-2 rounded-md bg-rose-50 px-3 py-2.5">
           <span className="flex items-center gap-1.5 pr-1 text-sm font-semibold text-rose-900">
             <AlertTriangle className="h-4 w-4 text-rose-600" aria-hidden="true" />
             Precisa de você agora
           </span>
-          {printerProblem && (
-            <button type="button" onClick={() => setIsDiagnosticsOpen(true)} className="flex min-h-[36px] items-center gap-1.5 rounded-sm bg-surface px-3 text-[13px] font-medium text-ink hover:bg-surface-muted">
-              <Printer className="h-3.5 w-3.5 text-rose-600" aria-hidden="true" />
-              {!isBridgeAlive ? 'Programa de impressão sem sinal' : d.failedJobs.length > 0 ? `${d.failedJobs.length} ${d.failedJobs.length === 1 ? 'cupom falhou' : 'cupons falharam'}` : `${d.stuckJobs.length} ${d.stuckJobs.length === 1 ? 'cupom parado' : 'cupons parados'} na fila`}
-              <ArrowRight className="h-3.5 w-3.5 text-ink-muted" aria-hidden="true" />
-            </button>
-          )}
           {d.alerts.map((alert) => (
             <button
               key={alert.id}
