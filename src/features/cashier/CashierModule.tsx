@@ -175,36 +175,6 @@ export const CashierModule: React.FC = () => {
         )}
       </div>
 
-      {/* Régua de Acesso Rápido / Atalho Direto para as Mesas Ativas */}
-      {effectiveFilter !== 'CLOSED_TODAY' && activeTables.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 custom-scrollbar">
-          <span className="text-[13px] font-bold uppercase tracking-wider text-ink-muted whitespace-nowrap">
-            Acesso direto:
-          </span>
-          {activeTables.map((t) => {
-            const tTab = tabs.find((tb) => (tb.table_id === t.id || tb.table_id === `table-${t.number}`) && tb.status === 'OPEN');
-            const isBill = t.status === 'AGUARDANDO_CONTA';
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setSelectedTableForCheckout(t)}
-                className={`shrink-0 h-8 px-2.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition active:scale-95 ${
-                  isBill
-                    ? 'border-brand-500 bg-brand-50 text-brand-900 hover:bg-brand-100 shadow-xs'
-                    : 'border-line bg-surface hover:bg-surface-muted text-ink'
-                }`}
-                title={`Abrir fechamento da Mesa ${String(t.number).padStart(2, '0')}`}
-              >
-                <span>Mesa {String(t.number).padStart(2, '0')}</span>
-                {isBill && <span className="h-1.5 w-1.5 rounded-full bg-brand-600 animate-pulse" />}
-                {tTab && <span className="font-mono text-ink-muted font-normal">· {formatBRL(tTab.total)}</span>}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* Grade de Mesas / Comandas */}
       {effectiveFilter !== 'CLOSED_TODAY' ? (
         activeTables.length === 0 ? (

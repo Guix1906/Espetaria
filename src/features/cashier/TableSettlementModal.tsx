@@ -603,9 +603,10 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                       )}
                     </div>
                   )}
-                  <button type="submit" className="btn-success min-h-[52px] w-full rounded-md text-base font-bold flex items-center justify-center gap-1.5">
+                  {/* Passo 1: receber. Passo 2 (abaixo, só depois de pago): encerrar a conta */}
+                  <button type="submit" className="btn-primary min-h-[52px] w-full text-base font-bold">
                     <Plus className="w-4 h-4" />
-                    {payMode === 'TOTAL' ? `Lançar ${formatBRL(remainingDue)}` : `Lançar parte${paymentAmountNumber > 0 ? ` de ${formatBRL(paymentAmountNumber)}` : ''}`}
+                    {payMode === 'TOTAL' ? `Receber ${formatBRL(remainingDue)}` : `Receber parte${paymentAmountNumber > 0 ? ` de ${formatBRL(paymentAmountNumber)}` : ''}`}
                   </button>
                 </form>
               )}
@@ -629,18 +630,14 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                 </div>
               )}
 
-              <button
-                type="button"
-                disabled={!isFullyPaid}
-                onClick={handleFinalizeClosure}
-                className={`mt-auto w-full min-h-[56px] rounded-md font-bold text-[17px] transition flex items-center justify-center gap-2 ${isFullyPaid
-                    ? 'btn-success'
-                    : 'bg-surface-muted text-ink-muted cursor-not-allowed border border-line'
-                  }`}
-              >
-                <CheckCheck className="w-5 h-5" />
-                <span>{isFullyPaid ? 'Encerrar conta e liberar mesa' : 'Lance o pagamento para encerrar'}</span>
-              </button>
+              {isFullyPaid ? (
+                <button type="button" onClick={handleFinalizeClosure} className="btn-success mt-auto w-full min-h-[56px] text-[17px] font-bold">
+                  <CheckCheck className="w-5 h-5" />
+                  <span>Encerrar conta e liberar mesa</span>
+                </button>
+              ) : (
+                <p className="mt-auto text-center text-sm text-ink-muted">Depois de receber o valor total, aparece o botão para encerrar a conta.</p>
+              )}
             </div>
 
           </div>

@@ -59,7 +59,8 @@ export const GrillKDSView: React.FC = () => {
   const [audioEnabled, setAudioEnabled] = useState<boolean>(audioService.getAudioEnabled());
   const [pending, setPending] = useState<Record<string, true>>({});
   const [openCards, setOpenCards] = useState<Record<string, boolean>>({});
-  const toggleOpen = (key: string) => setOpenCards((current) => ({ ...current, [key]: !current[key] }));
+  // Cartões nascem abertos: o churrasqueiro vê o que fazer sem tocar na tela
+  const toggleOpen = (key: string) => setOpenCards((current) => ({ ...current, [key]: current[key] === false }));
   const now = useNow();
   const timers = useRef(new Map<string, { timer: number; commit: () => void }>());
 
@@ -189,7 +190,7 @@ export const GrillKDSView: React.FC = () => {
         description={tickets.length === 0 ? 'Os pedidos chegam aqui já na brasa.' : `${tickets.length} ${tickets.length === 1 ? 'pedido' : 'pedidos'} na brasa · ${skewerCount} ${skewerCount === 1 ? 'espeto' : 'espetos'}`}
         actions={<>
           <button type="button" onClick={handleToggleAudio} className="icon-button" aria-pressed={audioEnabled} aria-label={audioEnabled ? 'Desativar alertas sonoros' : 'Ativar alertas sonoros'} title={audioEnabled ? 'Som ativado' : 'Som desativado'}>{audioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}</button>
-          <button type="button" onClick={() => setIsExhaustModalOpen(true)} className="btn-secondary text-rose-700"><AlertCircle className="h-4 w-4" aria-hidden="true" />Estoque{countExhausted > 0 && <span className="rounded-sm bg-rose-50 px-2 py-0.5 text-xs">{countExhausted}</span>}</button>
+          <button type="button" onClick={() => setIsExhaustModalOpen(true)} className="btn-danger-soft"><AlertCircle className="h-4 w-4" aria-hidden="true" />Estoque{countExhausted > 0 && <span className="rounded-sm bg-rose-50 px-2 py-0.5 text-xs">{countExhausted}</span>}</button>
         </>}
       />
 
@@ -205,7 +206,7 @@ export const GrillKDSView: React.FC = () => {
             const kind = KIND_LABEL[ticket.kind];
             const isPending = Boolean(pending[ticket.key]);
             const level = elapsedLevel(ticket.createdAt, now, 15, 25);
-            const isOpen = Boolean(openCards[ticket.key]);
+            const isOpen = openCards[ticket.key] !== false;
             const units = ticket.items.reduce((sum, item) => sum + item.quantity, 0);
             const strip = isPending ? 'bg-emerald-600 text-white' : LEVEL_STRIP[level];
             return (
@@ -215,7 +216,7 @@ export const GrillKDSView: React.FC = () => {
                   <button type="button" onClick={() => toggleOpen(ticket.key)} aria-expanded={isOpen} aria-label={`${isOpen ? 'Fechar' : 'Ver'} pedido de ${ticket.title}`} className="flex min-w-0 flex-1 items-center gap-2 text-left">
                     {/* Duas linhas: nome em cima, tipo e número embaixo. Nome grande corta com reticências e nunca passa por cima do botão */}
                     <span className="min-w-0 flex-1">
-                      <h2 className="truncate font-sans text-base font-bold leading-tight tracking-tight text-ink tabular-nums">{ticket.title}</h2>
+                      <h2 className="truncate font-sans text-lg font-bold leading-tight tracking-tight text-ink tabular-nums">{ticket.title}</h2>
                       <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-xs text-ink-muted tabular-nums">
                         {ticket.kind !== 'LOCAL' && <span className={`shrink-0 rounded-sm px-1.5 py-0.5 font-semibold ${kind.classes}`}>{kind.label}</span>}
                         <span className="min-w-0 truncate">{ticket.subtitle}</span>
@@ -224,11 +225,11 @@ export const GrillKDSView: React.FC = () => {
                     <ChevronDown className={`h-4 w-4 shrink-0 text-ink-muted transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
                   </button>
                   {ticket.kind !== 'LOCAL' && (isPending ? (
-                    <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary h-8 min-h-0 shrink-0 px-2 text-xs">
+                    <button type="button" onClick={() => undo(ticket.key)} className="btn-secondary min-h-[44px] shrink-0 px-3 text-sm">
                       <Undo2 className="h-4 w-4" aria-hidden="true" />Desfazer
                     </button>
                   ) : (
-                    <button type="button" onClick={() => markReady(ticket)} className="btn-success h-8 min-h-0 shrink-0 px-2 text-xs font-bold">
+                    <button type="button" onClick={() => markReady(ticket)} className="btn-success min-h-[44px] shrink-0 px-3 text-sm font-bold">
                       <CheckCheck className="h-4 w-4" aria-hidden="true" />Pronto
                     </button>
                   ))}
@@ -237,25 +238,26 @@ export const GrillKDSView: React.FC = () => {
                 {/* Fechado todos têm a mesma altura; o pedido desce ao tocar */}
                 <div className={`grid transition-[grid-template-rows] duration-200 ease-out ${isOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}>
                   <div className="overflow-hidden">
-                    <ul className="space-y-0.5 border-t border-line px-3 py-1.5">
+                    {/* Letra grande: o churrasqueiro lê de longe, com a mão ocupada */}
+                    <ul className="space-y-1.5 border-t border-line px-3 py-2.5">
                       {ticket.items.map((item) => (
-                        <li key={item.id} className="text-base leading-tight">
+                        <li key={item.id} className="text-lg leading-snug">
                           <span className="font-mono font-bold tabular-nums text-accent-700">{item.quantity}x</span>{' '}
                           <span className="font-semibold text-ink">{item.name}</span>
-                          {item.doneness && <span className="ml-1.5 whitespace-nowrap rounded-sm bg-amber-100 px-1.5 text-xs font-bold text-amber-900">{formatDoneness(item.doneness)}</span>}
-                          {item.notes && <span className="block text-xs text-amber-800">Obs: {item.notes}</span>}
+                          {item.doneness && <span className="ml-1.5 whitespace-nowrap rounded-sm bg-amber-100 px-1.5 py-0.5 text-sm font-bold text-amber-900">{formatDoneness(item.doneness)}</span>}
+                          {item.notes && <span className="block text-sm font-medium text-amber-800">Obs: {item.notes}</span>}
                         </li>
                       ))}
-                      {ticket.notes && <li className="rounded-sm bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-900">Obs do pedido: {ticket.notes}</li>}
+                      {ticket.notes && <li className="rounded-sm bg-amber-50 px-1.5 py-0.5 text-sm font-medium text-amber-900">Obs do pedido: {ticket.notes}</li>}
                     </ul>
                   </div>
                 </div>
 
-                <div className={`flex h-7 items-center justify-between rounded-b-xl px-3 text-xs font-bold ${strip}`} role={isPending ? 'status' : undefined}>
+                <div className={`flex h-9 items-center justify-between rounded-b-xl px-3 text-sm font-bold ${strip}`} role={isPending ? 'status' : undefined}>
                   {isPending ? <span>Pronto! Avisando...</span> : (
                     <span className="flex items-center gap-3">
-                      <span className="flex items-center gap-1" title="Espetos na brasa"><Flame className="h-4 w-4 opacity-90" aria-hidden="true" /><span className="tabular-nums">{units}</span></span>
-                      {ticket.people !== undefined && <span className="flex items-center gap-1" title="Pessoas na mesa"><Users className="h-4 w-4 opacity-90" aria-hidden="true" /><span className="tabular-nums">{ticket.people}</span></span>}
+                      <span className="flex items-center gap-1" title="Espetos na brasa"><Flame className="h-4 w-4 opacity-90" aria-hidden="true" /><span className="tabular-nums">{units} {units === 1 ? 'espeto' : 'espetos'}</span></span>
+                      {ticket.people !== undefined && <span className="flex items-center gap-1" title="Pessoas na mesa"><Users className="h-4 w-4 opacity-90" aria-hidden="true" /><span className="tabular-nums">{ticket.people} {ticket.people === 1 ? 'pessoa' : 'pessoas'}</span></span>}
                     </span>
                   )}
                   <span className="font-mono text-sm font-black"><KDSElapsedTimer createdAt={ticket.createdAt} compact /></span>

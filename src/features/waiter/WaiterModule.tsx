@@ -208,8 +208,8 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
     });
 
     const filterOptions: { key: SalonFilter; label: string; count: number }[] = [
-      { key: 'ACTIVE', label: 'Mesas ativas', count: occupiedTables.length },
-      { key: 'ALL', label: 'Todas as 60', count: activeTables.length },
+      { key: 'ACTIVE', label: 'Em atendimento', count: occupiedTables.length },
+      { key: 'ALL', label: 'Todas as mesas', count: activeTables.length },
     ];
 
     const handlePrintTable = async (table: RestaurantTable) => {
@@ -277,24 +277,48 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
         </div>
 
         {filteredTables.length ? (
-          <div className="table-grid">
-            {filteredTables.map((table) => (
-              <TableCard
-                key={table.id}
-                table={table}
-                tab={getTableTab(table.id)}
-                itemCount={itemsOfTable(table.id).filter((i) => i.status !== 'CANCELLED').length}
-                disabled={!isShiftOpen}
-                onOpen={() => askOpen(table)}
-                onOrder={() => setSelectedTableId(table.id)}
-                onBill={() => setTableForBill(table)}
-                onPrint={() => void handlePrintTable(table)}
-                onTransfer={() => {
-                  const tab = getTableTab(table.id);
-                  if (tab) setTableToTransfer({ table, tab });
-                }}
-              />
-            ))}
+          <div className="space-y-5">
+            {/* Em atendimento: cartões com tudo à vista (conta pedida e item pronto primeiro) */}
+            {filteredTables.some((t) => t.status !== 'LIVRE') && (
+              <section aria-label="Mesas em atendimento" className="space-y-2">
+                {effectiveFilter === 'ALL' && <h2 className="section-title">Em atendimento</h2>}
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                  {filteredTables
+                    .filter((t) => t.status !== 'LIVRE')
+                    .sort((a, b) => Number(b.status === 'AGUARDANDO_CONTA') - Number(a.status === 'AGUARDANDO_CONTA') || Number(readyTableIds.has(b.id)) - Number(readyTableIds.has(a.id)) || a.number - b.number)
+                    .map((table) => (
+                      <TableCard
+                        key={table.id}
+                        table={table}
+                        tab={getTableTab(table.id)}
+                        itemCount={itemsOfTable(table.id).filter((i) => i.status !== 'CANCELLED').length}
+                        readyCount={readyItemsOf(table.id).length}
+                        now={now}
+                        disabled={!isShiftOpen}
+                        onOpen={() => askOpen(table)}
+                        onOrder={() => setSelectedTableId(table.id)}
+                        onBill={() => setTableForBill(table)}
+                        onPrint={() => void handlePrintTable(table)}
+                        onTransfer={() => {
+                          const tab = getTableTab(table.id);
+                          if (tab) setTableToTransfer({ table, tab });
+                        }}
+                      />
+                    ))}
+                </div>
+              </section>
+            )}
+            {/* Livres: grade compacta, tipo mapa (cabem todas na tela) */}
+            {filteredTables.some((t) => t.status === 'LIVRE') && (
+              <section aria-label="Mesas livres" className="space-y-2">
+                <h2 className="section-title">Livres <span className="font-mono text-sm font-normal text-ink-muted">{filteredTables.filter((t) => t.status === 'LIVRE').length}</span></h2>
+                <div className="grid grid-cols-[repeat(auto-fill,minmax(76px,1fr))] gap-2">
+                  {filteredTables.filter((t) => t.status === 'LIVRE').map((table) => (
+                    <TableCard key={table.id} table={table} disabled={!isShiftOpen} onOpen={() => askOpen(table)} onOrder={() => setSelectedTableId(table.id)} />
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         ) : (
           <div className="rounded-2xl border border-line bg-surface p-8 text-center shadow-card space-y-3 max-w-md mx-auto my-8">
@@ -329,11 +353,11 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
                   onClick={() => setFilter('ALL')}
                   className="btn-secondary min-h-[44px] px-3 text-sm font-semibold"
                 >
-                  Ver todas as 60 mesas
+                  Ver todas as {activeTables.length} mesas
                 </button>
               )}
             </div>
-            <p className="text-xs text-ink-muted pt-1">60 mesas cadastradas. Próxima disponível: <strong>Mesa 01</strong>.</p>
+            {freeTables[0] && <p className="text-xs text-ink-muted pt-1">{activeTables.length} mesas cadastradas. Próxima livre: <strong>Mesa {String(Math.min(...freeTables.map((t) => t.number))).padStart(2, '0')}</strong>.</p>}
           </div>
         )}
 

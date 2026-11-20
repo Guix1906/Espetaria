@@ -3,7 +3,7 @@ import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { ArrowLeft, ArrowRight, Beer, CheckCircle2, Flame, Minus, Plus, Search, Star, UtensilsCrossed, X, ArrowLeftRight } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
-import { formatBRL } from '../../lib/formatters';
+import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { getProductAvailability, getStockLevel, productFlavors, type StockLevel } from '../../lib/productAvailability';
 import { pairCombos, remainingFor } from '../../lib/comboStock';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -116,8 +116,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
       );
       clearCart(table.id);
       triggerHaptic(60);
+      // A faixa verde "Pedido enviado à produção" já confirma (antes saía também um aviso embaixo)
       setOrderSent(true);
-      notify('Pedido enviado à produção com sucesso!', 'success');
     } catch (err: unknown) {
       triggerHaptic(80);
       notify(err instanceof Error ? err.message : 'Não foi possível enviar o pedido.', 'error');
@@ -280,10 +280,17 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
     );
   };
 
+  // Painel no computador: cartões menores, 3 colunas e o pedido sempre visível à direita
+  const wide = !dedicated;
+  const maxW = wide ? 'max-w-7xl' : 'max-w-5xl';
+  const nameCls = wide ? 'text-base sm:text-[17px]' : 'text-[20px]';
+  const priceCls = wide ? 'text-base sm:text-[17px]' : 'text-[20px]';
+  const hasPhotos = products.some((p) => p.image_url);
+
   return (
-    <div className="min-w-0 pb-32">
+    <div className={`min-w-0 ${wide ? 'pb-32 xl:pb-10' : 'pb-32'}`}>
       <div className="subnav-sticky bg-canvas px-3 py-2 sm:px-6">
-        <div className="mx-auto flex max-w-5xl items-center justify-between gap-1.5">
+        <div className={`mx-auto flex ${maxW} items-center justify-between gap-1.5`}>
           <div className="flex min-w-0 items-center gap-1.5 min-[375px]:gap-2.5">
             <button type="button" onClick={onBackToTables} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-ink" aria-label="Voltar às mesas"><ArrowLeft className="h-5 w-5" /></button>
             {/* O número da mesa nunca é cortado: é o que evita lançar pedido na mesa errada */}
@@ -311,7 +318,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
           </div>
         </div>
         {/* 4 Botões Principais Fixos (Acesso Imediato com o Polegar) */}
-        <div className="mx-auto mt-2 grid grid-cols-4 gap-1.5 max-w-5xl" aria-label="Grupos principais">
+        <div className={`mx-auto mt-2 grid grid-cols-4 gap-1.5 ${maxW}`} aria-label="Grupos principais">
           {[
             { id: TOP, label: 'Top', icon: Star },
             { id: 'GROUP_ESPETOS', label: 'Espetos', icon: Flame },
@@ -331,7 +338,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
           })}
         </div>
       </div>
-      <div className="mx-auto max-w-5xl space-y-3 px-3 pt-3 sm:px-6">
+      <div className={`mx-auto ${maxW} px-3 pt-3 sm:px-6 ${wide ? 'xl:grid xl:grid-cols-[minmax(0,1fr)_340px] xl:items-start xl:gap-6' : ''}`}>
+      <div className="min-w-0 space-y-3">
         {/* Um aviso só, o mais importante: encerrada > enviado > conta pedida */}
         {!activeTab ? (checkingTab
             ? <p role="status" className="notice border-line bg-surface-soft text-ink-secondary">Conferindo a comanda desta mesa...</p>
@@ -367,19 +375,19 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
             <input type="search" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Buscar item" className="h-11 w-full rounded-lg border border-line-strong bg-surface pl-10 pr-3 text-base placeholder:text-ink-muted" />
           </label>
-          <button
+          {hasPhotos && <button
             type="button"
             onClick={togglePhotos}
             className={`h-11 shrink-0 px-3 rounded-lg border text-base font-semibold flex items-center gap-1.5 transition ${showPhotos ? 'border-line bg-surface text-ink-muted active:bg-surface-muted' : 'border-brand-500 bg-brand-50 text-brand-700 font-bold'}`}
             title={showPhotos ? 'Ocultar fotos para carregamento instantâneo' : 'Exibir fotos dos produtos'}>
             {showPhotos ? 'Ocultar fotos' : 'Mostrar fotos'}
-          </button>
+          </button>}
           {canManageProducts && <button type="button" onClick={() => setIsProductModalOpen(true)} className="btn-secondary h-11 shrink-0 px-3 text-base" title="Cadastrar novo produto no cardápio"><Plus className="h-4 w-4" /><span className="hidden sm:inline">Novo produto</span></button>}
         </div>
         {sections.every((s) => !s.rows.length) ? <EmptyState title="Nenhum produto encontrado" description="Tente outro nome ou escolha uma categoria diferente." action={<button type="button" className="btn-secondary" onClick={() => { setSelectedCategory(TOP); setSearchQuery(''); }}>Limpar busca</button>} /> : sections.filter((s) => s.rows.length).map((section) => (
           <section key={section.id} aria-label={section.title} className="space-y-2">
-            <h2 className="pt-2 text-[20px] font-bold text-ink">{section.title}</h2>
-            <ul className="waiter-products grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <h2 className={`pt-2 font-bold text-ink ${wide ? 'text-lg' : 'text-[20px]'}`}>{section.title}</h2>
+            <ul className={`waiter-products grid grid-cols-1 gap-2 sm:grid-cols-2 ${wide ? 'lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3' : ''}`}>
               {section.rows.map(({ product, level, left, inCart, combo }) => {
                 if (combo) {
                   const pairTag = stockText(level, left, inCart + combo.inCart);
@@ -388,8 +396,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                       <div className="flex items-center gap-3">
                         {showPhotos && product.image_url && <img src={optimizeThumbnailUrl(product.image_url, 112)} alt="" loading="lazy" decoding="async" width={48} height={48} className={`h-12 w-12 shrink-0 rounded-md object-cover ${level === 'out' ? 'opacity-50 grayscale' : ''}`} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />}
                         <div className="min-w-0 flex-1">
-                          <h3 className="text-[20px] font-bold leading-tight text-ink">{product.name}</h3>
-                          {pairTag && <p className={`mt-0.5 text-[17px] ${pairTag.cls}`}>{pairTag.text}</p>}
+                          <h3 className={`${nameCls} font-bold leading-tight text-ink`}>{product.name}</h3>
+                          {pairTag && <p className={`mt-0.5 ${wide ? 'text-sm' : 'text-[17px]'} ${pairTag.cls}`}>{pairTag.text}</p>}
                         </div>
                       </div>
                       <div className="mt-2.5 grid grid-cols-2 items-start gap-2">
@@ -409,7 +417,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                       if (blocked || out) return;
                       handleAdd(product);
                     }}
-                    className={`flex min-h-[88px] items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 transition select-none ${!blocked && !out ? 'cursor-pointer active:bg-surface-muted hover:border-line-strong' : ''}`}
+                    className={`flex ${wide ? 'min-h-[72px]' : 'min-h-[88px]'} items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 transition select-none ${!blocked && !out ? 'cursor-pointer active:bg-surface-muted hover:border-line-strong' : ''}`}
                   >
                     {showPhotos && product.image_url && (
                       <img
@@ -424,8 +432,8 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                       />
                     )}
                     <div className="min-w-0 flex-1">
-                      <h3 className="text-[20px] font-bold leading-tight text-ink">{product.name}</h3>
-                      <p className="mt-1.5 flex flex-wrap items-baseline gap-x-3 text-[20px]">
+                      <h3 className={`${nameCls} font-bold leading-tight text-ink`}>{product.name}</h3>
+                      <p className={`mt-1.5 flex flex-wrap items-baseline gap-x-3 ${priceCls}`}>
                         <span className={`font-mono font-semibold text-ink ${out && !inCart ? 'opacity-50' : ''}`}>{formatBRL(product.price)}</span>
                         {tag && (out && !inCart ? <StatusTag kind="alert" className="font-semibold">{tag.text}</StatusTag> : <span className={tag.cls}>{tag.text}</span>)}
                       </p>
@@ -455,8 +463,47 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
           </section>
         ))}
       </div>
+      {/* Computador largo: o pedido em montagem fica sempre à vista na lateral */}
+      {wide && (
+        <aside className="hidden xl:sticky xl:block xl:self-start" style={{ top: 'calc(var(--app-header-height, 64px) + 140px)' }} aria-label={`Pedido da Mesa ${pad2(table.number)}`}>
+          <div className="surface-card flex max-h-[calc(100dvh-260px)] flex-col overflow-hidden">
+            <div className="flex items-baseline justify-between border-b border-line px-4 py-3">
+              <h2 className="section-title">Novo pedido</h2>
+              <span className="text-sm text-ink-muted">Mesa {pad2(table.number)}</span>
+            </div>
+            {cart.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-ink-muted">Clique nos itens do cardápio para montar o pedido.</p>
+            ) : (
+              <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
+                {cart.map((item) => (
+                  <li key={item.id} className="flex items-start justify-between gap-3 px-4 py-2.5">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-ink"><span className="font-mono">{item.quantity}×</span> {item.product.name}</p>
+                      {(item.doneness || item.notes) && <p className="text-xs text-ink-muted">{[item.doneness ? formatDoneness(item.doneness) : null, item.notes].filter(Boolean).join(' · ')}</p>}
+                    </div>
+                    <span className="shrink-0 font-mono text-sm text-ink">{formatBRL(item.product.price * item.quantity)}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="space-y-2 border-t border-line px-4 py-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-sm text-ink-muted">{cartCount} {cartCount === 1 ? 'item' : 'itens'}</span>
+                <span className="font-mono text-lg font-bold text-ink">{formatBRL(cartTotal)}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" className="btn-secondary" disabled={!cart.length} onClick={() => setIsCartDrawerOpen(true)}>Revisar</button>
+                <button type="button" className="btn-primary" disabled={!cart.length || isSendingQuick} onClick={handleQuickSend}>
+                  {isSendingQuick ? 'Enviando...' : <>Enviar <ArrowRight className="h-4 w-4" aria-hidden="true" /></>}
+                </button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      )}
+      </div>
       {cartCount > 0 && (
-        <div className="vv-bottom fixed inset-x-3 z-30 mx-auto max-w-2xl" style={{ bottom: 'max(26px, calc(env(safe-area-inset-bottom) + 12px))' }}>
+        <div className={`vv-bottom fixed inset-x-3 z-30 mx-auto max-w-2xl ${wide ? 'xl:hidden' : ''}`} style={{ bottom: 'max(26px, calc(env(safe-area-inset-bottom) + 12px))' }}>
           <div className="flex h-[62px] w-full items-center justify-between gap-2 rounded-2xl bg-brand-500 p-2 text-white shadow-[0_8px_24px_rgba(80,30,10,0.3)]">
             <button
               type="button"
