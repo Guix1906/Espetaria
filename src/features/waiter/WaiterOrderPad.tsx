@@ -283,8 +283,9 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   // Painel no computador: cartões menores, 3 colunas e o pedido sempre visível à direita
   const wide = !dedicated;
   const maxW = wide ? 'max-w-7xl' : 'max-w-5xl';
-  const nameCls = wide ? 'text-base sm:text-[17px]' : 'text-[20px]';
-  const priceCls = wide ? 'text-base sm:text-[17px]' : 'text-[20px]';
+  // Celular do garçom: 18 px ainda lê bem e cabe 1 a 2 itens a mais por tela
+  const nameCls = wide ? 'text-base sm:text-[17px]' : 'text-[18px]';
+  const priceCls = wide ? 'text-base sm:text-[17px]' : 'text-[18px]';
   const hasPhotos = products.some((p) => p.image_url);
 
   return (
@@ -417,7 +418,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                       if (blocked || out) return;
                       handleAdd(product);
                     }}
-                    className={`flex ${wide ? 'min-h-[72px]' : 'min-h-[88px]'} items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 transition select-none ${!blocked && !out ? 'cursor-pointer active:bg-surface-muted hover:border-line-strong' : ''}`}
+                    className={`flex ${wide ? 'min-h-[72px]' : 'min-h-[76px]'} items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-2.5 transition select-none ${!blocked && !out ? 'cursor-pointer active:bg-surface-muted hover:border-line-strong' : ''}`}
                   >
                     {showPhotos && product.image_url && (
                       <img
@@ -433,7 +434,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                     )}
                     <div className="min-w-0 flex-1">
                       <h3 className={`${nameCls} font-bold leading-tight text-ink`}>{product.name}</h3>
-                      <p className={`mt-1.5 flex flex-wrap items-baseline gap-x-3 ${priceCls}`}>
+                      <p className={`mt-1 flex flex-wrap items-baseline gap-x-3 ${priceCls}`}>
                         <span className={`font-mono font-semibold text-ink ${out && !inCart ? 'opacity-50' : ''}`}>{formatBRL(product.price)}</span>
                         {tag && (out && !inCart ? <StatusTag kind="alert" className="font-semibold">{tag.text}</StatusTag> : <span className={tag.cls}>{tag.text}</span>)}
                       </p>

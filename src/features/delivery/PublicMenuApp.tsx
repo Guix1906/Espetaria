@@ -592,7 +592,7 @@ export function PublicMenuApp() {
     return (
       <div className="min-w-0 space-y-2">
         <button type="button" disabled={!isOpen || !isAvailable} onClick={() => pickProduct(p)} aria-label={`Adicionar ${p.name}, ${formatBRL(p.price)}`}
-          className={`block min-h-[64px] w-full rounded-[10px] border px-3 py-2.5 text-left disabled:cursor-not-allowed ${featured ? 'border-brand-500 bg-brand-50' : 'border-line-strong'}`}>
+          className={`block min-h-[56px] w-full rounded-[10px] border px-3 py-2 text-left disabled:cursor-not-allowed ${featured ? 'border-brand-500 bg-brand-50' : 'border-line-strong'}`}>
           <span className={`block text-[13px] ${featured ? 'text-[#f0b9a8]' : 'text-ink-muted'}`}>{label}</span>
           {soldOut ? <StatusTag kind="alert" className="mt-1 text-[13px] font-semibold">Esgotado</StatusTag> : <span className={`mt-0.5 block text-[17px] font-semibold tabular-nums ${featured ? 'text-[#ff6a55]' : ''}`}>{formatBRL(p.price)}</span>}
         </button>
@@ -613,12 +613,12 @@ export function PublicMenuApp() {
     if (featuredCard) return (
       <article className="group overflow-hidden rounded-2xl border border-line bg-surface-soft transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md">
         <div className="overflow-hidden">
-          <Photo product={p} priority={priority} className={`aspect-video w-full transition-transform duration-300 ease-out group-hover:scale-105 ${soldOut ? 'opacity-50 grayscale' : ''}`} />
+          <Photo product={p} priority={priority} className={`aspect-[2/1] w-full md:aspect-video transition-transform duration-300 ease-out group-hover:scale-105 ${soldOut ? 'opacity-50 grayscale' : ''}`} />
         </div>
-        <div className="p-4">
+        <div className="p-3.5 sm:p-4">
           {title}
           {description && <p className="mt-1 line-clamp-2 text-[14px] leading-[1.4] text-ink-muted">{description}</p>}
-          <div className={`mt-3 grid gap-2.5 ${combo ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          <div className={`mt-2.5 grid gap-2.5 ${combo ? 'grid-cols-2' : 'grid-cols-1'}`}>
             {combo ? <>{buyBox(p, 'Só o espeto')}{buyBox(combo, 'Completo', true)}</> : buyBox(p, 'Completo', true)}
           </div>
         </div>
@@ -1024,13 +1024,14 @@ export function PublicMenuApp() {
       <div className="mx-auto max-w-xl pb-32 md:max-w-4xl">
         <header className="pb-1">
           {/* Brasa acesa atrás da logo */}
-          <div aria-hidden="true" className="h-[170px]" style={{ background: 'radial-gradient(circle at 50% 100%,rgba(255,170,70,.55) 0%,rgba(232,96,40,.45) 18%,rgba(196,38,31,.28) 38%,rgba(120,30,20,.12) 58%,rgba(23,18,15,0) 78%)', WebkitMaskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)', maskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)' }} />
-          <div className="relative -mt-[110px] flex flex-col items-center px-5">
-            <div className="rounded-full bg-surface p-[5px] shadow-[0_0_0_1px_rgba(232,182,74,.4),0_0_40px_rgba(232,120,40,.35)]"><img src="/brand/logo-sabor-da-carne-288.webp" alt="" width={128} height={128} className="h-32 w-32 rounded-full border-2 border-[#e8b64a] object-cover" /></div>
-            <h1 className={`${display} mt-4 text-center text-[21px] font-semibold uppercase leading-tight tracking-[1px]`}>{settings.name}</h1>
-            <p className="mt-2 flex items-center gap-2.5 text-[12px] uppercase tracking-[3px] text-[#e8b64a]"><span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" />Espetos na brasa<span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" /></p>
+          {/* Capa menor: o primeiro espeto aparece já na primeira tela do celular */}
+          <div aria-hidden="true" className="h-[110px]" style={{ background: 'radial-gradient(circle at 50% 100%,rgba(255,170,70,.55) 0%,rgba(232,96,40,.45) 18%,rgba(196,38,31,.28) 38%,rgba(120,30,20,.12) 58%,rgba(23,18,15,0) 78%)', WebkitMaskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)', maskImage: 'linear-gradient(180deg,#000 60%,transparent 100%)' }} />
+          <div className="relative -mt-[84px] flex flex-col items-center px-5">
+            <div className="rounded-full bg-surface p-1 shadow-[0_0_0_1px_rgba(232,182,74,.4),0_0_32px_rgba(232,120,40,.35)]"><img src="/brand/logo-sabor-da-carne-288.webp" alt="" width={96} height={96} className="h-24 w-24 rounded-full border-2 border-[#e8b64a] object-cover" /></div>
+            <h1 className={`${display} mt-3 text-center text-[20px] font-semibold uppercase leading-tight tracking-[1px]`}>{settings.name}</h1>
+            <p className="mt-1.5 flex items-center gap-2.5 text-[12px] uppercase tracking-[3px] text-[#e8b64a]"><span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" />Espetos na brasa<span aria-hidden="true" className="h-px w-7 bg-[#e8b64a]/50" /></p>
           </div>
-          <div className="mt-[18px] space-y-3 px-5">
+          <div className="mt-4 space-y-3 px-5">
             <p className={`flex items-center gap-2.5 rounded-[10px] border px-3.5 py-2.5 text-[14px] ${isOpen ? 'border-line bg-surface-soft' : 'border-[#4a2620] bg-[#2a1a16]'}`}><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${isOpen ? 'bg-emerald-500' : 'bg-[#d8382f]'}`} />{isOpen ? <span><b className="font-semibold">Aberto agora</b> · {isPickup ? pickupEta : deliveryEta}</span> : <span><b className="font-semibold">Fechado</b> · {storeClosedText(now, settings.delivery_cutoff_time, settings.updated_at)}</span>}</p>
             
             {searchBox}
@@ -1046,7 +1047,7 @@ export function PublicMenuApp() {
             <section key={g.name} data-cat={g.name} ref={(el) => { sectionsRef.current[g.name] = el; }}>
               <h2 className={`${display} text-[26px] font-semibold uppercase tracking-[.5px]`}>{g.name}</h2>
               {g.name === ESPETOS && <p className="mt-2.5 rounded-[10px] border border-[#4d3c22] bg-[#2a2116] px-3 py-2.5 text-[13.5px] text-[#f0d9a8]">{COMBO_SIDES}</p>}
-              <ul className={`mt-4 grid grid-cols-1 md:grid-cols-2 ${g.name === ESPETOS ? 'gap-5' : 'gap-3'}`}>{g.items.map((p, i) => productRow(p, g === groups[0] ? i : 9))}</ul>
+              <ul className={`mt-4 grid grid-cols-1 md:grid-cols-2 ${g.name === ESPETOS ? 'gap-4' : 'gap-3'}`}>{g.items.map((p, i) => productRow(p, g === groups[0] ? i : 9))}</ul>
             </section>
           ))}
         </main>
