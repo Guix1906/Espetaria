@@ -206,7 +206,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           {printerProblem && (
             <button type="button" onClick={() => setIsDiagnosticsOpen(true)} className="flex min-h-[36px] items-center gap-1.5 rounded-sm bg-surface px-3 text-[13px] font-medium text-ink hover:bg-surface-muted">
               <Printer className="h-3.5 w-3.5 text-rose-600" aria-hidden="true" />
-              Impressora com cupom parado
+              {!isBridgeAlive ? 'Programa de impressão sem sinal' : d.failedJobs.length > 0 ? `${d.failedJobs.length} ${d.failedJobs.length === 1 ? 'cupom falhou' : 'cupons falharam'}` : `${d.stuckJobs.length} ${d.stuckJobs.length === 1 ? 'cupom parado' : 'cupons parados'} na fila`}
               <ArrowRight className="h-3.5 w-3.5 text-ink-muted" aria-hidden="true" />
             </button>
           )}
