@@ -78,11 +78,7 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
               <span className="max-w-[170px] truncate">Turno aberto</span>
             </div>
           ) : null}
-          {isManager && (
-            <a href="#/garcom" className="btn-secondary min-h-[44px]" title="Ver e usar a tela do garçom com o seu login">
-              <Smartphone className="h-4 w-4" aria-hidden="true" />Área do garçom
-            </a>
-          )}
+          {/* "Área do garçom" saiu do topo (pedido do dono, 20/11): fica no menu do perfil e na tela Salão */}
           {/* Abrir turno fica só no aviso da Visão geral (pedido do dono, 09/11) */}
           {currentShift?.status !== 'ABERTO' && !isManager && (
             <span className="status-badge bg-amber-50 py-2 text-amber-800">Turno fechado</span>
@@ -113,8 +109,12 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
                 <p className="px-1 py-1 text-[13px] text-ink-muted">{currentShift?.status === 'ABERTO' ? `Turno aberto · ${currentShift.name}` : 'Turno fechado'}</p>
                 {currentShift?.status !== 'ABERTO' && isManager && <button type="button" onClick={() => { setRoleDropdownOpen(false); onOpenShiftClick(); }} className="btn-primary min-h-[44px] w-full"><Clock3 className="h-4 w-4" aria-hidden="true" />Abrir turno</button>}
                 <button type="button" aria-pressed={isAudioEnabled} onClick={toggleAudio} className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 text-left text-sm font-medium text-ink hover:bg-surface-muted">{isAudioEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}{isAudioEnabled ? 'Som ligado' : 'Som desligado'}</button>
-                {isManager && <a href="#/garcom" className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 text-sm font-medium text-ink hover:bg-surface-muted"><Smartphone className="h-4 w-4" aria-hidden="true" />Área do garçom</a>}
               </div>
+              {isManager && (
+                <div className="border-b border-line p-2">
+                  <a href="#/garcom" className="flex min-h-[44px] w-full items-center gap-2 rounded-md px-2 text-sm font-medium text-ink hover:bg-surface-muted" title="Ver e usar a tela do garçom com o seu login"><Smartphone className="h-4 w-4" aria-hidden="true" />Área do garçom</a>
+                </div>
+              )}
               <p className="border-b border-line px-3 py-3 text-[13px] font-semibold text-ink-muted">{canSwitchProfile ? 'Perfil operacional (demonstração)' : 'Sessão'}</p>
               {!canSwitchProfile && (
                 <div className="space-y-2 p-3">
