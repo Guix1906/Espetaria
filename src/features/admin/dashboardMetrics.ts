@@ -45,20 +45,16 @@ export interface BotLinkInput {
 /** Turno aberto há mais disso sem nenhuma mensagem de cliente = provável recebimento parado. */
 export const BOT_SILENCE_MIN = 90;
 
-/** Alerta do robô desconectado ou sem receber mensagens (puro, testado). */
-export function botLinkAlert(link: BotLinkInput | null | undefined, now: number): DashboardAlert | null {
+/**
+ * Alerta do robô (puro, testado): só quando o WhatsApp caiu de verdade (desconectado).
+ * "Sem receber mensagens há X h" saiu a pedido do dono (20/11): horas sem cliente escrevendo é normal.
+ */
+export function botLinkAlert(link: BotLinkInput | null | undefined, _now: number): DashboardAlert | null {
   if (!link || !link.botOn) return null;
   if (link.connected === false) {
     return { id: 'bot-link', tone: 'danger', target: 'settings', text: 'Robô do WhatsApp desconectado: clientes não recebem resposta. Reconecte pelo QR Code em Configurações → WhatsApp.' };
   }
-  if (!link.shiftOpenedAt || minutesSince(link.shiftOpenedAt, now) < BOT_SILENCE_MIN) return null;
-  const silentSince = link.lastIncomingAt && new Date(link.lastIncomingAt).getTime() > new Date(link.shiftOpenedAt).getTime()
-    ? link.lastIncomingAt
-    : link.shiftOpenedAt;
-  const mins = minutesSince(silentSince, now);
-  if (mins < BOT_SILENCE_MIN) return null;
-  const h = Math.floor(mins / 60);
-  return { id: 'bot-link', tone: 'warning', target: 'settings', text: `Robô do WhatsApp sem receber mensagens há ${h >= 1 ? `${h} h` : `${mins} min`}. Mande um "oi" de outro celular; se não chegar, desconecte e leia o QR Code de novo em Configurações → WhatsApp.` };
+  return null;
 }
 
 /** Falha do robô nas últimas 2 horas vira alerta. */
@@ -292,8 +288,7 @@ export function computeDashboard(input: DashboardInput) {
   const oldReady = readyItems.filter((i) => minutesSince(i.prepared_at ?? i.updated_at, now) >= ALERT_LIMITS.readyNotServed);
   const oldReadyUnits = oldReady.reduce((s, i) => s + i.quantity, 0);
   if (oldReadyUnits) alerts.push({ id: 'ready', tone: 'warning', target: 'ready', text: `${oldReadyUnits} ${oldReadyUnits === 1 ? 'item pronto esperando' : 'itens prontos esperando'} o garçom há ${readyOldest} min` });
-  const oldGrill = grillItems.filter((i) => minutesSince(i.created_at, now) >= ALERT_LIMITS.grillTooLong);
-  if (oldGrill.length) alerts.push({ id: 'grill', tone: 'warning', target: 'kds', text: `${oldGrill.length} ${oldGrill.length === 1 ? 'espeto na brasa' : 'espetos na brasa'} há mais de ${ALERT_LIMITS.grillTooLong} min` });
+  // "Espetos na brasa há mais de 20 min" saiu a pedido do dono (20/11): a churrasqueira já mostra o tempo em cada pedido.
   if (lateDeliveries.length) alerts.push({ id: 'late', tone: 'danger', target: 'delivery', text: `${lateDeliveries.length} ${lateDeliveries.length === 1 ? 'delivery atrasado' : 'deliveries atrasados'} (mais de ${ALERT_LIMITS.deliveryLate} min): ${lateDeliveries.map((d) => `#${d.order_number}`).join(', ')}` });
   const oldPickups = pickupsWaiting.filter((d) => minutesSince(d.ready_at ?? d.created_at, now) >= ALERT_LIMITS.pickupWaiting);
   if (oldPickups.length) alerts.push({ id: 'pickup', tone: 'warning', target: 'delivery', text: `${oldPickups.length} ${oldPickups.length === 1 ? 'retirada pronta' : 'retiradas prontas'} esperando o cliente há mais de ${ALERT_LIMITS.pickupWaiting} min` });

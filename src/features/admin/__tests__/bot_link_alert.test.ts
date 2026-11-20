@@ -12,10 +12,9 @@ describe('Alerta do robô do WhatsApp sem conexão', () => {
   it('robô desligado não alerta', () => {
     expect(botLinkAlert({ connected: false, lastIncomingAt: null, botOn: false, shiftOpenedAt: ago(200) }, NOW)).toBeNull();
   });
-  it('turno aberto há 2 h sem nenhuma mensagem de cliente alerta', () => {
-    const a = botLinkAlert({ connected: true, lastIncomingAt: ago(24 * 60), botOn: true, shiftOpenedAt: ago(120) }, NOW);
-    expect(a?.tone).toBe('warning');
-    expect(a?.text).toContain('2 h');
+  it('conectado mas horas sem mensagem de cliente NÃO alerta (pedido do dono: só quando cair de verdade)', () => {
+    expect(botLinkAlert({ connected: true, lastIncomingAt: ago(24 * 60), botOn: true, shiftOpenedAt: ago(120) }, NOW)).toBeNull();
+    expect(botLinkAlert({ connected: true, lastIncomingAt: ago(12 * 60), botOn: true, shiftOpenedAt: ago(13 * 60) }, NOW)).toBeNull();
   });
   it('mensagem recente ou turno recém-aberto não alerta', () => {
     expect(botLinkAlert({ connected: true, lastIncomingAt: ago(10), botOn: true, shiftOpenedAt: ago(300) }, NOW)).toBeNull();
