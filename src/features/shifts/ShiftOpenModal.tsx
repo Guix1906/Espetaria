@@ -41,6 +41,9 @@ const DEFAULT_RICE_OPTIONS = [
   'Arroz de Alho',
   'Arroz com Brócolis',
   'Arroz à Grega',
+  'Arroz de Cenoura',
+  'Arroz de Cuxá',
+  'Arroz de Fava',
 ];
 
 const DEFAULT_NON_SKEWER = '8';
@@ -64,39 +67,25 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     message: null,
   });
 
-  const [selectedRiceFlavors, setSelectedRiceFlavors] = useState<string[]>(() => {
-    return settings.daily_rice_flavors && settings.daily_rice_flavors.length > 0
-      ? settings.daily_rice_flavors
-      : ['Arroz Branco'];
-  });
-  const [customRiceInput, setCustomRiceInput] = useState('');
-  const [isAddingCustomRice, setIsAddingCustomRice] = useState(false);
+  const [selectedRiceFlavors, setSelectedRiceFlavors] = useState<string[]>(() => settings.daily_rice_flavors ?? []);
   const [activeTab, setActiveTab] = useState<'skewers' | 'sides'>('skewers');
   const [showCombosPreview, setShowCombosPreview] = useState(false);
 
-  // Catálogo completo salvo de sabores de arroz (persistente entre turnos)
-  const [localSavedRices, setLocalSavedRices] = useState<string[]>(() => {
-    try {
-      const fromLocal = localStorage.getItem('espetaria_saved_rice_flavors');
-      if (fromLocal) return JSON.parse(fromLocal);
-    } catch {}
-    return settings.saved_rice_flavors || DEFAULT_RICE_OPTIONS;
-  });
-
-  // Lista consolidada de arrozes cadastrados
+  // Arrozes cadastrados (banco). Novos sabores entram pelo gerente em Estoque.
   const allSavedRices = React.useMemo(() => {
-    const list = [
-      ...(settings.saved_rice_flavors || []),
-      ...(settings.daily_rice_flavors || []),
-      ...localSavedRices,
-      ...DEFAULT_RICE_OPTIONS,
-    ];
-    // Remove "Arroz" puro genérico se já existirem opções mais específicas
-    const unique = Array.from(new Set(list))
+    const base = settings.saved_rice_flavors && settings.saved_rice_flavors.length > 0
+      ? settings.saved_rice_flavors
+      : DEFAULT_RICE_OPTIONS;
+    const seen = new Set<string>();
+    return [...base, ...(settings.daily_rice_flavors || [])]
       .map((r) => r.trim())
-      .filter((r) => Boolean(r) && r.toLowerCase() !== 'arroz');
-    return unique;
-  }, [settings.saved_rice_flavors, settings.daily_rice_flavors, localSavedRices]);
+      .filter((r) => {
+        const k = r.toLowerCase();
+        if (!r || k === 'arroz' || seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
+  }, [settings.saved_rice_flavors, settings.daily_rice_flavors]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -106,13 +95,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     setCashStart('');
     setErrorMsg(null);
     setRepeatState({ loading: false, message: null });
-    setSelectedRiceFlavors(
-      settings.daily_rice_flavors && settings.daily_rice_flavors.length > 0
-        ? settings.daily_rice_flavors
-        : ['Arroz Branco']
-    );
-    setCustomRiceInput('');
-    setIsAddingCustomRice(false);
+    setSelectedRiceFlavors(settings.daily_rice_flavors ?? []);
   }, [isOpen, settings.daily_rice_flavors]);
 
   if (!isOpen) return null;
@@ -227,53 +210,8 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
   };
 
   const toggleRiceFlavor = (flavor: string) => {
-    if (selectedRiceFlavors.includes(flavor)) {
-      if (selectedRiceFlavors.length > 1) {
-        setSelectedRiceFlavors(selectedRiceFlavors.filter((f) => f !== flavor));
-      }
-    } else {
-      setSelectedRiceFlavors([...selectedRiceFlavors, flavor]);
-    }
-  };
-
-  const handleAddCustomRice = () => {
-    const trimmed = customRiceInput.trim();
-    if (!trimmed) return;
-
-    // Normaliza para reaproveitar maiúsculas/minúsculas se já existir
-    const existing = allSavedRices.find((r) => r.toLowerCase() === trimmed.toLowerCase());
-    const flavorToAdd = existing || trimmed;
-
-    // 1. Marca como selecionado no turno de hoje
-    if (!selectedRiceFlavors.includes(flavorToAdd)) {
-      setSelectedRiceFlavors((prev) => [...prev, flavorToAdd]);
-    }
-
-    // 2. Salva permanentemente no catálogo de arrozes
-    if (!allSavedRices.some((r) => r.toLowerCase() === trimmed.toLowerCase())) {
-      const updated = [...allSavedRices, flavorToAdd];
-      setLocalSavedRices(updated);
-      try {
-        localStorage.setItem('espetaria_saved_rice_flavors', JSON.stringify(updated));
-      } catch {}
-      updateSettings({ saved_rice_flavors: updated });
-    }
-
-    setCustomRiceInput('');
-    setIsAddingCustomRice(false);
-  };
-
-  const handleRemoveSavedRice = (flavor: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const updated = allSavedRices.filter((r) => r.toLowerCase() !== flavor.toLowerCase());
-    setLocalSavedRices(updated);
-    try {
-      localStorage.setItem('espetaria_saved_rice_flavors', JSON.stringify(updated));
-    } catch {}
-    updateSettings({ saved_rice_flavors: updated });
-    if (selectedRiceFlavors.includes(flavor)) {
-      setSelectedRiceFlavors((prev) => prev.filter((r) => r !== flavor));
-    }
+    setErrorMsg(null);
+    setSelectedRiceFlavors((prev) => (prev.includes(flavor) ? prev.filter((f) => f !== flavor) : [...prev, flavor]));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -315,7 +253,13 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
         return;
       }
 
-      if (selectedRiceFlavors.length > 0) {
+      if (selectedRiceFlavors.length === 0) {
+        setErrorMsg('Escolha os arrozes de hoje: toque nos botões em "Quais arrozes tem hoje?" (lá em cima).');
+        document.getElementById('shift-open-rice')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      {
         updateSettings({
           daily_rice_flavors: selectedRiceFlavors,
           saved_rice_flavors: allSavedRices,
@@ -532,101 +476,53 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
           </div>
 
           {/* Arroz do Dia (Seleção Rápida de 1 Toque - Salvo Permanentemente) */}
-          <div className="p-3.5 rounded-xl border border-line bg-surface space-y-2.5">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div>
-                <span className="text-xs font-bold text-ink">Arroz do Dia (visível para os garçons)</span>
-                <p className="text-xs text-ink-muted">Toque para ativar os sabores preparados hoje (ficam sempre salvos aqui):</p>
-              </div>
-              <span className="text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
-                {selectedRiceFlavors.length > 0 ? selectedRiceFlavors.join(' & ') : 'Nenhum selecionado'}
-              </span>
+          <div
+            id="shift-open-rice"
+            className={`p-4 rounded-xl border-2 space-y-3 ${
+              selectedRiceFlavors.length === 0 ? 'border-amber-400 bg-amber-50' : 'border-brand-600 bg-surface'
+            }`}
+          >
+            <div>
+              <p className="text-base font-bold text-ink">Quais arrozes tem hoje?</p>
+              <p className="text-sm text-ink-secondary">
+                Toque em cada arroz que foi feito hoje. Pode marcar mais de um. Os garçons só vão ver os marcados.
+              </p>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-3 gap-2">
               {allSavedRices.map((option) => {
                 const isSelected = selectedRiceFlavors.includes(option);
-                const isCustom = !DEFAULT_RICE_OPTIONS.includes(option);
                 return (
-                  <div
+                  <button
                     key={option}
-                    className={`inline-flex items-center rounded-lg text-xs font-bold transition border shadow-2xs ${
+                    type="button"
+                    aria-pressed={isSelected}
+                    onClick={() => toggleRiceFlavor(option)}
+                    className={`min-h-12 px-3 rounded-lg border-2 text-sm font-bold flex items-center gap-2 text-left transition ${
                       isSelected
-                        ? 'border-brand-600 bg-brand-600 text-white'
-                        : 'border-line bg-white text-ink hover:border-brand-400'
+                        ? 'border-emerald-600 bg-emerald-600 text-white'
+                        : 'border-line-strong bg-white text-ink hover:border-brand-400'
                     }`}
                   >
-                    <button
-                      type="button"
-                      onClick={() => toggleRiceFlavor(option)}
-                      className="h-8 px-2.5 flex items-center gap-1.5"
+                    <span
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
+                        isSelected ? 'border-white bg-white text-emerald-700' : 'border-line-strong'
+                      }`}
                     >
-                      {isSelected && <Check className="w-3.5 h-3.5 shrink-0" />}
-                      <span>{option}</span>
-                    </button>
-                    {isCustom && (
-                      <button
-                        type="button"
-                        onClick={(e) => handleRemoveSavedRice(option, e)}
-                        title={`Remover "${option}" dos salvos`}
-                        className={`h-8 pr-2 pl-0.5 text-xs opacity-60 hover:opacity-100 transition ${
-                          isSelected ? 'text-white hover:text-rose-200' : 'text-ink-muted hover:text-rose-600'
-                        }`}
-                      >
-                        ×
-                      </button>
-                    )}
-                  </div>
+                      {isSelected && <Check className="w-4 h-4" />}
+                    </span>
+                    <span>{option}</span>
+                  </button>
                 );
               })}
-
-              {!isAddingCustomRice ? (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingCustomRice(true)}
-                  className="h-8 px-2.5 rounded-lg border border-dashed border-brand-400 bg-brand-50/60 text-xs font-bold text-brand-700 hover:bg-brand-100 flex items-center gap-1 transition"
-                >
-                  <span>+ Outro sabor</span>
-                </button>
-              ) : (
-                <div className="flex items-center gap-1.5 bg-white p-1 rounded-lg border border-brand-300 shadow-xs">
-                  <input
-                    type="text"
-                    autoFocus
-                    value={customRiceInput}
-                    onChange={(e) => setCustomRiceInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddCustomRice();
-                      } else if (e.key === 'Escape') {
-                        setIsAddingCustomRice(false);
-                      }
-                    }}
-                    placeholder="Nome do arroz (ex: cuxa)..."
-                    className="h-7 px-2 text-xs rounded border border-line text-ink focus:outline-none focus:ring-1 focus:ring-brand-600 w-36 sm:w-44 font-medium"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddCustomRice}
-                    disabled={!customRiceInput.trim()}
-                    className="btn-primary h-7 px-2.5 text-xs font-bold disabled:opacity-50"
-                  >
-                    Salvar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsAddingCustomRice(false);
-                      setCustomRiceInput('');
-                    }}
-                    className="h-7 px-1.5 text-xs text-ink-muted hover:text-ink"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              )}
             </div>
+
+            <p className={`text-sm font-bold ${selectedRiceFlavors.length === 0 ? 'text-amber-800' : 'text-emerald-700'}`}>
+              {selectedRiceFlavors.length === 0
+                ? 'Nenhum arroz marcado ainda.'
+                : `Hoje tem: ${selectedRiceFlavors.join(', ')}`}
+            </p>
+            <p className="text-xs text-ink-muted">Falta algum sabor na lista? O gerente cadastra em Estoque → Sabores do dia.</p>
           </div>
 
           {/* Seção de Contagem dos Produtos */}
