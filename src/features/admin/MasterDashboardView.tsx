@@ -268,7 +268,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-surface p-4 text-left transition-all duration-200 hover:border-emerald-400 hover:shadow-md border-t-4 border-t-emerald-500"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Mesas abertas</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Mesas abertas</span>
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700 transition group-hover:scale-110">
               <Users className="h-4 w-4" />
             </span>
@@ -279,7 +279,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           <p className="truncate text-xs font-medium text-ink-muted">
             {d.salon.people > 0 ? `${d.salon.people} ${d.salon.people === 1 ? 'pessoa no salão' : 'pessoas no salão'}` : 'Nenhuma mesa aberta'}
             {d.salon.waitingBill.length > 0 && (
-              <span className="ml-1.5 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-900">
+              <span className="ml-1.5 inline-flex items-center rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-900">
                 {d.salon.waitingBill.length} {d.salon.waitingBill.length === 1 ? 'pediu conta' : 'pediram conta'}
               </span>
             )}
@@ -295,7 +295,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           className="group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-surface p-4 text-left transition-all duration-200 hover:border-brand-400 hover:shadow-md border-t-4 border-t-brand-600"
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Produção agora</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Produção agora</span>
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition group-hover:scale-110">
               <Flame className="h-4 w-4" />
             </span>
@@ -323,7 +323,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Prontos para servir</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Prontos para servir</span>
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-700 transition group-hover:scale-110">
               <CheckCircle2 className="h-4 w-4" />
             </span>
@@ -348,7 +348,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           }`}
         >
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Delivery & Retirada</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Delivery & Retirada</span>
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-700 transition group-hover:scale-110">
               <Bike className="h-4 w-4" />
             </span>
@@ -380,7 +380,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                 <p className="text-xs text-ink-muted">Mesas do salão e pedidos de entrega organizados pelo fluxo da cozinha</p>
               </div>
               {printerProblem && (
-                <div className="flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-800 ring-1 ring-inset ring-amber-600/20">
+                <div className="flex items-center gap-1.5 rounded-sm bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800">
                   <Printer className="h-3.5 w-3.5 text-amber-600" />
                   <span>Impressora: atenção na fila</span>
                 </div>
@@ -455,7 +455,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                   <Flame className="h-4 w-4 text-brand-600" />
                   Mise en place do dia
                 </h2>
-                <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] font-semibold text-ink-muted">Pré-turno</span>
+                <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs font-semibold text-ink-muted">Pré-turno</span>
               </div>
               <div className="pt-3 pb-1 text-center">
                 <p className="text-xs text-ink-muted leading-relaxed">
@@ -482,7 +482,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                   <PieChart className="h-4 w-4 text-brand-600" />
                   Mais pedidos no turno
                 </h2>
-                <span className="font-mono text-xs font-medium text-ink-muted">{topByQty.length} itens</span>
+                <span className="font-mono text-xs font-medium text-ink-muted">{topByQty.length} {topByQty.length === 1 ? 'item' : 'itens'}</span>
               </div>
               <ul className="divide-y divide-line/60 pt-1">
                 {topByQty.slice(0, 5).map((p, idx) => (
@@ -491,7 +491,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                       <span className="w-4 font-mono font-bold text-ink-muted">{idx + 1}</span>
                       <div className="min-w-0">
                         <span className="block truncate font-medium text-ink">{p.name}</span>
-                        <span className="block text-[11px] text-ink-muted">{p.channels}</span>
+                        <span className="block text-xs text-ink-muted">{p.channels}</span>
                       </div>
                     </div>
                     <span className="font-mono font-semibold text-ink ml-2 shrink-0">{p.qty} un</span>
@@ -517,7 +517,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
                     onClick={() => setFeedFilter(f)}
                     className={`rounded-md px-2 py-0.5 text-xs font-semibold transition ${
                       feedFilter === f
-                        ? 'bg-ink text-white'
+                        ? 'bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-600'
                         : 'bg-surface-muted text-ink-muted hover:text-ink'
                     }`}
                   >
@@ -530,7 +530,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
               <div className="flex flex-col items-center justify-center py-6 text-center">
                 <History className="h-6 w-6 text-ink-muted/50 mb-1.5" />
                 <p className="text-xs font-semibold text-ink">Sem movimentações recentes</p>
-                <p className="text-[11px] text-ink-muted mt-0.5 max-w-[220px]">
+                <p className="text-xs text-ink-muted mt-0.5 max-w-[220px]">
                   {currentShift ? 'Novos pedidos e baixas de estoque aparecerão aqui.' : 'Nenhuma movimentação neste turno.'}
                 </p>
               </div>
@@ -538,15 +538,15 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
               <ul className="max-h-[22rem] space-y-2 overflow-y-auto pr-1 pt-2">
                 {feed.slice(0, 30).map((ev) => (
                   <li key={ev.id} className="flex items-start gap-2.5 rounded-lg border border-line/60 bg-surface-soft/60 p-2 text-xs">
-                    <span className="w-10 shrink-0 font-mono text-[11px] text-ink-muted pt-0.5">
+                    <span className="w-10 shrink-0 font-mono text-xs text-ink-muted pt-0.5">
                       {new Date(ev.time).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className={`rounded px-1 py-0.2 text-[10px] font-semibold ${TONE[ev.tone]}`}>{ev.channel}</span>
+                        <span className={`rounded px-1 py-0.2 text-xs font-semibold ${TONE[ev.tone]}`}>{ev.channel}</span>
                         <span className="font-medium text-ink">{ev.title}</span>
                       </div>
-                      <span className="mt-0.5 block truncate text-[11px] text-ink-muted">{ev.description}</span>
+                      <span className="mt-0.5 block truncate text-xs text-ink-muted">{ev.description}</span>
                     </div>
                   </li>
                 ))}

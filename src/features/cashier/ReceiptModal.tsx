@@ -61,17 +61,17 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
             <h2 className="font-semibold text-base font-sans text-stone-950">
               {store.name}
             </h2>
-            {store.cnpj && <p className="text-[10px] text-stone-500">CNPJ: {store.cnpj}</p>}
-            {store.address && <p className="text-[10px] text-stone-500">{store.address}</p>}
+            {store.cnpj && <p className="text-xs text-stone-500">CNPJ: {store.cnpj}</p>}
+            {store.address && <p className="text-xs text-stone-500">{store.address}</p>}
             {store.phone && (
-              <p className="text-[10px] text-stone-700 font-bold">
+              <p className="text-xs text-stone-700 font-bold">
                 WhatsApp / Pedidos: {store.phone}
               </p>
             )}
           </div>
 
           {/* Dados da Operação */}
-          <div className="border-b border-dashed border-stone-400 pb-2 space-y-0.5 text-[11px]">
+          <div className="border-b border-dashed border-stone-400 pb-2 space-y-0.5 text-xs">
             <div className="flex justify-between font-bold">
               <span>CUPOM NÃO FISCAL</span>
               <span>MESA {table ? String(table.number).padStart(2, '0') : '??'}</span>
@@ -80,15 +80,15 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
               <span>Comanda: #{tab.id.slice(0, 8)}</span>
               <span>{tab.customer_name}</span>
             </div>
-            <div className="flex justify-between text-stone-600 text-[10px]">
+            <div className="flex justify-between text-stone-600 text-xs">
               <span>Data: {new Date(tab.closed_at || tab.opened_at).toLocaleDateString('pt-BR')}</span>
               <span>Hora: {new Date(tab.closed_at || tab.opened_at).toLocaleTimeString('pt-BR')}</span>
             </div>
           </div>
 
           {/* Discriminação dos Itens */}
-          <div className="border-b border-dashed border-stone-400 pb-2.5 space-y-1 text-[11px]">
-            <div className="flex justify-between font-bold border-b border-stone-300 pb-1 text-[10px]">
+          <div className="border-b border-dashed border-stone-400 pb-2.5 space-y-1 text-xs">
+            <div className="flex justify-between font-bold border-b border-stone-300 pb-1 text-xs">
               <span>ITEM / DESCRIÇÃO</span>
               <span>TOTAL</span>
             </div>
@@ -103,7 +103,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
                   </span>
                 </div>
                 {item.doneness && (
-                  <div className="text-[10px] text-stone-600 pl-4">
+                  <div className="text-xs text-stone-600 pl-4">
                     Ponto: {formatDoneness(item.doneness)}
                   </div>
                 )}
@@ -112,7 +112,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           </div>
 
           {/* Resumo Financeiro */}
-          <div className="border-b border-dashed border-stone-400 pb-2.5 space-y-1 text-[11px]">
+          <div className="border-b border-dashed border-stone-400 pb-2.5 space-y-1 text-xs">
             <div className="flex justify-between">
               <span>SUBTOTAL:</span>
               <span className="font-bold">{formatBRL(tab.subtotal)}</span>
@@ -136,8 +136,8 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           </div>
 
           {/* Formas de Pagamento Registradas */}
-          <div className="border-b border-dashed border-stone-400 pb-2 space-y-1 text-[11px]">
-            <div className="font-bold text-[11px] text-stone-700">
+          <div className="border-b border-dashed border-stone-400 pb-2 space-y-1 text-xs">
+            <div className="font-bold text-xs text-stone-700">
               Formas de Pagamento Recebidas:
             </div>
             {payments.map((p) => (
@@ -159,7 +159,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           </div>
 
           {/* Rodapé do Cupom */}
-          <div className="text-center pt-2 text-[10px] text-stone-600 space-y-1">
+          <div className="text-center pt-2 text-xs text-stone-600 space-y-1">
             <p className="font-bold text-stone-800">OBRIGADO PELA PREFERÊNCIA!</p>
             <p>Volte sempre à Espetaria Sabor da Carne!</p>
             <p className="text-xs print:text-[9px] text-stone-600 font-ticket">Sabor da Carne</p>

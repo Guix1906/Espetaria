@@ -1,6 +1,6 @@
 import { Flame, UtensilsCrossed } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { FilterChip } from '../../components/ui/FilterChip';
+import { SectionTabs } from '../../components/ui/SectionTabs';
 import { isPendingProduction } from '../../lib/productionStatus';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
@@ -41,13 +41,17 @@ export function KDSModule() {
 
   return (
     <div className="min-w-0">
-      <div className="border-b border-line bg-surface px-4 py-3 sm:px-6 xl:px-8">
-        <div className="mx-auto flex max-w-[1536px] items-center justify-between gap-4">
-          <div className="filter-bar" aria-label="Setor de produção">
-            <FilterChip active={activeSector === 'grill'} onClick={() => setActiveSector('grill')} count={grillCount}><Flame className="h-4 w-4" aria-hidden="true" />Churrasqueira</FilterChip>
-            <FilterChip active={activeSector === 'kitchen'} onClick={() => setActiveSector('kitchen')}><UtensilsCrossed className="h-4 w-4" aria-hidden="true" />Cozinha e cubas</FilterChip>
-          </div>
-          <span className="hidden shrink-0 items-center gap-2 text-xs text-ink-muted xl:flex"><span className="h-2 w-2 rounded-full bg-emerald-600" />Painel de produção</span>
+      <div className="bg-surface px-4 pt-2 sm:px-6 xl:px-8">
+        <div className="mx-auto max-w-[1536px]">
+          <SectionTabs
+            label="Setor de produção"
+            value={activeSector}
+            onChange={setActiveSector}
+            items={[
+              { id: 'grill', label: 'Churrasqueira', icon: Flame, count: grillCount },
+              { id: 'kitchen', label: 'Cozinha e cubas', icon: UtensilsCrossed },
+            ]}
+          />
         </div>
       </div>
       {activeSector === 'grill' ? <GrillKDSView /> : <KitchenKDSView />}

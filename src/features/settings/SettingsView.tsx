@@ -20,6 +20,7 @@ import {
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { FilterChip } from '../../components/ui/FilterChip';
+import { SectionTabs } from '../../components/ui/SectionTabs';
 import { useSettingsStore } from '../../stores/useSettingsStore';
 import { usePrintStore } from '../../stores/usePrintStore';
 import type { PixKeyType, ProductionSector } from '../../types/enums';
@@ -238,28 +239,14 @@ export const SettingsView: React.FC = () => {
         icon={SettingsIcon}
       />
 
-      {/* Grupos (4 botões que cabem no celular) e, abaixo, as abas do grupo */}
-      <div className="space-y-2 border-b border-line pb-2">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="tablist" aria-label="Assuntos das configurações">
-          {GROUPS.map((group) => {
-            const Icon = group.icon;
-            const active = group.id === activeGroup.id;
-            return (
-              <button
-                key={group.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => void setActiveTab(group.tabs[0]!.id)}
-                className={`flex h-11 items-center justify-center gap-2 rounded-md text-sm font-semibold transition-colors ${active ? 'border border-brand-500 bg-brand-500 text-white' : 'border border-line-strong bg-surface text-ink-secondary hover:bg-surface-muted'}`}
-              >
-                <Icon className="h-4 w-4" aria-hidden="true" />
-                {group.label}
-                {group.id === 'impressao' && pendingCount > 0 && <span className={`font-mono text-xs ${active ? 'text-white' : 'text-amber-800'}`}>{pendingCount}</span>}
-              </button>
-            );
-          })}
-        </div>
+      {/* Assuntos (abas de seção, padrão do sistema) e, abaixo, os filtros do assunto */}
+      <div className="space-y-3">
+        <SectionTabs
+          label="Assuntos das configurações"
+          value={activeGroup.id}
+          onChange={(id) => { const group = GROUPS.find((g) => g.id === id); if (group) void setActiveTab(group.tabs[0]!.id); }}
+          items={GROUPS.map((group) => ({ id: group.id, label: group.label, icon: group.icon, count: group.id === 'impressao' ? pendingCount : undefined }))}
+        />
         {activeGroup.tabs.length > 1 && (
           <div className="filter-bar" aria-label={`Abas de ${activeGroup.label}`}>
             {activeGroup.tabs.map((tab) => {

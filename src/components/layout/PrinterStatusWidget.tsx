@@ -229,7 +229,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
   if (!isOpen) return null;
 
   return (
-    <Dialog label="Diagnóstico das Impressoras" onClose={onClose}>
+    <Dialog label="Diagnóstico das impressoras" onClose={onClose}>
       <div className="dialog-panel relative w-full max-w-lg bg-surface border border-line rounded-2xl shadow-card overflow-hidden my-auto max-h-[90vh] flex flex-col text-ink p-5 space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-line">
           <div className="flex items-center gap-2">
@@ -237,7 +237,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
               <Printer className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-ink">Diagnóstico das Impressoras</h2>
+              <h2 className="text-base font-bold text-ink">Diagnóstico das impressoras</h2>
               <p className="text-xs text-ink-muted">Conexão de rede e hardware em tempo real</p>
             </div>
           </div>
@@ -264,7 +264,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
                   Cupons pendentes de impressão ({failedJobs.length})
                 </span>
               </div>
-              <span className="text-[11px] bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">
+              <span className="text-xs bg-amber-200 text-amber-900 font-bold px-2 py-0.5 rounded-full">
                 Queda de energia / Desligada
               </span>
             </div>
@@ -276,7 +276,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
                 <div key={j.id} className="py-2 flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <span
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                      className={`px-1.5 py-0.5 rounded text-xs font-bold shrink-0 ${
                         j.sector === 'GRILL' ? 'bg-amber-100 text-amber-900' : 'bg-emerald-100 text-emerald-900'
                       }`}
                     >
@@ -294,7 +294,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
                       await processJob(j.id);
                       notify(`Comanda #${j.order_number} reenviada.`, 'success');
                     }}
-                    className="text-[11px] font-bold text-brand-700 hover:text-brand-900 underline shrink-0"
+                    className="text-xs font-bold text-brand-700 hover:text-brand-900 underline shrink-0"
                   >
                     Reenviar
                   </button>
@@ -449,7 +449,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
             className="btn-primary w-full sm:flex-1 py-2.5 text-xs font-bold flex items-center justify-center gap-2"
           >
             <Printer className="w-4 h-4" />
-            {isTesting ? 'Enviando teste...' : 'Imprimir Cupom de Teste nas Duas'}
+            {isTesting ? 'Enviando teste...' : 'Imprimir cupom de teste nas duas'}
           </button>
 
           <button

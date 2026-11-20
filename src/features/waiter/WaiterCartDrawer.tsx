@@ -99,7 +99,7 @@ export function WaiterCartDrawer({ table, isOpen, onClose, onSuccess }: WaiterCa
               <div className="mt-1 grid grid-cols-3 gap-1.5" role="radiogroup" aria-label={`Ponto de ${item.product.name}`}>
                 {DONENESS_OPTIONS.map((option) => (
                   <button key={option.value} type="button" role="radio" aria-checked={item.doneness === option.value} onClick={() => run(() => updateItem(table.id, item.id, { quantity: item.quantity, doneness: option.value, notes: item.notes }))}
-                    className={`h-10 rounded-md border text-base font-medium ${item.doneness === option.value ? 'border-ink bg-ink text-white' : 'border-line-strong bg-white text-ink'}`}>{option.label}</button>
+                    className={`h-10 rounded-md border text-base font-medium ${item.doneness === option.value ? 'border-brand-600 bg-brand-50 font-semibold text-brand-800 ring-1 ring-inset ring-brand-600' : 'border-line-strong bg-white text-ink'}`}>{option.label}</button>
                 ))}
               </div>
             )}

@@ -504,7 +504,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                   <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-muted p-1" role="group" aria-label="Quanto vai pagar agora">
                     {([['TOTAL', 'Conta inteira'], ['PARTIAL', 'Pagar parte']] as const).map(([mode, label]) => (
                       <button key={mode} type="button" aria-pressed={payMode === mode} onClick={() => { setPayMode(mode); setPaymentAmount(''); setErrorMessage(null); }}
-                        className={`min-h-[48px] rounded-md text-base font-bold transition ${payMode === mode ? 'bg-brand-700 text-white' : 'text-ink-secondary hover:text-ink'}`}>
+                        className={`min-h-[48px] rounded-md text-base font-bold transition ${payMode === mode ? 'bg-surface text-brand-800 shadow-sm ring-1 ring-brand-600' : 'text-ink-secondary hover:text-ink'}`}>
                         {label}
                       </button>
                     ))}
@@ -526,7 +526,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                           aria-pressed={isSelected}
                           onClick={() => setPaymentMethod(m.id)}
                           className={`min-h-[56px] rounded-md text-sm font-bold transition flex flex-col items-center justify-center gap-1 ${isSelected
-                              ? 'bg-ink text-white'
+                              ? 'border border-brand-600 bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-600'
                               : 'bg-surface border border-line-strong text-ink hover:bg-surface-muted'
                             }`}
                         >

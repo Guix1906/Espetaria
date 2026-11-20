@@ -324,7 +324,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                 key={grp.id}
                 type="button"
                 onClick={() => { triggerHaptic(20); setSelectedCategory(grp.id); setSearchQuery(''); scrollToCatalog(); }}
-                className={`flex h-11 items-center justify-center gap-1 rounded-xl text-center text-[14px] font-bold border transition min-[375px]:text-[15px] ${isGroupActive ? 'bg-ink text-white border-ink shadow-sm' : 'bg-surface text-ink border-line hover:border-line-strong active:bg-surface-muted'}`}>
+                className={`flex h-11 items-center justify-center gap-1 rounded-xl text-center text-[14px] font-bold border transition min-[375px]:text-[15px] ${isGroupActive ? 'bg-brand-50 text-brand-800 border-brand-600 ring-1 ring-inset ring-brand-600' : 'bg-surface text-ink border-line hover:border-line-strong active:bg-surface-muted'}`}>
                 <grp.icon className="hidden h-4 w-4 shrink-0 min-[375px]:block" aria-hidden="true" />{grp.label}
               </button>
             );

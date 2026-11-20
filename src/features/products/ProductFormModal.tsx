@@ -578,7 +578,7 @@ export const ProductFormModal: React.FC<ProductFormModalProps> = ({
               className="btn-primary py-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-2 shadow-sm text-white"
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>{isEditing ? 'Salvar Alterações' : 'Cadastrar produto'}</span>
+              <span>{isEditing ? 'Salvar alterações' : 'Cadastrar produto'}</span>
             </button>
           </div>
 

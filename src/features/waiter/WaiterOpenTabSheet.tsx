@@ -31,7 +31,7 @@ export function WaiterOpenTabSheet({ table, error, onClose, onSubmit }: Props) {
           <div className="grid grid-cols-4 gap-2">
             {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
               <button key={n} type="button" aria-pressed={people === n} onClick={() => setPeople(n)}
-                className={`h-[52px] rounded-[10px] border font-mono text-lg font-bold ${people === n ? 'border-ink bg-ink text-white' : 'border-line-strong bg-white text-ink'}`}>{n}</button>
+                className={`h-[52px] rounded-[10px] border font-mono text-lg font-bold ${people === n ? 'border-brand-600 bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-600' : 'border-line-strong bg-white text-ink'}`}>{n}</button>
             ))}
           </div>
         </fieldset>

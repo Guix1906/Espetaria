@@ -113,7 +113,7 @@ export const DailyFlavorsManager: React.FC = () => {
           </div>
         </div>
         {savedBadge && (
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 border border-emerald-200">
+          <span className="inline-flex items-center gap-1.5 rounded-sm bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">
             <Check className="h-3.5 w-3.5" />
             Sincronizado com os garçons
           </span>
@@ -125,10 +125,10 @@ export const DailyFlavorsManager: React.FC = () => {
         <div className="rounded-xl border border-line bg-surface-soft p-3.5 sm:p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm font-bold text-ink">Sabores de Arroz do Dia</span>
+              <span className="text-sm font-bold text-ink">Sabores de arroz do dia</span>
             </div>
             <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
-              {riceFlavors.length} ativos
+              {riceFlavors.length} {riceFlavors.length === 1 ? 'ativo' : 'ativos'}
             </span>
           </div>
 
@@ -206,10 +206,10 @@ export const DailyFlavorsManager: React.FC = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Citrus className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-bold text-ink">Sabores de Sucos do Dia</span>
+              <span className="text-sm font-bold text-ink">Sabores de suco do dia</span>
             </div>
             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-semibold text-amber-700">
-              {juiceFlavors.length} ativos
+              {juiceFlavors.length} {juiceFlavors.length === 1 ? 'ativo' : 'ativos'}
             </span>
           </div>
 

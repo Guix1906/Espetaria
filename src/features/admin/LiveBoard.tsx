@@ -192,7 +192,7 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
             <div key={col.id} className={`flex min-h-[22rem] flex-col overflow-hidden rounded-xl border border-line ${col.borderColor} bg-surface-soft/40 shadow-sm`}>
               <h3 className={`flex items-center justify-between ${col.headerBorder} ${col.headerBg} px-3.5 py-2.5 text-xs font-bold uppercase tracking-wider ${col.headerText}`}>
                 <span className="flex-1">{col.title}</span>
-                <span className={`rounded-full px-2 py-0.5 font-mono text-[11px] font-bold ${col.badgeStyle}`}>
+                <span className={`rounded-full px-2 py-0.5 font-mono text-xs font-bold ${col.badgeStyle}`}>
                   {rows.length}
                 </span>
               </h3>
@@ -202,7 +202,7 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
                     <col.icon className="h-5 w-5" />
                   </div>
                   <p className="text-xs font-bold text-ink">{term ? 'Nenhum resultado' : col.empty}</p>
-                  <p className="mt-0.5 text-[11px] text-ink-muted max-w-[190px]">{term ? 'Tente buscar com outro termo' : col.emptySub}</p>
+                  <p className="mt-0.5 text-xs text-ink-muted max-w-[190px]">{term ? 'Tente buscar com outro termo' : col.emptySub}</p>
                 </div>
               ) : (
                 <ul className="max-h-[32rem] flex-1 space-y-2 overflow-y-auto p-2.5">
@@ -222,10 +222,10 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
                       >
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate text-xs font-bold text-ink">{c.title}</span>
-                          <span className="shrink-0 font-mono text-[11px] text-ink-muted">{c.time}</span>
+                          <span className="shrink-0 font-mono text-xs text-ink-muted">{c.time}</span>
                         </div>
                         <p className="line-clamp-2 text-xs text-ink-secondary leading-snug">{c.items}</p>
-                        <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5 text-[11px]">
+                        <div className="flex flex-wrap items-center justify-between gap-1.5 pt-0.5 text-xs">
                           <span className="rounded bg-surface-muted px-1.5 py-0.5 text-ink-muted font-medium">
                             {c.channel}
                           </span>

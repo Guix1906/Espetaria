@@ -101,9 +101,23 @@
   .stat-card { @apply surface-card flex flex-col gap-3 p-4; }
   .stat-value { @apply break-words text-2xl font-semibold tracking-tight text-ink tabular-nums; }
   .icon-tile { @apply flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700; }
-  .btn-primary, .btn-success, .btn-secondary, .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold;
+  /*
+   * Botões (regra única, ver docs/padrao-visual.md):
+   *  btn-primary   terracota  = a ação principal da tela (uma por área)
+   *  btn-secondary contorno   = ações comuns
+   *  btn-success   verde      = só confirmar que algo deu certo (pronto, recebido, entregue)
+   *  btn-danger    vermelho   = só ação perigosa dentro de confirmação
+   *  btn-danger-soft contorno vermelho = ação perigosa na lista (esgotar, cancelar)
+   */
+  .btn-primary, .btn-success, .btn-secondary, .btn-danger, .btn-danger-soft {
+    @apply inline-flex min-h-[40px] items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-colors;
   }
+  .btn-danger-soft { @apply border-rose-300 bg-surface text-rose-700; }
+  .btn-danger-soft:hover:not(:disabled) { @apply border-rose-600 bg-rose-50 text-rose-800; }
+  /* Opção escolhida (forma de pagamento, nº de pessoas, ponto...): sempre o mesmo destaque */
+  .choice { @apply inline-flex items-center justify-center gap-1.5 rounded-md border border-line-strong bg-surface text-sm font-semibold text-ink-secondary transition-colors; }
+  .choice:hover:not(:disabled) { @apply border-brand-400 text-ink; }
+  .choice.is-selected, .choice[aria-pressed="true"] { @apply border-brand-600 bg-brand-50 text-brand-800; box-shadow: inset 0 0 0 1px rgb(var(--color-brand-600)); }
   .btn-primary { @apply border-brand-500 bg-brand-500 text-white; }
   .btn-primary:hover:not(:disabled) { @apply border-brand-700 bg-brand-700; }
   .btn-success { @apply border-emerald-700 bg-emerald-700 text-white; }
@@ -117,11 +131,12 @@
   .icon-button { @apply inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-line bg-surface text-ink-secondary hover:bg-surface-muted hover:text-ink; }
   /* Quebra em linhas em vez de rolar de lado: nenhum filtro fica cortado na borda da tela */
   .filter-bar { @apply flex min-w-0 flex-wrap items-center gap-2 pb-1; }
-  .filter-chip { @apply inline-flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink-secondary; }
-  .filter-chip:hover { @apply border-brand-300 bg-brand-50 text-brand-800; }
-  .filter-chip.is-active { @apply border-brand-950 bg-brand-950 text-white; }
-  .filter-chip .filter-count { @apply rounded-md bg-surface-muted px-1.5 py-0.5 text-xs text-ink-secondary tabular-nums; }
-  .filter-chip.is-active .filter-count { @apply bg-white/15 text-white; }
+  /* Filtros de lista: discretos (não competem com o botão principal); o escolhido fica em terracota claro */
+  .filter-chip { @apply inline-flex min-h-[40px] shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-line bg-surface px-3.5 py-2 text-sm font-medium text-ink-secondary transition-colors; }
+  .filter-chip:hover { @apply border-line-strong text-ink; }
+  .filter-chip.is-active { @apply border-brand-600 bg-brand-50 font-semibold text-brand-800; }
+  .filter-chip .filter-count { @apply rounded-sm bg-surface-muted px-1.5 py-0.5 text-xs text-ink-secondary tabular-nums; }
+  .filter-chip.is-active .filter-count { @apply bg-brand-600 text-white; }
   .status-badge { @apply inline-flex w-fit items-center gap-1.5 rounded-sm px-1.5 py-0.5 text-xs font-medium leading-tight; border-width: 0; }
   .notice { @apply flex items-start gap-3 rounded-xl border p-4 text-sm leading-relaxed; }
   .empty-state { @apply surface-card flex flex-col items-center justify-center gap-3 px-5 py-14 text-center; }

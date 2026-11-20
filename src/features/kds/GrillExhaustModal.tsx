@@ -1,4 +1,4 @@
-﻿import { AlertOctagon, AlertTriangle, CheckCircle2, Flame, X } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, CheckCircle2, Flame, X } from 'lucide-react';
 import React, { useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -105,13 +105,13 @@ export const GrillExhaustModal: React.FC<GrillExhaustModalProps> = ({
 
             <div>
               <label className="text-xs text-ink font-semibold mb-1 block" htmlFor="grillexhaustmodal-field-1">
-                Motivo do Esgotamento Imediato:
+                Motivo do esgotamento imediato:
               </label>
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-surface-muted border border-rose-300 text-ink text-xs focus:ring-2 focus:ring-brand-600 focus:outline-none"
-                aria-label="Motivo do Esgotamento Imediato:" id="grillexhaustmodal-field-1">
+                aria-label="Motivo do esgotamento imediato:" id="grillexhaustmodal-field-1">
                 {COMMON_REASONS.map((r) => (
                   <option key={r} value={r}>
                     {r}

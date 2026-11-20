@@ -85,14 +85,14 @@ export function CashFlowChart({ data, height = 320, grouping = 'auto', showForec
 
 /** Botão "Mostrar previsto" do gráfico de fluxo. */
 function ForecastToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
-  return <button type="button" aria-pressed={value} onClick={() => onChange(!value)} className={`min-h-[44px] rounded-md border px-3.5 text-sm font-semibold ${value ? 'border-ink bg-ink text-white' : 'border-line-strong bg-surface text-ink-secondary'}`}>{value ? 'Ocultar previsto' : 'Mostrar previsto'}</button>;
+  return <button type="button" aria-pressed={value} onClick={() => onChange(!value)} className={`min-h-[44px] rounded-md border px-3.5 text-sm font-semibold ${value ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line-strong bg-surface text-ink-secondary'}`}>{value ? 'Ocultar previsto' : 'Mostrar previsto'}</button>;
 }
 /** Agrupamento do fluxo: dia, semana, mês ou ano. */
 export function GroupingPicker({ value, onChange }: { value: CashFlowGrouping; onChange: (g: CashFlowGrouping) => void }) {
   const options: { id: CashFlowGrouping; label: string }[] = [{ id: 'day', label: 'Dia' }, { id: 'week', label: 'Semana' }, { id: 'month', label: 'Mês' }, { id: 'year', label: 'Ano' }];
   return (
     <div role="group" aria-label="Agrupar por" className="inline-flex rounded-xl border border-line bg-surface p-0.5">
-      {options.map((o) => <button key={o.id} type="button" aria-pressed={value === o.id} onClick={() => onChange(o.id)} className={`h-11 rounded-lg px-3 text-sm font-medium ${value === o.id ? 'bg-brand-950 text-white' : 'text-ink-secondary hover:text-ink'}`}>{o.label}</button>)}
+      {options.map((o) => <button key={o.id} type="button" aria-pressed={value === o.id} onClick={() => onChange(o.id)} className={`h-11 rounded-lg px-3 text-sm font-medium ${value === o.id ? 'bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-600' : 'text-ink-secondary hover:text-ink'}`}>{o.label}</button>)}
     </div>
   );
 }

@@ -353,12 +353,12 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               {p.name}
             </span>
             {isRice(p) && selectedRiceFlavors.length > 0 && (
-              <span className="text-[10px] font-bold text-brand-700 bg-brand-50 px-1.5 py-0.2 rounded border border-brand-200">
+              <span className="text-xs font-bold text-brand-700 bg-brand-50 px-1.5 py-0.2 rounded border border-brand-200">
                 {selectedRiceFlavors.join(' & ')}
               </span>
             )}
           </div>
-          <div className="text-[11px] text-ink-muted font-mono shrink-0">
+          <div className="text-xs text-ink-muted font-mono shrink-0">
             {formatBRL(p.price)}
           </div>
         </div>
@@ -441,7 +441,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
 
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 overflow-y-auto space-y-4 flex-1 text-sm custom-scrollbar">
 
-          {/* Destaque: Botão de 1 Clique para Repetir Último Turno */}
+          {/* Destaque: Botão de 1 Clique para Repetir último turno */}
           <div className="p-3.5 rounded-2xl border-2 border-brand-200 bg-brand-50/40 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs">
             <div className="text-left w-full sm:w-auto">
               <span className="text-xs font-bold text-brand-800 flex items-center gap-1.5">
@@ -459,7 +459,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               className="btn-primary w-full sm:w-auto h-10 px-4 text-xs font-bold flex items-center justify-center gap-2 rounded-xl shrink-0 shadow-xs"
             >
               <History className="w-3.5 h-3.5" />
-              <span>{repeatState.loading ? 'Copiando...' : 'Repetir Último Turno'}</span>
+              <span>{repeatState.loading ? 'Copiando...' : 'Repetir último turno'}</span>
             </button>
           </div>
 
@@ -507,7 +507,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             <div className="p-3 rounded-xl border border-line bg-surface space-y-1.5">
               <label className="flex items-center gap-1.5 text-xs font-bold text-ink" htmlFor="shift-open-name">
                 <Calendar className="w-4 h-4 text-ink-muted shrink-0" />
-                <span>Identificação do Turno</span>
+                <span>Identificação do turno</span>
               </label>
               <input
                 id="shift-open-name"
@@ -536,9 +536,9 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div>
                 <span className="text-xs font-bold text-ink">Arroz do Dia (visível para os garçons)</span>
-                <p className="text-[11px] text-ink-muted">Toque para ativar os sabores preparados hoje (ficam sempre salvos aqui):</p>
+                <p className="text-xs text-ink-muted">Toque para ativar os sabores preparados hoje (ficam sempre salvos aqui):</p>
               </div>
-              <span className="text-[11px] font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
+              <span className="text-xs font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-md border border-brand-200">
                 {selectedRiceFlavors.length > 0 ? selectedRiceFlavors.join(' & ') : 'Nenhum selecionado'}
               </span>
             </div>
@@ -661,7 +661,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
                 <button
                   type="button"
                   onClick={() => fillDefaultSkewers(20)}
-                  className="text-[11px] font-semibold text-brand-700 hover:text-brand-900"
+                  className="text-xs font-semibold text-brand-700 hover:text-brand-900"
                 >
                   Preencher todos com 20 un.
                 </button>
@@ -678,7 +678,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
               <div className="space-y-2">
                 {rice && (
                   <div className="p-2 rounded-xl bg-surface-soft border border-line">
-                    <span className="text-xs font-bold text-ink-secondary block mb-1">Porções de Arroz</span>
+                    <span className="text-xs font-bold text-ink-secondary block mb-1">Porções de arroz</span>
                     {unitRow(rice)}
                   </div>
                 )}
@@ -736,7 +736,7 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
             className="btn-primary h-11 px-6 text-xs sm:text-sm font-bold flex items-center gap-2 rounded-xl shadow-xs"
           >
             <CheckCircle2 className="w-4 h-4" />
-            <span>Confirmar e Abrir Turno</span>
+            <span>Confirmar e abrir turno</span>
           </button>
         </div>
 

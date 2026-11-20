@@ -58,22 +58,5 @@ export function PeriodPicker({ value, onChange, presets }: { value: Period; onCh
   );
 }
 
-/** Abas de seção com sublinhado (sem cartões). */
-export function SectionTabs<T extends string>({ items, value, onChange, label }: { items: { id: T; label: string }[]; value: T; onChange: (id: T) => void; label: string }) {
-  return (
-    <div role="tablist" aria-label={label} className="-mx-1 flex flex-wrap gap-1 border-b border-line px-1">
-      {items.map((s) => (
-        <button
-          key={s.id}
-          type="button"
-          role="tab"
-          aria-selected={value === s.id}
-          onClick={() => onChange(s.id)}
-          className={`-mb-px min-h-[44px] shrink-0 whitespace-nowrap border-b-2 px-3 text-sm transition-colors ${value === s.id ? 'border-ink font-semibold text-ink' : 'border-transparent text-ink-muted hover:text-ink'}`}
-        >
-          {s.label}
-        </button>
-      ))}
-    </div>
-  );
-}
+/** Abas de seção: o componente fica em SectionTabs.tsx (reexportado aqui para quem já importa daqui). */
+export { SectionTabs } from './SectionTabs';

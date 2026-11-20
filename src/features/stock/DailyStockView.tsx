@@ -181,11 +181,12 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
                       <div className="flex flex-wrap items-center gap-2">
                         <h3 className="text-[15px] font-semibold text-ink">{prod.name}</h3>
                         {isCombo && (
-                          <span className="status-badge bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold">
-                            Combo Automático
+                          <span className="status-badge bg-surface-muted text-ink-secondary">
+                            Combo automático
                           </span>
                         )}
-                        {out ? <StatusTag kind="alert">Esgotado</StatusTag> : low ? <StatusTag kind="preparing">Estoque baixo</StatusTag> : <StatusTag kind="occupied">Disponível</StatusTag>}
+                        {/* Etiqueta só quando pede atenção; "disponível" é o normal e não precisa aparecer */}
+                        {out ? <StatusTag kind="alert">Esgotado</StatusTag> : low ? <StatusTag kind="preparing">Estoque baixo</StatusTag> : null}
                       </div>
                       <p className="mt-0.5 text-[13px] text-ink-muted">
                         {SECTOR_LABEL[prod.sector] ?? 'Outros'}{prod.is_cubas && ` · ${stock.cubas_count} ${stock.cubas_count === 1 ? 'cuba' : 'cubas'} (${stock.portions_per_cuba} porções cada)`}
@@ -208,11 +209,11 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
                       <p className="rounded-md bg-surface-soft p-2 text-center lg:bg-transparent lg:p-0 lg:text-right"><span className="block text-[13px] text-ink-muted lg:hidden">Ajuste</span><span className="font-mono font-semibold text-ink">{stock.adjusted_quantity}</span></p>
                     </div>
                     <div className="flex items-center justify-end gap-2">
-                      <button type="button" onClick={() => void handleToggleExhaust(stock)} className={`min-h-[44px] flex-1 lg:flex-none ${out ? 'btn-secondary' : 'btn-danger'}`}>
+                      <button type="button" onClick={() => void handleToggleExhaust(stock)} className={`min-h-[44px] flex-1 lg:flex-none ${out ? 'btn-secondary' : 'btn-danger-soft'}`}>
                         {out ? <><RotateCcw className="h-4 w-4" />Reativar</> : <><Ban className="h-4 w-4" />Esgotar</>}
                       </button>
                       {isCombo ? (
-                        <button type="button" onClick={() => handleComboAdjustClick(stock)} className="btn-secondary min-h-[44px] flex-1 lg:flex-none text-xs font-semibold text-brand-800 border-brand-200 bg-brand-50 hover:bg-brand-100">
+                        <button type="button" onClick={() => handleComboAdjustClick(stock)} className="btn-secondary min-h-[44px] flex-1 lg:flex-none">
                           <SlidersHorizontal className="h-4 w-4" />Ajustar no espeto
                         </button>
                       ) : (
@@ -231,8 +232,8 @@ export const DailyStockView: React.FC<DailyStockViewProps> = ({ onOpenShiftClick
                           <span className="font-bold text-ink flex items-center gap-1.5">
                             <span className="text-amber-700 font-mono">↳</span> {companionCombo.product?.name}
                           </span>
-                          <span className="status-badge bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-[11px]">
-                            Combo Automático
+                          <span className="status-badge bg-amber-50 text-amber-900 font-semibold">
+                            Combo automático
                           </span>
                           {isOut(companionCombo) ? (
                             <StatusTag kind="alert">Esgotado</StatusTag>

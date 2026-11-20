@@ -216,7 +216,7 @@ function DonenessForm({ product, onClose, onConfirm, maxQuantity, initial }: { p
                       </div>
                     </div>
                     {theme.tag && (
-                      <span className="hidden sm:inline-block shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-ink-muted bg-surface/80 border border-line">
+                      <span className="hidden sm:inline-block shrink-0 text-xs font-medium text-ink-muted">
                         {theme.tag}
                       </span>
                     )}

@@ -247,7 +247,7 @@ export const TableManagementView: React.FC = () => {
 
       {activeTables.length === 0 && (
         <div className="py-12 text-center text-sm text-ink-muted">
-          Nenhuma mesa ativa cadastrada. Clique em "Nova Mesa" para começar.
+          Nenhuma mesa ativa cadastrada. Clique em "Nova mesa" para começar.
         </div>
       )}
     </div>

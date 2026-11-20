@@ -24,6 +24,7 @@ import { supabase, isSupabaseConfigured } from '../../lib/supabase';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { SectionTabs } from '../../components/ui/SectionTabs';
 import { deliveryPaymentLabel, getDeliveryStatusConfig, hasGrillItems, isDineInOrder, isPickupOrder, clearOrderKindFocus, orderKind, peekOrderKindFocus, type OrderKind } from '../../lib/deliveryStatus';
 import { formatBRL, formatDoneness } from '../../lib/formatters';
 import { buildWhatsAppLink } from '../../lib/whatsapp';
@@ -281,7 +282,7 @@ export const DeliveryManagementView: React.FC = () => {
             <div className="flex items-center gap-2">
               <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${!isDeliveryClosed ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}`}>
                 <span className={`h-2 w-2 rounded-full ${!isDeliveryClosed ? 'bg-emerald-600 animate-pulse' : 'bg-rose-600'}`} />
-                {!isDeliveryClosed ? 'Delivery Aberto' : 'Delivery Fechado'}
+                {!isDeliveryClosed ? 'Delivery aberto' : 'Delivery fechado'}
               </span>
               <button
                 type="button"
@@ -296,12 +297,12 @@ export const DeliveryManagementView: React.FC = () => {
                 {!isDeliveryClosed ? (
                   <>
                     <PauseCircle className="h-4 w-4" />
-                    Encerrar Delivery
+                    Encerrar delivery
                   </>
                 ) : (
                   <>
                     <PlayCircle className="h-4 w-4" />
-                    Reabrir Delivery
+                    Reabrir delivery
                   </>
                 )}
               </button>
@@ -311,44 +312,31 @@ export const DeliveryManagementView: React.FC = () => {
       />
 
       {/* Abas de navegação */}
-      <div className="flex flex-wrap gap-2 border-b border-line pb-1">
-        <button
-          type="button"
-          onClick={() => setActiveTab('orders')}
-          className={`filter-chip ${activeTab === 'orders' ? 'is-active' : ''}`}
-          aria-pressed={activeTab === 'orders'}
-        >
-          <Bike className="h-4 w-4" />
-          <span>Pedidos</span>
-        </button>
-        {canManage && (
-          <button
-            type="button"
-            onClick={() => setActiveTab('payouts')}
-            className={`filter-chip ${activeTab === 'payouts' ? 'is-active' : ''}`}
-            aria-pressed={activeTab === 'payouts'}
-          >
-            <DollarSign className="h-4 w-4" />
-            <span className="sm:hidden">Motoboys</span>
-            <span className="hidden sm:inline">Pagamento dos motoboys</span>
-          </button>
-        )}
-      </div>
+      <SectionTabs
+        label="Seções do delivery"
+        value={activeTab}
+        onChange={setActiveTab}
+        items={[
+          { id: 'orders' as const, label: 'Pedidos', icon: Bike },
+          ...(canManage ? [{ id: 'payouts' as const, label: 'Pagamento dos motoboys', shortLabel: 'Motoboys', icon: DollarSign }] : []),
+        ]}
+      />
 
       {activeTab === 'payouts' ? (
         <DriverPayoutsView />
       ) : (
       <>
-      {/* Tipo do pedido: cada um na sua aba */}
-      <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-md bg-surface-muted p-1" role="group" aria-label="Tipo de pedido">
+      {/* Tipo do pedido e etapa na mesma faixa de filtros */}
+      <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+      <div className="flex max-w-full gap-0.5 self-start overflow-x-auto rounded-md bg-surface-muted p-1" role="group" aria-label="Tipo de pedido">
         {([['ALL', 'Todos'], ['DELIVERY', 'Entrega'], ['PICKUP', 'Retirada'], ['DINE_IN', 'Consumir no local']] as const).map(([key, label]) => {
           const active = deliveryOrders.filter((o) => isOrderActiveInCurrentSession(o) && (isInProduction(o.status) || o.status === 'OUT_FOR_DELIVERY' || o.status === 'AWAITING_PAYMENT'));
           const count = key === 'ALL' ? active.filter((o) => orderKind(o) !== 'DINE_IN').length : active.filter((o) => orderKind(o) === key).length;
-          return <button key={key} type="button" aria-pressed={kindFilter === key} onClick={() => setKindFilter(key)} className={`min-h-[44px] shrink-0 whitespace-nowrap rounded-sm px-3 text-sm font-medium ${kindFilter === key ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted'}`}>{label} <span className="font-mono">{count}</span></button>;
+          return <button key={key} type="button" aria-pressed={kindFilter === key} onClick={() => setKindFilter(key)} className={`min-h-[40px] shrink-0 whitespace-nowrap rounded-sm px-3 text-sm font-medium ${kindFilter === key ? 'bg-surface font-semibold text-brand-800 shadow-sm ring-1 ring-brand-600' : 'text-ink-muted hover:text-ink'}`}>{label} <span className="font-mono">{count}</span></button>;
         })}
       </div>
-      {/* Filtros: a contagem fica no próprio filtro */}
-      <div className="flex flex-wrap items-center gap-2 pb-1">
+      {/* Etapa: a contagem fica no próprio filtro */}
+      <div className="flex flex-wrap items-center gap-2">
         {([
           ['ALL_ACTIVE', 'Em produção', countActive, Flame],
           ...(countAwaiting > 0 ? [['AWAITING_PAYMENT', 'Aguardando PIX', countAwaiting, Clock3] as const] : []),
@@ -361,6 +349,7 @@ export const DeliveryManagementView: React.FC = () => {
             <span>{label} <span className="font-mono">{count}</span></span>
           </button>
         ))}
+      </div>
       </div>
 
       {filteredOrders.length === 0 ? (

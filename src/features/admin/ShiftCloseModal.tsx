@@ -157,14 +157,14 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
           {/* Cards de Resumo Rápido do Turno */}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3.5 rounded-xl border border-line bg-surface-soft">
-              <p className="text-xs text-ink-muted font-medium">Faturamento Total</p>
+              <p className="text-xs text-ink-muted font-medium">Faturamento total</p>
               <p className="mt-0.5 font-mono text-lg font-bold text-ink">{formatBRL(totalRevenue)}</p>
-              <p className="text-[11px] text-ink-muted truncate">Salão {formatBRL(salonRevenue)} · Delivery {formatBRL(deliveryRevenue)}</p>
+              <p className="text-xs text-ink-muted truncate">Salão {formatBRL(salonRevenue)} · Delivery {formatBRL(deliveryRevenue)}</p>
             </div>
             <div className="p-3.5 rounded-xl border border-line bg-surface-soft">
-              <p className="text-xs text-ink-muted font-medium">Dinheiro Esperado</p>
+              <p className="text-xs text-ink-muted font-medium">Dinheiro esperado</p>
               <p className="mt-0.5 font-mono text-lg font-bold text-brand-700">{formatBRL(expectedCashDrawer)}</p>
-              <p className="text-[11px] text-ink-muted truncate">Fundo {formatBRL(currentShift.cash_drawer_start)} + Vendas {formatBRL(salonCashTotal + deliveryCashTotal)}</p>
+              <p className="text-xs text-ink-muted truncate">Fundo {formatBRL(currentShift.cash_drawer_start)} + Vendas {formatBRL(salonCashTotal + deliveryCashTotal)}</p>
             </div>
           </div>
 
@@ -335,7 +335,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
             type="button"
           >
             <CheckCheck className="w-4 h-4" />
-            <span>{isSubmitting ? 'Encerrando...' : 'Encerrar Turno'}</span>
+            <span>{isSubmitting ? 'Encerrando...' : 'Encerrar turno'}</span>
           </button>
         </div>
 

@@ -184,7 +184,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
                 className="w-full py-3.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.98] text-white font-bold transition flex items-center justify-center gap-2 shadow-sm text-base"
                 type="button">
                 <CreditCard className="w-5 h-5" />
-                <span>Receber e Encerrar Conta</span>
+                <span>Receber e encerrar conta</span>
               </button>
             )}
 

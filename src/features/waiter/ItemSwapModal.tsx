@@ -203,7 +203,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setSelectedCategory('ALL')}
-                    className={`h-8 px-3 rounded-lg text-sm font-bold border whitespace-nowrap transition ${selectedCategory === 'ALL' ? 'bg-ink text-white border-ink' : 'bg-surface text-ink border-line'}`}
+                    className={`h-8 px-3 rounded-lg text-sm font-bold border whitespace-nowrap transition ${selectedCategory === 'ALL' ? 'bg-brand-50 text-brand-800 border-brand-600' : 'bg-surface text-ink border-line'}`}
                   >
                     Todos
                   </button>
@@ -212,7 +212,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
                       key={c.id}
                       type="button"
                       onClick={() => setSelectedCategory(c.id)}
-                      className={`h-8 px-3 rounded-lg text-sm font-bold border whitespace-nowrap transition ${selectedCategory === c.id ? 'bg-ink text-white border-ink' : 'bg-surface text-ink border-line'}`}
+                      className={`h-8 px-3 rounded-lg text-sm font-bold border whitespace-nowrap transition ${selectedCategory === c.id ? 'bg-brand-50 text-brand-800 border-brand-600' : 'bg-surface text-ink border-line'}`}
                     >
                       {c.name}
                     </button>
@@ -362,7 +362,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
               className="w-full py-3.5 rounded-xl bg-brand-700 hover:bg-brand-800 active:scale-[0.98] text-white font-bold transition flex items-center justify-center gap-2 shadow-md disabled:opacity-50 text-base"
             >
               <Check className="w-5 h-5" />
-              <span>{submitting ? 'Emitindo cupons...' : missingLabel ?? 'Confirmar Troca e Mandar para Produção'}</span>
+              <span>{submitting ? 'Emitindo cupons...' : missingLabel ?? 'Confirmar troca e mandar para produção'}</span>
             </button>
           </div>
         )}

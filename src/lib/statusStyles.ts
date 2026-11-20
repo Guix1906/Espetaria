@@ -7,12 +7,12 @@ import type { TableStatus } from '../types/enums';
 export type StatusKind = 'free' | 'occupied' | 'preparing' | 'ready' | 'bill' | 'reserved' | 'alert';
 
 export const STATUS_STYLES: Record<StatusKind, string> = {
-  free: 'border border-emerald-600 text-emerald-800',
+  free: 'bg-transparent text-ink-muted',
   occupied: 'bg-surface-muted text-ink',
   preparing: 'bg-amber-50 text-amber-800',
   ready: 'bg-emerald-600 text-white',
   bill: 'bg-brand-500 text-white',
-  reserved: 'border border-dashed border-line-strong text-ink-secondary',
+  reserved: 'bg-surface-muted text-ink-secondary italic',
   alert: 'bg-rose-600 text-white',
 };
 
@@ -31,8 +31,8 @@ export const STAGE_LABELS = {
 
 /** Faixa no topo do cartão da mesa. */
 export const STATUS_TOP_BORDER: Record<StatusKind, string> = {
-  free: 'border-t-emerald-600',
-  occupied: 'border-t-line-strong',
+  free: 'border-t-line',
+  occupied: 'border-t-ink',
   preparing: 'border-t-amber-500',
   ready: 'border-t-emerald-600',
   bill: 'border-t-brand-500',

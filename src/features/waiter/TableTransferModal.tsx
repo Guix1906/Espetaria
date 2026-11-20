@@ -83,7 +83,7 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
               <ArrowLeftRight className="h-6 w-6" />
             </span>
             <div>
-              <h3 className="text-xl font-bold text-ink">Trocar de Mesa</h3>
+              <h3 className="text-xl font-bold text-ink">Trocar de mesa</h3>
               <p className="text-sm text-ink-muted">
                 Transferir comanda da <strong className="text-ink">Mesa {pad2(sourceTable.number)}</strong>
               </p>

@@ -48,7 +48,7 @@ export function StockSnapshot({ onOpenStock }: { onOpenStock?: () => void }) {
         </h2>
         <div className="flex items-center gap-2 text-xs">
           {low > 0 && (
-            <span className="rounded-full bg-amber-50 px-2 py-0.5 font-semibold text-amber-800 ring-1 ring-inset ring-amber-600/20">
+            <span className="rounded-sm bg-amber-50 px-1.5 py-0.5 font-semibold text-amber-800">
               {low} {low === 1 ? 'acabando' : 'críticos'}
             </span>
           )}
@@ -89,7 +89,7 @@ export function StockSnapshot({ onOpenStock }: { onOpenStock?: () => void }) {
                 {stock.is_exhausted ? (
                   <button
                     type="button"
-                    className="btn-secondary h-7 min-h-0 shrink-0 px-2 text-[11px]"
+                    className="btn-secondary h-8 min-h-0 shrink-0 px-2.5 text-xs"
                     onClick={() => toggleBlock(product.id, product.name, false)}
                     aria-label={`Liberar ${product.name}`}
                   >
@@ -99,7 +99,7 @@ export function StockSnapshot({ onOpenStock }: { onOpenStock?: () => void }) {
                 ) : (
                   <button
                     type="button"
-                    className="btn-secondary h-7 min-h-0 shrink-0 px-2 text-[11px] text-rose-700 hover:bg-rose-50"
+                    className="btn-danger-soft h-8 min-h-0 shrink-0 px-2.5 text-xs"
                     onClick={() => toggleBlock(product.id, product.name, true)}
                     aria-label={`Bloquear ${product.name}`}
                   >

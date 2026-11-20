@@ -122,7 +122,7 @@ describe('Auditoria Completa de Todas as Telas e Módulos do Sistema', () => {
 
     it('1.4 KDSModule (Produção Geral) deve abrir e renderizar sem erros', () => {
       const html = renderWithFeedback(<KDSModule />);
-      expect(html).toContain('Painel de produção');
+      expect(html).toContain('Setor de produção');
       expect(html).toContain('Churrasqueira');
       expect(html).toContain('Cozinha e cubas');
       expect(html).not.toContain('Bar e bebidas');

@@ -225,7 +225,7 @@ export const DeliveryZonesView: React.FC = () => {
 
       {activeZones.length === 0 && !isAdding && (
         <div className="py-12 text-center text-sm text-ink-muted">
-          Nenhum bairro ativo cadastrado. Clique em "Novo Bairro" para começar.
+          Nenhum bairro ativo cadastrado. Clique em "Novo bairro" para começar.
         </div>
       )}
     </div>

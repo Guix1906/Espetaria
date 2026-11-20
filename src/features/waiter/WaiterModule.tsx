@@ -435,11 +435,11 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const tablesSection = (
     <div className="space-y-3.5">
       {readyBanner}
-      <div className="grid grid-cols-3 gap-1 rounded-md bg-line p-1" role="tablist" aria-label="Filtrar mesas">
+      <div className="grid grid-cols-3 gap-1 rounded-md bg-surface-muted p-1" role="tablist" aria-label="Filtrar mesas">
         {([['occupied', 'Ocupadas', occupied.length], ['free', 'Livres', free.length], ['all', 'Todas', activeTables.length]] as const).map(([key, label, count]) => (
           <button key={key} type="button" role="tab" aria-selected={tableFilter === key} aria-controls="tables-panel" onClick={() => setTableFilter(key)}
-            className={`flex h-10 items-center justify-center gap-1.5 rounded-md text-[17px] font-semibold ${tableFilter === key ? 'bg-ink text-white' : 'text-ink'}`}>
-            {label}<span className={`font-mono text-base ${tableFilter === key ? 'text-white/80' : 'text-ink-muted'}`}>{count}</span>
+            className={`flex h-11 items-center justify-center gap-1.5 rounded-md text-[17px] font-semibold ${tableFilter === key ? 'bg-surface text-brand-800 shadow-sm ring-1 ring-brand-600' : 'text-ink-secondary'}`}>
+            {label}<span className={`font-mono text-base ${tableFilter === key ? 'text-brand-700' : 'text-ink-muted'}`}>{count}</span>
           </button>
         ))}
       </div>
@@ -451,29 +451,29 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
         <span id="tables-search-hint" className="sr-only">{showOccupied.length + showFree.length} mesas encontradas</span>
       </label>
       {shiftNotice}
-      {/* "Todas": uma grade só, em ordem; ocupada = cor cheia, livre = contorno verde */}
+      {/* "Todas": uma grade só, em ordem; ocupada = cor cheia, livre = contorno claro */}
       {tableFilter === 'all' && (showOccupied.length + showFree.length) > 0 && (
         <section aria-label="Todas as mesas" className="space-y-2.5">
-          <p className="flex flex-wrap gap-x-4 gap-y-1 text-base text-ink-secondary">
-            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm border border-line-strong bg-surface-muted" />Ocupada</span>
-            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-brand-500" />Conta pedida</span>
-            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm bg-emerald-600" />Item pronto</span>
-            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 rounded-sm border-2 border-emerald-600" />Livre</span>
+          <p className="grid grid-cols-2 gap-x-3 gap-y-1 text-[15px] text-ink-secondary">
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 shrink-0 rounded-sm bg-ink" />Ocupada</span>
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 shrink-0 rounded-sm bg-brand-500" />Conta pedida</span>
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 shrink-0 rounded-sm bg-emerald-600" />Item pronto</span>
+            <span className="flex items-center gap-1.5"><span aria-hidden="true" className="h-3.5 w-3.5 shrink-0 rounded-sm border border-line-strong bg-surface" />Livre</span>
           </p>
           <div className="grid grid-cols-3 gap-2 xs:grid-cols-4">
             {[...showOccupied, ...showFree].sort((a, b) => a.number - b.number).map((table) => {
               if (!isTableOccupied(table)) {
                 return (
                   <button key={table.id} type="button" disabled={!isShiftOpen} onClick={() => askOpen(table)}
-                    className={`flex h-[64px] items-center justify-center rounded-md border-2 bg-surface font-mono text-2xl font-bold disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-dashed border-line-strong text-ink-secondary' : 'border-emerald-600 text-emerald-800'}`}
+                    className={`flex h-[64px] items-center justify-center rounded-md border bg-surface font-mono text-2xl font-semibold disabled:opacity-50 ${table.status === 'RESERVADA' ? 'border-dashed border-line-strong text-ink-secondary' : 'border-line-strong text-ink-muted'}`}
                     aria-label={`Mesa ${pad2(table.number)} livre${table.status === 'RESERVADA' ? ' (reservada)' : ''}. Abrir comanda`}>
                     {pad2(table.number)}
                   </button>
                 );
               }
               const chip = statusChip(table);
-              // Ocupada fica neutra; só "conta pedida" (terracota) e "pronto" (verde) chamam atenção
-              const fill = 'short' in chip ? 'bg-emerald-600 text-white' : chip.kind === 'bill' ? 'bg-brand-500 text-white' : 'border border-line-strong bg-surface-muted text-ink';
+              // Ocupada = cheia escura (o garçom procura essas); "conta pedida" terracota e "pronto" verde chamam mais atenção
+              const fill = 'short' in chip ? 'bg-emerald-600 text-white' : chip.kind === 'bill' ? 'bg-brand-500 text-white' : 'bg-ink text-white';
               return (
                 <button key={table.id} type="button" onClick={() => setSelectedTableId(table.id)}
                   className={`flex h-[64px] flex-col items-center justify-center rounded-md active:brightness-95 ${fill}`}

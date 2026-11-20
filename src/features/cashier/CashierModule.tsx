@@ -251,13 +251,14 @@ export const CashierModule: React.FC = () => {
                         </span>
                       </div>
 
-                      <p className="text-xs text-ink-muted mt-1 truncate font-medium">
-                        {currentTab?.customer_name || `Mesa ${table.number}`}
-                      </p>
+                      {/* Nome do cliente só quando existe (antes repetia "Mesa 11" embaixo do título) */}
+                      {currentTab?.customer_name && (
+                        <p className="text-xs text-ink-muted mt-1 truncate font-medium">{currentTab.customer_name}</p>
+                      )}
 
                       <div className="mt-2.5 pt-2 border-t border-line/60 flex items-baseline justify-between">
                         <span className="text-xs text-ink-muted">
-                          {items.filter(i => i.status !== 'CANCELLED').length} itens
+                          {(() => { const n = items.filter(i => i.status !== 'CANCELLED').length; return n === 1 ? '1 item' : `${n} itens`; })()}
                         </span>
                         <span className="text-lg font-bold tabular-nums text-brand-700 font-mono">
                           {formatBRL(currentTab?.total || 0)}
@@ -268,9 +269,7 @@ export const CashierModule: React.FC = () => {
                     {/* Toda cobrança passa pelo fechamento de conta */}
                     <button
                       onClick={() => setSelectedTableForCheckout(table)}
-                      className={`w-full min-h-[44px] rounded-lg font-bold text-sm transition flex items-center justify-center gap-1.5 ${
-                        isWaitingBill ? 'bg-brand-700 text-white hover:bg-brand-800' : 'bg-ink text-white hover:bg-ink-secondary'
-                      }`}
+                      className={`w-full min-h-[44px] ${isWaitingBill ? 'btn-primary' : 'btn-secondary'}`}
                       type="button"
                     >
                       <Receipt className="w-4 h-4" />
