@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { Check, Download, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, Check, CheckCircle2, Download, Pencil, Plus, RotateCcw, Trash2, X } from 'lucide-react';
+import { KpiCard } from '../../components/ui/KpiCard';
 import { Dialog } from '../../components/ui/Dialog';
 import { FilterChip } from '../../components/ui/FilterChip';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -59,10 +60,10 @@ export function EntriesPanel({ kind, data, onChanged }: { kind: FinanceKind; dat
 
   return (
     <div className="space-y-6">
-      <div className="stat-grid stat-grid--three">
-        <Kpi label={isPay ? 'A pagar' : 'A receber'} value={open.reduce((s, e) => s + e.amount, 0)} hint={`${open.length} em aberto`} />
-        <Kpi label="Vencidas" value={overdue.reduce((s, e) => s + e.amount, 0)} hint={`${overdue.length} ${overdue.length === 1 ? 'conta' : 'contas'}`} danger={overdue.length > 0} />
-        <Kpi label={isPay ? 'Pago no período' : 'Recebido no período'} value={settled.reduce((s, e) => s + e.amount, 0)} hint={`${settled.length} quitadas`} />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <KpiCard label={isPay ? 'A pagar' : 'A receber'} value={formatBRL(open.reduce((s, e) => s + e.amount, 0))} icon={isPay ? ArrowUpRight : ArrowDownLeft} tone="brand" hint={`${open.length} em aberto`} />
+        <KpiCard label="Vencidas" value={formatBRL(overdue.reduce((s, e) => s + e.amount, 0))} icon={CalendarClock} tone={overdue.length > 0 ? 'danger' : 'neutral'} highlight={overdue.length > 0} hint={`${overdue.length} ${overdue.length === 1 ? 'conta' : 'contas'}`} />
+        <KpiCard label={isPay ? 'Pago no período' : 'Recebido no período'} value={formatBRL(settled.reduce((s, e) => s + e.amount, 0))} icon={CheckCircle2} tone="success" hint={`${settled.length} quitadas`} />
       </div>
 
       <section className="surface-card p-4 sm:p-5">
@@ -90,7 +91,10 @@ export function EntriesPanel({ kind, data, onChanged }: { kind: FinanceKind; dat
             {shown.map((e) => {
               const late = !e.paid_at && e.due_date < today;
               return (
-                <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 sm:p-4">
+                <li key={e.id} className={`flex flex-wrap items-center gap-x-3 gap-y-2 p-3 sm:p-4 ${late ? 'border-l-4 border-l-rose-500' : ''}`}>
+                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${e.paid_at ? 'bg-emerald-50 text-emerald-700' : late ? 'bg-rose-50 text-rose-700' : 'bg-surface-muted text-ink-secondary'}`} aria-hidden="true">
+                    {e.paid_at ? <CheckCircle2 className="h-4 w-4" /> : late ? <CalendarClock className="h-4 w-4" /> : isPay ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownLeft className="h-4 w-4" />}
+                  </span>
                   <div className="min-w-0 flex-1">
                     <p className="font-medium text-ink">{e.description}</p>
                     <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-ink-muted">
@@ -120,14 +124,6 @@ export function EntriesPanel({ kind, data, onChanged }: { kind: FinanceKind; dat
   );
 }
 
-function Kpi({ label, value, hint, danger = false }: { label: string; value: number; hint: string; danger?: boolean }) {
-  return (
-    <div className="stat-card">
-      <span className="text-sm font-medium text-ink-muted">{label}</span>
-      <div><div className={`stat-value ${danger ? 'text-rose-700' : ''}`}>{formatBRL(value)}</div><div className="mt-1 text-xs text-ink-muted">{hint}</div></div>
-    </div>
-  );
-}
 
 export function EntryForm({ kind, entry, onClose, onSaved }: { kind: FinanceKind; entry: FinanceEntry | null; onClose: () => void; onSaved: () => void }) {
   const { notify } = useFeedback();

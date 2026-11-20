@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { AlertCircle, Download } from 'lucide-react';
+import { AlertCircle, Download, HandCoins, TrendingDown, TrendingUp, Wallet } from 'lucide-react';
+import { KpiCard } from '../../components/ui/KpiCard';
 import { Chart, CHART_COLORS, baseOptions } from '../../components/charts/Chart';
 import { formatBRL } from '../../lib/formatters';
 import { MERCHANDISE_CATEGORIES, buildProfit, downloadCsv, type FinanceDataset } from '../../lib/financeData';
@@ -30,6 +31,13 @@ export function ProfitPanel({ data }: { data: FinanceDataset }) {
       {data.costsAvailable === false && (
         <p role="alert" className="notice border-amber-200 bg-amber-50 text-amber-900"><AlertCircle className="h-5 w-5 shrink-0" aria-hidden="true" />O custo dos produtos ainda não está disponível: falta rodar a migração 00036 no Supabase. O lucro abaixo está sem o custo dos produtos.</p>
       )}
+
+      <section aria-label="Números do período" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <KpiCard label="Faturamento bruto" value={formatBRL(total.gross)} icon={Wallet} tone="neutral" hint="Tudo que os clientes pagaram" />
+        <KpiCard label="Faturamento líquido" value={formatBRL(total.net)} icon={HandCoins} tone="brand" hint="Bruto menos entregadores" />
+        <KpiCard label="Lucro do período" value={formatBRL(total.profit)} icon={total.profit < 0 ? TrendingDown : TrendingUp} tone={total.profit < 0 ? 'danger' : 'success'} highlight size="lg"
+          hint={total.gross > 0 ? `Margem de ${Math.round((total.profit / total.gross) * 100)}% sobre o bruto` : 'Sem vendas no período'} />
+      </section>
 
       <section aria-label="Resultado do período" className="surface-card divide-y divide-line">
         {lines.map((line) => (

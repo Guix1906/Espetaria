@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { CalendarClock, ChevronDown, Download, Eye, Landmark, Pencil, Trash2, X } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, CalendarClock, ChevronDown, Download, Eye, HandCoins, Landmark, Pencil, Scale, ShoppingBag, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
+import { KpiCard } from '../../components/ui/KpiCard';
 import { Dialog } from '../../components/ui/Dialog';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { useAuthStore } from '../../stores/useAuthStore';
@@ -22,10 +23,14 @@ export function FinanceView() {
 
   return (
     <div className="page-layout">
-      <PageHeader title="Financeiro" description="Entradas e saídas reais do caixa, contas a pagar e a receber. As vendas do salão e do delivery entram sozinhas." />
+      <PageHeader eyebrow="Gestão" icon={Landmark} title="Financeiro" description="Entradas e saídas reais do caixa, contas a pagar e a receber. As vendas do salão e do delivery entram sozinhas." />
       <ShiftSummaryCard />
       <SectionTabs label="Seções do financeiro" value={tab} onChange={setTab} items={[{ id: 'overview', label: 'Visão geral' }, { id: 'result', label: 'Bruto, líquido e lucro' }, { id: 'cashflow', label: 'Fluxo de caixa' }, { id: 'PAGAR', label: 'Contas a pagar' }, { id: 'RECEBER', label: 'Contas a receber' }]} />
-      <PeriodPicker value={period} onChange={setPeriod} />
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-sm font-medium text-ink-secondary">Período</span>
+        <PeriodPicker value={period} onChange={setPeriod} />
+        {loading && data && <span className="text-xs text-ink-muted" role="status">Atualizando...</span>}
+      </div>
       {error && <p role="alert" className="notice border-rose-200 bg-rose-50 text-rose-800">{error}</p>}
       {!data ? <div className="surface-card p-10 text-center text-sm text-ink-muted" role="status">{loading ? 'Carregando dados do período...' : 'Sem dados.'}</div> : (
         <>
@@ -133,46 +138,37 @@ export function Overview({ data }: { data: FinanceDataset }) {
   const expensesTotal = expenses.reduce((s, e) => s + e.total, 0);
 
   return (
-    <div className="space-y-8">
-      {/* Resumo: 3 números numa faixa só, sem um quadro para cada */}
-      <section aria-label="Resumo do período" className="surface-card">
-        <div className="grid grid-cols-1 divide-y divide-line sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          <div className="p-4 sm:p-5">
-            <p className="text-sm text-ink-muted">Entradas</p>
-            <p className="mt-1 font-mono text-2xl font-bold text-ink">{formatBRL(inflow)}</p>
-            <p className="mt-0.5 text-[13px] text-ink-muted">Salão {formatBRL(salon)} · Delivery {formatBRL(delivery)}</p>
-          </div>
-          <div className="p-4 sm:p-5">
-            <p className="text-sm text-ink-muted">Saídas</p>
-            <p className="mt-1 font-mono text-2xl font-bold text-ink">{formatBRL(outflow)}</p>
-            <p className="mt-0.5 text-[13px] text-ink-muted">Contas pagas</p>
-          </div>
-          <div className="p-4 sm:p-5">
-            <p className="text-sm text-ink-muted">Resultado</p>
-            <p className={`mt-1 font-mono text-2xl font-bold ${result < 0 ? 'text-rose-700' : 'text-ink'}`}>{formatBRL(result)}</p>
-            <p className="mt-0.5 text-[13px] text-ink-muted">Entradas menos saídas</p>
-          </div>
-        </div>
-        <p className="border-t border-line px-4 py-3 text-sm text-ink-secondary sm:px-5">
-          A receber <strong className="font-mono text-ink">{formatBRL(toReceiveTotal)}</strong>
-          <span className="mx-2 text-ink-muted" aria-hidden="true">·</span>
-          A pagar <strong className="font-mono text-ink">{formatBRL(toPayTotal)}</strong>
-        </p>
+    <div className="space-y-6">
+      {/* Resumo do período */}
+      <section aria-label="Resumo do período" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <KpiCard label="Entradas" value={formatBRL(inflow)} icon={TrendingUp} tone="success" size="lg"
+          hint={<>Salão <span className="font-mono">{formatBRL(salon)}</span> · Delivery <span className="font-mono">{formatBRL(delivery)}</span></>} />
+        <KpiCard label="Saídas" value={formatBRL(outflow)} icon={TrendingDown} tone="danger" size="lg" hint="Contas pagas no período" />
+        <KpiCard label="Resultado" value={formatBRL(result)} icon={Scale} tone={result < 0 ? 'danger' : 'brand'} size="lg"
+          highlight hint={result < 0 ? 'Saiu mais do que entrou' : 'Entradas menos saídas'} />
       </section>
 
-      {overdue.length > 0 && <p className="notice border-amber-200 bg-amber-50 text-amber-900"><CalendarClock className="h-5 w-5 shrink-0" aria-hidden="true" />{overdue.length} {overdue.length === 1 ? 'conta vencida' : 'contas vencidas'} em aberto, somando {formatBRL(overdue.reduce((s, e) => s + e.amount, 0))}. Veja em Contas a pagar / a receber.</p>}
+      <section aria-label="Contas em aberto" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <KpiCard label="A receber" value={formatBRL(toReceiveTotal)} icon={ArrowDownLeft}
+          hint={`${toReceive.length} ${toReceive.length === 1 ? 'conta' : 'contas'}, delivery e comandas abertas`} />
+        <KpiCard label="A pagar" value={formatBRL(toPayTotal)} icon={ArrowUpRight}
+          hint={`${toPay.length} ${toPay.length === 1 ? 'conta em aberto' : 'contas em aberto'}`} />
+        <KpiCard label="Vencidas" value={formatBRL(overdue.reduce((s, e) => s + e.amount, 0))} icon={CalendarClock}
+          tone={overdue.length > 0 ? 'warning' : 'neutral'} highlight={overdue.length > 0}
+          hint={overdue.length > 0 ? `${overdue.length} ${overdue.length === 1 ? 'conta vencida' : 'contas vencidas'}: veja em Contas a pagar / a receber` : 'Nada vencido'} />
+      </section>
 
       {/* Um gráfico só */}
-      <section>
+      <section className="surface-card p-4 sm:p-5">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2"><h2 className="text-base font-semibold">Fluxo de caixa</h2><div className="flex flex-wrap items-center gap-2"><ForecastToggle value={showForecast} onChange={setShowForecast} /><GroupingPicker value={grouping} onChange={setGrouping} /></div></div>
         <p className="mb-2 text-[13px] text-ink-muted">{showForecast ? 'Barras claras: previsto (contas em aberto, delivery a receber e comandas abertas). Linha tracejada: saldo projetado.' : 'Barras: entradas e saídas realizadas. Linha: saldo.'}</p>
         <CashFlowChart data={data} grouping={grouping} showForecast={showForecast} />
       </section>
 
-      <div className="grid gap-8 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2">
         {/* Forma de pagamento: barra dividida, sem rosca */}
-        <section>
-          <h2 className="mb-3 text-base font-semibold">Recebido por forma de pagamento</h2>
+        <section className="surface-card p-4 sm:p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-base font-semibold"><HandCoins className="h-5 w-5 text-brand-700" aria-hidden="true" />Recebido por forma de pagamento</h2>
           {methods.length ? (
             <>
               <div className="flex h-3 w-full overflow-hidden rounded-sm bg-surface-muted" aria-hidden="true">
@@ -191,8 +187,8 @@ export function Overview({ data }: { data: FinanceDataset }) {
         </section>
 
         {/* Despesas: as 5 maiores */}
-        <section>
-          <h2 className="mb-3 text-base font-semibold">Maiores despesas</h2>
+        <section className="surface-card p-4 sm:p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-base font-semibold"><ShoppingBag className="h-5 w-5 text-rose-700" aria-hidden="true" />Maiores despesas</h2>
           {topExpenses.length ? (
             <ul className="divide-y divide-line">
               {topExpenses.map((e) => (
@@ -318,6 +314,7 @@ export function CashFlow({ data, reload }: { data: FinanceDataset; reload: () =>
               <li key={row.id} className="py-1">
                 <details className="group">
                   <summary className="flex min-h-[48px] cursor-pointer list-none items-center gap-3 py-2 [&::-webkit-details-marker]:hidden">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-700" aria-hidden="true"><ArrowDownLeft className="h-4 w-4" /></span>
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium text-ink">Vendas {row.channel === 'SALAO' ? 'do salão' : 'do delivery'} · <span className="font-mono">{dayLabel(row.date)}</span></span>
                       <span className="block text-[13px] text-ink-muted">{row.sales.length} {row.sales.length === 1 ? 'venda' : 'vendas'} · toque para ver</span>
@@ -342,7 +339,10 @@ export function CashFlow({ data, reload }: { data: FinanceDataset; reload: () =>
                 </details>
               </li>
             ) : (
-              <li key={row.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
+              <li key={row.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+                <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${row.type === 'in' ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`} aria-hidden="true">
+                  {row.type === 'in' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-medium text-ink">{row.description}</p>
                   <p className="mt-0.5 text-[13px] text-ink-muted"><span className="font-mono">{dayLabel(row.date)}</span> · {row.source}</p>

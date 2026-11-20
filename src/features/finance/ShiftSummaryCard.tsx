@@ -79,10 +79,22 @@ export function ShiftSummaryCard() {
           <button type="button" className="btn-secondary min-h-[44px]" onClick={exportCsv}><Download className="h-4 w-4" aria-hidden="true" />Exportar planilha</button>
         </div>
       </div>
-      <dl className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div><dt className="text-sm text-ink-muted">Faturado</dt><dd className="font-mono text-xl font-bold text-ink">{formatBRL(d.revenue.realized)}</dd></div>
-        <div><dt className="text-sm text-ink-muted">Em andamento</dt><dd className="font-mono text-xl font-bold text-ink">{formatBRL(d.revenue.inProgress)}</dd></div>
-        <div><dt className="text-sm text-ink-muted">Recebido no caixa</dt><dd className="font-mono text-xl font-bold text-ink">{formatBRL(d.receivedTotal)}</dd></div>
+      <dl className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-lg border-l-4 border-emerald-600 bg-emerald-50/60 px-3 py-2.5">
+          <dt className="text-sm text-ink-secondary">Faturado</dt>
+          <dd className="font-mono text-xl font-bold text-ink">{formatBRL(d.revenue.realized)}</dd>
+          <dd className="text-xs text-ink-muted">Já pago</dd>
+        </div>
+        <div className="rounded-lg border-l-4 border-amber-500 bg-amber-50/60 px-3 py-2.5">
+          <dt className="text-sm text-ink-secondary">Em andamento</dt>
+          <dd className="font-mono text-xl font-bold text-ink">{formatBRL(d.revenue.inProgress)}</dd>
+          <dd className="text-xs text-ink-muted">Mesas e pedidos ainda abertos</dd>
+        </div>
+        <div className="rounded-lg border-l-4 border-brand-600 bg-brand-50/60 px-3 py-2.5">
+          <dt className="text-sm text-ink-secondary">Recebido no caixa</dt>
+          <dd className="font-mono text-xl font-bold text-ink">{formatBRL(d.receivedTotal)}</dd>
+          <dd className="text-xs text-ink-muted">Dinheiro, PIX e cartões</dd>
+        </div>
       </dl>
     </section>
   );
