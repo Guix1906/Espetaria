@@ -63,8 +63,8 @@ function readSavedTab(): SettingsTab {
 
 /** Setores de impressão, na mesma regra do printer-bridge (bar e caixa sem impressora própria saem na churrasqueira). */
 const PRINTER_SECTORS: { sector: ProductionSector; title: string; ip: string; description: string; icon: typeof Store; tone: string }[] = [
-  { sector: 'GRILL', title: 'Churrasqueira', ip: 'IP: 192.168.3.17:9100', description: 'Espetos com o ponto da carne em destaque, a via do motoboy quando o delivery tem espeto e a conta da mesa.', icon: Flame, tone: 'bg-amber-100 text-amber-800' },
-  { sector: 'KITCHEN', title: 'Cozinha', ip: 'IP: 192.168.3.12:9100', description: 'Porções e acompanhamentos, a cópia do espeto com acompanhamento e a via do motoboy quando não há espeto.', icon: UtensilsCrossed, tone: 'bg-emerald-100 text-emerald-800' },
+  { sector: 'GRILL', title: 'Churrasqueira', ip: 'IP: aguardando o computador da loja', description: 'Espetos com o ponto da carne em destaque, a via do motoboy quando o delivery tem espeto e a conta da mesa.', icon: Flame, tone: 'bg-amber-100 text-amber-800' },
+  { sector: 'KITCHEN', title: 'Cozinha', ip: 'IP: aguardando o computador da loja', description: 'Porções e acompanhamentos, a cópia do espeto com acompanhamento e a via do motoboy quando não há espeto.', icon: UtensilsCrossed, tone: 'bg-emerald-100 text-emerald-800' },
 ];
 
 const FIELD ='h-11 w-full rounded-md border border-line-strong bg-surface px-3 text-base sm:text-sm';
@@ -80,6 +80,7 @@ export const SettingsView: React.FC = () => {
     retryAllFailedJobs,
     formatTicketText,
     sendTestPrint,
+    printerStatus,
   } = usePrintStore();
   const { requestChoice, notify } = useFeedback();
 
@@ -444,7 +445,8 @@ export const SettingsView: React.FC = () => {
                     <span className={`icon-tile ${tone}`}><Icon className="h-5 w-5" /></span>
                     <div>
                       <h4 className="font-bold text-ink">{title}</h4>
-                      <p className="font-mono text-[13px] text-ink-muted">{ip}</p>
+                      {/* IP real, informado pelo computador da loja (o fixo no código estava desatualizado) */}
+                      <p className="font-mono text-[13px] text-ink-muted">{(sector === 'GRILL' ? printerStatus?.grill_ip : sector === 'KITCHEN' ? printerStatus?.kitchen_ip : null) ? `IP: ${sector === 'GRILL' ? printerStatus?.grill_ip : printerStatus?.kitchen_ip}` : ip}</p>
                     </div>
                   </div>
                   <PrinterHealthTag jobs={jobs} sector={sector} />

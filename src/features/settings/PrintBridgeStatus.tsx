@@ -10,8 +10,19 @@ const STALE_AFTER_MS = 60_000;
 export type PrinterSector = PrintJob['sector'];
 export type PrinterHealth = 'ON' | 'NO_SIGNAL' | 'NOT_SET';
 
-/** Status deduzido da fila: se há cupom travado ou com falha = sem sinal; caso contrário = conectada. */
-export function sectorPrinterHealth(jobs: PrintJob[], sector: PrinterSector, now: number): PrinterHealth {
+/** Mesmo critério da janela "Diagnóstico das impressoras": o computador da loja mandou sinal no último minuto. */
+export function isBridgeAliveAt(lastHeartbeat: string | null | undefined, now: number): boolean {
+  if (!lastHeartbeat) return false;
+  return now - new Date(lastHeartbeat).getTime() < STALE_AFTER_MS;
+}
+
+/**
+ * Status da impressora. Sem sinal do computador da loja = "Sem sinal" (antes esta tela só olhava a fila
+ * e mostrava "Conectada" com o computador desligado, ao contrário da janela de diagnóstico).
+ * Com o computador ligado: cupom travado ou com falha = sem sinal; caso contrário = conectada.
+ */
+export function sectorPrinterHealth(jobs: PrintJob[], sector: PrinterSector, now: number, bridgeAlive = true): PrinterHealth {
+  if (!bridgeAlive) return 'NO_SIGNAL';
   const mine = jobs.filter((j) => j.sector === sector);
   // Falha antiga não conta se a impressora já imprimiu algo depois dela.
   const lastPrinted = Math.max(0, ...mine.filter((j) => j.status === 'PRINTED').map((j) => new Date(j.updated_at ?? j.created_at).getTime()));
@@ -32,11 +43,13 @@ const HEALTH_TAG: Record<PrinterHealth, { label: string; className: string }> = 
 
 export function PrinterHealthTag({ jobs, sector }: { jobs: PrintJob[]; sector: PrinterSector }) {
   const [now, setNow] = useState(() => Date.now());
+  const printerStatus = usePrintStore((s) => s.printerStatus);
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 10_000);
     return () => window.clearInterval(timer);
   }, []);
-  const tag = HEALTH_TAG[sectorPrinterHealth(jobs, sector, now)];
+  const bridgeAlive = !isSupabaseConfigured || isBridgeAliveAt(printerStatus?.last_heartbeat, now);
+  const tag = HEALTH_TAG[sectorPrinterHealth(jobs, sector, now, bridgeAlive)];
   return <span className={`status-badge whitespace-nowrap font-semibold ${tag.className}`}>{tag.label}</span>;
 }
 
@@ -74,7 +87,8 @@ export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
   const stuck = jobs.filter((j) => (j.status === 'PENDING' || j.status === 'PRINTING') && now - new Date(j.created_at).getTime() > STALE_AFTER_MS);
   const failed = jobs.filter((j) => j.status === 'FAILED');
   const lastPrinted = jobs.filter((j) => j.status === 'PRINTED' && j.printed_at).sort((a, b) => (b.printed_at ?? '').localeCompare(a.printed_at ?? ''))[0];
-  const healthy = stuck.length === 0 && failed.length === 0;
+  // Computador da loja sem sinal nunca conta como "funcionando" (igual à janela de diagnóstico)
+  const healthy = isBridgeAlive && stuck.length === 0 && failed.length === 0;
 
   return (
     <div className={`surface-card p-4 sm:p-5 space-y-4 ${healthy ? '' : 'border-rose-200'}`}>
@@ -94,6 +108,7 @@ export function PrintBridgeStatus({ jobs }: { jobs: PrintJob[] }) {
               </span>
             </div>
             <p className="text-xs text-ink-muted mt-1">
+              {!isBridgeAlive && 'O computador da loja não manda sinal há mais de 1 minuto: confira se está ligado, com internet e com o programa de impressão aberto. '}
               {stuck.length > 0 && `${stuck.length} cupom(ns) aguardando há mais de 1 minuto — verifique se o PC do caixa está ligado. `}
               {failed.length > 0 && `${failed.length} cupom(ns) com falha — veja o erro na aba Fila. `}
               {healthy && (lastPrinted ? `Último cupom confirmado às ${new Date(lastPrinted.printed_at!).toLocaleTimeString('pt-BR')} (${lastPrinted.printer}).` : 'Fila limpa. Use os botões abaixo para testar as impressoras.')}

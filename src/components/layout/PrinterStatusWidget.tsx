@@ -380,7 +380,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
               </span>
             </div>
             <p className="text-xs font-mono text-ink-secondary">
-              IP: {printerStatus?.kitchen_ip ?? '192.168.3.12:9100'}
+              IP: {printerStatus?.kitchen_ip ?? 'não informado'}
             </p>
             <p className="text-xs text-ink-muted">
               {!isBridgeAlive
@@ -423,7 +423,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
               </span>
             </div>
             <p className="text-xs font-mono text-ink-secondary">
-              IP: {printerStatus?.grill_ip ?? '192.168.3.17:9100'}
+              IP: {printerStatus?.grill_ip ?? 'não informado'}
             </p>
             <p className="text-xs text-ink-muted">
               {!isBridgeAlive
