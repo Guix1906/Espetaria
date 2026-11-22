@@ -408,7 +408,6 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
             now={now}
             onClose={closeDrawer}
             onOrder={() => setSelectedTableId(drawerTable.id)}
-            onBill={() => setTableForBill(drawerTable)}
             onPrint={() => void handlePrintTable(drawerTable)}
             onTransfer={() => {
               const tab = getTableTab(drawerTable.id);

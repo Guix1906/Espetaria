@@ -36,12 +36,18 @@ interface TableSettlementModalProps {
   table: RestaurantTable;
   isOpen: boolean;
   onClose: () => void;
+  /** "payment": só a coluna de pagamento, sem janela própria (vai dentro da gaveta do Salão, que já lista os itens). */
+  variant?: 'full' | 'payment';
+  /** Depois de encerrar a conta e fechar o cupom (no Salão fecha a gaveta inteira). */
+  onFinished?: () => void;
 }
 
 export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   table,
   isOpen,
   onClose,
+  variant = 'full',
+  onFinished,
 }) => {
   const { requestText, requestChoice, notify } = useFeedback();
   const [printingBill, setPrintingBill] = useState(false);
@@ -114,7 +120,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     isOpen={true}
     onClose={() => {
       setReceiptData(null);
-      onClose();
+      (onFinished ?? onClose)();
     }}
     tab={receiptData.tab}
     table={receiptData.table}
@@ -298,6 +304,295 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
     }
   };
 
+  const errorBox = errorMessage && (
+    <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2" role="alert">
+      <AlertCircle className="w-4 h-4 shrink-0 text-rose-700" />
+      <span>{errorMessage}</span>
+    </div>
+  );
+
+  // Alerta de pagamento excedente (valor a devolver)
+  const overpaidAlert = isOverpaid && (
+    <div className="notice border-amber-300 bg-amber-50 text-amber-900 mb-3" role="alert">
+      <AlertCircle className="h-4 w-4 shrink-0" />
+      <p className="text-xs font-medium">
+        Pagamento excede o total em <strong>{formatBRL(refundAmount)}</strong>. Devolva o troco ao cliente antes de fechar.
+      </p>
+    </div>
+  );
+
+  // Ajustes de Taxa de Serviço e Desconto + total
+  const adjustmentsBlock = (bordered: boolean) => (
+    <div className={`space-y-2 text-base ${bordered ? 'border-t border-line pt-3' : ''}`}>
+      {getServiceFeeRate() > 0 && <div className="flex items-center justify-between">
+        <label className="flex items-center gap-2 cursor-pointer select-none text-ink">
+          <input
+            type="checkbox"
+            checked={includeServiceFee}
+            onChange={handleToggleServiceFee}
+            className="w-4 h-4 rounded text-brand-700 focus:ring-0 focus:outline-none cursor-pointer bg-surface-muted border-line"
+          />
+          <span className="font-semibold">Taxa de serviço ({Math.round(getServiceFeeRate() * 1000) / 10}%)</span>
+        </label>
+        <span className="tabular-nums text-ink font-bold">
+          {formatBRL(currentTab.service_fee)}
+        </span>
+      </div>}
+
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-ink font-semibold flex items-center gap-1">
+          <Percent className="w-3.5 h-3.5 text-rose-700" />
+          <span>Desconto (R$):</span>
+        </span>
+        <div className="flex items-center gap-1.5 w-32">
+          <input
+            type="number"
+            min="0"
+            step="0.50"
+            value={discountDraft ?? (discountAmount || '')}
+            placeholder="0,00"
+            onChange={(e) => setDiscountDraft(e.target.value)}
+            onBlur={() => void commitDiscount()}
+            onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+            className="w-full px-2.5 py-1.5 rounded-md bg-surface border border-line text-ink tabular-nums text-right text-base focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
+            aria-label="Desconto em reais" />
+        </div>
+      </div>
+
+      <div className="flex justify-between items-baseline pt-2 border-t border-line">
+        <span className="font-bold text-ink text-lg font-sans">Total da conta</span>
+        <span className="tabular-nums text-3xl font-bold text-brand-700">
+          {formatBRL(currentTab.total)}
+        </span>
+      </div>
+    </div>
+  );
+
+  // Pagamento, de cima para baixo: saldo, forma, valor, lançar, encerrar
+  const paymentBody = (
+    <>
+      <div className={`flex items-center justify-between gap-3 rounded-xl p-3 ${isFullyPaid ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>
+        <div>
+          <p className="text-base font-semibold">{isFullyPaid ? 'Conta paga' : 'Falta pagar'}</p>
+          {totalPaid > 0 && <p className="text-sm tabular-nums">Já pago: {formatBRL(totalPaid)}</p>}
+        </div>
+        <span className="text-3xl font-black tabular-nums">{formatBRL(remainingDue)}</span>
+      </div>
+
+      {lastChange > 0 && (
+        <div className="flex items-center justify-between rounded-xl bg-emerald-600 px-3 py-2.5 font-bold text-white tabular-nums" role="status">
+          <span className="text-base">Devolver de troco</span>
+          <span className="text-3xl">{formatBRL(lastChange)}</span>
+        </div>
+      )}
+
+      {!isFullyPaid && (
+        <form onSubmit={handleAddPayment} className="space-y-3">
+          <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-muted p-1" role="group" aria-label="Quanto vai pagar agora">
+            {([['TOTAL', 'Conta inteira'], ['PARTIAL', 'Pagar parte']] as const).map(([mode, label]) => (
+              <button key={mode} type="button" aria-pressed={payMode === mode} onClick={() => { setPayMode(mode); setPaymentAmount(''); setErrorMessage(null); }}
+                className={`min-h-[48px] rounded-md text-base font-bold transition ${payMode === mode ? 'bg-surface text-brand-800 shadow-sm ring-1 ring-brand-600' : 'text-ink-secondary hover:text-ink'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-4 gap-1.5">
+            {[
+              { id: 'PIX' as PaymentMethod, label: 'PIX', icon: QrCode },
+              { id: 'DINHEIRO' as PaymentMethod, label: 'Dinheiro', icon: Banknote },
+              { id: 'DEBITO' as PaymentMethod, label: 'Débito', icon: CreditCard },
+              { id: 'CREDITO' as PaymentMethod, label: 'Crédito', icon: CreditCard },
+            ].map((m) => {
+              const Icon = m.icon;
+              const isSelected = paymentMethod === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setPaymentMethod(m.id)}
+                  className={`min-h-[56px] rounded-md text-sm font-bold transition flex flex-col items-center justify-center gap-1 ${isSelected
+                      ? 'border border-brand-600 bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-600'
+                      : 'bg-surface border border-line-strong text-ink hover:bg-surface-muted'
+                    }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {paymentMethod === 'PIX' && (
+            <button type="button" onClick={() => setIsPixModalOpen(true)} className="btn-secondary min-h-[44px] w-full text-sm font-semibold">
+              <QrCode className="w-4 h-4" />
+              Mostrar QR Code do PIX
+            </button>
+          )}
+
+          {payMode === 'PARTIAL' && (
+            <>
+              <div>
+                <label htmlFor="settlement-amount" className="mb-1 block text-sm font-semibold text-ink-secondary">Quanto vai pagar agora?</label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-ink-muted font-bold">R$</span>
+                  <input
+                    id="settlement-amount"
+                    type="text"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    placeholder="0,00"
+                    className="w-full min-h-[52px] pl-11 pr-3 rounded-md bg-surface border border-line-strong text-ink tabular-nums text-xl font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
+                    inputMode="decimal" />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-1.5 text-sm tabular-nums text-ink-secondary">
+                {([
+                  ['1/2', 2],
+                  ['1/3', 3],
+                  ...(currentTab.people_count > 1 && ![2, 3].includes(currentTab.people_count) ? [[`Por pessoa (${currentTab.people_count})`, currentTab.people_count] as const] : []),
+                ] as const).map(([label, parts]) => (
+                  <button key={label} type="button" onClick={() => setPaymentAmount((remainingDue / parts).toFixed(2))}
+                    className="min-h-[44px] px-3 rounded-md bg-surface border border-line hover:bg-surface-muted transition">
+                    {label}: {formatBRL(remainingDue / parts)}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {paymentMethod === 'DINHEIRO' && (
+            <div className="space-y-2 rounded-xl border border-line p-3 text-base">
+              <div className="flex items-center justify-between gap-2">
+                <label htmlFor="settlement-cash" className="font-semibold text-ink">Cliente entregou</label>
+                <input
+                  id="settlement-cash"
+                  type="text"
+                  placeholder="0,00"
+                  value={cashTendered}
+                  onChange={(e) => setCashTendered(e.target.value)}
+                  className="w-32 min-h-[44px] px-2.5 rounded-md bg-surface border border-line-strong text-ink tabular-nums text-right focus:ring-1 focus:ring-brand-600 focus:outline-none"
+                  inputMode="decimal" />
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {noteSuggestions.map((note) => (
+                  <button key={note} type="button" onClick={() => setCashTendered(note.toFixed(2))} className="min-h-[40px] px-3 rounded-md border border-line text-sm font-semibold tabular-nums hover:bg-surface-muted transition">
+                    {formatBRL(note)}
+                  </button>
+                ))}
+              </div>
+              {cashGivenNumber > 0 && (
+                <div className={`flex justify-between items-center rounded-lg px-3 py-2 font-bold tabular-nums ${cashGivenNumber >= paymentAmountNumber ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
+                  <span>{cashGivenNumber >= paymentAmountNumber ? 'Troco a devolver' : 'Falta o cliente entregar'}</span>
+                  <span className="text-2xl">{formatBRL(cashGivenNumber >= paymentAmountNumber ? cashChange : paymentAmountNumber - cashGivenNumber)}</span>
+                </div>
+              )}
+            </div>
+          )}
+          {/* Passo 1: receber. Passo 2 (abaixo, só depois de pago): encerrar a conta */}
+          <button type="submit" className="btn-primary min-h-[52px] w-full text-base font-bold">
+            <Plus className="w-4 h-4" />
+            {payMode === 'TOTAL' ? `Receber ${formatBRL(remainingDue)}` : `Receber parte${paymentAmountNumber > 0 ? ` de ${formatBRL(paymentAmountNumber)}` : ''}`}
+          </button>
+        </form>
+      )}
+
+      {payments.length > 0 && (
+        <div className="border-t border-line pt-2">
+          <p className="mb-1 text-sm font-semibold text-ink-secondary">Pagamentos lançados</p>
+          <ul className="max-h-[18vh] divide-y divide-line overflow-y-auto">
+            {payments.map((p) => (
+              <li key={p.id} className="flex items-center justify-between gap-2 py-1">
+                <div className="min-w-0">
+                  <p className="text-base"><span className="font-semibold">{METHOD_LABELS[p.method] ?? p.method}</span> <span className="font-bold tabular-nums">{formatBRL(p.amount)}</span></p>
+                  {p.notes && <p className="truncate text-sm text-ink-muted">{p.notes}</p>}
+                </div>
+                <button onClick={() => void handleRemovePayment(p)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-ink-muted hover:text-rose-700 hover:bg-rose-50 transition" title="Remover este pagamento" type="button" aria-label="Remover este pagamento">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isFullyPaid ? (
+        <button type="button" onClick={handleFinalizeClosure} className="btn-success mt-auto w-full min-h-[56px] text-[17px] font-bold">
+          <CheckCheck className="w-5 h-5" />
+          <span>Encerrar conta e liberar mesa</span>
+        </button>
+      ) : (
+        <p className="mt-auto text-center text-sm text-ink-muted">Depois de receber o valor total, aparece o botão para encerrar a conta.</p>
+      )}
+    </>
+  );
+
+  const printButton = (
+    <button
+      onClick={() => void printBill()}
+      disabled={printingBill}
+      className="btn-secondary text-xs"
+      type="button">
+      <Printer className="h-4 w-4" />
+      {printingBill ? 'Enviando...' : 'Imprimir conta'}
+    </button>
+  );
+
+  // Modal de PIX Dinâmico Instantâneo com QR Code & Zap
+  const pixModal = (
+    <PixPaymentModal
+      isOpen={isPixModalOpen}
+      onClose={() => setIsPixModalOpen(false)}
+      amount={paymentAmountNumber || remainingDue}
+      tableNumber={table.number}
+      customerName={currentTab.customer_name}
+      subtotal={currentTab.subtotal}
+      serviceFee={includeServiceFee ? currentTab.service_fee : 0}
+      onPaymentConfirmed={(confirmedAmount, txId) => {
+        if (!currentShift) return;
+        addPaymentAtomic(
+          currentShift.id,
+          currentTab.id,
+          confirmedAmount,
+          'PIX',
+          currentProfile.id,
+          `PIX Dinâmico BACEN TxID: ${txId}`
+        );
+        setPaymentAmount('');
+      }}
+    />
+  );
+
+  // Salão: só o pagamento, numa coluna estreita ao lado da gaveta que já lista os itens (pedido do dono, 22/11)
+  if (variant === 'payment') {
+    return (
+      <>
+        <section className="dialog-panel pay-drawer flex flex-col" aria-label={`Cobrar Mesa ${String(table.number).padStart(2, '0')}`} onClick={(e) => e.stopPropagation()}>
+          <header className="flex items-center justify-between gap-2 border-b border-line px-4 pb-3 pt-4">
+            <div className="min-w-0">
+              <h2 className="text-xl font-bold leading-tight text-ink">Cobrar</h2>
+              <p className="text-sm text-ink-muted">Mesa {String(table.number).padStart(2, '0')}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-1">
+              {printButton}
+              <button onClick={onClose} className="flex h-10 w-10 items-center justify-center rounded-md text-ink-muted hover:bg-surface-muted hover:text-ink" type="button" aria-label="Fechar cobrança" title="Fechar cobrança">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+          </header>
+          <div className="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-3">
+            {errorBox}
+            {overpaidAlert}
+            <div className="rounded-md border border-line bg-surface p-3">{adjustmentsBlock(false)}</div>
+            {paymentBody}
+          </div>
+        </section>
+        {pixModal}
+      </>
+    );
+  }
+
   return (
     <>
       <Dialog label="Fechamento da conta" onClose={onClose}>
@@ -327,14 +622,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
               </div>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button
-                onClick={() => void printBill()}
-                disabled={printingBill}
-                className="btn-secondary text-xs"
-                type="button">
-                <Printer className="h-4 w-4" />
-                {printingBill ? 'Enviando...' : 'Imprimir conta'}
-              </button>
+              {printButton}
               <button
               onClick={onClose}
               className="p-2 rounded-md text-ink-muted hover:text-ink hover:bg-surface-muted transition"
@@ -344,13 +632,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
             </div>
           </div>
 
-          {/* Mensagem de Erro se houver */}
-          {errorMessage && (
-            <div className="p-3 rounded-md bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2" role="alert">
-              <AlertCircle className="w-4 h-4 shrink-0 text-rose-700" />
-              <span>{errorMessage}</span>
-            </div>
-          )}
+          {errorBox}
 
           {/* Grid Principal: Extrato à esquerda / Pagamento à direita */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-1 overflow-y-auto pr-1 custom-scrollbar">
@@ -388,15 +670,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                 </div>
               )}
 
-              {/* Alerta de pagamento excedente (valor a devolver) */}
-              {isOverpaid && (
-                <div className="notice border-amber-300 bg-amber-50 text-amber-900 mb-3" role="alert">
-                  <AlertCircle className="h-4 w-4 shrink-0" />
-                  <p className="text-xs font-medium">
-                    Pagamento excede o total em <strong>{formatBRL(refundAmount)}</strong>. Devolva o troco ao cliente antes de fechar.
-                  </p>
-                </div>
-              )}
+              {overpaidAlert}
 
               {/* Lista de Itens */}
               <div className="flex-1 overflow-y-auto max-h-[46vh] divide-y divide-line pr-1">
@@ -431,213 +705,16 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                 )}
               </div>
 
-              {/* Ajustes de Taxa de Serviço e Desconto */}
-              <div className="border-t border-line pt-3 space-y-2 text-base">
-                {getServiceFeeRate() > 0 && <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-ink">
-                    <input
-                      type="checkbox"
-                      checked={includeServiceFee}
-                      onChange={handleToggleServiceFee}
-                      className="w-4 h-4 rounded text-brand-700 focus:ring-0 focus:outline-none cursor-pointer bg-surface-muted border-line"
-                    />
-                    <span className="font-semibold">Taxa de serviço ({Math.round(getServiceFeeRate() * 1000) / 10}%)</span>
-                  </label>
-                  <span className="tabular-nums text-ink font-bold">
-                    {formatBRL(currentTab.service_fee)}
-                  </span>
-                </div>}
-
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-ink font-semibold flex items-center gap-1">
-                    <Percent className="w-3.5 h-3.5 text-rose-700" />
-                    <span>Desconto (R$):</span>
-                  </span>
-                  <div className="flex items-center gap-1.5 w-32">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.50"
-                      value={discountDraft ?? (discountAmount || '')}
-                      placeholder="0,00"
-                      onChange={(e) => setDiscountDraft(e.target.value)}
-                      onBlur={() => void commitDiscount()}
-                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-                      className="w-full px-2.5 py-1.5 rounded-md bg-surface border border-line text-ink tabular-nums text-right text-base focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
-                      aria-label="Desconto em reais" />
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-baseline pt-2 border-t border-line">
-                  <span className="font-bold text-ink text-lg font-sans">Total da conta</span>
-                  <span className="tabular-nums text-3xl font-bold text-brand-700">
-                    {formatBRL(currentTab.total)}
-                  </span>
-                </div>
-              </div>
+              {adjustmentsBlock(true)}
             </div>
 
-            {/* COLUNA DIREITA: Pagamento, de cima para baixo: saldo, forma, valor, lançar */}
+            {/* COLUNA DIREITA: Pagamento */}
             <div className="md:col-span-6 space-y-3 flex flex-col bg-surface p-4 rounded-2xl border border-line">
               <h4 className="flex items-center gap-2 border-b border-line pb-2 text-lg font-bold text-ink font-sans">
                 <Coins className="w-5 h-5 text-emerald-700" />
                 Pagamento
               </h4>
-
-              <div className={`flex items-center justify-between gap-3 rounded-xl p-3 ${isFullyPaid ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>
-                <div>
-                  <p className="text-base font-semibold">{isFullyPaid ? 'Conta paga' : 'Falta pagar'}</p>
-                  {totalPaid > 0 && <p className="text-sm tabular-nums">Já pago: {formatBRL(totalPaid)}</p>}
-                </div>
-                <span className="text-3xl font-black tabular-nums">{formatBRL(remainingDue)}</span>
-              </div>
-
-              {lastChange > 0 && (
-                <div className="flex items-center justify-between rounded-xl bg-emerald-600 px-3 py-2.5 font-bold text-white tabular-nums" role="status">
-                  <span className="text-base">Devolver de troco</span>
-                  <span className="text-3xl">{formatBRL(lastChange)}</span>
-                </div>
-              )}
-
-              {!isFullyPaid && (
-                <form onSubmit={handleAddPayment} className="space-y-3">
-                  <div className="grid grid-cols-2 gap-1 rounded-lg bg-surface-muted p-1" role="group" aria-label="Quanto vai pagar agora">
-                    {([['TOTAL', 'Conta inteira'], ['PARTIAL', 'Pagar parte']] as const).map(([mode, label]) => (
-                      <button key={mode} type="button" aria-pressed={payMode === mode} onClick={() => { setPayMode(mode); setPaymentAmount(''); setErrorMessage(null); }}
-                        className={`min-h-[48px] rounded-md text-base font-bold transition ${payMode === mode ? 'bg-surface text-brand-800 shadow-sm ring-1 ring-brand-600' : 'text-ink-secondary hover:text-ink'}`}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {[
-                      { id: 'PIX' as PaymentMethod, label: 'PIX', icon: QrCode },
-                      { id: 'DINHEIRO' as PaymentMethod, label: 'Dinheiro', icon: Banknote },
-                      { id: 'DEBITO' as PaymentMethod, label: 'Débito', icon: CreditCard },
-                      { id: 'CREDITO' as PaymentMethod, label: 'Crédito', icon: CreditCard },
-                    ].map((m) => {
-                      const Icon = m.icon;
-                      const isSelected = paymentMethod === m.id;
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          aria-pressed={isSelected}
-                          onClick={() => setPaymentMethod(m.id)}
-                          className={`min-h-[56px] rounded-md text-sm font-bold transition flex flex-col items-center justify-center gap-1 ${isSelected
-                              ? 'border border-brand-600 bg-brand-50 text-brand-800 ring-1 ring-inset ring-brand-600'
-                              : 'bg-surface border border-line-strong text-ink hover:bg-surface-muted'
-                            }`}
-                        >
-                          <Icon className="w-4 h-4" />
-                          <span>{m.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {paymentMethod === 'PIX' && (
-                    <button type="button" onClick={() => setIsPixModalOpen(true)} className="btn-secondary min-h-[44px] w-full text-sm font-semibold">
-                      <QrCode className="w-4 h-4" />
-                      Mostrar QR Code do PIX
-                    </button>
-                  )}
-
-                  {payMode === 'PARTIAL' && (
-                    <>
-                      <div>
-                        <label htmlFor="settlement-amount" className="mb-1 block text-sm font-semibold text-ink-secondary">Quanto vai pagar agora?</label>
-                        <div className="relative">
-                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base text-ink-muted font-bold">R$</span>
-                          <input
-                            id="settlement-amount"
-                            type="text"
-                            value={paymentAmount}
-                            onChange={(e) => setPaymentAmount(e.target.value)}
-                            placeholder="0,00"
-                            className="w-full min-h-[52px] pl-11 pr-3 rounded-md bg-surface border border-line-strong text-ink tabular-nums text-xl font-bold focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 focus:outline-none transition-shadow"
-                            inputMode="decimal" />
-                        </div>
-                      </div>
-                      <div className="flex flex-wrap gap-1.5 text-sm tabular-nums text-ink-secondary">
-                        {([
-                          ['1/2', 2],
-                          ['1/3', 3],
-                          ...(currentTab.people_count > 1 && ![2, 3].includes(currentTab.people_count) ? [[`Por pessoa (${currentTab.people_count})`, currentTab.people_count] as const] : []),
-                        ] as const).map(([label, parts]) => (
-                          <button key={label} type="button" onClick={() => setPaymentAmount((remainingDue / parts).toFixed(2))}
-                            className="min-h-[44px] px-3 rounded-md bg-surface border border-line hover:bg-surface-muted transition">
-                            {label}: {formatBRL(remainingDue / parts)}
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-
-                  {paymentMethod === 'DINHEIRO' && (
-                    <div className="space-y-2 rounded-xl border border-line p-3 text-base">
-                      <div className="flex items-center justify-between gap-2">
-                        <label htmlFor="settlement-cash" className="font-semibold text-ink">Cliente entregou</label>
-                        <input
-                          id="settlement-cash"
-                          type="text"
-                          placeholder="0,00"
-                          value={cashTendered}
-                          onChange={(e) => setCashTendered(e.target.value)}
-                          className="w-32 min-h-[44px] px-2.5 rounded-md bg-surface border border-line-strong text-ink tabular-nums text-right focus:ring-1 focus:ring-brand-600 focus:outline-none"
-                          inputMode="decimal" />
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {noteSuggestions.map((note) => (
-                          <button key={note} type="button" onClick={() => setCashTendered(note.toFixed(2))} className="min-h-[40px] px-3 rounded-md border border-line text-sm font-semibold tabular-nums hover:bg-surface-muted transition">
-                            {formatBRL(note)}
-                          </button>
-                        ))}
-                      </div>
-                      {cashGivenNumber > 0 && (
-                        <div className={`flex justify-between items-center rounded-lg px-3 py-2 font-bold tabular-nums ${cashGivenNumber >= paymentAmountNumber ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
-                          <span>{cashGivenNumber >= paymentAmountNumber ? 'Troco a devolver' : 'Falta o cliente entregar'}</span>
-                          <span className="text-2xl">{formatBRL(cashGivenNumber >= paymentAmountNumber ? cashChange : paymentAmountNumber - cashGivenNumber)}</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  {/* Passo 1: receber. Passo 2 (abaixo, só depois de pago): encerrar a conta */}
-                  <button type="submit" className="btn-primary min-h-[52px] w-full text-base font-bold">
-                    <Plus className="w-4 h-4" />
-                    {payMode === 'TOTAL' ? `Receber ${formatBRL(remainingDue)}` : `Receber parte${paymentAmountNumber > 0 ? ` de ${formatBRL(paymentAmountNumber)}` : ''}`}
-                  </button>
-                </form>
-              )}
-
-              {payments.length > 0 && (
-                <div className="border-t border-line pt-2">
-                  <p className="mb-1 text-sm font-semibold text-ink-secondary">Pagamentos lançados</p>
-                  <ul className="max-h-[18vh] divide-y divide-line overflow-y-auto">
-                    {payments.map((p) => (
-                      <li key={p.id} className="flex items-center justify-between gap-2 py-1">
-                        <div className="min-w-0">
-                          <p className="text-base"><span className="font-semibold">{METHOD_LABELS[p.method] ?? p.method}</span> <span className="font-bold tabular-nums">{formatBRL(p.amount)}</span></p>
-                          {p.notes && <p className="truncate text-sm text-ink-muted">{p.notes}</p>}
-                        </div>
-                        <button onClick={() => void handleRemovePayment(p)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-ink-muted hover:text-rose-700 hover:bg-rose-50 transition" title="Remover este pagamento" type="button" aria-label="Remover este pagamento">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {isFullyPaid ? (
-                <button type="button" onClick={handleFinalizeClosure} className="btn-success mt-auto w-full min-h-[56px] text-[17px] font-bold">
-                  <CheckCheck className="w-5 h-5" />
-                  <span>Encerrar conta e liberar mesa</span>
-                </button>
-              ) : (
-                <p className="mt-auto text-center text-sm text-ink-muted">Depois de receber o valor total, aparece o botão para encerrar a conta.</p>
-              )}
+              {paymentBody}
             </div>
 
           </div>
@@ -645,33 +722,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
         </div>
       </Dialog>
 
-      {/* Modal de Impressão do Cupom Térmico */}
-
-
-      {/* Modal de PIX Dinâmico Instantâneo com QR Code & Zap */}
-      {currentTab && (
-        <PixPaymentModal
-          isOpen={isPixModalOpen}
-          onClose={() => setIsPixModalOpen(false)}
-          amount={paymentAmountNumber || remainingDue}
-          tableNumber={table.number}
-          customerName={currentTab.customer_name}
-          subtotal={currentTab.subtotal}
-          serviceFee={includeServiceFee ? currentTab.service_fee : 0}
-          onPaymentConfirmed={(confirmedAmount, txId) => {
-            if (!currentShift) return;
-            addPaymentAtomic(
-              currentShift.id,
-              currentTab.id,
-              confirmedAmount,
-              'PIX',
-              currentProfile.id,
-              `PIX Dinâmico BACEN TxID: ${txId}`
-            );
-            setPaymentAmount('');
-          }}
-        />
-      )}
+      {pixModal}
     </>
   );
 };

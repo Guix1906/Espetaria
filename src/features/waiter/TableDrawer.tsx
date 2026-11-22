@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight, Clock, Plus, Printer, Receipt, Users, X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
+import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { formatBRL, formatDoneness, getTableStatusConfig } from '../../lib/formatters';
 import { STATUS_STYLES, tableStatusKind, type StatusKind } from '../../lib/statusStyles';
 import { openFor } from '../../components/ui/TableCard';
@@ -15,7 +16,6 @@ interface TableDrawerProps {
   now: number;
   onClose: () => void;
   onOrder: () => void;
-  onBill: () => void;
   onPrint: () => void;
   onTransfer: () => void;
 }
@@ -27,8 +27,9 @@ const ITEM_STAGE: Record<string, { label: string; kind: StatusKind } | undefined
 };
 
 /** Gaveta da mesa: entra pela direita e mostra a comanda inteira com um toque no cartão. */
-export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, onOrder, onBill, onPrint, onTransfer }: TableDrawerProps) {
+export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, onOrder, onPrint, onTransfer }: TableDrawerProps) {
   const [closing, setClosing] = useState(false);
+  const [paying, setPaying] = useState(false);
   const products = useStockStore((s) => s.products);
   const imageOf = useMemo(() => new Map(products.map((p) => [p.id, p.image_url])), [products]);
   const padNumber = String(table.number).padStart(2, '0');
@@ -58,7 +59,11 @@ export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, o
 
   return (
     <Dialog label={`Mesa ${padNumber}`} onClose={close} placement="drawer">
-      <div className={`dialog-panel table-drawer flex flex-col ${entered && !closing ? 'table-drawer--in' : ''}`} onClick={(e) => e.stopPropagation()}>
+      {/* Cobrar: o pagamento entra ao lado (à esquerda) da lista de itens, sem repetir a descrição */}
+      {paying && !closing && (
+        <TableSettlementModal table={table} isOpen variant="payment" onClose={() => setPaying(false)} onFinished={onClose} />
+      )}
+      <div className={`dialog-panel table-drawer flex flex-col ${entered && !closing ? 'table-drawer--in' : ''} ${paying ? 'table-drawer--paying' : ''}`} onClick={(e) => e.stopPropagation()}>
         <header className="border-b border-line px-4 pb-3 pt-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -137,9 +142,11 @@ export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, o
             <span className="text-lg font-semibold text-ink">Total</span>
             <span className="font-mono text-3xl font-bold tabular-nums text-ink">{formatBRL(tab?.total ?? subtotal)}</span>
           </div>
-          <button type="button" onClick={then(onBill)} className="btn-primary mt-3 min-h-[52px] w-full text-base">
-            <Receipt className="h-5 w-5" aria-hidden="true" />Cobrar
-          </button>
+          {!paying && (
+            <button type="button" onClick={() => setPaying(true)} className="btn-primary mt-3 min-h-[52px] w-full text-base">
+              <Receipt className="h-5 w-5" aria-hidden="true" />Cobrar
+            </button>
+          )}
         </footer>
       </div>
     </Dialog>
