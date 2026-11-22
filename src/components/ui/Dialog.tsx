@@ -5,7 +5,7 @@ interface DialogProps {
   label: string;
   onClose: () => void;
   children: ReactNode;
-  placement?: 'center' | 'sheet' | 'navigation';
+  placement?: 'center' | 'sheet' | 'navigation' | 'drawer';
 }
 
 let openDialogCount = 0;
@@ -66,6 +66,8 @@ export function Dialog({ label, onClose, children, placement = 'center' }: Dialo
       aria-label={label}
       className={`dialog-root dialog-root--${placement}`}
       onKeyDown={keepKeyboardFocus}
+      // Gaveta lateral: tocar fora dela fecha
+      onClick={placement === 'drawer' ? (event) => { if (event.target === event.currentTarget) onCloseRef.current(); } : undefined}
       onCancel={(event) => { event.preventDefault(); onCloseRef.current(); }}
     >
       {children}

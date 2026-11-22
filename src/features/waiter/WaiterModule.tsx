@@ -7,7 +7,8 @@ import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { TableTransferModal } from './TableTransferModal';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { usePrintStore } from '../../stores/usePrintStore';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { TableDrawer } from './TableDrawer';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FilterChip } from '../../components/ui/FilterChip';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -107,6 +108,9 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const [searchTerm, setSearchTerm] = useState('');
   const [tableToOpen, setTableToOpen] = useState<RestaurantTable | null>(null);
   const [tableForBill, setTableForBill] = useState<RestaurantTable | null>(null);
+  // Gaveta lateral da mesa (Salão no computador): um toque no cartão abre a comanda
+  const [drawerTableId, setDrawerTableId] = useState<string | null>(null);
+  const closeDrawer = useCallback(() => setDrawerTableId(null), []);
   const [tableToTransfer, setTableToTransfer] = useState<{ table: RestaurantTable; tab: Tab } | null>(null);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -117,6 +121,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const isShiftOpen = currentShift?.status === 'ABERTO';
   const query = searchTerm.trim().toLocaleLowerCase('pt-BR');
   const selectedTable = tables.find((table) => table.id === selectedTableId);
+  const drawerTable = tables.find((table) => table.id === drawerTableId);
   // Índices montados uma vez por mudança de dados (antes, cada mesa varria todos os pedidos a cada toque)
   const activeTables = useMemo(() => tables.filter((table) => table.active).sort((a, b) => a.number - b.number), [tables]);
   const openTabByTable = useMemo(() => {
@@ -296,13 +301,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
                         now={now}
                         disabled={!isShiftOpen}
                         onOpen={() => askOpen(table)}
-                        onOrder={() => setSelectedTableId(table.id)}
-                        onBill={() => setTableForBill(table)}
-                        onPrint={() => void handlePrintTable(table)}
-                        onTransfer={() => {
-                          const tab = getTableTab(table.id);
-                          if (tab) setTableToTransfer({ table, tab });
-                        }}
+                        onOrder={() => setDrawerTableId(table.id)}
                       />
                     ))}
                 </div>
@@ -404,7 +403,25 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
         )}
 
         {openSheet}
-        {tableForBill && <TableSettlementModal table={tableForBill} isOpen onClose={() => setTableForBill(null)} />}
+        {drawerTable && (
+          <TableDrawer
+            key={drawerTable.id}
+            table={drawerTable}
+            tab={getTableTab(drawerTable.id)}
+            items={itemsOfTable(drawerTable.id)}
+            readyCount={readyItemsOf(drawerTable.id).length}
+            now={now}
+            onClose={closeDrawer}
+            onOrder={() => setSelectedTableId(drawerTable.id)}
+            onBill={() => setTableForBill(drawerTable)}
+            onPrint={() => void handlePrintTable(drawerTable)}
+            onTransfer={() => {
+              const tab = getTableTab(drawerTable.id);
+              if (tab) setTableToTransfer({ table: drawerTable, tab });
+            }}
+          />
+        )}
+        {tableForBill &&<TableSettlementModal table={tableForBill} isOpen onClose={() => setTableForBill(null)} />}
         {tableToTransfer && (
           <TableTransferModal
             isOpen={true}
