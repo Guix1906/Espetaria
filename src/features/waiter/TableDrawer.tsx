@@ -26,7 +26,7 @@ const ITEM_STAGE: Record<string, { label: string; kind: StatusKind } | undefined
   READY: { label: 'Pronto', kind: 'ready' },
 };
 
-/** Gaveta da mesa: entra pela esquerda e mostra a comanda inteira com um toque no cartão. */
+/** Gaveta da mesa: entra pela direita e mostra a comanda inteira com um toque no cartão. */
 export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, onOrder, onBill, onPrint, onTransfer }: TableDrawerProps) {
   const [closing, setClosing] = useState(false);
   const products = useStockStore((s) => s.products);
