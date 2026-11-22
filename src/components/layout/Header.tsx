@@ -168,7 +168,8 @@ export function Header({ activeTab, onOpenShiftClick, onMenuClick, isMenuOpen }:
           )}
         </div>
       </div>
-      <PrinterAlertBanner />
+      {/* Faixa "Impressora sem sinal" só na Visão geral (pedido do dono, 22/11) */}
+      {overview && <PrinterAlertBanner />}
       {!isOnline && <div className="flex items-center justify-center gap-2 bg-rose-600 px-4 py-1.5 text-sm font-semibold text-white" role="alert"><WifiOff className="h-4 w-4" aria-hidden="true" />Sem conexão</div>}
     </header>
   );
