@@ -47,7 +47,8 @@
 
 @layer base {
   * { box-sizing: border-box; }
-  html { background: rgb(var(--color-canvas)); scroll-padding-top: calc(var(--app-header-height) + 16px); }
+  /* scrollbar-gutter: a página não pula para o lado quando uma janela abre e some a barra de rolagem */
+  html { background: rgb(var(--color-canvas)); scrollbar-gutter: stable; scroll-padding-top: calc(var(--app-header-height) + 16px); }
   body { @apply m-0 bg-canvas font-sans text-ink antialiased; line-height: 1.5; }
   ::selection { background: rgb(var(--color-brand-100)); color: rgb(var(--color-brand-900)); }
   h1, h2, h3, h4 { text-wrap: balance; letter-spacing: -0.01em; }

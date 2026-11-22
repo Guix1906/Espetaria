@@ -69,7 +69,7 @@ export function TableCard({
     <button
       type="button"
       onClick={onOrder}
-      className={`group relative flex w-full flex-col rounded-md border bg-surface text-left shadow-card transition hover:-translate-y-px hover:shadow-floating active:translate-y-0 ${isWaitingBill ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line hover:border-line-strong'}`}
+      className={`group relative flex w-full flex-col rounded-md border bg-surface text-left shadow-card transition-colors hover:bg-surface-soft${isWaitingBill ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line hover:border-line-strong'}`}
       aria-label={`Mesa ${table.number}, ${status.label}. Ver comanda`}
       title="Ver comanda da mesa"
     >
@@ -84,7 +84,7 @@ export function TableCard({
             <p className="mt-0.5 truncate text-sm text-ink-secondary" title={tab.customer_name}>{tab.customer_name}</p>
           )}
         </div>
-        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-ink-muted transition group-hover:translate-x-0.5 group-hover:text-brand-600" aria-hidden="true" />
+        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-ink-muted transition-colors group-hover:text-brand-600" aria-hidden="true" />
       </div>
 
       <div className="flex w-full items-end justify-between gap-3 px-4 pb-3.5 pt-2">
