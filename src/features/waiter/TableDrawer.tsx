@@ -42,16 +42,23 @@ export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, o
 
   // Fecha com o mesmo deslize, ao contrário
   const close = () => setClosing(true);
+  // Liga a entrada só depois que a janela já está na tela; assim o deslize aparece de verdade
+  const [entered, setEntered] = useState(false);
+  useEffect(() => {
+    let second = 0;
+    const first = requestAnimationFrame(() => { second = requestAnimationFrame(() => setEntered(true)); });
+    return () => { cancelAnimationFrame(first); cancelAnimationFrame(second); };
+  }, []);
   useEffect(() => {
     if (!closing) return;
-    const id = window.setTimeout(onClose, 170);
+    const id = window.setTimeout(onClose, 250);
     return () => window.clearTimeout(id);
   }, [closing, onClose]);
   const then = (action: () => void) => () => { action(); onClose(); };
 
   return (
     <Dialog label={`Mesa ${padNumber}`} onClose={close} placement="drawer">
-      <div className={`dialog-panel table-drawer flex flex-col ${closing ? 'table-drawer--out' : ''}`} onClick={(e) => e.stopPropagation()}>
+      <div className={`dialog-panel table-drawer flex flex-col ${entered && !closing ? 'table-drawer--in' : ''}`} onClick={(e) => e.stopPropagation()}>
         <header className="border-b border-line px-4 pb-3 pt-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
