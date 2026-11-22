@@ -69,7 +69,7 @@ export function TableCard({
     <button
       type="button"
       onClick={onOrder}
-      className={`group relative flex w-full flex-col rounded-md border bg-surface text-left shadow-card transition-colors hover:bg-surface-soft${isWaitingBill ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line hover:border-line-strong'}`}
+      className={`group relative flex h-full w-full flex-col rounded-md border bg-surface text-left shadow-card transition-colors hover:bg-surface-soft${isWaitingBill ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line hover:border-line-strong'}`}
       aria-label={`Mesa ${table.number}, ${status.label}. Ver comanda`}
       title="Ver comanda da mesa"
     >
@@ -87,7 +87,8 @@ export function TableCard({
         <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-ink-muted transition-colors group-hover:text-brand-600" aria-hidden="true" />
       </div>
 
-      <div className="flex w-full items-end justify-between gap-3 px-4 pb-3.5 pt-2">
+      {/* mt-auto: com ou sem nome do cliente, pessoas/tempo/valor ficam na mesma altura em todos os cartões */}
+      <div className="mt-auto flex w-full items-end justify-between gap-3 px-4 pb-3.5 pt-2">
         <ul className="space-y-0.5 text-[13px] text-ink-muted">
           <li className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" aria-hidden="true" />{tab?.people_count || 1} {(tab?.people_count || 1) === 1 ? 'pessoa' : 'pessoas'} · {itemCount} {itemCount === 1 ? 'item' : 'itens'}</li>
           {opened && <li className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" aria-hidden="true" />{opened === '0 min' ? 'Aberta agora' : `Aberta há ${opened}`}</li>}
