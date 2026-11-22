@@ -1,7 +1,7 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import { groupItemsByTab } from './tableItems';
 import type { StatusKind } from '../../lib/statusStyles';
-import { ArrowRight, Info, LayoutGrid, Plus, Search, Settings2, Smartphone, BellRing, X } from 'lucide-react';
+import { ArrowRight, Info, LayoutGrid, Plus, Search, Settings2, BellRing, X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { TableTransferModal } from './TableTransferModal';
@@ -237,22 +237,17 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
           }
           icon={LayoutGrid}
           actions={
-            <div className="flex items-center gap-2">
-              <a className="btn-secondary min-h-[44px] text-xs font-semibold flex items-center gap-1.5" href="#/garcom" title="Área do garçom no celular">
-                <Smartphone className="h-4 w-4" />
-                <span className="hidden sm:inline">Área do garçom</span>
-              </a>
-              <button
-                type="button"
-                disabled={!isShiftOpen}
-                onClick={() => setIsPickerOpen(true)}
-                className="btn-primary min-h-[44px] shrink-0 text-sm flex items-center justify-center gap-1.5 px-4"
-                title="Abrir uma nova mesa livre"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Abrir mesa</span>
-              </button>
-            </div>
+            // Só o "+" (pedido do dono, 22/11); "Área do garçom" fica no menu do perfil
+            <button
+              type="button"
+              disabled={!isShiftOpen}
+              onClick={() => setIsPickerOpen(true)}
+              className="btn-primary h-11 w-11 shrink-0 p-0"
+              title="Abrir mesa"
+              aria-label="Abrir mesa"
+            >
+              <Plus className="h-5 w-5" aria-hidden="true" />
+            </button>
           }
         />
         {shiftNotice}
