@@ -65,9 +65,10 @@ describe('Area dedicada do garcom', () => {
     expect(html).not.toContain('href="#/garcom"');
   });
 
-  it('mantem o acesso a area movel no atendimento administrativo', () => {
+  it('Salão sem atalho da área do garçom (fica no menu do perfil) e com "+" para abrir mesa', () => {
     const html = renderToStaticMarkup(<WaiterModule onOpenShiftClick={vi.fn()} />);
-    expect(html).toContain('href="#/garcom"');
+    expect(html).not.toContain('href="#/garcom"');
+    expect(html).toContain('aria-label="Abrir mesa"');
     expect(html).toContain('Abrir turno');
   });
 
