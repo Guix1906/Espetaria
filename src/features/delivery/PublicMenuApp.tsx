@@ -381,6 +381,30 @@ export function PublicMenuApp() {
     const availability = getProductAvailability(p, dailyPrepStock.find((s) => s.product_id === p.id));
     return comboBlockedByBase(p, products, dailyPrepStock) ? { ...availability, isAvailable: false } : availability;
   };
+  // Espeto acabou com o cliente ainda escolhendo: sai da sacola na hora (o cardápio atualiza a cada 30 s),
+  // em vez de o cliente tentar enviar várias vezes e receber "esgotado" (22/11: 8 recusas em 5 min)
+  useEffect(() => {
+    if (sending || !cart.length || !dailyPrepStock.length) return;
+    const { removeFromCart, updateCartQuantity: changeQty } = useDeliveryStore.getState();
+    const gone: string[] = [];
+    const used = new Map<string, number>();
+    for (const item of cart) {
+      const current = products.find((p) => p.id === item.productId);
+      if (!current) continue;
+      const { isAvailable, remaining } = stockOf(current);
+      if (!isAvailable) { removeFromCart(item.id); gone.push(current.name); continue; }
+      if (remaining === null || current.tracks_stock === false) continue;
+      const before = used.get(current.id) ?? 0;
+      const allowed = Math.max(0, remaining - before);
+      if (item.quantity > allowed) {
+        if (allowed === 0) removeFromCart(item.id); else changeQty(item.id, allowed - item.quantity);
+        gone.push(current.name);
+      }
+      used.set(current.id, before + Math.min(item.quantity, allowed));
+    }
+    if (gone.length) setCartError(`${[...new Set(gone)].join(', ')} acabou e foi tirado da sua sacola.`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dailyPrepStock, products, cart, sending]);
   const visible = useMemo(() => {
     const q = query.trim().toLocaleLowerCase('pt-BR');
     return products.filter((p) => p.active && (!q || `${p.name} ${p.description || ''}`.toLocaleLowerCase('pt-BR').includes(q)));
