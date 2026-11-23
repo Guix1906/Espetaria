@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeftRight, Clock, Plus, Printer, Receipt, Users, X } from 'lucide-react';
+import { ArrowLeftRight, Clock, Plus, Printer, Receipt, Trash2, Users, X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { formatBRL, formatDoneness, getTableStatusConfig } from '../../lib/formatters';
 import { STATUS_STYLES, tableStatusKind, type StatusKind } from '../../lib/statusStyles';
 import { openFor } from '../../components/ui/TableCard';
 import { useStockStore } from '../../stores/useStockStore';
+import { useAuthStore } from '../../stores/useAuthStore';
+import { useShiftStore } from '../../stores/useShiftStore';
+import { useTableStore } from '../../stores/useTableStore';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
+import { askReturnToStock } from '../../lib/askReturnToStock';
 import type { OrderItem, RestaurantTable, Tab } from '../../types/domain';
 
 interface TableDrawerProps {
@@ -40,6 +45,36 @@ export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, o
   const quantity = visible.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = tab?.subtotal ?? visible.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
   const customer = tab?.customer_name && tab.customer_name !== `Mesa ${table.number}` ? tab.customer_name : null;
+  const currentProfile = useAuthStore((s) => s.currentProfile);
+  const currentShift = useShiftStore((s) => s.currentShift);
+  const { notify, requestText, requestChoice } = useFeedback();
+  const canCancel = ['MASTER', 'GERENTE'].includes(currentProfile.role);
+
+  // Mesma regra da lista do garçom: motivo obrigatório, fica na auditoria e, se já estava na brasa, pergunta do estoque
+  const cancelItem = async (item: OrderItem) => {
+    if (!currentShift) { notify('Turno fechado: não é possível alterar a comanda.', 'error'); return; }
+    const reason = await requestText({
+      title: `Cancelar ${item.quantity}x ${item.product_name}`,
+      label: 'Motivo do cancelamento',
+      message: item.status === 'DELIVERED' ? 'O item sai da conta da mesa e fica registrado na auditoria.' : item.status === 'RECEIVED' ? 'O item ainda não entrou em preparo.' : 'Este item já está em produção: a churrasqueira/cozinha recebe um cupom de cancelamento.',
+      initialValue: 'Cliente desistiu',
+      confirmText: 'Cancelar item',
+      danger: true,
+    });
+    if (!reason) return;
+    let returnStock: boolean | undefined;
+    if (item.status === 'IN_PREPARATION' && products.find((p) => p.id === item.product_id)?.tracks_stock) {
+      const answer = await askReturnToStock(requestChoice, `${item.quantity}x ${item.product_name}`);
+      if (answer === null) return;
+      returnStock = answer;
+    }
+    try {
+      useTableStore.getState().cancelOrderItemAtomic(item.id, reason, currentProfile.id, currentShift.id, returnStock);
+      notify(item.status === 'DELIVERED' ? 'Item excluído da conta.' : 'Item cancelado. Cupom de cancelamento enviado à produção.', 'success');
+    } catch (error: unknown) {
+      notify(error instanceof Error ? error.message : 'Não foi possível cancelar o item.', 'error');
+    }
+  };
 
   // Fecha com o mesmo deslize, ao contrário
   const close = () => setClosing(true);
@@ -122,7 +157,14 @@ export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, o
                       {detail && <p className="mt-0.5 text-xs leading-snug text-ink-muted">{detail}</p>}
                       <div className="mt-1 flex items-baseline justify-between gap-2">
                         <span className="font-mono text-[13px] tabular-nums text-ink-muted">{item.quantity} × {formatBRL(item.unit_price)}</span>
-                        <span className="font-mono text-sm font-semibold tabular-nums text-ink">{formatBRL(item.unit_price * item.quantity)}</span>
+                        <span className="flex items-center gap-1">
+                          <span className="font-mono text-sm font-semibold tabular-nums text-ink">{formatBRL(item.unit_price * item.quantity)}</span>
+                          {canCancel && (
+                            <button type="button" onClick={() => void cancelItem(item)} className="-my-1.5 -mr-1.5 flex h-9 w-9 items-center justify-center rounded-md text-ink-muted hover:bg-rose-50 hover:text-rose-700" title="Cancelar item" aria-label={`Cancelar ${item.quantity}x ${item.product_name}`}>
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </span>
                       </div>
                     </div>
                   </li>
