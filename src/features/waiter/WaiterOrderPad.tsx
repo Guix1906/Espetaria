@@ -58,7 +58,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
   const { currentProfile } = useAuthStore();
   const canManageProducts = !dedicated && ['MASTER', 'GERENTE'].includes(currentProfile.role);
   const { products, dailyPrepStock, categories: storeCategories } = useStockStore();
-  const { addItem, updateQuantity, getCart, getCartItemsCount, getCartTotal, clearCart } = useCartStore();
+  const { addItem, updateQuantity, removeItem, getCart, getCartItemsCount, getCartTotal, clearCart } = useCartStore();
   const { tabs, orderItems, addOrderAtomic } = useTableStore();
   const { currentShift } = useShiftStore();
   const [selectedCategory, setSelectedCategory] = useState(TOP);
@@ -477,12 +477,22 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
             ) : (
               <ul className="min-h-0 flex-1 divide-y divide-line overflow-y-auto">
                 {cart.map((item) => (
-                  <li key={item.id} className="flex items-start justify-between gap-3 px-4 py-2.5">
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold text-ink"><span className="font-mono">{item.quantity}×</span> {item.product.name}</p>
-                      {(item.doneness || item.notes) && <p className="text-xs text-ink-muted">{[item.doneness ? formatDoneness(item.doneness) : null, item.notes].filter(Boolean).join(' · ')}</p>}
+                  <li key={item.id} className="px-4 py-2.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-ink">{item.product.name}</p>
+                        {(item.doneness || item.notes) && <p className="text-xs text-ink-muted">{[item.doneness ? formatDoneness(item.doneness) : null, item.notes].filter(Boolean).join(' · ')}</p>}
+                      </div>
+                      <span className="shrink-0 font-mono text-sm text-ink">{formatBRL(item.product.price * item.quantity)}</span>
                     </div>
-                    <span className="shrink-0 font-mono text-sm text-ink">{formatBRL(item.product.price * item.quantity)}</span>
+                    <div className="mt-1.5 flex items-center justify-between">
+                      <div className="flex h-9 items-center rounded-md border border-line-strong">
+                        <button type="button" className="flex h-9 w-9 items-center justify-center text-ink active:bg-surface-muted" onClick={() => updateQuantity(table.id, item.id, -1)} aria-label={`Tirar 1 ${item.product.name}`}><Minus className="h-4 w-4" /></button>
+                        <output className="min-w-[1.75rem] text-center font-mono text-sm font-bold">{item.quantity}</output>
+                        <button type="button" className="flex h-9 w-9 items-center justify-center text-ink active:bg-surface-muted" onClick={() => tryAdd(() => updateQuantity(table.id, item.id, 1))} aria-label={`Mais 1 ${item.product.name}`}><Plus className="h-4 w-4" /></button>
+                      </div>
+                      <button type="button" className="flex min-h-[36px] items-center gap-1 rounded-md px-2 text-sm font-semibold text-rose-700 hover:bg-rose-50" onClick={() => removeItem(table.id, item.id)} aria-label={`Remover ${item.product.name} do pedido`}><X className="h-4 w-4" />Remover</button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -498,7 +508,18 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                   {isSendingQuick ? 'Enviando...' : <>Enviar <ArrowRight className="h-4 w-4" aria-hidden="true" /></>}
                 </button>
               </div>
+              {cart.length > 0 && <button type="button" className="w-full text-center text-sm font-semibold text-rose-700 hover:underline" onClick={() => clearCart(table.id)}>Limpar pedido</button>}
             </div>
+            {activeTab && (
+              <div className="space-y-2 border-t border-line bg-surface-soft px-4 py-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-sm text-ink-muted">Conta da mesa</span>
+                  <span className="font-mono text-lg font-bold text-ink">{formatBRL(activeTab.total)}</span>
+                </div>
+                <button type="button" className="btn-primary w-full" disabled={cart.length > 0} title={cart.length > 0 ? 'Envie ou limpe o pedido antes de receber' : undefined} onClick={() => setIsSettlementOpen(true)}>Receber pagamento</button>
+                {cart.length > 0 && <p className="text-xs text-ink-muted">Envie o pedido antes de receber a conta.</p>}
+              </div>
+            )}
           </div>
         </aside>
       )}
