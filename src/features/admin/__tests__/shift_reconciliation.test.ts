@@ -168,7 +168,7 @@ describe('ETAPA 8: Painel Master, Relatórios Gerenciais & Fechamento de Turno',
     expect(adjustMovement?.new_balance).toBe(18);
   });
 
-  it('deve apurar reconciliação do gaveteiro do caixa e fechar o turno com sucesso', () => {
+  it('deve apurar reconciliação do gaveteiro do caixa e fechar o turno com sucesso', async () => {
     const { openShift, closeShift } = useShiftStore.getState();
     const shift = openShift(
       'Turno Domingo',
@@ -213,7 +213,7 @@ describe('ETAPA 8: Painel Master, Relatórios Gerenciais & Fechamento de Turno',
     expect(expectedCash).toBe(500.0);
 
     // Gerente confere o caixa físico e encontra R$ 500 certinho
-    closeShift('Turno finalizado com conferência de caixa exata.', 500.0, masterUserId);
+    expect(await closeShift('Turno finalizado com conferência de caixa exata.', 500.0, masterUserId)).toBe(true);
 
     // O turno atual deve ser nulo e constar no histórico como FECHADO
     expect(useShiftStore.getState().currentShift).toBeNull();

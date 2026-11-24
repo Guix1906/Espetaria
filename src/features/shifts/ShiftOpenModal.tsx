@@ -98,6 +98,8 @@ export const ShiftOpenModal: React.FC<ShiftOpenModalProps> = ({ isOpen, onClose 
     setDisabledProducts({});
     setPortionsOverride({});
     setCashStart('');
+    // A tela fica montada dias seguidos: a data do nome é a de hoje, não a de quando o site abriu
+    setShiftName(`${new Date().toLocaleDateString('pt-BR')} — Noite`);
     setErrorMsg(null);
     setRepeatState({ loading: false, message: null });
     setSelectedRiceFlavors(settings.daily_rice_flavors ?? []);

@@ -12,6 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
 import { drawerMovements, loadDrawerEntries } from '../../lib/financeData';
 import { formatBRL } from '../../lib/formatters';
+import { useRemoteErrorStore } from '../../lib/remote';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
 import { useShiftStore } from '../../stores/useShiftStore';
@@ -40,7 +41,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
 }) => {
   const { currentShift, closeShift } = useShiftStore();
   const { dailyPrepStock, products, adjustStockPhysicalCount } = useStockStore();
-  const { payments } = useTableStore();
+  const { payments, tabs, tables, closeTabAtomic } = useTableStore();
   const { deliveryOrders } = useDeliveryStore();
   const { currentProfile } = useAuthStore();
 
@@ -95,8 +96,36 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
   const cashDiscrepancy = countedCash === null ? null : Math.round((countedCash - expectedCashDrawer) * 100) / 100;
   const hasCashDifference = cashDiscrepancy !== null && cashDiscrepancy !== 0;
 
-  const handleFinishShift = () => {
+  // O banco não fecha turno com comanda aberta. Comanda paga e não encerrada era o caso
+  // mais comum (a conta foi recebida, mas ninguém tocou em "Encerrar").
+  const openTabs = tabs
+    .filter((t) => t.shift_id === currentShift.id && t.status === 'OPEN')
+    .map((t) => {
+      const paid = payments.filter((p) => p.tab_id === t.id && p.status === 'PAID').reduce((s, p) => s + p.amount, 0);
+      const missing = Math.round((t.total - paid) * 100) / 100;
+      const number = tables.find((tb) => tb.id === t.table_id)?.number;
+      const mesa = `Mesa ${number ?? '?'}`;
+      const customer = t.customer_name?.trim();
+      return { tab: t, label: customer && customer !== mesa ? `${mesa} · ${customer}` : mesa, missing };
+    });
+  const paidOpenTabs = openTabs.filter((t) => t.missing <= 0);
+  const unpaidOpenTabs = openTabs.filter((t) => t.missing > 0);
+
+  const closePaidTabs = () => {
     setErrorMessage(null);
+    const failed: string[] = [];
+    paidOpenTabs.forEach(({ tab, label }) => {
+      try { closeTabAtomic(currentShift.id, tab.id, currentProfile.id); } catch { failed.push(label); }
+    });
+    if (failed.length) setErrorMessage(`Não foi possível encerrar: ${failed.join(', ')}.`);
+  };
+
+  const handleFinishShift = async () => {
+    setErrorMessage(null);
+    if (openTabs.length > 0) {
+      setErrorMessage('Ainda há comandas abertas neste turno. Encerre-as antes de fechar o turno.');
+      return;
+    }
     if (countedCash === null) {
       setErrorMessage('Informe o valor em dinheiro contado na gaveta.');
       return;
@@ -121,9 +150,12 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
         closingNotes.trim(),
       ].filter(Boolean).join('\n');
 
-      closeShift(notes, countedCash, currentProfile.id);
-
+      const closed = await closeShift(notes, countedCash, currentProfile.id);
       setIsSubmitting(false);
+      if (!closed) {
+        setErrorMessage(useRemoteErrorStore.getState().lastError ?? 'O servidor não confirmou o fechamento. Confira a internet e tente de novo.');
+        return;
+      }
       onShiftClosed?.();
       onClose();
     } catch (err) {
@@ -165,6 +197,40 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
         )}
 
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-5 custom-scrollbar">
+
+          {openTabs.length > 0 && (
+            <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4 space-y-3" role="status">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700" />
+                <div>
+                  <p className="font-semibold text-amber-900">
+                    {openTabs.length === 1 ? '1 comanda ainda aberta' : `${openTabs.length} comandas ainda abertas`}
+                  </p>
+                  <p className="text-[13px] text-amber-900/80">O turno só fecha depois que todas as comandas forem encerradas.</p>
+                </div>
+              </div>
+              <ul className="divide-y divide-amber-200 rounded-lg bg-surface text-sm">
+                {openTabs.map(({ tab, label, missing }) => (
+                  <li key={tab.id} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <span className="min-w-0 truncate font-medium">{label}</span>
+                    <span className={`shrink-0 whitespace-nowrap font-mono text-[13px] ${missing > 0 ? 'text-rose-700' : 'text-emerald-800'}`}>
+                      {missing > 0 ? `Falta ${formatBRL(missing)}` : 'Já paga'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              {paidOpenTabs.length > 0 && (
+                <button type="button" onClick={closePaidTabs} className="btn-primary min-h-[44px] w-full">
+                  {paidOpenTabs.length === 1 ? 'Encerrar a comanda já paga' : `Encerrar as ${paidOpenTabs.length} comandas já pagas`}
+                </button>
+              )}
+              {unpaidOpenTabs.length > 0 && (
+                <p className="text-[13px] text-amber-900">
+                  {unpaidOpenTabs.length === 1 ? 'A comanda com valor faltando precisa' : 'As comandas com valor faltando precisam'} ser cobrada{unpaidOpenTabs.length === 1 ? '' : 's'} no Caixa (ou anulada{unpaidOpenTabs.length === 1 ? '' : 's'}, se foi engano).
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Cards de Resumo Rápido do Turno */}
           <div className="grid grid-cols-2 gap-3">
@@ -342,7 +408,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
 
           <button
             onClick={handleFinishShift}
-            disabled={isSubmitting || countedCash === null || (hasCashDifference && !differenceReason.trim())}
+            disabled={isSubmitting || openTabs.length > 0 || countedCash === null || (hasCashDifference && !differenceReason.trim())}
             className="btn-danger h-11 px-6 text-sm font-bold flex items-center gap-2 rounded-xl disabled:opacity-50 shadow-xs"
             type="button"
           >

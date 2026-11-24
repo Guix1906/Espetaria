@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { Shift } from '../types/domain';
 import { generateId } from '../lib/utils';
 import { useStockStore, PrepItemInput } from './useStockStore';
-import { useTableStore } from './useTableStore';
+import { useTableStore, waitPendingTabWrites } from './useTableStore';
 import { useDeliveryStore } from './useDeliveryStore';
 import { logger } from '../lib/logger';
 import { callRpc } from '../lib/remote';
@@ -22,7 +22,7 @@ interface ShiftState {
     closingNotes: string,
     cashDrawerEnd: number,
     userId: string
-  ) => void;
+  ) => Promise<boolean>;
 }
 
 export const useShiftStore = create<ShiftState>((set, get) => ({
@@ -37,7 +37,7 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
     const shiftId = generateId();
     const newShift: Shift = {
       id: shiftId,
-      date: new Date().toISOString().split('T')[0]!,
+      date: new Date().toLocaleDateString('en-CA'),
       name: name || `${new Date().toLocaleDateString('pt-BR')} — Noite`,
       status: 'ABERTO',
       opened_by: userId,
@@ -99,7 +99,7 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
     return newShift;
   },
 
-  closeShift: (closingNotes, cashDrawerEnd, userId) => {
+  closeShift: async (closingNotes, cashDrawerEnd, userId) => {
     const current = get().currentShift;
     if (!current || current.status !== 'ABERTO') {
       throw new Error('Nenhum turno aberto para fechar.');
@@ -145,15 +145,21 @@ export const useShiftStore = create<ShiftState>((set, get) => ({
       ),
     });
 
-    void callRpc('close_shift', {
+    // Comanda encerrada segundos antes ainda pode estar a caminho do banco: o banco recusa
+    // fechar turno com comanda aberta, então espera essas gravações antes.
+    await waitPendingTabWrites();
+    await callRpc('close_shift', {
       p_shift_id: current.id,
       p_closing_notes: closedShift.closing_notes,
       p_cash_end: closedShift.cash_drawer_end,
     }, 'ShiftStore');
 
+    // Se o banco recusou, callRpc já recarregou tudo e o turno voltou aberto.
+    const closed = get().currentShift?.id !== current.id;
     logger.info({
       context: 'ShiftStore',
-      message: `Turno ${closedShift.name} encerrado com sucesso.`
+      message: closed ? `Turno ${closedShift.name} encerrado com sucesso.` : `Banco recusou o fechamento do turno ${closedShift.name}.`,
     });
+    return closed;
   }
 }));

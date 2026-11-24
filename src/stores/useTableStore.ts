@@ -45,6 +45,11 @@ export function isTabOpening(tabId: string): boolean {
 /** Pagamentos a caminho do banco: encerrar a conta espera por eles, senão o banco recusa por pagamento insuficiente. */
 const pendingPayments = new Map<string, Promise<unknown>>();
 
+/** Espera pagamentos e encerramentos de comanda ainda a caminho do banco (antes de fechar o turno). */
+export async function waitPendingTabWrites(): Promise<void> {
+  await Promise.allSettled([...pendingPayments.values()]);
+}
+
 interface OrderItemInput {
   productId: string;
   quantity: number;
@@ -1031,7 +1036,9 @@ export const useTableStore = create<TableState>((set, get) => ({
       orderItems: updatedOrderItems,
     });
 
-    void Promise.resolve(pendingPayments.get(tabId)).then(() => callRpc('close_tab_atomic', { p_tab_id: tabId }, 'TableStore'));
+    const closing: Promise<unknown> = Promise.resolve(pendingPayments.get(tabId)).then(() => callRpc('close_tab_atomic', { p_tab_id: tabId }, 'TableStore'));
+    pendingPayments.set(tabId, closing);
+    void closing.finally(() => { if (pendingPayments.get(tabId) === closing) pendingPayments.delete(tabId); });
 
     const items = get().getTabOrderItems(tabId);
 
