@@ -8,8 +8,9 @@ import {
   PackageCheck,
   X,
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
+import { drawerMovements, loadDrawerEntries } from '../../lib/financeData';
 import { formatBRL } from '../../lib/formatters';
 import { useAuthStore } from '../../stores/useAuthStore';
 import { useDeliveryStore } from '../../stores/useDeliveryStore';
@@ -50,6 +51,17 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
   const [showStockSection, setShowStockSection] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  // Entradas/saídas em dinheiro lançadas no Financeiro com "gaveta do caixa"
+  const [drawer, setDrawer] = useState<{ in: number; out: number }>({ in: 0, out: 0 });
+  const shiftId = currentShift?.id;
+  useEffect(() => {
+    if (!isOpen || !shiftId) return;
+    let alive = true;
+    loadDrawerEntries(shiftId)
+      .then((entries) => { if (alive) setDrawer(drawerMovements(entries, shiftId)); })
+      .catch(() => { /* sem lançamentos: o esperado fica só com as vendas */ });
+    return () => { alive = false; };
+  }, [isOpen, shiftId]);
 
   if (!isOpen || !currentShift) return null;
 
@@ -70,7 +82,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
   const deliveryCashTotal = shiftDeliveries
     .filter((o) => o.payment_method === 'DINHEIRO' && o.status === 'DELIVERED')
     .reduce((sum, o) => sum + o.total, 0);
-  const expectedCashDrawer = currentShift.cash_drawer_start + salonCashTotal + deliveryCashTotal;
+  const expectedCashDrawer = Math.round((currentShift.cash_drawer_start + salonCashTotal + deliveryCashTotal + drawer.in - drawer.out) * 100) / 100;
 
   // Faturamento total do turno
   const salonRevenue = shiftPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -164,7 +176,7 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
             <div className="p-3.5 rounded-xl border border-line bg-surface-soft">
               <p className="text-xs text-ink-muted font-medium">Dinheiro esperado</p>
               <p className="mt-0.5 font-mono text-lg font-bold text-brand-700">{formatBRL(expectedCashDrawer)}</p>
-              <p className="text-xs text-ink-muted truncate">Fundo {formatBRL(currentShift.cash_drawer_start)} + Vendas {formatBRL(salonCashTotal + deliveryCashTotal)}</p>
+              <p className="text-xs text-ink-muted">Fundo {formatBRL(currentShift.cash_drawer_start)} + Vendas {formatBRL(salonCashTotal + deliveryCashTotal)}{drawer.in > 0 && <> + Entradas {formatBRL(drawer.in)}</>}{drawer.out > 0 && <> − Saídas {formatBRL(drawer.out)}</>}</p>
             </div>
           </div>
 

@@ -5,7 +5,7 @@ import { FilterChip } from '../../components/ui/FilterChip';
 import { PeriodPicker, SectionTabs, defaultPeriod, type Period } from '../../components/ui/PeriodPicker';
 import { Chart, CHART_COLORS, baseOptions } from '../../components/charts/Chart';
 import { formatBRL } from '../../lib/formatters';
-import { METHOD_LABELS, downloadCsv, sumBy, type FinanceDataset } from '../../lib/financeData';
+import { METHOD_LABELS, downloadCsv, drawerMovements, sumBy, type FinanceDataset } from '../../lib/financeData';
 import { useFinanceData } from '../finance/useFinanceData';
 import { Empty } from '../finance/FinanceView';
 
@@ -326,13 +326,14 @@ function Shifts({ data }: { data: FinanceDataset }) {
   const rows = data.shifts.map((s) => {
     const sold = data.sales.filter((x) => x.at >= s.opened_at && (!s.closed_at || x.at <= s.closed_at));
     const cash = sold.filter((x) => x.method === 'DINHEIRO').reduce((sum, x) => sum + x.amount, 0);
-    const expected = s.cash_start + cash;
+    const drawer = drawerMovements(data.entries, s.id);
+    const expected = s.cash_start + cash + drawer.in - drawer.out;
     return { s, total: sold.reduce((sum, x) => sum + x.amount, 0), expected, diff: s.cash_end == null ? null : s.cash_end - expected };
   });
   return (
     <Block title="Turnos e conferência do caixa" onExport={() => downloadCsv(`turnos_${data.from}_${data.to}.csv`, ['Turno', 'Abertura', 'Fechamento', 'Faturamento', 'Fundo de troco', 'Dinheiro esperado', 'Dinheiro contado', 'Diferença'], rows.map((r) => [r.s.name, fmt(r.s.opened_at), r.s.closed_at ? fmt(r.s.closed_at) : 'Aberto', r.total, r.s.cash_start, r.expected, r.s.cash_end ?? '', r.diff ?? '']))}>
       <Table head={['Turno', 'Abertura', 'Faturamento', 'Esperado na gaveta', 'Contado', 'Diferença']} align={['l', 'l', 'r', 'r', 'r', 'r']} rows={rows.map((r) => [r.s.name, fmt(r.s.opened_at), formatBRL(r.total), formatBRL(r.expected), r.s.cash_end == null ? (r.s.status === 'ABERTO' ? 'Aberto' : '—') : formatBRL(r.s.cash_end), r.diff == null ? '—' : <span className={Math.abs(r.diff) < 0.01 ? 'text-emerald-800' : 'font-medium text-rose-700'}>{r.diff > 0 ? '+' : ''}{formatBRL(r.diff)}</span>])} />
-      <p className="mt-2 text-[13px] text-ink-muted">Esperado na gaveta = fundo de troco + vendas em dinheiro do turno.</p>
+      <p className="mt-2 text-[13px] text-ink-muted">Esperado na gaveta = fundo de troco + vendas em dinheiro do turno + entradas − saídas em dinheiro lançadas na gaveta (Financeiro).</p>
     </Block>
   );
 }

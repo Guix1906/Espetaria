@@ -26,6 +26,8 @@ export interface FinanceEntry {
   supplier: string | null;
   notes: string | null;
   created_at: string;
+  /** Turno em que o dinheiro entrou/saiu da gaveta do caixa (só lançamentos em dinheiro). */
+  shift_id?: string | null;
 }
 
 export interface SaleRecord { id: string; at: string; amount: number; method: string; channel: 'SALAO' | 'DELIVERY' }
@@ -56,10 +58,43 @@ export interface FinanceDataset {
   driverPayouts?: { at: string; total: number }[];
 }
 
+/** Dinheiro do dono que sai ou entra no caixa: mexe no saldo, mas não é despesa nem venda. */
+export const OWNER_WITHDRAWAL = 'Retirada do dono';
+export const OWNER_CONTRIBUTION = 'Aporte do dono';
+
 export const FINANCE_CATEGORIES: Record<FinanceKind, string[]> = {
-  PAGAR: ['Carnes e insumos', 'Bebidas', 'Carvão e gás', 'Embalagens', 'Funcionários', 'Aluguel', 'Energia e água', 'Internet e sistemas', 'Impostos', 'Manutenção', 'Marketing', 'Outros'],
-  RECEBER: ['Eventos e encomendas', 'Convênios', 'Fiado de cliente', 'Cartão a receber', 'Outros'],
+  PAGAR: ['Carnes e insumos', 'Bebidas', 'Carvão e gás', 'Embalagens', 'Funcionários', 'Aluguel', 'Energia e água', 'Internet e sistemas', 'Impostos', 'Manutenção', 'Marketing', OWNER_WITHDRAWAL, 'Outros'],
+  RECEBER: ['Eventos e encomendas', 'Convênios', 'Fiado de cliente', 'Cartão a receber', OWNER_CONTRIBUTION, 'Outros'],
 };
+
+/** Categorias que aparecem primeiro no lançamento rápido de entrada/saída. */
+export const QUICK_CATEGORIES: Record<FinanceKind, string[]> = {
+  PAGAR: ['Carnes e insumos', 'Bebidas', 'Carvão e gás', 'Embalagens', 'Funcionários', 'Manutenção', OWNER_WITHDRAWAL, 'Outros'],
+  RECEBER: ['Eventos e encomendas', 'Fiado de cliente', 'Convênios', OWNER_CONTRIBUTION, 'Outros'],
+};
+
+/**
+ * Dinheiro que entrou ou saiu da gaveta durante o turno (lançado no Financeiro com "Mexeu na gaveta do caixa").
+ * Entra no "dinheiro esperado" do fechamento: fundo + vendas em dinheiro + entradas − saídas.
+ */
+export function drawerMovements(entries: Pick<FinanceEntry, 'kind' | 'amount' | 'paid_at' | 'payment_method' | 'shift_id'>[], shiftId: string) {
+  const mine = entries.filter((e) => e.shift_id === shiftId && e.paid_at && e.payment_method === 'DINHEIRO');
+  const sum = (kind: FinanceKind) => Math.round(mine.filter((e) => e.kind === kind).reduce((s, e) => s + e.amount, 0) * 100) / 100;
+  return { in: sum('RECEBER'), out: sum('PAGAR') };
+}
+
+/** Lançamentos de dinheiro da gaveta de um turno (fechamento do caixa). */
+export async function loadDrawerEntries(shiftId: string): Promise<FinanceEntry[]> {
+  if (!isSupabaseConfigured) return loadLocalEntries().filter((e) => e.shift_id === shiftId);
+  const { data, error } = await supabase.from('finance_entries').select('*').eq('shift_id', shiftId);
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((e) => ({ ...(e as FinanceEntry), amount: num(e.amount) }));
+}
+
+/** "Hoje" vira o momento atual; outro dia vira meio-dia daquele dia (não cai no dia vizinho por fuso). */
+export function paidMomentFor(date: string, now = new Date()) {
+  return date === now.toLocaleDateString('sv-SE') ? now.toISOString() : new Date(`${date}T12:00:00`).toISOString();
+}
 
 export const METHOD_LABELS: Record<string, string> = {
   DINHEIRO: 'Dinheiro', PIX: 'PIX', DEBITO: 'Débito', CREDITO: 'Crédito', CARTAO_ENTREGA: 'Cartão na entrega', OUTROS: 'Outros', BOLETO: 'Boleto', TRANSFERENCIA: 'Transferência',
@@ -70,6 +105,13 @@ const LOCAL_KEY = 'ponto_finance_entries_v1';
 /** Início e fim do período como ISO (fim inclusivo até 23:59:59). */
 export function periodBounds(from: string, to: string) {
   return { start: new Date(`${from}T00:00:00`).toISOString(), end: new Date(`${to}T23:59:59.999`).toISOString() };
+}
+
+/** O pagamento caiu dentro do período? (compara instantes, não texto: o banco devolve "+00:00", o app "Z"). */
+export function paidWithin(period: { from: string; to: string }, paidAt: string | null | undefined) {
+  if (!paidAt) return false;
+  const t = Date.parse(paidAt);
+  return t >= new Date(`${period.from}T00:00:00`).getTime() && t <= new Date(`${period.to}T23:59:59.999`).getTime();
 }
 
 export function todayISO(offsetDays = 0) {
@@ -110,7 +152,7 @@ export async function loadFinanceData(from: string, to: string): Promise<Finance
 
   type Row = Record<string, unknown>;
   // Tudo que não depende de outra consulta vai junto (cada ida ao banco custa ~0,3 s)
-  const [payments, deliveries, items, orders, losses, shifts, tabs, entriesInRange, overdue, profiles, openTabs, { costs: productCosts, available: costsAvailable }, payoutsResult] = await Promise.all([
+  const [payments, deliveries, items, orders, losses, shifts, tabs, entriesInRange, overdue, paidInRange, profiles, openTabs, { costs: productCosts, available: costsAvailable }, payoutsResult] = await Promise.all([
     fetchAll<Row>((a, b) => supabase.from('payments').select('id, amount, method, status, paid_at').gte('paid_at', start).lte('paid_at', end).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('delivery_orders').select('id, total, delivery_fee, payment_method, status, created_at, paid_at, delivered_at, address_neighborhood').gte('created_at', start).lte('created_at', end).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('order_items').select('order_id, product_id, product_name, quantity, unit_price, sector, status, created_at').gte('created_at', start).lte('created_at', end).range(a, b)),
@@ -120,6 +162,8 @@ export async function loadFinanceData(from: string, to: string): Promise<Finance
     fetchAll<Row>((a, b) => supabase.from('tabs').select('id, closed_at, total, people_count, discount, service_fee').eq('status', 'CLOSED').gte('closed_at', start).lte('closed_at', end).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('finance_entries').select('*').gte('due_date', from).lte('due_date', to).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('finance_entries').select('*').lt('due_date', from).is('paid_at', null).range(a, b)),
+    // Conta com vencimento fora do período, mas paga dentro dele: o dinheiro saiu/entrou no período
+    fetchAll<Row>((a, b) => supabase.from('finance_entries').select('*').gte('paid_at', start).lte('paid_at', end).range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('profiles').select('id, name').range(a, b)),
     fetchAll<Row>((a, b) => supabase.from('tabs').select('total').eq('status', 'OPEN').range(a, b)),
     loadProductCosts(),
@@ -164,7 +208,7 @@ export async function loadFinanceData(from: string, to: string): Promise<Finance
     shifts: shifts.map((s) => ({ id: s.id as string, name: String(s.name), opened_at: s.opened_at as string, closed_at: (s.closed_at as string) ?? null, cash_start: num(s.cash_drawer_start), cash_end: s.cash_drawer_end == null ? null : num(s.cash_drawer_end), status: String(s.status) })),
     tabs: tabs.map((t) => ({ paid: paidByTab.get(t.id as string) ?? 0, t })).filter((x) => x.paid > 0.009)
       .map(({ paid, t }) => ({ closed_at: t.closed_at as string, total: paid, people: num(t.people_count), discount: num(t.discount), service_fee: num(t.service_fee) })),
-    entries: [...entriesInRange, ...overdue].map((e) => ({ ...(e as unknown as FinanceEntry), amount: num(e.amount) })),
+    entries: [...new Map([...entriesInRange, ...overdue, ...paidInRange].map((e) => [e.id as string, e])).values()].map((e) => ({ ...(e as unknown as FinanceEntry), amount: num(e.amount) })),
     openTabsTotal: openTabs.reduce((s, t) => s + num(t.total), 0),
     staff: Object.fromEntries(profiles.map((p) => [p.id as string, String(p.name)])),
     productCosts,
@@ -181,7 +225,7 @@ function loadDemoData(from: string, to: string, start: string, end: string): Fin
   const { stockMovements } = useStockStore.getState();
   const { shiftsHistory } = useShiftStore.getState();
   const waiterByOrder = new Map(orders.map((o) => [o.id, o.created_by]));
-  const entries = loadLocalEntries().filter((e) => (e.due_date >= from && e.due_date <= to) || (e.due_date < from && !e.paid_at));
+  const entries = loadLocalEntries().filter((e) => (e.due_date >= from && e.due_date <= to) || (e.due_date < from && !e.paid_at) || inRange(e.paid_at));
   return {
     from, to,
     sales: [
@@ -210,14 +254,19 @@ function loadDemoData(from: string, to: string, start: string, end: string): Fin
 export type FinanceEntryInput = Omit<FinanceEntry, 'id' | 'created_at'>;
 
 export const financeEntriesApi = {
-  async save(input: FinanceEntryInput, id?: string): Promise<void> {
+  /**
+   * Cria ou edita. `previous` = como o lançamento estava (na edição), para saber se a baixa mudou.
+   * A RPC save_finance_entry não grava a baixa: ela é feita em seguida por set_finance_paid (auditoria)
+   * e a data exata do pagamento/turno é gravada direto na tabela (RLS: Master e Gerente).
+   */
+  async save(input: FinanceEntryInput, id?: string, previous?: Pick<FinanceEntry, 'paid_at' | 'payment_method' | 'shift_id'> | null): Promise<void> {
     if (!isSupabaseConfigured) {
       const all = loadLocalEntries();
       const entry: FinanceEntry = { ...input, id: id ?? generateId(), created_at: new Date().toISOString() };
       saveLocalEntries(id ? all.map((e) => (e.id === id ? { ...e, ...input } : e)) : [entry, ...all]);
       return;
     }
-    const { error } = await supabase.rpc('save_finance_entry', {
+    const { data, error } = await supabase.rpc('save_finance_entry', {
       p_kind: input.kind,
       p_description: input.description,
       p_amount: input.amount,
@@ -228,6 +277,23 @@ export const financeEntriesApi = {
       p_id: id ?? null,
     });
     if (error) throw new Error(error.message.includes('save_finance_entry') && error.message.includes('exist') ? 'Função save_finance_entry não encontrada: rode a migração 00017 no Supabase.' : error.message);
+    const savedId = id ?? ((data as { id?: string } | null)?.id ?? null);
+    if (!savedId) return;
+    const wasPaid = previous?.paid_at ?? null;
+    if (input.paid_at) {
+      if (!wasPaid || previous?.payment_method !== input.payment_method) {
+        const { error: payError } = await supabase.rpc('set_finance_paid', { p_id: savedId, p_paid: true, p_method: input.payment_method ?? null });
+        if (payError) throw new Error(`Lançamento salvo, mas a baixa não foi gravada: ${payError.message}`);
+      }
+      const patch: Record<string, unknown> = { paid_at: input.paid_at };
+      if (input.shift_id !== undefined) patch.shift_id = input.shift_id;
+      const { error: patchError } = await supabase.from('finance_entries').update(patch).eq('id', savedId);
+      if (patchError) throw new Error(`Lançamento salvo, mas a data do pagamento não foi gravada: ${patchError.message}`);
+    } else if (wasPaid) {
+      const { error: undoError } = await supabase.rpc('set_finance_paid', { p_id: savedId, p_paid: false, p_method: null });
+      if (undoError) throw new Error(undoError.message);
+      if (previous?.shift_id) await supabase.from('finance_entries').update({ shift_id: null }).eq('id', savedId);
+    }
   },
   async setPaid(id: string, paid: boolean, method?: string | null): Promise<void> {
     if (!isSupabaseConfigured) {
@@ -355,11 +421,12 @@ export interface ProfitTotals {
   productCost: number;    // custo dos produtos vendidos
   expenses: number;       // contas pagas, menos compras de mercadoria
   merchandise: number;    // compras de mercadoria pagas (informativo)
+  withdrawals: number;    // retiradas do dono (informativo: não é despesa)
   profit: number;         // líquido - custo dos produtos - despesas
 }
 export interface ProfitBucket extends ProfitTotals { key: string; label: string }
 
-const emptyProfit = (): ProfitTotals => ({ gross: 0, discounts: 0, drivers: 0, net: 0, productCost: 0, expenses: 0, merchandise: 0, profit: 0 });
+const emptyProfit = (): ProfitTotals => ({ gross: 0, discounts: 0, drivers: 0, net: 0, productCost: 0, expenses: 0, merchandise: 0, withdrawals: 0, profit: 0 });
 
 /**
  * Faturamento bruto, líquido e lucro do período, no total e por dia/semana/mês/ano.
@@ -384,8 +451,8 @@ export function buildProfit(data: FinanceDataset, grouping: CashFlowGrouping = '
     if (cost == null) { missing.add(i.product_name); return; }
     add(i.at, 'productCost', cost * i.quantity);
   });
-  data.entries.filter((e) => e.kind === 'PAGAR' && e.paid_at).forEach((e) => {
-    add(e.paid_at!, MERCHANDISE_CATEGORIES.includes(e.category) ? 'merchandise' : 'expenses', e.amount);
+  data.entries.filter((e) => e.kind === 'PAGAR' && paidWithin(data, e.paid_at)).forEach((e) => {
+    add(e.paid_at!, e.category === OWNER_WITHDRAWAL ? 'withdrawals' : MERCHANDISE_CATEGORIES.includes(e.category) ? 'merchandise' : 'expenses', e.amount);
   });
 
   const finish = <T extends ProfitTotals>(row: T): T => {

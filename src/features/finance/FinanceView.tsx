@@ -8,11 +8,12 @@ import { PageHeader } from '../../components/ui/PageHeader';
 import { PeriodPicker, SectionTabs, defaultPeriod, type Period } from '../../components/ui/PeriodPicker';
 import { Chart, CHART_COLORS, baseOptions } from '../../components/charts/Chart';
 import { formatBRL } from '../../lib/formatters';
-import { METHOD_LABELS, SALE_METHODS, buildCashFlow, downloadCsv, financeEntriesApi, salesApi, sumBy, todayISO, type CashFlowGrouping, type FinanceDataset, type FinanceKind, type SaleRecord } from '../../lib/financeData';
+import { METHOD_LABELS, OWNER_WITHDRAWAL, SALE_METHODS, buildCashFlow, paidWithin, downloadCsv, financeEntriesApi, salesApi, sumBy, todayISO, type CashFlowGrouping, type FinanceDataset, type FinanceKind, type SaleRecord } from '../../lib/financeData';
 import { useFinanceData } from './useFinanceData';
 import { EntriesPanel, EntryForm } from './EntriesPanel';
 import { ProfitPanel } from './ProfitPanel';
 import { ShiftSummaryCard } from './ShiftSummaryCard';
+import { MovementDialog } from './MovementDialog';
 
 type Tab = 'overview' | 'result' | 'cashflow' | 'PAGAR' | 'RECEBER';
 
@@ -20,10 +21,22 @@ export function FinanceView() {
   const [period, setPeriod] = useState<Period>(() => defaultPeriod('30d'));
   const [tab, setTab] = useState<Tab>('overview');
   const { data, loading, error, reload } = useFinanceData(period);
+  const [movement, setMovement] = useState<FinanceKind | null>(null);
 
   return (
     <div className="page-layout">
-      <PageHeader eyebrow="Gestão" icon={Landmark} title="Financeiro" description="Entradas e saídas reais do caixa, contas a pagar e a receber. As vendas do salão e do delivery entram sozinhas." />
+      <PageHeader eyebrow="Gestão" icon={Landmark} title="Financeiro" description="Entradas e saídas reais do caixa, contas a pagar e a receber. As vendas do salão e do delivery entram sozinhas."
+        actions={(
+          <>
+            <button type="button" className="btn-secondary min-h-[44px] flex-1 border-emerald-700 text-emerald-800 hover:!border-emerald-800 hover:!bg-emerald-50 hover:!text-emerald-900 sm:flex-none" onClick={() => setMovement('RECEBER')}>
+              <ArrowDownLeft className="h-4 w-4" aria-hidden="true" />Entrada
+            </button>
+            <button type="button" className="btn-danger-soft min-h-[44px] flex-1 sm:flex-none" onClick={() => setMovement('PAGAR')}>
+              <ArrowUpRight className="h-4 w-4" aria-hidden="true" />Saída
+            </button>
+          </>
+        )} />
+      {movement && <MovementDialog initialKind={movement} onClose={() => setMovement(null)} onSaved={() => { setMovement(null); void reload(); }} />}
       <ShiftSummaryCard />
       <SectionTabs label="Seções do financeiro" value={tab} onChange={setTab} items={[{ id: 'overview', label: 'Visão geral' }, { id: 'result', label: 'Bruto, líquido e lucro' }, { id: 'cashflow', label: 'Fluxo de caixa' }, { id: 'PAGAR', label: 'Contas a pagar' }, { id: 'RECEBER', label: 'Contas a receber' }]} />
       <div className="flex flex-wrap items-center gap-2">
@@ -118,15 +131,19 @@ export function Overview({ data }: { data: FinanceDataset }) {
   const [grouping, setGrouping] = useGrouping(data);
   const [showForecast, setShowForecast] = useState(false);
   const today = todayISO();
-  const inflow = data.sales.reduce((s, x) => s + x.amount, 0) + data.entries.filter((e) => e.kind === 'RECEBER' && e.paid_at).reduce((s, e) => s + e.amount, 0);
-  const outflow = data.entries.filter((e) => e.kind === 'PAGAR' && e.paid_at).reduce((s, e) => s + e.amount, 0);
+  // Só o que foi quitado dentro do período (conta antiga quitada hoje conta hoje; quitada antes do período, não)
+  const settledInPeriod = (kind: FinanceKind) => data.entries.filter((e) => e.kind === kind && paidWithin(data, e.paid_at));
+  const otherIn = settledInPeriod('RECEBER').reduce((s, e) => s + e.amount, 0);
+  const outEntries = settledInPeriod('PAGAR');
+  const inflow = data.sales.reduce((s, x) => s + x.amount, 0) + otherIn;
+  const outflow = outEntries.reduce((s, e) => s + e.amount, 0);
   const toPay = data.entries.filter((e) => e.kind === 'PAGAR' && !e.paid_at);
   const toReceive = data.entries.filter((e) => e.kind === 'RECEBER' && !e.paid_at);
   const overdue = [...toPay, ...toReceive].filter((e) => e.due_date < today);
   const salon = data.sales.filter((s) => s.channel === 'SALAO').reduce((s, x) => s + x.amount, 0);
   const delivery = data.sales.filter((s) => s.channel === 'DELIVERY').reduce((s, x) => s + x.amount, 0);
   const byMethod = sumBy(data.sales, (s) => METHOD_LABELS[s.method] ?? s.method, (s) => s.amount);
-  const expenses = sumBy(data.entries.filter((e) => e.kind === 'PAGAR'), (e) => e.category, (e) => e.amount);
+  const expenses = sumBy(data.entries.filter((e) => e.kind === 'PAGAR' && e.category !== OWNER_WITHDRAWAL), (e) => e.category, (e) => e.amount);
   const pendingDelivery = data.deliveries.filter((d) => !d.paid && d.status !== 'CANCELLED').reduce((s, d) => s + d.total, 0);
 
   const toReceiveTotal = toReceive.reduce((s, e) => s + e.amount, 0) + pendingDelivery + data.openTabsTotal;
@@ -142,8 +159,9 @@ export function Overview({ data }: { data: FinanceDataset }) {
       {/* Resumo do período */}
       <section aria-label="Resumo do período" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <KpiCard label="Entradas" value={formatBRL(inflow)} icon={TrendingUp} tone="success" size="lg"
-          hint={<>Salão <span className="font-mono">{formatBRL(salon)}</span> · Delivery <span className="font-mono">{formatBRL(delivery)}</span></>} />
-        <KpiCard label="Saídas" value={formatBRL(outflow)} icon={TrendingDown} tone="danger" size="lg" hint="Contas pagas no período" />
+          hint={<>Salão <span className="font-mono">{formatBRL(salon)}</span> · Delivery <span className="font-mono">{formatBRL(delivery)}</span>{otherIn > 0 && <> · Outras <span className="font-mono">{formatBRL(otherIn)}</span></>}</>} />
+        <KpiCard label="Saídas" value={formatBRL(outflow)} icon={TrendingDown} tone="danger" size="lg"
+          hint={outEntries.length ? `${outEntries.length} ${outEntries.length === 1 ? 'saída paga' : 'saídas pagas'} no período` : 'Nenhuma saída lançada: use o botão Saída'} />
         <KpiCard label="Resultado" value={formatBRL(result)} icon={Scale} tone={result < 0 ? 'danger' : 'brand'} size="lg"
           highlight hint={result < 0 ? 'Saiu mais do que entrou' : 'Entradas menos saídas'} />
       </section>
@@ -233,7 +251,9 @@ export function CashFlow({ data, reload }: { data: FinanceDataset; reload: () =>
     });
     const entries: Row[] = data.entries.map((e) => ({
       kind: 'entry', id: e.id, date: e.paid_at?.slice(0, 10) ?? e.due_date, description: e.description, amount: e.amount,
-      type: e.kind === 'RECEBER' ? 'in' : 'out', source: e.kind === 'RECEBER' ? 'A receber' : 'A pagar', raw: e,
+      type: e.kind === 'RECEBER' ? 'in' : 'out',
+      source: e.paid_at ? `${e.kind === 'RECEBER' ? 'Entrada' : 'Saída'} · ${e.category}${e.payment_method ? ` · ${METHOD_LABELS[e.payment_method] ?? e.payment_method}` : ''}${e.shift_id ? ' · gaveta do caixa' : ''}` : e.kind === 'RECEBER' ? 'A receber' : 'A pagar',
+      raw: e,
     }));
     return [...groups.values(), ...entries].sort((x, y) => y.date.localeCompare(x.date));
   }, [data]);
@@ -344,11 +364,11 @@ export function CashFlow({ data, reload }: { data: FinanceDataset; reload: () =>
                   {row.type === 'in' ? <ArrowDownLeft className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-ink">{row.description}</p>
+                  <p className="font-medium text-ink">{row.description}</p>
                   <p className="mt-0.5 text-[13px] text-ink-muted"><span className="font-mono">{dayLabel(row.date)}</span> · {row.source}</p>
                 </div>
-                <span className={`font-mono text-base font-semibold ${row.type === 'in' ? 'text-emerald-800' : 'text-rose-800'}`}>{row.type === 'in' ? '+' : '-'}{formatBRL(row.amount)}</span>
-                <div className="flex shrink-0 gap-1">
+                <span className={`whitespace-nowrap font-mono text-base font-semibold ${row.type === 'in' ? 'text-emerald-800' : 'text-rose-800'}`}>{row.type === 'in' ? '+' : '-'}{formatBRL(row.amount)}</span>
+                <div className="flex w-full shrink-0 justify-end gap-1 sm:w-auto">
                   <button type="button" className="icon-button h-11 w-11" onClick={() => setViewingEntry({ description: row.description, amount: row.amount, date: row.date, source: row.source })} aria-label={`Ver detalhes de ${row.description}`}><Eye className="h-4 w-4" /></button>
                   <button type="button" className="icon-button h-11 w-11" onClick={() => setEditingEntry(row.raw)} aria-label={`Editar ${row.description}`}><Pencil className="h-4 w-4" /></button>
                   <button type="button" className="icon-button h-11 w-11 text-rose-700 hover:bg-rose-50" onClick={() => void handleDelete(row.id, row.description)} aria-label={`Excluir ${row.description}`}><Trash2 className="h-4 w-4" /></button>
@@ -377,7 +397,7 @@ export function CashFlow({ data, reload }: { data: FinanceDataset; reload: () =>
       {editingEntry && <EntryForm kind={editingEntry.kind} entry={editingEntry} onClose={() => setEditingEntry(null)} onSaved={() => { setEditingEntry(null); reload(); }} />}
       {editingSale && <SaleEditForm sale={editingSale} onClose={() => setEditingSale(null)} onSaved={() => { setEditingSale(null); reload(); }} />}
 
-      <p className="flex items-start gap-2 text-xs text-ink-muted"><Landmark className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />Entradas = pagamentos do salão + delivery pagos + contas recebidas. Saídas = contas pagas. O fundo de troco do turno não entra, porque não é venda.</p>
+      <p className="flex items-start gap-2 text-xs text-ink-muted"><Landmark className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />Entradas = pagamentos do salão + delivery pagos + entradas lançadas e contas recebidas. Saídas = saídas lançadas e contas pagas. O fundo de troco do turno não entra, porque não é venda.</p>
     </div>
   );
 }

@@ -157,7 +157,7 @@ export function EntryForm({ kind, entry, onClose, onSaved }: { kind: FinanceKind
           paid_at: alreadyPaid && i === 0 ? (entry?.paid_at ?? new Date().toISOString()) : null,
           payment_method: alreadyPaid && i === 0 ? method : null,
           supplier: supplier.trim() || null, notes: notes.trim() || null,
-        }, entry?.id);
+        }, entry?.id, entry);
       }
       notify(entry ? 'Lançamento atualizado.' : times > 1 ? `${times} lançamentos criados.` : 'Lançamento criado.', 'success');
       onSaved();

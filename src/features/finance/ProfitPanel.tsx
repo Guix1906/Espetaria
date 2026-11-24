@@ -22,7 +22,7 @@ export function ProfitPanel({ data }: { data: FinanceDataset }) {
     { label: 'Pagamento dos entregadores', value: total.drivers, hint: 'Calculado em Delivery → Pagamentos dos entregadores', minus: true },
     { label: 'Faturamento líquido', value: total.net, hint: 'O que fica para a casa', strong: true },
     { label: 'Custo dos produtos vendidos', value: total.productCost, hint: 'Custo cadastrado em cada produto × quantidade vendida', minus: true },
-    { label: 'Despesas pagas', value: total.expenses, hint: `Contas a pagar quitadas (fora ${MERCHANDISE_CATEGORIES.join(' e ')})`, minus: true },
+    { label: 'Despesas pagas', value: total.expenses, hint: `Saídas e contas pagas (fora ${MERCHANDISE_CATEGORIES.join(', ')} e retirada do dono)`, minus: true },
     { label: 'Lucro do período', value: total.profit, strong: true },
   ];
 
@@ -52,6 +52,7 @@ export function ProfitPanel({ data }: { data: FinanceDataset }) {
         <p className="px-4 py-3 text-[13px] text-ink-muted sm:px-5">
           Descontos dados nas mesas: <strong className="font-mono text-ink">{formatBRL(total.discounts)}</strong> (já fora do bruto).
           {total.merchandise > 0 && <> Compras de {MERCHANDISE_CATEGORIES.join(' e ').toLowerCase()} pagas: <strong className="font-mono text-ink">{formatBRL(total.merchandise)}</strong> (não descontadas de novo: entram pelo custo dos produtos).</>}
+          {total.withdrawals > 0 && <> Retiradas do dono: <strong className="font-mono text-ink">{formatBRL(total.withdrawals)}</strong> (saem do caixa, mas não são despesa).</>}
         </p>
       </section>
 

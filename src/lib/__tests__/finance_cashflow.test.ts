@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../supabase', () => ({ isSupabaseConfigured: false, supabase: {} }));
 
-import { buildCashFlow, buildProfit, sumBy, type FinanceDataset } from '../financeData';
+import { buildCashFlow, buildProfit, drawerMovements, paidMomentFor, paidWithin, sumBy, type FinanceDataset } from '../financeData';
 
 const base: FinanceDataset = {
   from: '2026-10-01', to: '2026-10-05', sales: [], items: [], deliveries: [], losses: [], shifts: [], tabs: [], entries: [], openTabsTotal: 0, staff: {},
@@ -68,6 +68,38 @@ describe('Fluxo de caixa', () => {
     expect(buckets[0]).toMatchObject({ gross: 300, net: 300, productCost: 60, profit: 240 });
     expect(buckets[1]).toMatchObject({ gross: 100, drivers: 15, expenses: 50, profit: 35 });
     expect(missingCost).toEqual(['Suco']);
+  });
+
+  it('retirada do dono sai do caixa mas não vira despesa; pagamento fora do período não conta', () => {
+    const { total } = buildProfit({
+      ...base,
+      entries: [
+        entry({ amount: 200, category: 'Retirada do dono', paid_at: at('2026-10-02') }),
+        entry({ amount: 40, category: 'Carvão e gás', paid_at: at('2026-10-03') }),
+        entry({ amount: 999, category: 'Aluguel', due_date: '2026-10-01', paid_at: at('2026-11-10') }),
+      ],
+    });
+    expect(total).toMatchObject({ expenses: 40, withdrawals: 200, profit: -40 });
+    expect(buildCashFlow({ ...base, entries: [entry({ amount: 200, category: 'Retirada do dono', paid_at: at('2026-10-02') })] })[1]!.outflow).toBe(200);
+  });
+
+  it('gaveta do caixa: só dinheiro pago e ligado ao turno', () => {
+    const entries = [
+      entry({ amount: 30, paid_at: at('2026-10-02'), payment_method: 'DINHEIRO', shift_id: 't1' }),
+      entry({ kind: 'RECEBER', amount: 50, paid_at: at('2026-10-02'), payment_method: 'DINHEIRO', shift_id: 't1' }),
+      entry({ amount: 70, paid_at: at('2026-10-02'), payment_method: 'PIX', shift_id: 't1' }),
+      entry({ amount: 80, paid_at: null, payment_method: 'DINHEIRO', shift_id: 't1' }),
+      entry({ amount: 90, paid_at: at('2026-10-02'), payment_method: 'DINHEIRO', shift_id: 't2' }),
+    ];
+    expect(drawerMovements(entries, 't1')).toEqual({ in: 50, out: 30 });
+  });
+
+  it('data do pagamento: hoje = agora; outro dia = meio-dia daquele dia', () => {
+    const now = new Date('2026-11-24T18:30:00');
+    expect(paidMomentFor('2026-11-24', now)).toBe(now.toISOString());
+    expect(new Date(paidMomentFor('2026-11-20', now)).toLocaleDateString('sv-SE')).toBe('2026-11-20');
+    expect(paidWithin({ from: '2026-11-20', to: '2026-11-20' }, '2026-11-20T15:00:00+00:00')).toBe(true);
+    expect(paidWithin({ from: '2026-11-20', to: '2026-11-20' }, null)).toBe(false);
   });
 
   it('soma por chave em ordem decrescente', () => {

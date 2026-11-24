@@ -52,7 +52,8 @@ export function KpiCard({
       </span>
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-ink-muted">{label}</p>
-        <p className={`mt-0.5 font-mono font-bold leading-tight ${size === 'lg' ? 'text-3xl' : 'text-2xl'} ${VALUE_TONES[tone]}`}>{value}</p>
+        {/* Cartão estreito: quebra entre "R$" e o número, nunca deixa o sinal de menos sozinho numa linha */}
+        <p className={`mt-0.5 font-mono font-bold leading-tight ${size === 'lg' ? 'text-3xl' : 'text-2xl'} ${VALUE_TONES[tone]}`}>{typeof value === 'string' ? value.replace(/^-\s?/, '-⁠').replace(/ /g, ' ') : value}</p>
         {hint && <p className="mt-1 text-xs text-ink-muted">{hint}</p>}
       </div>
     </div>
