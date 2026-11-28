@@ -1,3 +1,4 @@
+import { isLocalTable } from '../../lib/localTables';
 import { VoidTabButton } from '../tables/VoidTabButton';
 import { ArrowLeftRight, ChevronDown, Plus, Printer, Trash2 } from 'lucide-react';
 import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
@@ -145,7 +146,7 @@ export function TabItemsPanel({ table, compact = false }: TabItemsPanelProps) {
   if (!compact && items.length === 0) return null;
 
   if (!compact && !expanded) {
-    const summary = [`${totalCount} na mesa`, preparingCount ? `${preparingCount} na brasa` : null, readyCount ? `${readyCount} ${readyCount === 1 ? 'pronto' : 'prontos'}` : null].filter(Boolean).join(' · ');
+    const summary = [`${totalCount} ${isLocalTable(table) ? 'no pedido' : 'na mesa'}`, preparingCount ? `${preparingCount} na brasa` : null, readyCount ? `${readyCount} ${readyCount === 1 ? 'pronto' : 'prontos'}` : null].filter(Boolean).join(' · ');
     return (
       <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="flex min-h-[48px] w-full items-center justify-between gap-3 rounded-2xl border border-line bg-surface px-3.5 py-2.5 text-left">
         <span className="min-w-0 truncate text-[17px] text-ink"><span className="font-semibold">{summary}</span></span>

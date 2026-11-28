@@ -12,6 +12,7 @@ import { useTableStore } from '../../stores/useTableStore';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { askReturnToStock } from '../../lib/askReturnToStock';
 import type { OrderItem, RestaurantTable, Tab } from '../../types/domain';
+import { isLocalTable, localTabPhone, tabCustomerName } from '../../lib/localTables';
 
 interface TableDrawerProps {
   table: RestaurantTable;
@@ -44,7 +45,11 @@ export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, o
   const visible = items.filter((i) => i.status !== 'CANCELLED').sort((a, b) => a.created_at.localeCompare(b.created_at));
   const quantity = visible.reduce((sum, i) => sum + i.quantity, 0);
   const subtotal = tab?.subtotal ?? visible.reduce((sum, i) => sum + i.unit_price * i.quantity, 0);
-  const customer = tab?.customer_name && tab.customer_name !== `Mesa ${table.number}` ? tab.customer_name : null;
+  const local = isLocalTable(table);
+  const customerName = tabCustomerName(table, tab?.customer_name);
+  // Consumo local: o título é o nome do cliente; embaixo, WhatsApp e "Consumo local"
+  const title = local ? customerName ?? 'Consumo local' : `Mesa ${padNumber}`;
+  const customer = local ? [localTabPhone(tab?.notes), 'Consumo local'].filter(Boolean).join(' · ') : customerName;
   const currentProfile = useAuthStore((s) => s.currentProfile);
   const currentShift = useShiftStore((s) => s.currentShift);
   const { notify, requestText, requestChoice } = useFeedback();
@@ -93,7 +98,7 @@ export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, o
   const then = (action: () => void) => () => { action(); onClose(); };
 
   return (
-    <Dialog label={`Mesa ${padNumber}`} onClose={close} placement="drawer">
+    <Dialog label={title} onClose={close} placement="drawer">
       {/* Cobrar: o pagamento entra ao lado (à esquerda) da lista de itens, sem repetir a descrição */}
       {paying && !closing && (
         <TableSettlementModal table={table} isOpen variant="payment" onClose={() => setPaying(false)} onFinished={onClose} />
@@ -102,14 +107,14 @@ export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, o
         <header className="border-b border-line px-4 pb-3 pt-4">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h2 className="font-mono text-2xl font-bold tabular-nums leading-tight text-ink">Mesa {padNumber}</h2>
+              <h2 className={`text-2xl font-bold leading-tight text-ink ${local ? 'truncate' : 'font-mono tabular-nums'}`}>{title}</h2>
               {customer && <p className="truncate text-sm text-ink-secondary" title={customer}>{customer}</p>}
             </div>
             <div className="flex shrink-0 items-center gap-0.5">
               <button type="button" onClick={onPrint} className="flex h-10 w-10 items-center justify-center rounded-md text-ink-muted hover:bg-surface-muted hover:text-ink" title="Imprimir pré-conta" aria-label="Imprimir pré-conta">
                 <Printer className="h-5 w-5" />
               </button>
-              <button type="button" onClick={then(onTransfer)} className="flex h-10 w-10 items-center justify-center rounded-md text-ink-muted hover:bg-surface-muted hover:text-ink" title="Transferir mesa" aria-label="Transferir mesa">
+              <button type="button" onClick={then(onTransfer)} className="flex h-10 w-10 items-center justify-center rounded-md text-ink-muted hover:bg-surface-muted hover:text-ink" title={local ? 'Passar para uma mesa' : 'Transferir mesa'} aria-label={local ? 'Passar para uma mesa' : 'Transferir mesa'}>
                 <ArrowLeftRight className="h-5 w-5" />
               </button>
               <button type="button" onClick={close} className="flex h-10 w-10 items-center justify-center rounded-md text-ink-muted hover:bg-surface-muted hover:text-ink" title="Fechar" aria-label="Fechar">
@@ -121,7 +126,7 @@ export function TableDrawer({ table, tab, items, readyCount = 0, now, onClose, o
             <span className={`status-badge ${STATUS_STYLES[kind]}`}>{status.label}</span>
             {readyCount > 0 && <span className={`status-badge ${STATUS_STYLES.ready}`}>{readyCount} pronto{readyCount > 1 ? 's' : ''}</span>}
             {opened && <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" aria-hidden="true" />{opened}</span>}
-            <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" aria-hidden="true" />{tab?.people_count || 1}</span>
+            {!local && <span className="inline-flex items-center gap-1"><Users className="h-3.5 w-3.5" aria-hidden="true" />{tab?.people_count || 1}</span>}
           </div>
         </header>
 

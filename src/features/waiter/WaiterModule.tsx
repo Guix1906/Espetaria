@@ -1,7 +1,7 @@
 import { StatusTag } from '../../components/ui/StatusTag';
 import { groupItemsByTab } from './tableItems';
 import type { StatusKind } from '../../lib/statusStyles';
-import { ArrowRight, Info, LayoutGrid, Plus, Search, Settings2, BellRing, X } from 'lucide-react';
+import { ArrowRight, Info, LayoutGrid, Plus, Search, Settings2, BellRing, Store, X } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
 import { TableSettlementModal } from '../cashier/TableSettlementModal';
 import { TableTransferModal } from './TableTransferModal';
@@ -23,6 +23,8 @@ import { useShiftStore } from '../../stores/useShiftStore';
 import { useTableStore } from '../../stores/useTableStore';
 import { useNavFocusStore } from '../../stores/useNavFocusStore';
 import type { OrderItem, RestaurantTable, Tab } from '../../types/domain';
+import { isLocalTable, localTabPhone, tableShortLabel, tabCustomerName } from '../../lib/localTables';
+import { SectionTabs } from '../../components/ui/SectionTabs';
 import type { TableStatus } from '../../types/enums';
 import { WaiterOpenTabSheet } from './WaiterOpenTabSheet';
 import { WaiterOrderPad } from './WaiterOrderPad';
@@ -34,7 +36,7 @@ interface WaiterModuleProps {
   settings?: ReactNode;
 }
 
-type Section = 'tables' | 'ready' | 'settings';
+type Section = 'tables' | 'local' | 'ready' | 'settings';
 type TableFilter = 'occupied' | 'free' | 'all';
 type SalonFilter = 'ACTIVE' | 'ALL' | 'READY' | TableStatus;
 const pad2 = (n: number) => String(n).padStart(2, '0');
@@ -106,6 +108,8 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const [chosenFilter, setTableFilter] = useState<TableFilter | null>(null);
   const [section, setSection] = useState<Section>(() => (useNavFocusStore.getState().readySection ? 'ready' : 'tables'));
   const [searchTerm, setSearchTerm] = useState('');
+  // Salão no computador: aba Mesas ou aba Consumo local
+  const [salonView, setSalonView] = useState<'tables' | 'local'>('tables');
   const [tableToOpen, setTableToOpen] = useState<RestaurantTable | null>(null);
   const [tableForBill, setTableForBill] = useState<RestaurantTable | null>(null);
   // Gaveta lateral da mesa (Salão no computador): um toque no cartão abre a comanda
@@ -123,7 +127,9 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const selectedTable = tables.find((table) => table.id === selectedTableId);
   const drawerTable = tables.find((table) => table.id === drawerTableId);
   // Índices montados uma vez por mudança de dados (antes, cada mesa varria todos os pedidos a cada toque)
-  const activeTables = useMemo(() => tables.filter((table) => table.active).sort((a, b) => a.number - b.number), [tables]);
+  const allTables = useMemo(() => tables.filter((table) => table.active).sort((a, b) => a.number - b.number), [tables]);
+  // Salão = mesas de verdade; as "mesas" internas do consumo local (nº 900+) ficam só na aba própria
+  const activeTables = useMemo(() => allTables.filter((table) => !isLocalTable(table)), [allTables]);
   const openTabByTable = useMemo(() => {
     const map = new Map<string, Tab>();
     for (const tab of tabs) {
@@ -161,8 +167,14 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
     return (tab && itemsByTab.get(tab.id)) ?? [];
   };
   const readyItemsOf = (tableId: string) => itemsOfTable(tableId).filter((item) => isFreshReady(item, now));
-  const readyTables = activeTables.filter((table) => readyItemsOf(table.id).length > 0);
+  const readyTables = allTables.filter((table) => readyItemsOf(table.id).length > 0);
   const readyTableIds = new Set(readyTables.map((table) => table.id));
+  // Consumo local em aberto: quem pediu primeiro fica em cima
+  const localTabs = allTables
+    .filter((table) => isLocalTable(table) && isTableOccupied(table))
+    .map((table) => ({ table, tab: getTableTab(table.id) }))
+    .sort((a, b) => (a.tab?.opened_at ?? '').localeCompare(b.tab?.opened_at ?? ''));
+  const nameOf = (table: RestaurantTable) => tableShortLabel(table, getTableTab(table.id)?.customer_name);
 
   if (selectedTable) {
     return (
@@ -178,8 +190,12 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   const matches = (table: RestaurantTable) => {
     if (!query) return true;
     const tab = getTableTab(table.id);
-    return String(table.number).padStart(2, '0').includes(query) || (tab?.customer_name?.toLocaleLowerCase('pt-BR').includes(query) ?? false);
+    const digits = query.replace(/\D/g, '');
+    return (!isLocalTable(table) && String(table.number).padStart(2, '0').includes(query))
+      || (tab?.customer_name?.toLocaleLowerCase('pt-BR').includes(query) ?? false)
+      || (isLocalTable(table) && digits.length >= 4 && (tab?.notes ?? '').includes(digits));
   };
+  const localMatches = localTabs.filter(({ table }) => matches(table));
 
   const handleOpenTab = ({ people, name, notes }: { people: number; name: string; notes: string }) => {
     if (!tableToOpen || !currentShift || !isShiftOpen) { setErrorMessage('Solicite a abertura do turno antes de iniciar o atendimento.'); return; }
@@ -220,7 +236,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
     const handlePrintTable = async (table: RestaurantTable) => {
       const ok = await usePrintStore.getState().printBill(table.id);
       notify(
-        ok ? `Pré-conta da Mesa ${table.number} impressa com sucesso.` : 'Não foi possível imprimir a conta.',
+        ok ? `Pré-conta de ${nameOf(table)} impressa com sucesso.` : 'Não foi possível imprimir a conta.',
         ok ? 'success' : 'error'
       );
     };
@@ -251,6 +267,47 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
           }
         />
         {shiftNotice}
+        <SectionTabs
+          label="Seções do salão"
+          value={salonView}
+          onChange={setSalonView}
+          items={[
+            { id: 'tables', label: 'Mesas', icon: LayoutGrid, count: occupiedTables.length },
+            { id: 'local', label: 'Consumo local', icon: Store, count: localTabs.length },
+          ]}
+        />
+        {salonView === 'local' ? (
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-ink-muted">Pedidos do cardápio digital para comer aqui. Toque no cliente para ver o pedido, acrescentar itens ou cobrar.</p>
+              <div className="w-full sm:w-64 sm:shrink-0">
+                <SearchField value={searchTerm} onChange={setSearchTerm} label="Buscar cliente" placeholder="Nome ou WhatsApp" className="w-full" />
+              </div>
+            </div>
+            {localMatches.length ? (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+                {localMatches.map(({ table, tab }) => (
+                  <TableCard
+                    key={table.id}
+                    table={table}
+                    tab={tab}
+                    itemCount={itemsOfTable(table.id).filter((i) => i.status !== 'CANCELLED').length}
+                    readyCount={readyItemsOf(table.id).length}
+                    now={now}
+                    disabled={!isShiftOpen}
+                    onOpen={() => setDrawerTableId(table.id)}
+                    onOrder={() => setDrawerTableId(table.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyState
+                title={query ? 'Nenhum cliente encontrado' : 'Nenhum pedido de consumo local agora'}
+                description={query ? 'Tente outro nome ou o final do WhatsApp.' : 'Quem pedir pelo cardápio digital escolhendo "Consumir no local" aparece aqui, com o nome e o WhatsApp.'}
+              />
+            )}
+          </div>
+        ) : (<>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="filter-bar" aria-label="Filtrar mesas">
             {filterOptions.map((opt) => (
@@ -354,6 +411,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
             {freeTables[0] && <p className="text-xs text-ink-muted pt-1">{activeTables.length} mesas cadastradas. Próxima livre: <strong>Mesa {String(Math.min(...freeTables.map((t) => t.number))).padStart(2, '0')}</strong>.</p>}
           </div>
         )}
+        </>)}
 
         {isPickerOpen && (
           <Dialog label="Selecionar mesa para abrir" onClose={() => setIsPickerOpen(false)}>
@@ -455,13 +513,55 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
     return { label: 'Servido', kind: 'occupied' as StatusKind };
   };
   const tabSubtitle = (tab: Tab | undefined) => [tab?.people_count ? `${tab.people_count} ${tab.people_count === 1 ? 'pessoa' : 'pessoas'}` : null, tab ? formatElapsedMinutes(tab.opened_at, now) : null].filter(Boolean).join(' · ');
-  const tabName = (table: RestaurantTable, tab: Tab | undefined) => (tab?.customer_name && tab.customer_name !== `Mesa ${table.number}` ? tab.customer_name : 'Sem nome');
+  const tabName = (table: RestaurantTable, tab: Tab | undefined) => tabCustomerName(table, tab?.customer_name) ?? 'Sem nome';
+
+  // Consumo local no celular: lista pelo nome do cliente, tocar abre a comanda para acrescentar
+  const localSection = (
+    <div className="space-y-3.5">
+      <div>
+        <h1 className="text-xl font-semibold text-ink">Consumo local</h1>
+        <p className="mt-0.5 text-base text-ink-muted">Pedidos do cardápio digital para comer aqui. Toque para acrescentar itens.</p>
+      </div>
+      <label className="relative block">
+        <span className="sr-only">Buscar cliente</span>
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" aria-hidden="true" />
+        <input type="search" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Nome ou WhatsApp"
+          className="h-11 w-full rounded-md border border-line bg-surface pl-10 pr-3 text-base placeholder:text-ink-muted" />
+      </label>
+      {shiftNotice}
+      {localMatches.length ? (
+        <ul className="space-y-2" aria-label="Clientes de consumo local">
+          {localMatches.map(({ table, tab }) => {
+            const chip = statusChip(table);
+            const phone = localTabPhone(tab?.notes);
+            return (
+              <li key={table.id}>
+                <button type="button" onClick={() => setSelectedTableId(table.id)} className="flex min-h-[72px] w-full items-center gap-3 rounded-2xl border border-line bg-surface px-3.5 py-3 text-left active:bg-surface-muted"
+                  aria-label={`${tabName(table, tab)}, consumo local, ${chip.label}. Acrescentar itens`}>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[17px] font-semibold text-ink">{tabName(table, tab)}</span>
+                    <span className="block truncate text-base text-ink-muted">{[phone, tab ? `pediu há ${formatElapsedMinutes(tab.opened_at, now)}` : null].filter(Boolean).join(' · ')}</span>
+                  </span>
+                  <span className="flex shrink-0 flex-col items-end gap-1">
+                    <span className="font-mono text-base font-bold text-ink">{formatBRL(tab?.total)}</span>
+                    <StatusTag kind={chip.kind} className="font-semibold">{chip.label}</StatusTag>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : (
+        <EmptyState title={query ? 'Nenhum cliente encontrado' : 'Nenhum pedido agora'} description={query ? 'Tente outro nome ou o final do WhatsApp.' : 'Quem pedir pelo cardápio digital escolhendo "Consumir no local" aparece aqui.'} />
+      )}
+    </div>
+  );
 
   const readyBanner = readyTables.length > 0 && (
     <button type="button" onClick={() => setSection('ready')} className="flex min-h-[64px] w-full items-center justify-between gap-3 rounded-2xl bg-sucesso px-3.5 py-3 text-left text-white">
       <span className="min-w-0">
         <span className="block text-[17px] font-semibold">{readyCount} {readyCount === 1 ? 'item pronto' : 'itens prontos'}</span>
-        <span className="block truncate text-base text-white/90">{readyTables.map((table) => `Mesa ${pad2(table.number)}`).join(' · ')} — levar agora</span>
+        <span className="block truncate text-base text-white/90">{readyTables.map(nameOf).join(' · ')} — levar agora</span>
       </span>
       <ArrowRight className="h-6 w-6 shrink-0" aria-hidden="true" />
     </button>
@@ -577,8 +677,13 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
           <section key={table.id} className="rounded-2xl border border-line bg-surface p-3.5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <button type="button" onClick={() => setSelectedTableId(table.id)} className="min-h-[44px] min-w-0 text-left">
-                <span className="font-mono text-xl font-bold text-ink">Mesa {pad2(table.number)}</span>
-                <span className="ml-2 truncate text-base text-ink-muted">{tabName(table, tab)}</span>
+                {isLocalTable(table) ? <>
+                  <span className="text-xl font-bold text-ink">{tabName(table, tab)}</span>
+                  <span className="ml-2 truncate text-base text-ink-muted">Consumo local</span>
+                </> : <>
+                  <span className="font-mono text-xl font-bold text-ink">Mesa {pad2(table.number)}</span>
+                  <span className="ml-2 truncate text-base text-ink-muted">{tabName(table, tab)}</span>
+                </>}
               </button>
             </div>
             <ul className="divide-y divide-line">
@@ -599,6 +704,7 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
 
   const navItems: { key: Section; label: string; icon: typeof LayoutGrid; badge?: number }[] = [
     { key: 'tables', label: 'Mesas', icon: LayoutGrid },
+    { key: 'local', label: 'Local', icon: Store, badge: localTabs.length },
     { key: 'ready', label: 'Prontos', icon: BellRing, badge: readyCount },
     { key: 'settings', label: 'Ajustes', icon: Settings2 },
   ];
@@ -606,10 +712,11 @@ export function WaiterModule({ onOpenShiftClick, dedicated = false, settings }: 
   return (
     <div className="px-4 pb-28 pt-3">
       {section === 'tables' && tablesSection}
+      {section === 'local' && localSection}
       {section === 'ready' && readySection}
       {section === 'settings' && <div className="space-y-3"><h1 className="text-xl font-semibold text-ink">Ajustes</h1>{settings}</div>}
       <nav aria-label="Área do garçom" className="vv-bottom fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
-        <div className="mx-auto grid max-w-5xl grid-cols-3">
+        <div className="mx-auto grid max-w-5xl grid-cols-4">
           {navItems.map(({ key, label, icon: Icon, badge }) => (
             <button key={key} type="button" onClick={() => { setSection(key); window.scrollTo({ top: 0 }); }} aria-current={section === key ? 'page' : undefined}
               className={`flex h-[62px] flex-col items-center justify-center gap-1 text-base ${section === key ? 'font-semibold text-brand-500' : 'text-ink-secondary'}`}>

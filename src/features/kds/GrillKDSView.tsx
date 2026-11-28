@@ -1,3 +1,4 @@
+import { isLocalTable, tableShortLabel } from '../../lib/localTables';
 import { AlertCircle, CheckCheck, ChevronDown, Flame, Sparkles, Undo2, Users, Volume2, VolumeX } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { EmptyState } from '../../components/ui/EmptyState';
@@ -115,10 +116,10 @@ export const GrillKDSView: React.FC = () => {
     })
     .map((order) => {
       const table = tables.find((t) => t.id === order.table_id);
-      const tableLabel = `Mesa ${table ? String(table.number).padStart(2, '0') : '??'}`;
       const tab = tabs.find((t) => t.id === order.tab_id);
+      const tableLabel = tableShortLabel(table, tab?.customer_name);
       const customer = tab?.customer_name;
-      const showCustomer = customer && !/^mesa\s*\d+$/i.test(customer.trim());
+      const showCustomer = customer && !/^mesa\s*\d+$/i.test(customer.trim()) && !isLocalTable(table);
       return {
         key: `local-${order.id}`,
         kind: 'LOCAL' as const,

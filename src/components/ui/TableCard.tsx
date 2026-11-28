@@ -2,6 +2,7 @@ import { ChevronRight, Clock, Plus, Users } from 'lucide-react';
 import { formatBRL, getTableStatusConfig } from '../../lib/formatters';
 import type { RestaurantTable, Tab } from '../../types/domain';
 import { STATUS_STYLES, tableStatusKind } from '../../lib/statusStyles';
+import { isLocalTable, localTabPhone, tabCustomerName } from '../../lib/localTables';
 
 interface TableCardProps {
   table: RestaurantTable;
@@ -63,6 +64,11 @@ export function TableCard({
   }
 
   const opened = openFor(tab?.opened_at, now);
+  // Consumo local: o nome do cliente é o título (não há número de mesa para procurar)
+  const local = isLocalTable(table);
+  const customer = tabCustomerName(table, tab?.customer_name);
+  const title = local ? customer ?? 'Consumo local' : `Mesa ${padNumber}`;
+  const subtitle = local ? [localTabPhone(tab?.notes), 'Consumo local'].filter(Boolean).join(' · ') : customer;
 
   // Mesa em atendimento: o cartão inteiro é um toque só e abre a gaveta da comanda
   return (
@@ -70,18 +76,19 @@ export function TableCard({
       type="button"
       onClick={onOrder}
       className={`group relative flex h-full w-full flex-col rounded-md border bg-surface text-left shadow-card transition-colors hover:bg-surface-soft${isWaitingBill ? 'border-brand-500 ring-1 ring-brand-500' : 'border-line hover:border-line-strong'}`}
-      aria-label={`Mesa ${table.number}, ${status.label}. Ver comanda`}
-      title="Ver comanda da mesa"
+      aria-label={`${local ? `Consumo local, ${title}` : `Mesa ${table.number}`}, ${status.label}. Ver comanda`}
+      title="Ver comanda"
     >
       <div className="flex items-start justify-between gap-2 px-4 pt-3.5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xl font-bold tabular-nums text-ink">Mesa {padNumber}</span>
-            <span className={`status-badge ${STATUS_STYLES[kind]}`}>{status.label}</span>
+            <span className={`text-xl font-bold text-ink ${local ? 'min-w-0 truncate' : 'font-mono tabular-nums'}`} title={title}>{title}</span>
+            {!local && <span className={`status-badge ${STATUS_STYLES[kind]}`}>{status.label}</span>}
+            {local && isWaitingBill && <span className={`status-badge ${STATUS_STYLES[kind]}`}>{status.label}</span>}
             {readyCount > 0 && <span className={`status-badge ${STATUS_STYLES.ready}`}>{readyCount} pronto{readyCount > 1 ? 's' : ''}</span>}
           </div>
-          {tab?.customer_name && tab.customer_name !== `Mesa ${table.number}` && (
-            <p className="mt-0.5 truncate text-sm text-ink-secondary" title={tab.customer_name}>{tab.customer_name}</p>
+          {subtitle && (
+            <p className="mt-0.5 truncate text-sm text-ink-secondary" title={subtitle}>{subtitle}</p>
           )}
         </div>
         <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-ink-muted transition-colors group-hover:text-brand-600" aria-hidden="true" />
@@ -90,8 +97,8 @@ export function TableCard({
       {/* mt-auto: com ou sem nome do cliente, pessoas/tempo/valor ficam na mesma altura em todos os cartões */}
       <div className="mt-auto flex w-full items-end justify-between gap-3 px-4 pb-3.5 pt-2">
         <ul className="space-y-0.5 text-[13px] text-ink-muted">
-          <li className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" aria-hidden="true" />{tab?.people_count || 1} {(tab?.people_count || 1) === 1 ? 'pessoa' : 'pessoas'} · {itemCount} {itemCount === 1 ? 'item' : 'itens'}</li>
-          {opened && <li className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" aria-hidden="true" />{opened === '0 min' ? 'Aberta agora' : `Aberta há ${opened}`}</li>}
+          <li className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" aria-hidden="true" />{local ? '' : `${tab?.people_count || 1} ${(tab?.people_count || 1) === 1 ? 'pessoa' : 'pessoas'} · `}{itemCount} {itemCount === 1 ? 'item' : 'itens'}</li>
+          {opened && <li className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" aria-hidden="true" />{local ? (opened === '0 min' ? 'Pediu agora' : `Pediu há ${opened}`) : opened === '0 min' ? 'Aberta agora' : `Aberta há ${opened}`}</li>}
         </ul>
         <span className="font-mono text-xl font-bold tabular-nums text-ink">{formatBRL(tab?.total || 0)}</span>
       </div>

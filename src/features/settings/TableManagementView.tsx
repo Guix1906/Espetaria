@@ -1,3 +1,4 @@
+import { isLocalTable } from '../../lib/localTables';
 import React, { useState } from 'react';
 import { Plus, Trash2, Edit3, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useTableStore } from '../../stores/useTableStore';
@@ -16,7 +17,7 @@ export const TableManagementView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const activeTables = tables.filter((t) => t.active).sort((a, b) => a.number - b.number);
+  const activeTables = tables.filter((t) => t.active && !isLocalTable(t)).sort((a, b) => a.number - b.number);
 
   const resetForm = () => {
     setFormNumber('');

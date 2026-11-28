@@ -1,3 +1,4 @@
+import { tableShortLabel } from '../../lib/localTables';
 import { getServiceFeeRate } from '../../lib/utils';
 import {
   AlertCircle,
@@ -568,11 +569,11 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
   if (variant === 'payment') {
     return (
       <>
-        <section className="dialog-panel pay-drawer flex flex-col" aria-label={`Cobrar Mesa ${String(table.number).padStart(2, '0')}`} onClick={(e) => e.stopPropagation()}>
+        <section className="dialog-panel pay-drawer flex flex-col" aria-label={`Cobrar ${tableShortLabel(table, currentTab?.customer_name)}`} onClick={(e) => e.stopPropagation()}>
           <header className="flex items-center justify-between gap-2 border-b border-line px-4 pb-3 pt-4">
             <div className="min-w-0">
               <h2 className="text-xl font-bold leading-tight text-ink">Cobrar</h2>
-              <p className="text-sm text-ink-muted">Mesa {String(table.number).padStart(2, '0')}</p>
+              <p className="truncate text-sm text-ink-muted">{tableShortLabel(table, currentTab?.customer_name)}</p>
             </div>
             <div className="flex shrink-0 items-center gap-1">
               {printButton}
@@ -606,7 +607,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
               </div>
               <div>
                 <h3 className="font-bold text-ink text-lg leading-none flex items-center gap-2 font-sans">
-                  <span>Fechamento de conta — Mesa {String(table.number).padStart(2, '0')}</span>
+                  <span>Fechamento de conta — {tableShortLabel(table, currentTab?.customer_name)}</span>
                   {table.status === 'AGUARDANDO_CONTA' && <StatusTag kind="bill" className="font-semibold">Conta pedida</StatusTag>}
                 </h3>
                 <p className="text-xs text-ink-muted mt-1 flex items-center gap-2">

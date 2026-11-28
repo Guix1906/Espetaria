@@ -1,3 +1,4 @@
+import { isLocalTable } from '../../lib/localTables';
 import { isDineInOrder } from '../../lib/deliveryStatus';
 import { StockSnapshot } from './StockSnapshot';
 import { LiveBoard } from './LiveBoard';
@@ -48,6 +49,8 @@ const BOT_CANNED_REPLIES = [
 export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavigateTab, onOpenShiftClick }) => {
   const { currentShift } = useShiftStore();
   const { tables, tabs, orders, orderItems, payments } = useTableStore();
+  // Consumo local (mesas internas 900+) não conta no total de mesas do salão
+  const salonTableCount = tables.filter((t) => !isLocalTable(t)).length;
   const { deliveryOrders } = useDeliveryStore();
   const { stockMovements } = useStockStore();
   const { jobs } = usePrintStore();
@@ -231,7 +234,7 @@ export const MasterDashboardView: React.FC<MasterDashboardViewProps> = ({ onNavi
           </div>
           <div className="my-2">
             <span className="font-mono text-3xl font-bold tracking-tight text-ink">{d.salon.openTabs.length}</span>
-            {tables.length > 0 && <span className="ml-1.5 text-sm text-ink-muted">de {tables.length}</span>}
+            {salonTableCount > 0 && <span className="ml-1.5 text-sm text-ink-muted">de {salonTableCount}</span>}
           </div>
           <p className="truncate text-xs font-medium text-ink-muted">
             {d.salon.people > 0 ? `${d.salon.people} ${d.salon.people === 1 ? 'pessoa no salão' : 'pessoas no salão'}` : 'Nenhuma mesa aberta'}

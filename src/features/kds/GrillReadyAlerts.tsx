@@ -1,3 +1,4 @@
+import { tableShortLabel } from '../../lib/localTables';
 import { localOrderLabel } from '../../lib/deliveryStatus';
 import { BellRing, Check, PackageCheck } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -27,7 +28,7 @@ function sinceLabel(iso: string | null): string {
  * Os avisos somem sozinhos quando o garçom serve ou o pedido sai.
  */
 export function GrillReadyAlerts() {
-  const { orders, orderItems, tables } = useTableStore();
+  const { orders, orderItems, tables, tabs } = useTableStore();
   const { deliveryOrders, updateDeliveryStatus } = useDeliveryStore();
   const { notify } = useFeedback();
   const [dismissed, setDismissed] = useState<Set<string>>(() => new Set());
@@ -44,7 +45,7 @@ export function GrillReadyAlerts() {
     const readyAt = ready.map((i) => i.prepared_at).filter(Boolean).sort().pop() ?? null;
     return [{
       key: `tray-${order.id}`,
-      title: `Mesa ${table ? String(table.number).padStart(2, '0') : '??'}`,
+      title: tableShortLabel(table, tabs.find((t) => t.id === order.tab_id)?.customer_name),
       action: 'Mandar a bandeja com os acompanhamentos',
       detail: `${count} ${count === 1 ? 'espeto pronto' : 'espetos prontos'} · pedido #${order.order_number}`,
       readyAt,

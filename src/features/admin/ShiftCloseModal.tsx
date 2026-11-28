@@ -1,3 +1,4 @@
+import { isLocalTableNumber, tableShortLabel } from '../../lib/localTables';
 import {
   AlertTriangle,
   Banknote,
@@ -106,7 +107,8 @@ export const ShiftCloseModal: React.FC<ShiftCloseModalProps> = ({
       const number = tables.find((tb) => tb.id === t.table_id)?.number;
       const mesa = `Mesa ${number ?? '?'}`;
       const customer = t.customer_name?.trim();
-      return { tab: t, label: customer && customer !== mesa ? `${mesa} · ${customer}` : mesa, missing };
+      const label = isLocalTableNumber(number) ? tableShortLabel({ number: number! }, customer) : customer && customer !== mesa ? `${mesa} · ${customer}` : mesa;
+      return { tab: t, label, missing };
     });
   const paidOpenTabs = openTabs.filter((t) => t.missing <= 0);
   const unpaidOpenTabs = openTabs.filter((t) => t.missing > 0);

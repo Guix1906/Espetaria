@@ -1,3 +1,4 @@
+import { LOCAL_TABLE_START } from '../../lib/localTables';
 import { Printer, RefreshCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { useConfirm } from '../../components/ui/ConfirmDialog';
@@ -19,7 +20,7 @@ export function TableQrSection() {
 
   const load = useCallback(async () => {
     if (!isSupabaseConfigured) { setTables([]); return; }
-    const { data, error } = await supabase.from('restaurant_tables').select('id, number, qr_token').eq('active', true).order('number');
+    const { data, error } = await supabase.from('restaurant_tables').select('id, number, qr_token').eq('active', true).lt('number', LOCAL_TABLE_START).order('number');
     // Coluna ainda não existe (migração 00055 pendente)
     setTables(error ? [] : (data as TableQr[]));
   }, []);

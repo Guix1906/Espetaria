@@ -1,4 +1,5 @@
 import { isDineInOrder, localOrderLabel } from '../../lib/deliveryStatus';
+import { isLocalTable, tableLabel } from '../../lib/localTables';
 import type { DeliveryOrder, Order, OrderItem, Payment, PrintJob, RestaurantTable, StockMovement, Tab } from '../../types/domain';
 import { isFreshReady, isPendingProduction } from '../../lib/productionStatus';
 
@@ -165,7 +166,7 @@ export function computeDashboard(input: DashboardInput) {
   const inShift = <T extends { shift_id?: string | null }>(row: T) => row.shift_id === shiftId;
   const tableNumber = (tableId: string | undefined) => {
     const table = tables.find((t) => t.id === tableId);
-    return table ? `Mesa ${pad2(table.number)}` : 'Balcão';
+    return table ? (isLocalTable(table) ? 'Consumo local' : `Mesa ${pad2(table.number)}`) : 'Balcão';
   };
 
   // ---------------- Casa ----------------
@@ -301,7 +302,7 @@ export function computeDashboard(input: DashboardInput) {
   }
   const linkAlert = botLinkAlert(input.botLink, now);
   if (linkAlert) alerts.push(linkAlert);
-  if (waitingBill.length) alerts.push({ id: 'bill', tone: 'warning', target: 'cashier', text: `${waitingBill.map((t) => `Mesa ${pad2(t.number)}`).join(', ')} ${waitingBill.length === 1 ? 'pediu' : 'pediram'} a conta` });
+  if (waitingBill.length) alerts.push({ id: 'bill', tone: 'warning', target: 'cashier', text: `${waitingBill.map((t) => tableLabel(t)).join(', ')} ${waitingBill.length === 1 ? 'pediu' : 'pediram'} a conta` });
 
   // ---------------- Movimentações do turno ----------------
   const feed: ActivityEvent[] = [];

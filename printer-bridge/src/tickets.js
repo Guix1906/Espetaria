@@ -25,6 +25,10 @@ const isDineIn = (job) => /^CONSUMIR NO LOCAL/i.test(String(job.delivery?.notes 
 const localLine = (job) => (isDineIn(job) ? 'CONSUMIR NO LOCAL' : 'RETIRADA NO LOCAL');
 const remoteTitle = (job) => `${isPickup(job) ? (isDineIn(job) ? 'CONSUMIR NO LOCAL' : 'RETIRADA') : 'DELIVERY'} #${job.order_number}`;
 
+/** Consumo local (00074): pedido do cardapio para comer na loja, numa "mesa" interna 900+. */
+const isLocalTableJob = (job) => Number(job.table_number) >= 900;
+const tableTitle = (job) => (isLocalTableJob(job) ? 'CONSUMO LOCAL' : `MESA ${job.table_number ?? '-'}`);
+
 const payLabel = (job, method) => (isPickup(job) && method === 'CARTAO_ENTREGA' ? (isDineIn(job) ? 'CARTÃO NO LOCAL' : 'CARTÃO NA RETIRADA') : PAYMENT[method] || method || '');
 
 const brl = (value) => `R$ ${Number(value || 0).toFixed(2).replace('.', ',')}`;
@@ -84,8 +88,9 @@ export function buildTicket(job, config) {
     r.align('center').invert().size(2).bold().line(' CANCELADO ').bold(false).size(1).invert(false)
       .line(sectorTitle);
     r.align('left').divider('=');
-    r.size(2).bold().line(job.origin === 'DELIVERY' ? remoteTitle(job) : `MESA ${job.table_number ?? '-'}`).bold(false).size(1);
+    r.size(2).bold().line(job.origin === 'DELIVERY' ? remoteTitle(job) : tableTitle(job)).bold(false).size(1);
     if (job.origin !== 'DELIVERY') r.line(`Pedido #${job.order_number}`);
+    if (isLocalTableJob(job) && job.customer_name) r.line(`Cliente: ${job.customer_name}`);
     r.line(formatTime(job.created_at)).divider();
     r.bold().line('NÃO PREPARAR / RETIRAR:').bold(false);
     productionItems(r, job.items);
@@ -217,7 +222,7 @@ function productionTicket(r, job, config, tpl, label) {
     if (isPickup(job)) r.bold().line(localLine(job)).bold(false);
     else if (hood) r.line(`Bairro: ${hood}`);
   } else {
-    r.size(2).bold().line(`MESA ${job.table_number ?? '-'}`).bold(false).size(1);
+    r.size(2).bold().line(tableTitle(job)).bold(false).size(1);
     r.pair(`Pedido #${job.order_number}`, tpl.show_waiter && payload.waiter ? `Garçom: ${payload.waiter}` : '');
     if (job.customer_name) r.line(`Cliente: ${job.customer_name}`);
   }
@@ -243,7 +248,7 @@ function productionTicket(r, job, config, tpl, label) {
 export function billTicket(r, job, config) {
   const o = job.payload || {};
   const num = (v) => Number(v || 0);
-  r.align('center').size(2).bold().line(`MESA ${job.table_number ?? '-'}`).bold(false).size(1)
+  r.align('center').size(2).bold().line(tableTitle(job)).bold(false).size(1)
     .bold().line('CONTA PARA CONFERÊNCIA').bold(false)
     .line(formatDateFull(job.created_at));
   r.align('left').divider('=');
@@ -322,7 +327,7 @@ function formatDateFull(iso) {
 export function anotaTicket(r, job, config, tpl, { complete, data }) {
   const d = data || {};
   const payload = job.payload || {};
-  const modality = job.origin !== 'DELIVERY' ? 'CONSUMO NO LOCAL' : isPickup(job) ? localLine(job) : 'PARA ENTREGA';
+  const modality = job.origin !== 'DELIVERY' ? (isLocalTableJob(job) ? 'CONSUMO LOCAL (CARDÁPIO)' : 'CONSUMO NO LOCAL') : isPickup(job) ? localLine(job) : 'PARA ENTREGA';
   if (job.is_reprint) {
     r.align('center').invert().bold().line(' 2ª VIA ').bold(false).invert(false);
     if (job.reprint_reason) r.line(job.reprint_reason);
@@ -333,7 +338,8 @@ export function anotaTicket(r, job, config, tpl, { complete, data }) {
   r.divider('=');
   r.size(2).bold().line(`Pedido ${job.order_number}`).bold(false).size(1);
   if (job.origin !== 'DELIVERY') {
-    r.line(`Mesa ${job.table_number ?? '-'}`);
+    if (isLocalTableJob(job)) r.size(2).bold().line(String(job.customer_name || 'Cliente')).bold(false).size(1);
+    else r.line(`Mesa ${job.table_number ?? '-'}`);
     if (tpl.show_waiter !== false && payload.waiter) r.line(`Garçom: ${payload.waiter}`);
   }
   if (tpl.title) r.line(`[ ${tpl.title} ]`);

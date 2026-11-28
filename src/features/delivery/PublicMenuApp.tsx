@@ -349,13 +349,11 @@ export function PublicMenuApp() {
   const [cartError, setCartError] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<(typeof cart)[number] | null>(null);
   const [sending, setSending] = useState(false);
-  // Consumir no local: o pedido entra na comanda da mesa (paga no caixa, como o QR da mesa)
-  const [tableNumber, setTableNumber] = useState('');
-  const [dineInDone, setDineInDone] = useState<{ table: number; order: number; total: number; pix: boolean } | null>(null);
-  // Pode pagar já pelo cardápio (PIX) ou deixar para o caixa; o caixa fecha a mesa no painel
+  // Consumir no local: o pedido entra numa comanda de "Consumo local" com o nome do cliente (00074);
+  // a equipe acrescenta o resto (bebidas...) quando ele chega e cobra no caixa
+  const [dineInDone, setDineInDone] = useState<{ order: number; total: number; pix: boolean } | null>(null);
+  // Pode pagar já pelo cardápio (PIX) ou deixar para o caixa
   const [dinePay, setDinePay] = useState<'CAIXA' | 'PIX'>('CAIXA');
-  const [occupiedAsk, setOccupiedAsk] = useState<string | null>(null);
-  useEffect(() => setOccupiedAsk(null), [tableNumber, orderMode]);
 
   /* navegação por etapa com o botão voltar do navegador */
   useEffect(() => {
@@ -427,12 +425,12 @@ export function PublicMenuApp() {
   const subtotal = cart.reduce((s, c) => s + c.product.price * c.quantity, 0);
   const isPickup = orderMode !== 'DELIVERY';
   const isDineIn = orderMode === 'DINE_IN';
-  // Com o banco ligado, "consumir no local" vira comanda de mesa; na demonstração segue como retirada
+  // Com o banco ligado, "consumir no local" vira comanda de consumo local; na demonstração segue como retirada
   const dineInTables = isSupabaseConfigured;
   const tableMode = isDineIn && dineInTables;
   const canPayPix = !!settings.pix_key?.trim();
   const payDinePix = tableMode && canPayPix && dinePay === 'PIX';
-  const dinePayText = payDinePix ? 'PIX agora, pelo cardápio (o QR Code aparece ao enviar)' : 'No caixa, ao final (entra na conta da mesa)';
+  const dinePayText = payDinePix ? 'PIX agora, pelo cardápio (o QR Code aparece ao enviar)' : 'No caixa, ao final (o que pedir na loja entra na mesma conta)';
   const orderType: DeliveryOrderType = isPickup ? 'PICKUP' : 'DELIVERY';
   const localLabel = isDineIn ? 'Consumir no local' : 'Retirada no local';
   const zone = zones.find((z) => z.name === customer.neighborhood);
@@ -509,13 +507,9 @@ export function PublicMenuApp() {
   const saveCustomer = (patch: Partial<Customer>) => setCustomer((c) => { const n = { ...c, ...patch }; try { localStorage.setItem(SAVED_KEY, JSON.stringify(n)); } catch { /* sem armazenamento */ } return n; });
 
   const validateDelivery = () => {
-    if (!customer.name.trim()) return 'Informe o seu nome.';
-    if (isDineIn && dineInTables) {
-      const n = Number(tableNumber);
-      if (!tableNumber.trim() || !Number.isInteger(n) || n <= 0) return 'Informe o número da sua mesa (está na plaquinha da mesa).';
-      return null;
-    }
+    if (customer.name.trim().length < 2) return 'Informe o seu nome.';
     if (!isValidWhatsApp(customer.phone)) return 'Confira o WhatsApp com DDD.';
+    if (isDineIn && dineInTables) return null;
     if (!isPickup) {
       if (!zone) return 'Escolha o bairro de entrega.';
       if (!customer.street.trim() || !customer.number.trim()) return 'Preencha rua e número.';
@@ -532,10 +526,9 @@ export function PublicMenuApp() {
     return null;
   };
 
-  const send = async (confirmOccupied = false) => {
+  const send = async () => {
     if (sending) return;
     setFormError(null);
-    setOccupiedAsk(null);
     const err = validateDelivery() || validatePayment();
     if (err) { setFormError(err); return; }
     if (!currentShift || !isOpen) { setFormError('A loja está fechada no momento. Aguarde a abertura para enviar o pedido.'); return; }
@@ -543,18 +536,27 @@ export function PublicMenuApp() {
     try {
       if (isDineIn && dineInTables) {
         const { checkoutKey } = useDeliveryStore.getState();
-        const { data, error } = await supabase.rpc('create_dine_in_order', {
-          p_table_number: Number(tableNumber),
+        const { data, error } = await supabase.rpc('create_local_order', {
           p_items: cart.map((c) => ({ product_id: c.productId, quantity: c.quantity, doneness: c.doneness ?? null, notes: c.notes ?? null })),
           p_idempotency_key: checkoutKey,
           p_customer_name: customer.name.trim(),
+          p_phone: customer.phone.trim(),
           p_pay_pix: payDinePix,
-          p_confirm_occupied: confirmOccupied,
         });
+        // Banco ainda sem a 00074: segue como pedido "consumir no local" da lista do Delivery (como antes de 22/11)
+        const missingRpc = error && (error.code === 'PGRST202' || /create_local_order|schema cache/i.test(error.message ?? ''));
+        if (missingRpc) {
+          await submitDeliveryOrder({
+            shiftId: currentShift.id, orderType: 'PICKUP', notes: DINE_IN_NOTE, customerName: customer.name.trim(), phone: customer.phone.trim(),
+            addressStreet: '', addressNumber: '', addressNeighborhood: '', deliveryFee: 0, paymentMethod: payDinePix ? 'PIX' : 'DINHEIRO',
+          });
+          go('sent', true);
+          return;
+        }
         if (error) throw new Error(error.message || 'Não foi possível enviar o pedido.');
-        const result = data as { order_number: number; table_number: number; total: number };
+        const result = data as { order_number: number; total: number };
         useDeliveryStore.setState({ cart: [], checkoutKey: generateId() });
-        setDineInDone({ table: result.table_number ?? Number(tableNumber), order: result.order_number, total: Number(result.total ?? subtotal), pix: payDinePix });
+        setDineInDone({ order: result.order_number, total: Number(result.total ?? subtotal), pix: payDinePix });
         go('sent', true);
         return;
       }
@@ -568,9 +570,7 @@ export function PublicMenuApp() {
       go('sent', true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Não foi possível enviar o pedido. Tente novamente.';
-      // Mesa digitada já está aberta: pergunta antes de juntar na comanda de alguém
-      if (msg.includes('MESA_OCUPADA')) setOccupiedAsk(msg.replace(/^.*MESA_OCUPADA:\s*/, ''));
-      else if (/estoque|esgot|dispon/i.test(msg)) { setCartError(`Um item acabou enquanto você pedia: ${msg} Ajuste o pedido e envie de novo.`); go(isDesktop ? 'checkout' : 'cart'); }
+      if (/estoque|esgot|dispon/i.test(msg)) { setCartError(`Um item acabou enquanto você pedia: ${msg} Ajuste o pedido e envie de novo.`); go(isDesktop ? 'checkout' : 'cart'); }
       else setFormError(msg);
     } finally { setSending(false); }
   };
@@ -684,16 +684,14 @@ export function PublicMenuApp() {
   const deliveryFields = (twoCols = false) => (
     <div className={`grid gap-4 ${twoCols ? 'grid-cols-2' : ''}`}>
       <div><label htmlFor="pm-name" className={labelCls}>Seu nome</label><input id="pm-name" autoComplete="name" value={customer.name} onChange={(e) => saveCustomer({ name: e.target.value })} className={inputCls} /></div>
-      {!tableMode && <div>
+      <div>
         <label htmlFor="pm-phone" className={labelCls}>WhatsApp</label>
         <input id="pm-phone" type="tel" inputMode="tel" autoComplete="tel" placeholder="(99) 99999-9999" maxLength={15} value={maskPhone(customer.phone)} onChange={(e) => saveCustomer({ phone: maskPhone(e.target.value) })} className={inputCls} />
-        <p className="mt-1.5 text-[13px] text-ink-muted">Enviamos a confirmação e o link de acompanhamento.</p>
-      </div>}
+        <p className="mt-1.5 text-[13px] text-ink-muted">{tableMode ? 'A equipe usa o seu nome e o WhatsApp para achar o seu pedido.' : 'Enviamos a confirmação e o link de acompanhamento.'}</p>
+      </div>
       {isDineIn && dineInTables ? (
         <div className={twoCols ? 'col-span-2' : ''}>
-          <label htmlFor="pm-table" className={labelCls}>Número da sua mesa</label>
-          <input id="pm-table" inputMode="numeric" placeholder="Ex.: 12" maxLength={3} value={tableNumber} onChange={(e) => { setTableNumber(e.target.value.replace(/\D/g, '')); setFormError(null); }} className={`${inputCls} max-w-[160px] font-semibold`} />
-          <p className="mt-1.5 text-[14px] text-ink-muted">O pedido vai para a conta da sua mesa e o garçom leva até você.</p>
+          <p className="rounded-md border border-line bg-canvas px-3 py-2.5 text-[14px] text-ink-secondary">Seu pedido fica numa comanda com o seu nome. Quando chegar, é só dizer o seu nome: o que pedir na loja (bebidas e mais) entra na mesma conta.{settings.address && <> Endereço: <strong className="font-semibold">{settings.address}</strong></>}</p>
           {canPayPix && (
             <div className="mt-4">
               <OptionGroup title="Como prefere pagar?" hint="você escolhe" options={['Pagar no caixa ao final', 'Pagar agora pelo PIX']}
@@ -789,19 +787,6 @@ export function PublicMenuApp() {
 
   const closedNotice = !isOpen && <ClosedNotice />;
 
-  // "A Mesa X já está aberta. Você está sentado nela?" (sem mostrar nome nem pedidos de quem está lá)
-  const occupiedBox = occupiedAsk && (
-    <div role="alertdialog" aria-live="assertive" className="space-y-3 rounded-md border-2 border-brand-500 bg-surface p-4">
-      <p className="text-[17px] font-semibold">{occupiedAsk}</p>
-      <p className="text-[14px] text-ink-muted">Se sim, o seu pedido entra na conta dessa mesa.</p>
-      <div className="grid gap-2">
-        <Button size="lg" block disabled={sending} onClick={() => void send(true)} className="font-semibold">Sim, é a minha mesa</Button>
-        <button type="button" onClick={() => { setOccupiedAsk(null); if (isDesktop) document.getElementById('pm-table')?.focus(); else back(); }}
-          className="min-h-[48px] w-full rounded-md border border-line-strong text-[16px] font-semibold text-ink">Corrigir o número</button>
-      </div>
-    </div>
-  );
-
   const trackingBanner = tracking && (
     <button type="button" onClick={() => go('sent')} className="flex w-full items-center justify-between gap-3 rounded-md border border-line bg-surface px-4 py-3 text-left">
       <span><span className="block font-mono text-[13px] text-ink-muted">Pedido #{tracking.order_number}</span><span className="block text-[15px] font-semibold">Acompanhar o seu pedido</span></span>
@@ -817,8 +802,8 @@ export function PublicMenuApp() {
         <TopBar title="Pedido enviado" onBack={() => { setDineInDone(null); go('menu', true); }} />
         <div className="space-y-3 pt-10 text-center">
           <p className="font-mono text-[13px] text-ink-muted">Pedido #{dineInDone.order}</p>
-          <h2 className="text-[26px] font-semibold">Mesa {String(dineInDone.table).padStart(2, '0')}</h2>
-          <p className="mx-auto max-w-sm text-[16px] text-ink-secondary">Seu pedido já foi para o preparo e o garçom leva até a sua mesa. {dineInDone.pix ? 'Pague o PIX abaixo e mostre o comprovante no caixa ao sair.' : 'O pagamento é no caixa, ao final.'}</p>
+          <h2 className="text-[26px] font-semibold">Consumo local · {customer.name.trim()}</h2>
+          <p className="mx-auto max-w-sm text-[16px] text-ink-secondary">Seu pedido já foi para o preparo. Quando chegar, diga o seu nome: o que mais pedir aqui entra na mesma conta. {dineInDone.pix ? 'Pague o PIX abaixo e mostre o comprovante no caixa ao sair.' : 'O pagamento é no caixa, ao final.'}</p>
         </div>
         {dineInDone.pix && <div className="mt-6"><DeliveryPixPanel order={{ order_number: dineInDone.order, total: dineInDone.total } as DeliveryOrder} /></div>}
         <button type="button" onClick={() => { setDineInDone(null); go('menu', true); }} className="mt-8 h-[52px] w-full rounded-md text-[16px] font-semibold text-brand-700">Pedir mais alguma coisa</button>
@@ -952,7 +937,7 @@ export function PublicMenuApp() {
         <Progress n={3} />
         <div className="px-5 pt-1">
           {block(isPickup ? (isDineIn ? 'Consumir em' : 'Retirar em') : 'Entregar em', () => window.history.go(tableMode ? -1 : -2), tableMode
-            ? <p className="text-[16px] font-semibold">Mesa {tableNumber}<span className="block text-[14px] font-normal text-ink-muted">{customer.name} · o garçom leva até a mesa</span></p>
+            ? <p className="text-[16px] font-semibold">Consumo local · {customer.name}<span className="block text-[14px] font-normal text-ink-muted">{maskPhone(customer.phone)} · {settings.address || 'na loja'}</span></p>
             : isPickup
             ?<p className="text-[16px]">{settings.address || 'Na loja'}<span className="block text-[14px] text-ink-muted">Pronto em {pickupEta} · {customer.name}</span></p>
             : <p className="text-[16px]">{customer.street}, {customer.number}{customer.complement ? ` · ${customer.complement}` : ''}<span className="block text-[14px] text-ink-muted">{customer.neighborhood} · {deliveryEta} · {customer.name}</span></p>)}
@@ -963,11 +948,10 @@ export function PublicMenuApp() {
           <div className="pt-4">{totals()}</div>
           {closedNotice && <div className="pt-4">{closedNotice}</div>}
           {formError && <div className="pt-4"><Alert>{formError}</Alert></div>}
-          {occupiedBox && <div className="pt-4">{occupiedBox}</div>}
         </div>
         <Footer>
-          <Button size="lg" block disabled={sending || !cart.length || !isOpen || !!occupiedAsk} onClick={() => void send()} className="font-semibold">{!isOpen ? 'Loja fechada no momento' : sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
-          <p className="mt-2 text-center text-[13px] text-ink-muted">{tableMode ? `O pedido vai para a conta da Mesa ${tableNumber}.` : 'A confirmação chega no seu WhatsApp.'}</p>
+          <Button size="lg" block disabled={sending || !cart.length || !isOpen} onClick={() => void send()} className="font-semibold">{!isOpen ? 'Loja fechada no momento' : sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
+          <p className="mt-2 text-center text-[13px] text-ink-muted">{tableMode ? 'O pedido fica numa comanda com o seu nome.' : 'A confirmação chega no seu WhatsApp.'}</p>
         </Footer>
       </div>
     );
@@ -995,9 +979,8 @@ export function PublicMenuApp() {
             {totals(22)}
             {closedNotice}
             {formError && <Alert>{formError}</Alert>}
-            {occupiedBox}
-            <Button size="lg" block disabled={sending || !cart.length || !!occupiedAsk} onClick={() => void send()} className="font-semibold">{sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
-            <p className="text-center text-[13px] text-ink-muted">A confirmação chega no seu WhatsApp.</p>
+            <Button size="lg" block disabled={sending || !cart.length} onClick={() => void send()} className="font-semibold">{sending ? 'Enviando...' : `Enviar pedido · ${formatBRL(total)}`}</Button>
+            <p className="text-center text-[13px] text-ink-muted">{tableMode ? 'O pedido fica numa comanda com o seu nome.' : 'A confirmação chega no seu WhatsApp.'}</p>
           </aside>
         </div>
       </div>

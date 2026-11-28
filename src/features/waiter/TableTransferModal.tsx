@@ -4,6 +4,7 @@ import { Dialog } from '../../components/ui/Dialog';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { triggerHaptic } from '../../lib/haptics';
 import { useAuthStore } from '../../stores/useAuthStore';
+import { isLocalTable, tableShortLabel } from '../../lib/localTables';
 import { useTableStore } from '../../stores/useTableStore';
 import type { RestaurantTable, Tab } from '../../types/domain';
 import { formatBRL } from '../../lib/formatters';
@@ -34,9 +35,10 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
+  const sourceLabel = tableShortLabel(sourceTable, currentTab.customer_name);
 
   const freeTables = tables
-    .filter((t) => (t.status === 'LIVRE' || !t.status) && t.id !== sourceTable.id && t.active !== false)
+    .filter((t) => (t.status === 'LIVRE' || !t.status) && t.id !== sourceTable.id && t.active !== false && !isLocalTable(t))
     .sort((a, b) => a.number - b.number);
 
   const filtered = search.trim()
@@ -57,7 +59,7 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
       transferTableAtomic(currentTab.id, targetTable.id, currentProfile.id);
       triggerHaptic(70);
       notify(
-        `Atendimento transferido da Mesa ${pad2(sourceTable.number)} para a Mesa ${pad2(targetTable.number)}!`,
+        `Atendimento transferido de ${sourceLabel} para a Mesa ${pad2(targetTable.number)}!`,
         'success'
       );
       onSuccess(targetTable);
@@ -85,7 +87,7 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
             <div>
               <h3 className="text-xl font-bold text-ink">Trocar de mesa</h3>
               <p className="text-sm text-ink-muted">
-                Transferir comanda da <strong className="text-ink">Mesa {pad2(sourceTable.number)}</strong>
+                Transferir comanda de <strong className="text-ink">{sourceLabel}</strong>
               </p>
             </div>
           </div>
@@ -166,7 +168,7 @@ export const TableTransferModal: React.FC<TableTransferModalProps> = ({
         <div className="border-t border-line pt-3 space-y-2">
           {targetTable && (
             <div className="flex items-center justify-center gap-2 text-base font-semibold text-ink py-1">
-              <span>Mesa {pad2(sourceTable.number)}</span>
+              <span>{sourceLabel}</span>
               <ArrowLeftRight className="h-4 w-4 text-brand-600" />
               <span className="text-brand-700 font-bold">Mesa {pad2(targetTable.number)}</span>
             </div>

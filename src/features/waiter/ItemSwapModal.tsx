@@ -1,3 +1,4 @@
+import { tableShortLabel } from '../../lib/localTables';
 import React, { useState, useMemo } from 'react';
 import { ArrowLeftRight, Check, Search, X, Minus, Plus } from 'lucide-react';
 import { Dialog } from '../../components/ui/Dialog';
@@ -145,7 +146,7 @@ export const ItemSwapModal: React.FC<ItemSwapModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-ink text-xl leading-tight">
-                Trocar item · Mesa {String(table.number).padStart(2, '0')}
+                Trocar item · {tableShortLabel(table)}
               </h3>
               <p className="text-base text-ink-muted mt-0.5">
                 Substituir pedido lançado por engano

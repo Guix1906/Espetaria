@@ -1,3 +1,4 @@
+import { tableLabel } from '../../lib/localTables';
 import {
   CheckCircle2,
   Printer,
@@ -78,7 +79,7 @@ export const WaiterViewTab: React.FC<WaiterViewTabProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-ink text-xl leading-tight font-sans">
-                Consumo — Mesa {String(table.number).padStart(2, '0')}
+                Consumo — {tableLabel(table)}
               </h3>
               <p className="text-base text-ink-muted mt-0.5 flex items-center gap-2">
                 <span className="font-bold text-ink">{currentTab?.customer_name || 'Comanda aberta'}</span>

@@ -1,3 +1,4 @@
+import { tableLabel } from '../../lib/localTables';
 import { Button } from '../../components/ui/Button';
 import { AlertCircle, Minus, Pencil, Plus, ShoppingBag, Trash2, X } from 'lucide-react';
 import { useState } from 'react';
@@ -83,7 +84,7 @@ export function WaiterCartDrawer({ table, isOpen, onClose, onSuccess }: WaiterCa
       <div className="flex items-start justify-between gap-3 border-b border-line px-4 pb-3">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500"><ShoppingBag className="h-5 w-5" aria-hidden="true" /></span>
-          <div className="min-w-0"><h2 className="text-xl font-semibold leading-tight text-ink">Revisar pedido · Mesa {String(table.number).padStart(2, '0')}</h2><p className="mt-0.5 text-base text-ink-muted">{count} {count === 1 ? 'item' : 'itens'}</p></div>
+          <div className="min-w-0"><h2 className="text-xl font-semibold leading-tight text-ink">Revisar pedido · {tableLabel(table)}</h2><p className="mt-0.5 text-base text-ink-muted">{count} {count === 1 ? 'item' : 'itens'}</p></div>
         </div>
         <button type="button" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line text-ink" onClick={onClose} aria-label="Fechar revisão do pedido"><X className="h-5 w-5" /></button>
       </div>

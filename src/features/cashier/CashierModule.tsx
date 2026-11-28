@@ -1,3 +1,4 @@
+import { isLocalTable } from '../../lib/localTables';
 import {
   AlertTriangle,
   Banknote,
@@ -276,8 +277,8 @@ export const CashierModule: React.FC = () => {
                   <div className="flex flex-1 flex-col gap-3 p-4">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <h3 className="font-mono text-xl font-bold tabular-nums text-ink">Mesa {String(table.number).padStart(2, '0')}</h3>
-                        {customer && <p className="mt-0.5 truncate text-sm font-medium text-ink-secondary">{customer}</p>}
+                        <h3 className={`text-xl font-bold text-ink ${isLocalTable(table) ? 'truncate' : 'font-mono tabular-nums'}`}>{isLocalTable(table) ? customer ?? 'Consumo local' : `Mesa ${String(table.number).padStart(2, '0')}`}</h3>
+                        {isLocalTable(table) ? <p className="mt-0.5 truncate text-sm font-medium text-ink-secondary">Consumo local</p> : customer && <p className="mt-0.5 truncate text-sm font-medium text-ink-secondary">{customer}</p>}
                       </div>
                       <span className="flex shrink-0 items-center gap-1 rounded-md bg-surface-muted px-2 py-1 text-xs font-semibold tabular-nums text-ink-secondary">
                         <Users className="h-3.5 w-3.5" aria-hidden="true" />
@@ -305,7 +306,7 @@ export const CashierModule: React.FC = () => {
                       type="button"
                     >
                       <Receipt className="h-4 w-4" aria-hidden="true" />
-                      <span>Cobrar mesa {String(table.number).padStart(2, '0')}</span>
+                      <span>{isLocalTable(table) ? 'Cobrar' : `Cobrar mesa ${String(table.number).padStart(2, '0')}`}</span>
                     </button>
                   </div>
                 </article>
@@ -338,7 +339,7 @@ export const CashierModule: React.FC = () => {
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-ink">
-                        Mesa {table ? String(table.number).padStart(2, '0') : '—'}
+                        {table && isLocalTable(table) ? 'Consumo local' : `Mesa ${table ? String(table.number).padStart(2, '0') : '—'}`}
                         {customer && <span className="font-normal text-ink-secondary"> · {customer}</span>}
                       </p>
                       <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-muted">

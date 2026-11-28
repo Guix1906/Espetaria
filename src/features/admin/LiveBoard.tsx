@@ -1,3 +1,4 @@
+import { isLocalTable, tableShortLabel } from '../../lib/localTables';
 import { focusOrderKind, hasGrillItems, isDineInOrder } from '../../lib/deliveryStatus';
 import { Bike, Clock, Flame, Search } from 'lucide-react';
 import { useState } from 'react';
@@ -9,7 +10,6 @@ import type { DeliveryOrder, OrderItem, RestaurantTable, Tab } from '../../types
 import { elapsedLevel, type ElapsedLevel } from '../kds/KDSElapsedTimer';
 import { stageOf, type DeliveryStage } from './dashboardMetrics';
 
-const pad2 = (n: number) => String(n).padStart(2, '0');
 const RANK: Record<ElapsedLevel, number> = { urgent: 0, warning: 1, ok: 2 };
 const DELIVERY_STAGE: Record<DeliveryStage, string> = {
   AWAITING_PAYMENT: 'aguardando PIX',
@@ -116,13 +116,13 @@ export function LiveBoard({ now, openTabs, tabInfo, activeDeliveries, lateIds, g
     const items = orderItems.filter((i) => orderIds.has(i.order_id) && i.status !== 'CANCELLED');
     const info = tabInfo(tab);
     const bill = table?.status === 'AGUARDANDO_CONTA';
-    const name = tab.customer_name && tab.customer_name !== `Mesa ${table?.number}` ? ` · ${tab.customer_name}` : '';
+    const name = !isLocalTable(table) && tab.customer_name && tab.customer_name !== `Mesa ${table?.number}` ? ` · ${tab.customer_name}` : '';
     return {
       key: tab.id,
       column: tabColumn(items),
-      channel: 'Salão',
+      channel: isLocalTable(table) ? 'Consumir no local' : 'Salão',
       level: bill ? 'urgent' : info.ready > 0 ? 'warning' : 'ok',
-      title: `Mesa ${table ? pad2(table.number) : '—'}${name}`,
+      title: `${table ? tableShortLabel(table, tab.customer_name) : 'Mesa —'}${name}`,
       time: formatElapsedMinutes(tab.opened_at, now),
       since: tab.opened_at,
       items: (items.some(isPendingProduction) ? items.filter(isPendingProduction) : items).map((i) => `${i.quantity}× ${i.product_name}`).join(', ') || 'Sem pedido',

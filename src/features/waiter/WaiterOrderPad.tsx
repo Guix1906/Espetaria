@@ -23,6 +23,7 @@ import { TableTransferModal } from './TableTransferModal';
 import { TabItemsPanel } from './TabItemsPanel';
 import { optimizeThumbnailUrl } from '../../lib/imageOptimization';
 import { syncService } from '../../lib/syncService';
+import { isLocalTable, localTabPhone, tabCustomerName } from '../../lib/localTables';
 
 const TOP = 'TOP';
 /** Aba Espetos: só os de carne. Assados da categoria Entradas (queijo, pão de alho, cebola) ficam em Porções, como no cardápio digital. */
@@ -251,7 +252,12 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
     }
   };
 
-  const subtitle = [activeTab?.customer_name && activeTab.customer_name !== `Mesa ${table.number}` ? activeTab.customer_name : null, activeTab?.people_count ? `${activeTab.people_count} ${activeTab.people_count === 1 ? 'pessoa' : 'pessoas'}` : null].filter(Boolean).join(' · ');
+  // Consumo local: o título é o nome do cliente (não tem número de mesa)
+  const local = isLocalTable(table);
+  const headerTitle = local ? tabCustomerName(table, activeTab?.customer_name) ?? 'Consumo local' : `Mesa ${pad2(table.number)}`;
+  const subtitle = local
+    ? ['Consumo local', localTabPhone(activeTab?.notes)].filter(Boolean).join(' · ')
+    : [tabCustomerName(table, activeTab?.customer_name), activeTab?.people_count ? `${activeTab.people_count} ${activeTab.people_count === 1 ? 'pessoa' : 'pessoas'}` : null].filter(Boolean).join(' · ');
   const stockText = (level: StockLevel, left: number | null, inCart: number) => {
     if (level === 'out') return { text: left === 0 && inCart ? 'Tudo no pedido' : 'Esgotado', cls: 'text-rose-700' };
     if (level === 'low') return { text: left === 1 ? 'resta 1' : `restam ${left}`, cls: 'font-semibold text-amber-700' };
@@ -296,7 +302,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
             <button type="button" onClick={onBackToTables} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line-strong bg-surface text-ink" aria-label="Voltar às mesas"><ArrowLeft className="h-5 w-5" /></button>
             {/* O número da mesa nunca é cortado: é o que evita lançar pedido na mesa errada */}
             <div className="min-w-0">
-              <h1 className="whitespace-nowrap font-mono text-lg font-bold leading-tight text-ink min-[375px]:text-xl">Mesa {pad2(table.number)}</h1>
+              <h1 className={`text-lg font-bold leading-tight text-ink min-[375px]:text-xl ${local ? 'truncate' : 'whitespace-nowrap font-mono'}`}>{headerTitle}</h1>
               {subtitle && <p className="truncate text-sm text-ink-muted min-[375px]:text-base">{subtitle}</p>}
             </div>
           </div>
@@ -306,10 +312,10 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
                 type="button"
                 onClick={() => setIsTransferModalOpen(true)}
                 className="flex min-h-[44px] flex-col items-center justify-center rounded-md border border-line-strong bg-surface px-1.5 text-ink active:bg-surface-muted font-semibold text-sm leading-none sm:flex-row sm:gap-1.5 sm:px-3 sm:text-base"
-                aria-label="Trocar de mesa"
+                aria-label={local ? 'Passar para uma mesa' : 'Trocar de mesa'}
               >
                 <ArrowLeftRight className="h-5 w-5 shrink-0" />
-                <span className="mt-0.5 whitespace-nowrap sm:mt-0"><span className="sm:hidden">Trocar</span><span className="hidden sm:inline">Trocar mesa</span></span>
+                <span className="mt-0.5 whitespace-nowrap sm:mt-0"><span className="sm:hidden">{local ? 'Mesa' : 'Trocar'}</span><span className="hidden sm:inline">{local ? 'Passar p/ mesa' : 'Trocar mesa'}</span></span>
               </button>
             )}
             <button type="button" onClick={() => setIsViewTabOpen(true)} className="flex min-h-[44px] shrink-0 flex-col items-end justify-center rounded-md border border-line-strong bg-surface px-2.5 py-1 text-right active:bg-surface-muted" aria-label={`Ver consumo e conta: ${formatBRL(activeTab?.total)}`}>
@@ -344,6 +350,7 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
         {/* Um aviso só, o mais importante: encerrada > enviado > conta pedida */}
         {!activeTab ? (checkingTab
             ? <p role="status" className="notice border-line bg-surface-soft text-ink-secondary">Conferindo a comanda desta mesa...</p>
+            : local ? <p role="status" className="notice border-line bg-surface-soft text-ink-secondary">Esta comanda de consumo local já foi encerrada.</p>
             : <div role="alert" className="notice flex-wrap items-center justify-between gap-2 border-rose-200 bg-rose-50 text-rose-800">
                 <span>Esta mesa está sem comanda aberta.</span>
                 <button type="button" className="btn-primary min-h-[44px] px-3 text-sm"
@@ -466,11 +473,11 @@ export function WaiterOrderPad({ table, onBackToTables, dedicated = false, onTab
       </div>
       {/* Computador largo: o pedido em montagem fica sempre à vista na lateral */}
       {wide && (
-        <aside className="hidden xl:sticky xl:block xl:self-start" style={{ top: 'calc(var(--app-header-height, 64px) + 140px)' }} aria-label={`Pedido da Mesa ${pad2(table.number)}`}>
+        <aside className="hidden xl:sticky xl:block xl:self-start" style={{ top: 'calc(var(--app-header-height, 64px) + 140px)' }} aria-label={`Pedido de ${headerTitle}`}>
           <div className="surface-card flex max-h-[calc(100dvh-260px)] flex-col overflow-hidden">
-            <div className="flex items-baseline justify-between border-b border-line px-4 py-3">
+            <div className="flex items-baseline justify-between gap-2 border-b border-line px-4 py-3">
               <h2 className="section-title">Novo pedido</h2>
-              <span className="text-sm text-ink-muted">Mesa {pad2(table.number)}</span>
+              <span className="truncate text-sm text-ink-muted">{headerTitle}</span>
             </div>
             {cart.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-ink-muted">Clique nos itens do cardápio para montar o pedido.</p>
