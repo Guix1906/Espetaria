@@ -1,3 +1,4 @@
+import { isLocalTableNumber } from '../../lib/localTables';
 import { AlertCircle, Check, CheckCircle2, Clock3, Copy, MessageCircle, QrCode, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Dialog } from '../../components/ui/Dialog';
@@ -39,7 +40,7 @@ function PixPaymentContent({ onClose, amount, tableNumber, customerName, custome
     merchantCity: settings.pix_merchant_city || 'SAO PAULO',
     amount,
     txId: transactionId,
-    description: tableNumber ? `Mesa ${tableNumber}` : 'Pedido Espetaria'
+    description: tableNumber ? (isLocalTableNumber(tableNumber) ? 'Consumo local' : `Mesa ${tableNumber}`) : 'Pedido Espetaria'
   }) : '';
   const amountIsValid = Number.isFinite(amount) && amount > 0;
 
@@ -86,7 +87,7 @@ function PixPaymentContent({ onClose, amount, tableNumber, customerName, custome
       <div className="dialog-panel flex w-full max-w-md flex-col">
         <div className="flex items-start justify-between gap-3 border-b border-line p-5"><div className="flex items-start gap-3"><span className="icon-tile"><QrCode className="h-5 w-5" aria-hidden="true" /></span><div><h2 className="font-semibold text-ink">Pagamento por PIX</h2><p className="mt-1 break-all text-xs text-ink-muted">Identificador: {transactionId}</p></div></div><button type="button" onClick={onClose} className="icon-button" aria-label="Fechar pagamento PIX"><X className="h-5 w-5" /></button></div>
         <div className="flex-1 space-y-5 overflow-y-auto p-5">
-          <div className="text-center"><p className="text-sm text-ink-muted">Valor a receber</p><p className="mt-1 text-3xl font-bold text-brand-800 tabular-nums">{formatBRL(amount)}</p>{tableNumber && <p className="mt-2 text-xs text-ink-muted">Mesa {tableNumber}{customerName ? ` · ${customerName}` : ''}</p>}</div>
+          <div className="text-center"><p className="text-sm text-ink-muted">Valor a receber</p><p className="mt-1 text-3xl font-bold text-brand-800 tabular-nums">{formatBRL(amount)}</p>{tableNumber && <p className="mt-2 text-xs text-ink-muted">{isLocalTableNumber(tableNumber) ? 'Consumo local' : `Mesa ${tableNumber}`}{customerName ? ` · ${customerName}` : ''}</p>}</div>
           {!pixKey && <div className="notice border-amber-200 bg-amber-50 text-amber-900" role="alert">Chave PIX não cadastrada. Cadastre em Configurações → PIX para gerar o QR Code.</div>}
           {pixKey && <>
           <PixQrCode payload={pixPayload} />

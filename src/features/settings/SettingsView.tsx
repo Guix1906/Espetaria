@@ -1,3 +1,4 @@
+import { isLocalTableNumber } from '../../lib/localTables';
 import React, { useEffect, useState } from 'react';
 import {
   Building2,
@@ -544,7 +545,7 @@ export const SettingsView: React.FC = () => {
                         </span>
                       </div>
                       <div className="mt-1 flex items-center justify-between text-xs text-ink-muted">
-                        <span>{job.origin === 'DELIVERY' ? `Delivery (${job.customer_name})` : `Mesa ${job.table_number}`}</span>
+                        <span>{job.origin === 'DELIVERY' ? `Delivery (${job.customer_name})` : isLocalTableNumber(job.table_number) ? `Local (${job.customer_name || 'Cliente'})` : `Mesa ${job.table_number}`}</span>
                         <span className="text-[13px]">{new Date(job.created_at).toLocaleTimeString('pt-BR')}</span>
                       </div>
                     </div>

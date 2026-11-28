@@ -1,3 +1,4 @@
+import { tableShortLabel } from '../lib/localTables';
 import { create } from 'zustand';
 import { RestaurantTable, Tab, Order, OrderItem, Payment } from '../types/domain';
 import { MeatDoneness, OrderItemStatus, ProductionSector, PaymentMethod } from '../types/enums';
@@ -352,7 +353,7 @@ export const useTableStore = create<TableState>((set, get) => ({
     }, 'TableStore')).then((result) => {
       if (!result && isSupabaseConfigured) {
         const reason = useRemoteErrorStore.getState().lastError;
-        useRemoteErrorStore.setState({ lastError: `Pedido da Mesa ${table.number} NÃO foi enviado. ${reason ?? ''} Os itens voltaram para o carrinho.` });
+        useRemoteErrorStore.setState({ lastError: `Pedido de ${tableShortLabel(table, tab.customer_name)} NÃO foi enviado. ${reason ?? ''} Os itens voltaram para o carrinho.` });
         onRejected?.();
         return;
       }

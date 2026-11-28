@@ -1,3 +1,4 @@
+import { isLocalTableNumber } from '../../lib/localTables';
 import React, { useState, useEffect } from 'react';
 import { Printer, AlertTriangle, CheckCircle2, RefreshCw, Server, X } from 'lucide-react';
 import { usePrintStore } from '../../stores/usePrintStore';
@@ -322,7 +323,7 @@ export const PrinterDiagnosticsModal: React.FC<{ isOpen: boolean; onClose: () =>
                     </span>
                     <span className="font-bold text-ink">#{j.order_number}</span>
                     <span className="text-ink-muted truncate">
-                      {j.origin === 'DELIVERY' ? `Delivery (${j.customer_name || 'Cliente'})` : `Mesa ${j.table_number}`}
+                      {j.origin === 'DELIVERY' ? `Delivery (${j.customer_name || 'Cliente'})` : isLocalTableNumber(j.table_number) ? `Local (${j.customer_name || 'Cliente'})` : `Mesa ${j.table_number}`}
                     </span>
                   </div>
                   <button

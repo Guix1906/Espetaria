@@ -1,3 +1,4 @@
+import { isLocalTableNumber } from './localTables';
 /**
  * Utilitário de Notificações via WhatsApp ("API Zap")
  * Formatação de links profundos wa.me e mensagens operacionais pré-configuradas
@@ -43,7 +44,7 @@ export function buildTableBillWhatsAppMessage({
 }: TableBillWhatsAppParams): string {
   const greeting = customerName ? `Olá, ${customerName}!` : 'Olá!';
   let message = `🥩 *ESPETARIA SABOR DA CARNE* 🥩\n`;
-  message += `${greeting} Segue o resumo da sua conta na *Mesa ${tableNumber}*:\n\n`;
+  message += `${greeting} Segue o resumo da sua conta${isLocalTableNumber(tableNumber) ? '' : ` na *Mesa ${tableNumber}*`}:\n\n`;
   message += `📋 *Consumo:* ${formatBRL(subtotal)}\n`;
 
   if (serviceFee > 0) {

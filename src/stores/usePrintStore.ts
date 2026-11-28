@@ -1,3 +1,4 @@
+import { isLocalTableNumber } from '../lib/localTables';
 import { create } from 'zustand';
 import { PrintJob, PrintJobItem, PrinterStatusRecord } from '../types/domain';
 import { ProductionSector } from '../types/enums';
@@ -459,7 +460,7 @@ export const usePrintStore = create<PrintState>((set, get) => ({
 
     const originText = job.origin === 'DELIVERY'
       ? `DELIVERY - ${job.customer_name || 'Cliente'}`
-      : `MESA ${job.table_number ?? 'S/N'}${job.customer_name ? ` (${job.customer_name})` : ''}`;
+      : `${isLocalTableNumber(job.table_number) ? 'CONSUMO LOCAL' : `MESA ${job.table_number ?? 'S/N'}`}${job.customer_name ? ` (${job.customer_name})` : ''}`;
 
     const dateStr = new Date(job.created_at).toLocaleTimeString('pt-BR', {
       hour: '2-digit',

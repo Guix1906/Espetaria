@@ -1,4 +1,4 @@
-import { tableShortLabel } from '../../lib/localTables';
+import { isLocalTable, tableShortLabel } from '../../lib/localTables';
 import { getServiceFeeRate } from '../../lib/utils';
 import {
   AlertCircle,
@@ -12,6 +12,7 @@ import {
   QrCode,
   Receipt,
   Search,
+  Store,
   Trash2,
   Users,
   X
@@ -521,7 +522,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
       {isFullyPaid ? (
         <button type="button" onClick={handleFinalizeClosure} className="btn-success mt-auto w-full min-h-[56px] text-[17px] font-bold">
           <CheckCheck className="w-5 h-5" />
-          <span>Encerrar conta e liberar mesa</span>
+          <span>{isLocalTable(table) ? 'Encerrar conta' : 'Encerrar conta e liberar mesa'}</span>
         </button>
       ) : (
         <p className="mt-auto text-center text-sm text-ink-muted">Depois de receber o valor total, aparece o botão para encerrar a conta.</p>
@@ -603,7 +604,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line pb-3">
             <div className="flex items-center gap-3">
               <div className="bg-brand-700 w-12 h-12 rounded-2xl text-white flex items-center justify-center font-bold text-xl shadow-card">
-                {String(table.number).padStart(2, '0')}
+                {isLocalTable(table) ? <Store className="h-6 w-6" aria-label="Consumo local" /> : String(table.number).padStart(2, '0')}
               </div>
               <div>
                 <h3 className="font-bold text-ink text-lg leading-none flex items-center gap-2 font-sans">
@@ -615,7 +616,7 @@ export const TableSettlementModal: React.FC<TableSettlementModalProps> = ({
                   <span>•</span>
                   <span className="flex items-center gap-1">
                     <Users className="w-3.5 h-3.5 text-ink-muted" />
-                    {currentTab.people_count} pessoas
+                    {currentTab.people_count} {currentTab.people_count === 1 ? 'pessoa' : 'pessoas'}
                   </span>
                   <span>•</span>
                   <span>Aberta às {new Date(currentTab.opened_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>

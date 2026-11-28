@@ -1,3 +1,4 @@
+import { isLocalTable } from '../../lib/localTables';
 import { CheckCircle2, Printer, X } from 'lucide-react';
 import React from 'react';
 import { Dialog } from '../../components/ui/Dialog';
@@ -74,7 +75,7 @@ export const ReceiptModal: React.FC<ReceiptModalProps> = ({
           <div className="border-b border-dashed border-stone-400 pb-2 space-y-0.5 text-xs">
             <div className="flex justify-between font-bold">
               <span>CUPOM NÃO FISCAL</span>
-              <span>MESA {table ? String(table.number).padStart(2, '0') : '??'}</span>
+              <span>{table && isLocalTable(table) ? 'CONSUMO LOCAL' : `MESA ${table ? String(table.number).padStart(2, '0') : '??'}`}</span>
             </div>
             <div className="flex justify-between">
               <span>Comanda: #{tab.id.slice(0, 8)}</span>
